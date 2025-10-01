@@ -15,7 +15,12 @@
       "Bash(netstat:*)",
       "Bash(DATABASE_URL=\"postgresql://alquemist:alquemist_dev_2025@localhost:5432/alquemist_dev\" docker exec alquemist-db psql -U alquemist -d alquemist_dev -c \"SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = ''public'';\")",
       "Bash(ssh-add:*)",
-      "Read(//home/kris/.ssh/**)"
+      "Read(//home/kris/.ssh/**)",
+      "Bash(git --version)",
+      "Bash(gh:*)",
+      "Bash(ssh:*)",
+      "Bash(DATABASE_URL=\"postgresql://alquemist:alquemist_dev_2025@localhost:5432/alquemist_dev\" npm run db:push)",
+      "Bash(DATABASE_URL=\"postgresql://alquemist:alquemist_dev_2025@localhost:5432/alquemist_dev\" npm run db:seed)"
     ],
     "deny": [],
     "ask": []
