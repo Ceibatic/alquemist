@@ -128,6 +128,10 @@ Return implementation report with:
 5. **Next Steps Identified**
    - Blockers or dependencies
    - Follow-up work needed
+
+6. **Git Commit** (optional)
+   - Conventional commit message for work completed
+   - Can push to feature branch for collaboration
 </output_format>
 
 <tools_available>
@@ -135,6 +139,7 @@ Return implementation report with:
 - Component exploration (can review existing components)
 - Design system reference (load on demand)
 - Bash for package installation (npm install)
+- Git operations (commit/push for collaboration)
 </tools_available>
 
 <anti_patterns>
@@ -276,6 +281,10 @@ Return implementation report with:
 7. **Next Steps Identified**
    - Blockers or dependencies
    - Follow-up work needed
+
+8. **Git Commit** (optional)
+   - Conventional commit message for work completed
+   - Can push to feature branch for collaboration
 </output_format>
 
 <tools_available>
@@ -283,6 +292,7 @@ Return implementation report with:
 - Database schema exploration (can read schema)
 - Prisma commands (npx prisma generate, migrate, studio)
 - Bash for running/testing API (npm run dev)
+- Git operations (commit/push for collaboration)
 </tools_available>
 
 <anti_patterns>

@@ -24,7 +24,8 @@
 2. Begin MODULE 1 planning with user
 3. Create MODULE 1 PRD collaboratively
 4. Generate frontend/backend backlogs
-5. Assign to subagents
+5. **Git**: Create feature branch `git checkout -b feature/module-1-auth-company-setup`
+6. Assign to subagents
 
 ---
 

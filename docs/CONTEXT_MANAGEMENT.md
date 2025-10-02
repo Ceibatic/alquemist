@@ -88,6 +88,18 @@ See: docs/MODULE_PRDS/01-auth-company-PRD.md
    - Lessons learned
 2. Archive conversation history reference
 3. Start new conversation with summary loaded
+4. **Git**: Create release tag for production deployment:
+   ```bash
+   git tag -a v0.X.0 -m "Release v0.X.0
+
+   - MODULE X: Name
+   - MODULE Y: Name
+   - MODULE Z: Name
+
+   [Key features implemented]"
+
+   git push origin v0.X.0  # Auto-deploys to production
+   ```
 
 ## 📂 Component Catalog Organization
 
@@ -207,6 +219,7 @@ After every 3 modules:
 - [ ] Architectural decisions documented
 - [ ] Context refreshed with summary
 - [ ] Lessons learned captured
+- [ ] **Git**: Create release tag and deploy to production
 
 ## 🎯 Expected Benefits
 

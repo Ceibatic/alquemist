@@ -37,17 +37,24 @@ packages/
 - Collaborative PRD creation
 - Generate module PRD in [docs/MODULE_PRDS/](docs/MODULE_PRDS/)
 - Create frontend/backend backlogs in [docs/BACKLOGS/](docs/BACKLOGS/)
+- **Git**: Create feature branch `git checkout -b feature/module-X-name`
 
 ### 2. Implementation Phase (Subagents)
 - Assign tasks: `@assign [frontend|backend] MODULE[X]`
 - Subagents execute independently
 - Generate implementation reports (1,000-2,000 tokens)
+- **Git**: Commit and push incrementally with conventional commits
 
 ### 3. Integration Phase (Main Claude)
 - Review subagent reports: `@review implementations`
 - Update documentation: `@update state`, `@sync components`
 - Track files: `@track files`
 - Validate acceptance criteria
+- **Git**: Create PR, merge after approval → auto-deploy to staging
+
+### 4. Release Phase (Every 3 Modules)
+- Execute compaction: `@compact module`, `@compact conversation`
+- **Git**: Create version tag `git tag -a v0.X.0` → auto-deploy to production
 
 ## 📋 Core Commands
 
@@ -72,6 +79,44 @@ packages/
 - `@update state` - Update PROJECT_STATE.md
 - `@sync components` - Update COMPONENT_INVENTORY.md
 - `@track files` - Update IMPLEMENTATION_LOG.md
+
+## 🔀 Git Workflow
+
+### Module Branch Creation
+```bash
+git checkout -b feature/module-X-name
+```
+
+### During Implementation (Flexible)
+```bash
+# Commit with conventional format
+git commit -m "feat(module-X): brief description
+
+- Detail 1
+- Detail 2"
+
+# Push for collaboration anytime
+git push origin feature/module-X-name
+```
+
+### After Integration
+```bash
+# Create PR
+gh pr create --title "MODULE X: Name" --body "..."
+
+# Merge (auto-deploys to staging)
+gh pr merge --squash --delete-branch
+```
+
+### Production Release (Every 3 Modules)
+```bash
+git tag -a v0.X.0 -m "Release notes"
+git push origin v0.X.0  # Auto-deploys to production
+```
+
+**Commit Prefixes**: `feat:`, `fix:`, `docs:`, `style:`, `refactor:`, `test:`, `chore:`
+
+**Full workflow**: See [docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md) and [docs/REFERENCE/GIT_WORKFLOW.md](docs/REFERENCE/GIT_WORKFLOW.md)
 
 ## 🗂️ Context Management
 
@@ -136,6 +181,8 @@ packages/
 
 - **Detailed Workflow**: [docs/REFERENCE/WORKFLOW_DETAILED.md](docs/REFERENCE/WORKFLOW_DETAILED.md)
 - **Subagent Specs**: [docs/SUBAGENT_SPECS.md](docs/SUBAGENT_SPECS.md)
+- **Git Workflow**: [docs/REFERENCE/GIT_WORKFLOW.md](docs/REFERENCE/GIT_WORKFLOW.md)
+- **GitHub CI/CD Setup**: [docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md)
 - **Design System**: [docs/REFERENCE/DESIGN_SYSTEM.md](docs/REFERENCE/DESIGN_SYSTEM.md)
 - **API Standards**: [docs/REFERENCE/API_STANDARDS.md](docs/REFERENCE/API_STANDARDS.md)
 - **Colombian Compliance**: [docs/REFERENCE/COLOMBIAN_COMPLIANCE.md](docs/REFERENCE/COLOMBIAN_COMPLIANCE.md)
