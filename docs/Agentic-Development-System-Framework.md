@@ -135,6 +135,20 @@ The **Agentic Development System** is a structured approach to building complex 
 - **Component catalog**: Move stable components to separate files
 - **Conversation summaries**: Every 3 modules
 
+### 6. Version Control Integration
+
+**Problem**: Development without version control leads to:
+- Lost work and difficult collaboration
+- No audit trail of decisions
+- Manual deployment prone to errors
+- Difficulty tracking progress
+
+**Solution**: Git workflow mirrors development phases:
+- **Feature branches**: One per module
+- **Conventional commits**: Clear change history
+- **CI/CD automation**: Automated testing and deployment
+- **Release tags**: Production deployments every 3 modules
+
 ---
 
 ## System Architecture
@@ -172,12 +186,14 @@ The **Agentic Development System** is a structured approach to building complex 
    User + Main Claude → Module PRD
                      → Frontend Backlog
                      → Backend Backlog
+                     → Git: Create feature branch
 
 2. Implementation Phase
    Main Claude → Structured Context Package → @frontend Subagent
                                            → @backend Subagent
 
    Subagents work autonomously
+   Git: Commit and push incrementally (CI runs)
 
    Subagents → Implementation Reports → Main Claude
 
@@ -185,7 +201,12 @@ The **Agentic Development System** is a structured approach to building complex 
    Main Claude reviews reports
    Main Claude updates documentation
    Main Claude validates acceptance criteria
+   Git: Create PR → Merge (deploy to staging)
    Main Claude triggers compaction if needed
+
+4. Release Phase (Every 3 Modules)
+   Main Claude executes compaction
+   Git: Create release tag (deploy to production)
 ```
 
 ### Context Budget Allocation
@@ -212,6 +233,257 @@ Total Active Context          ~8,000 tokens
 
 ---
 
+## Git & CI/CD Integration
+
+### Overview
+
+Version control and continuous integration/deployment are integrated seamlessly with the development workflow. Git operations mirror the 4-phase development process, while CI/CD pipelines automate quality gates and deployments.
+
+### Branch Strategy
+
+**Module-Based Feature Branches**:
+```
+main (protected)
+  ├── feature/module-1-auth
+  ├── feature/module-2-facilities
+  ├── feature/module-3-inventory
+  └── ...
+```
+
+**Branch Naming Convention**:
+- `feature/module-X-name` - Module implementation
+- `fix/bug-description` - Bug fixes
+- `docs/update-name` - Documentation updates
+- `refactor/component-name` - Code refactoring
+
+**Branch Protection** (recommended for `main`):
+- Require pull request reviews
+- Require status checks to pass (CI)
+- Require branches to be up to date
+- Restrict deletions
+
+### Commit Conventions
+
+**Conventional Commits Format**:
+```bash
+type(scope): brief description
+
+- Detailed change 1
+- Detailed change 2
+```
+
+**Commit Types**:
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `docs:` - Documentation changes
+- `style:` - Code formatting (no logic change)
+- `refactor:` - Code refactoring
+- `test:` - Adding/updating tests
+- `chore:` - Maintenance tasks
+
+**Examples**:
+```bash
+feat(module-1): add authentication endpoints
+
+- POST /api/auth/login with Lucia v3
+- GET /api/auth/me with JWT validation
+- Colombian NIT validation
+```
+
+### CI/CD Pipeline Structure
+
+**Recommended Workflows** (GitHub Actions):
+
+**1. CI Workflow** (`.github/workflows/ci.yml`):
+- **Triggers**: Push or PR to `main`/`develop`
+- **Jobs**:
+  - Lint & Type Check
+  - Test Suite (with database services)
+  - Build All Packages
+  - Upload Coverage
+
+**2. Deploy Workflow** (`.github/workflows/deploy.yml`):
+- **Triggers**:
+  - Push to `main` → Deploy to **Staging**
+  - Tag `v*.*.*` → Deploy to **Production**
+- **Jobs**:
+  - Run migrations
+  - Build production artifacts
+  - Deploy to environment
+  - Create GitHub release (for tags)
+
+**3. Database Workflow** (`.github/workflows/database.yml`):
+- **Triggers**: Manual (`workflow_dispatch`)
+- **Actions**: Migrate, seed, backup, reset
+- **Environments**: Staging or production
+
+### Integration with Development Phases
+
+#### Phase 1: Planning → Branch Creation
+
+**After backlog approval**:
+```bash
+git checkout -b feature/module-X-name
+```
+
+**Updates to Planning Phase**:
+- Create feature branch as final step
+- Document branch name in PROJECT_STATE.md
+
+#### Phase 2: Implementation → Incremental Commits
+
+**During subagent work**:
+```bash
+# Frontend subagent commits
+git commit -m "feat(module-X): add UI components"
+git push origin feature/module-X-name
+# CI runs automatically ✅
+
+# Backend subagent commits
+git commit -m "feat(module-X): add API endpoints"
+git push origin feature/module-X-name
+# CI runs automatically ✅
+```
+
+**Subagent Enhancements**:
+- Add Git tools to `<tools_available>`
+- Add optional Git commit to `<output_format>`
+- Emphasize: Push anytime for collaboration (flexible)
+
+**CI Automation**:
+- Runs on every push
+- Validates code quality (lint, type-check)
+- Runs test suite
+- Builds packages
+- Reports status to PR
+
+#### Phase 3: Integration → Pull Request & Merge
+
+**After documentation updates**:
+```bash
+# Main Claude updates docs
+git commit -m "docs(module-X): update project state"
+git push origin feature/module-X-name
+
+# Create PR
+gh pr create \
+  --title "MODULE X: Name" \
+  --body "## Summary
+[Module overview]
+
+## Components Built
+[List]
+
+## Acceptance Criteria
+- [x] Criterion 1
+- [x] Criterion 2"
+
+# After approval
+gh pr merge --squash --delete-branch
+# Auto-deploys to STAGING ✅
+```
+
+**Integration Phase Enhancements**:
+- Create PR before updating documentation
+- Wait for CI checks to pass
+- Merge triggers staging deployment
+
+#### Phase 4: Compaction → Production Release
+
+**Every 3 modules**:
+```bash
+git checkout main
+git pull origin main
+
+# Create annotated tag
+git tag -a v0.X.0 -m "Release v0.X.0
+
+MODULE X: Name
+MODULE Y: Name
+MODULE Z: Name
+
+[Key features implemented]"
+
+git push origin v0.X.0
+# Auto-deploys to PRODUCTION ✅
+```
+
+**Release Strategy**:
+- **v0.X.0**: Development releases (modules 1-12)
+- **v1.0.0**: First production release
+- **v1.X.0**: Minor releases (new features)
+- **v1.X.Y**: Patch releases (bug fixes)
+
+### Git Workflow Diagram
+
+```
+Planning Phase
+    │
+    ├──> Create feature branch
+    │
+    ▼
+Implementation Phase
+    │
+    ├──> Commit incrementally
+    ├──> Push to remote
+    ├──> CI runs on push ✅
+    │
+    ▼
+Integration Phase
+    │
+    ├──> Update documentation
+    ├──> Create Pull Request
+    ├──> CI checks on PR ✅
+    ├──> Code review (optional)
+    ├──> Merge to main
+    ├──> Deploy to STAGING ✅
+    │
+    ▼
+Compaction Phase (Every 3 modules)
+    │
+    ├──> Archive modules
+    ├──> Create release tag
+    ├──> Deploy to PRODUCTION ✅
+```
+
+### Repository Setup Checklist
+
+For new projects using this framework:
+
+- [ ] Create GitHub repository (private recommended)
+- [ ] Configure branch protection for `main`
+- [ ] Set up CI/CD workflows (`.github/workflows/`)
+- [ ] Configure repository secrets:
+  - [ ] `STAGING_DATABASE_URL`
+  - [ ] `PRODUCTION_DATABASE_URL`
+  - [ ] Other environment-specific secrets
+- [ ] Set up environments (`staging`, `production`)
+- [ ] Configure auto-deployment settings
+- [ ] Test CI pipeline with initial commit
+- [ ] Verify staging deployment works
+- [ ] Create first module branch
+
+### Best Practices
+
+**Do**:
+- ✅ Commit frequently (incremental progress)
+- ✅ Push anytime for collaboration
+- ✅ Use conventional commit format
+- ✅ Include meaningful descriptions
+- ✅ Create PR after module completion
+- ✅ Wait for CI checks before merging
+- ✅ Tag releases every 3 modules
+
+**Don't**:
+- ❌ Commit half-finished features
+- ❌ Include secrets or credentials
+- ❌ Skip CI checks
+- ❌ Merge without code review (if required)
+- ❌ Force push to main
+- ❌ Delete main branch
+
+---
+
 ## Directory Structure & Files
 
 ### Complete Directory Structure
@@ -219,6 +491,12 @@ Total Active Context          ~8,000 tokens
 ```
 project-root/
 ├── claude.md                          # Main configuration (2,000 tokens)
+├── .github/                           # GitHub configuration
+│   └── workflows/                     # CI/CD pipelines
+│       ├── ci.yml                     # Lint, test, build
+│       ├── deploy.yml                 # Staging/production deployment
+│       └── database.yml               # Database operations
+│
 ├── docs/
 │   ├── CONTEXT_INDEX.md               # Lightweight reference index
 │   ├── CONTEXT_MANAGEMENT.md          # Compaction strategy
@@ -257,6 +535,7 @@ project-root/
 │       ├── WORKFLOW_DETAILED.md
 │       ├── DESIGN_SYSTEM.md
 │       ├── API_STANDARDS.md
+│       ├── GIT_WORKFLOW.md            # Git workflow guide
 │       └── ...
 │
 └── scripts/
@@ -289,6 +568,7 @@ project-root/
 1. Planning Phase (Main Claude + User)
 2. Implementation Phase (Subagents)
 3. Integration Phase (Main Claude)
+4. Release Phase (Every 3 Modules)
 
 ## 📋 Core Commands
 - State management commands
@@ -683,10 +963,20 @@ Brief module overview
    - Adjusts scope if needed
    - Approves for implementation
 
+6. **Create Feature Branch**
+   ```bash
+   git checkout -b feature/module-X-name
+   git push -u origin feature/module-X-name
+   ```
+   - Branch naming: `feature/module-[number]-[short-name]`
+   - All implementation work happens on this branch
+   - CI/CD runs automatically on push
+
 **Deliverables**:
 - Module PRD (1,500-3,000 tokens)
 - Frontend backlog (2,000-4,000 tokens)
 - Backend backlog (2,000-4,000 tokens)
+- Feature branch created and pushed
 
 **Time Estimate**: 1-3 hours
 
@@ -753,6 +1043,12 @@ Brief module overview
    - Creates components, pages, features
    - Implements project-specific requirements
    - Writes tests (if specified)
+   - **Git**: Commits work incrementally (optional but recommended)
+     ```bash
+     git commit -m "feat(module-X): add user authentication form"
+     git push origin feature/module-X-name
+     ```
+   - CI runs automatically on push (lint, test, build)
    - Generates implementation report (1,000-2,000 tokens)
 
 3. **Assign to Backend Subagent**
@@ -800,12 +1096,18 @@ Brief module overview
    - Creates endpoints, services, database operations
    - Implements business rules
    - Writes tests (if specified)
+   - **Git**: Commits work incrementally (optional but recommended)
+     ```bash
+     git commit -m "feat(module-X): add authentication API endpoints"
+     git push origin feature/module-X-name
+     ```
+   - CI runs automatically on push (lint, test, build)
    - Generates implementation report (1,000-2,000 tokens)
 
 **Deliverables**:
 - Frontend implementation report (1,000-2,000 tokens)
 - Backend implementation report (1,000-2,000 tokens)
-- All code files created
+- All code files created and pushed to feature branch
 
 **Time Estimate**: 1-3 weeks (depending on module complexity)
 
@@ -884,7 +1186,32 @@ Brief module overview
    - Identify any gaps
    - Create follow-up tasks if needed
 
-5. **Trigger Compaction (if needed)**
+5. **Create Pull Request and Merge**
+   ```bash
+   # Create PR
+   gh pr create --title "MODULE X: Name" --body "$(cat <<'EOF'
+   ## Summary
+   - Feature 1 implemented
+   - Feature 2 implemented
+
+   ## Test Plan
+   - [ ] Manual testing completed
+   - [ ] CI checks passed
+   - [ ] Integration verified
+
+   ## Acceptance Criteria
+   - [x] All criteria from PRD met
+   EOF
+   )"
+
+   # After review and approval, merge
+   gh pr merge --squash --delete-branch
+   ```
+   - Merging to main triggers deployment to **staging** environment
+   - Verify deployment successful
+   - Test on staging environment
+
+6. **Trigger Compaction (if needed)**
    ```
    Check triggers:
    - Every 3 modules? (MODULE 3, 6, 9, 12)
@@ -902,6 +1229,8 @@ Brief module overview
 - Updated PROJECT_STATE.md
 - Updated CONTEXT_INDEX.md
 - Module marked complete
+- PR created, reviewed, and merged
+- Changes deployed to staging
 - Compaction executed (if triggered)
 
 **Time Estimate**: 30-60 minutes
@@ -1002,7 +1331,28 @@ Brief module overview
    - Continue from current module
    ```
 
-5. **Verify Context Health**
+5. **Create Release Tag**
+   ```bash
+   # Create annotated release tag (every 3 modules)
+   git tag -a v0.X.0 -m "Release v0.X.0
+
+   - MODULE X: Name
+   - MODULE Y: Name
+   - MODULE Z: Name
+
+   Key features:
+   - Feature 1
+   - Feature 2
+   - Feature 3"
+
+   # Push tag (triggers production deployment)
+   git push origin v0.X.0
+   ```
+   - Pushing tag triggers deployment to **production** environment
+   - Semantic versioning: v0.X.0 for development, v1.0.0 for production release
+   - Release notes include all modules in this batch
+
+6. **Verify Context Health**
    ```
    Check:
    - Active context < 8,000 tokens ✓
@@ -1017,6 +1367,8 @@ Brief module overview
 - Reorganized COMPONENT_INVENTORY.md
 - CONTEXT_SUMMARY.md (if conversation compacted)
 - Active context < 8,000 tokens
+- Release tag created (every 3 modules)
+- Production deployment triggered (every 3 modules)
 
 **Time Estimate**: 15-30 minutes
 
@@ -1128,6 +1480,10 @@ Return implementation report with:
 5. **Next Steps Identified**
    - Blockers or dependencies
    - Follow-up work needed
+
+6. **Git Commit** (optional)
+   - Conventional commit message for work completed
+   - Can push to feature branch for collaboration
 </output_format>
 
 <tools_available>
@@ -1135,6 +1491,7 @@ Return implementation report with:
 - Component exploration (can review existing components)
 - Design system reference (load on demand)
 - Package installation (npm install, yarn add, etc.)
+- Git operations (commit/push for collaboration - optional)
 </tools_available>
 
 <anti_patterns>
@@ -1327,6 +1684,10 @@ Return implementation report with:
 7. **Next Steps Identified**
    - Blockers or dependencies
    - Follow-up work needed
+
+8. **Git Commit** (optional)
+   - Conventional commit message for work completed
+   - Can push to feature branch for collaboration
 </output_format>
 
 <tools_available>
@@ -1334,6 +1695,7 @@ Return implementation report with:
 - Database schema exploration (can read schema)
 - ORM commands (e.g., npx prisma generate, migrate)
 - Running/testing API (npm run dev, etc.)
+- Git operations (commit/push for collaboration - optional)
 </tools_available>
 
 <anti_patterns>
@@ -1659,6 +2021,8 @@ Total tokens loaded: 200-1,000 (vs always-loaded 15,000+)
 - [ ] Old module details archived
 - [ ] PROJECT_STATE.md compacted
 - [ ] COMPONENT_INVENTORY.md reorganized
+- [ ] **Git**: Release tag created (`git tag -a v0.X.0`)
+- [ ] **Git**: Tag pushed to trigger production deployment
 
 ### Warning Signs
 
@@ -1726,17 +2090,24 @@ Compact immediately if you notice:
 - Collaborative PRD creation
 - Generate module PRD in [docs/MODULE_PRDS/](docs/MODULE_PRDS/)
 - Create frontend/backend backlogs in [docs/BACKLOGS/](docs/BACKLOGS/)
+- **Git**: Create feature branch `git checkout -b feature/module-X-name`
 
 ### 2. Implementation Phase (Subagents)
 - Assign tasks: `@assign [frontend|backend] MODULE[X]`
 - Subagents execute independently
 - Generate implementation reports (1,000-2,000 tokens)
+- **Git**: Commit and push incrementally (CI runs automatically)
 
 ### 3. Integration Phase (Main Claude)
 - Review subagent reports: `@review implementations`
 - Update documentation: `@update state`, `@sync components`
 - Track files: `@track files`
 - Validate acceptance criteria
+- **Git**: Create PR, merge after approval (auto-deploy to staging)
+
+### 4. Release Phase (Every 3 Modules)
+- Execute compaction: `@compact module`, `@compact conversation`
+- **Git**: Create version tag `git tag -a v0.X.0` (auto-deploy to production)
 
 ## 📋 Core Commands
 
@@ -1986,6 +2357,7 @@ Collect the following:
 ```bash
 mkdir -p docs/{MODULE_PRDS,BACKLOGS,ARCHIVE,REFERENCE,COMPONENTS}
 mkdir -p scripts
+mkdir -p .github/workflows
 ```
 
 #### Step 3: Customize claude.md
@@ -2110,7 +2482,38 @@ Customize:
 - Database check → Your database setup
 - Next steps → Your project's next steps
 
-#### Step 13: Run Initialization
+#### Step 13: Set Up Git Repository and CI/CD
+
+1. **Initialize Git Repository** (if not already)
+   ```bash
+   git init
+   git add .
+   git commit -m "chore: initial Agentic Development System setup"
+   ```
+
+2. **Create GitHub Repository**
+   - Create new repo on GitHub
+   - Add remote: `git remote add origin <repo-url>`
+   - Push: `git push -u origin main`
+
+3. **Set Up GitHub Actions Workflows**
+   - Copy workflow templates from [Git & CI/CD Integration section](#git--cicd-integration)
+   - Create `.github/workflows/ci.yml` (lint, test, build)
+   - Create `.github/workflows/deploy.yml` (staging/production deployment)
+   - Create `.github/workflows/database.yml` (database operations - if applicable)
+   - Customize workflows for your project's needs
+
+4. **Configure Branch Protection**
+   - Require PR reviews
+   - Require CI checks to pass
+   - Disable direct commits to main
+
+5. **Set Up Environments**
+   - Create `staging` environment in GitHub
+   - Create `production` environment in GitHub
+   - Configure deployment secrets (API keys, database URLs, etc.)
+
+#### Step 14: Run Initialization
 
 ```bash
 ./scripts/init-claude-code.sh
@@ -2120,8 +2523,10 @@ Verify:
 - All directories created ✓
 - All files present ✓
 - Token counts reasonable ✓
+- Git repository initialized ✓
+- GitHub Actions configured ✓
 
-#### Step 14: Provide to Claude
+#### Step 15: Provide to Claude
 
 When starting a new Claude conversation:
 

@@ -17,6 +17,7 @@
       "Bash(ssh-add:*)",
       "Read(//home/kris/.ssh/**)",
       "Bash(git --version)",
+      "Bash(git add:*)",
       "Bash(gh:*)",
       "Bash(ssh:*)",
       "Bash(DATABASE_URL=\"postgresql://alquemist:alquemist_dev_2025@localhost:5432/alquemist_dev\" npm run db:push)",
