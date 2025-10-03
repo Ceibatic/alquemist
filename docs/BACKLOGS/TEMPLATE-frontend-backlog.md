@@ -3,7 +3,7 @@
 **Module**: [Module Name]
 **Subagent**: @frontend
 **Priority**: [Critical|High|Medium|Low]
-**Dependencies**: [List module dependencies]
+**Dependencies**: [List module dependencies or "None"]
 **Estimated Duration**: [X days/weeks]
 
 ---
@@ -14,109 +14,49 @@
 
 ---
 
-## 🎯 Tasks
+## 🎯 Epics & Tasks
 
-### Task 1: [Component Category Name]
+### Epic 1: [Epic Name - e.g., "Base UI Components"]
 
-**Purpose**: [What these components do]
+**Purpose**: [What this epic accomplishes]
 
-**Components to Build**:
-1. **[ComponentName]**
-   - Purpose: [Brief description]
-   - Variants: [List variants if applicable]
-   - Props: [Key props]
-   - Features:
-     - [Feature 1]
-     - [Feature 2]
+**Tasks**:
+1. Build [ComponentName] component with [key features]
+2. Build [AnotherComponent] with [functionality]
+3. Create [UtilityName] utility for [purpose]
+4. Add [i18n translations] for [language]
 
-2. **[AnotherComponent]**
-   - Purpose: [Brief description]
-   - [Additional details]
+### Epic 2: [Epic Name - e.g., "Authentication Flow"]
 
-### Task 2: [Feature Name]
+**Purpose**: [What this epic accomplishes]
 
-**Purpose**: [What this feature does]
+**Tasks**:
+1. Create [PageName] page with [features]
+2. Implement [FeatureName] functionality
+3. Add [ValidationName] validation logic
+4. Integrate with backend [endpoints]
 
-**Requirements**:
-- [Requirement 1]
-- [Requirement 2]
-- [Requirement 3]
+### Epic 3: [Epic Name - if applicable]
 
-**User Flow**:
-1. [Step 1]
-2. [Step 2]
-3. [Step 3]
+**Purpose**: [What this epic accomplishes]
 
-**Validation Rules**:
-- [Rule 1]
-- [Rule 2]
-
-### Task 3: [Another Feature/Component Set]
-
-[Continue with additional tasks]
+**Tasks**:
+1. [Task description]
+2. [Task description]
 
 ---
 
-## 📁 Files to Create/Modify
+## 📁 Files to Create
 
 ### New Files
 - `apps/web/src/components/[category]/[ComponentName].tsx`
-- `apps/web/src/components/[category]/[AnotherComponent].tsx`
 - `apps/web/src/app/[route]/page.tsx`
-- `apps/web/src/lib/[utility-file].ts`
+- `apps/web/src/lib/[utility].ts`
 - `apps/web/src/lib/i18n/es.json` (Spanish translations)
 - `apps/web/src/lib/i18n/en.json` (English translations)
 
 ### Modified Files
-- `apps/web/src/[existing-file].tsx` (if modifying existing code)
-
----
-
-## 🇨🇴 Colombian Requirements
-
-### Localization
-- **Spanish translations** for:
-  - [List UI text that needs translation]
-  - Form labels
-  - Validation messages
-  - Button text
-  - Error messages
-
-- **English translations** (secondary) for same elements
-
-### Formatting
-- **Dates**: DD/MM/YYYY format
-- **Currency**: COP format ($1.000.000, no decimals)
-- **Phone**: Colombian format (+57 XXX XXX XXXX)
-- **Time**: 24-hour format (HH:mm)
-- **Numbers**: 1.000.000,50 (dot thousands, comma decimals)
-
-### Colombian-Specific Inputs
-- **NIT Input**: Colombian tax ID validation
-  - Format: XXXXXXXXX-X
-  - Validation: Check digit algorithm
-
-- **Address Input**: Colombian format
-  - Departamento (department selector)
-  - Municipio (municipality selector, filtered by department)
-  - DANE codes for both
-  - Address line 1 and 2
-
-- **Business Entity Selector**:
-  - S.A.S (Sociedad por Acciones Simplificada)
-  - S.A. (Sociedad Anónima)
-  - Ltda. (Limitada)
-  - E.U. (Empresa Unipersonal)
-
-### UI Standards
-- **Colors**:
-  - Primary: Colombian green (#00A859)
-  - Secondary: [Specify]
-  - Error: Red (#DC2626)
-  - Warning: Amber (#F59E0B)
-  - Success: Green (#10B981)
-
-- **Typography**: [Specify font stack if special]
+- `[existing-file].tsx` (if modifying existing code - specify reason)
 
 ---
 
@@ -125,46 +65,24 @@
 ### Backend API Endpoints Needed
 
 #### Endpoint 1: [Endpoint Name]
-- **Method**: [GET|POST|PUT|PATCH|DELETE]
-- **Path**: `/api/[path]`
+- **Method & Path**: `POST /api/[path]`
 - **Purpose**: [What this endpoint does]
-- **Request Body** (if applicable):
-```typescript
-{
-  field1: string;
-  field2: number;
-  // Colombian-specific fields
-  nit?: string;
-  department?: string;
-}
-```
-- **Response**:
-```typescript
-{
-  data: {
-    id: string;
-    // response fields
-  };
-  meta?: {
-    // metadata
-  };
-}
-```
-- **Error Responses**:
-  - 400: Validation error (Spanish message)
-  - 401: Unauthorized
-  - 403: Forbidden
-  - 404: Not found
+- **Request**: `{ field1: type, field2: type }`
+- **Response**: `{ data: {...}, meta?: {...} }`
+- **Errors**: 400 (validation), 401 (auth), 404 (not found)
 
 #### Endpoint 2: [Another Endpoint]
-[Same structure as above]
+- **Method & Path**: `GET /api/[path]`
+- **Purpose**: [What this endpoint does]
+- **Response**: `{ data: [...] }`
 
 ### Data Contracts
 
 **Types Needed** (create in `packages/types/src/[module].ts`):
 ```typescript
 export interface [TypeName] {
-  // Define shared types between frontend and backend
+  id: string;
+  // Add key fields that frontend needs to know about
 }
 ```
 
@@ -172,45 +90,34 @@ export interface [TypeName] {
 
 ## 🧩 Available Components for Reuse
 
-[List components from previous modules that can be reused]
+[Agent should query COMPONENT_INVENTORY.md for available components]
 
-**From MODULE 1**:
-- Button → `apps/web/src/components/ui/Button.tsx`
-- Input → `apps/web/src/components/ui/Input.tsx`
-- FormField → `apps/web/src/components/ui/FormField.tsx`
+**Expected from previous modules**:
+- [ComponentName] → `path/to/component.tsx`
+- [AnotherComponent] → `path/to/another.tsx`
 
-**From MODULE 2**:
-- [Component list if applicable]
-
-**Usage Notes**:
-- [Any notes about using existing components]
+**Or**: "None yet" for MODULE 1
 
 ---
 
 ## ✅ Acceptance Criteria
 
-Checklist for determining task completion:
-
 ### Functionality
 - [ ] All components render without errors
-- [ ] Form validation working (Zod schemas)
-- [ ] Spanish labels and messages
-- [ ] English fallback working
-- [ ] Colombian formatting correct (dates, currency, phone)
-- [ ] Navigation flows work
+- [ ] Form validation working (React Hook Form + Zod)
+- [ ] Navigation flows work correctly
 - [ ] Error states handled gracefully
+- [ ] Loading states implemented
 
 ### Localization
-- [ ] Spanish translations complete
-- [ ] English translations complete
+- [ ] Spanish translations complete (primary)
+- [ ] English translations complete (secondary)
 - [ ] Language switching works
-- [ ] Date/time in Colombian format
-- [ ] Currency in COP format
+- [ ] Colombian formatting correct (dates: DD/MM/YYYY, currency: COP, phone: +57)
 
 ### Integration
 - [ ] API calls structured correctly
 - [ ] Request/response types match contracts
-- [ ] Loading states implemented
 - [ ] Error handling implemented
 - [ ] Success feedback provided
 
@@ -218,18 +125,13 @@ Checklist for determining task completion:
 - [ ] Works on 360px width minimum
 - [ ] Touch-friendly (44px tap targets)
 - [ ] Mobile-first layout
-- [ ] PWA-ready (if applicable for this module)
+- [ ] PWA-ready (if applicable)
 
 ### Accessibility
 - [ ] Keyboard navigation works
 - [ ] ARIA labels present
 - [ ] Focus management correct
-- [ ] Screen reader friendly
-
-### Performance
-- [ ] Components memoized where appropriate
-- [ ] Lazy loading implemented for heavy components
-- [ ] Images optimized
+- [ ] Screen reader friendly (WCAG 2.1 AA)
 
 ### Testing
 - [ ] Unit tests for complex logic
@@ -238,51 +140,28 @@ Checklist for determining task completion:
 
 ---
 
-## 📦 Colombian Sample Data
+## 📚 Context References
 
-Use this realistic Colombian data for testing:
-
-```typescript
-const sampleCompany = {
-  name: "Valle Verde S.A.S",
-  legalName: "Valle Verde Cultivos Sostenibles S.A.S",
-  nit: "900123456-7",
-  businessEntityType: "S.A.S",
-  department: "Putumayo",
-  municipality: "Mocoa",
-  daneCode: "86001",
-  address: "Carrera 15 # 23-45",
-  phone: "+57 314 555 1234",
-};
-
-const sampleUser = {
-  firstName: "Carlos",
-  lastName: "Rodríguez",
-  email: "carlos.rodriguez@valleverde.com.co",
-  phone: "+57 314 555 1234",
-  locale: "es",
-  timezone: "America/Bogota",
-};
-```
+**Agent should load these for detailed specifications**:
+- Colombian localization rules → Product PRD, Engineering PRD
+- Design system → [docs/REFERENCE/DESIGN_SYSTEM.md](../REFERENCE/DESIGN_SYSTEM.md)
+- Database models → [packages/database/prisma/schema.prisma](../../packages/database/prisma/schema.prisma)
+- Sample data → Query seed files for realistic Colombian data
+- Existing components → [docs/COMPONENT_INVENTORY.md](../COMPONENT_INVENTORY.md)
 
 ---
 
-## 🚀 Future Enhancements (Out of Scope)
+## 📝 Notes
 
-[List items that are related but not part of this module]
+[Any special considerations, edge cases, or important context for this module]
 
-- [Enhancement 1]
-- [Enhancement 2]
+**Colombian-Specific**:
+- Refer to Product PRD for Colombian business requirements
+- Refer to Engineering PRD for localization standards
+- Query database schema for Colombian reference data (departments, municipalities, etc.)
 
----
-
-## 📚 Resources
-
-- **Design System**: [Link if available]
-- **Figma/Designs**: [Link if available]
-- **Product PRD**: `docs/Product PRD - Alquemist v4.0.md`
-- **Module PRD**: `docs/MODULE_PRDS/[XX]-[module]-PRD.md`
-- **Component Inventory**: `docs/COMPONENT_INVENTORY.md`
+**Out of Scope**:
+- [Features explicitly not part of this module]
 
 ---
 

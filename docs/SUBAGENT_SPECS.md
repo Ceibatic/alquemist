@@ -66,37 +66,24 @@ Example:
 </available_components>
 
 <design_constraints>
-- Spanish-first UI (primary locale: es, secondary: en)
-- Colombian formatting:
-  * Dates: DD/MM/YYYY
-  * Currency: COP (no decimals, format: $1.000.000)
-  * Phone: Colombian format (+57 XXX XXX XXXX)
-  * Address: Departamento, Municipio, DANE codes
-- Tailwind CSS for styling (Colombian color scheme)
+**See Product PRD and Engineering PRD for complete specifications**
+
+Key constraints:
+- Tailwind CSS for styling
 - React Hook Form + Zod validation
-- Batch-first UI patterns (default view: batch operations)
 - Mobile-first responsive design (PWA ready)
 - Accessibility: WCAG 2.1 AA minimum
+- Colombian localization (refer to Engineering PRD for details)
+- Batch-first UI patterns (refer to Product PRD)
 </design_constraints>
-
-<colombian_ui_standards>
-- Primary language: Spanish
-- Currency symbol: $ (COP)
-- Date format: DD/MM/YYYY
-- Time format: HH:mm (24-hour)
-- Number format: 1.000.000,50 (dot thousands, comma decimals)
-- Success color: Colombian green (#00A859)
-- Error color: Red (#DC2626)
-- Warning color: Amber (#F59E0B)
-</colombian_ui_standards>
 
 <success_criteria>
 - All components render without errors
-- Spanish labels and validation messages
-- Colombian formatting for dates/currency/phone
-- Components match design system (when established)
-- Mobile-responsive (works on 360px width minimum)
-- Accessibility tested (keyboard navigation, ARIA labels)
+- Localization working (Spanish/English - see Product PRD)
+- Formatting correct (dates, currency, phone - see Engineering PRD)
+- Components match design system
+- Mobile-responsive (360px minimum width)
+- Accessibility: WCAG 2.1 AA (keyboard navigation, ARIA labels)
 </success_criteria>
 
 <output_format>
@@ -116,12 +103,12 @@ Return implementation report with:
 3. **Integration Points** (what backend needs)
    - API endpoints required
    - Data contracts (request/response types)
-   - Colombian-specific validations needed
+   - Business logic validations needed
 
 4. **Testing Status** (checklist)
    - [ ] Components render
-   - [ ] Spanish/English switching works
-   - [ ] Colombian formatting correct
+   - [ ] Localization works (refer to acceptance criteria)
+   - [ ] Formatting correct (refer to acceptance criteria)
    - [ ] Form validation working
    - [ ] Mobile responsive
 
@@ -146,13 +133,13 @@ Return implementation report with:
 ❌ Don't include full file contents in report
 ❌ Don't over-explain implementation details
 ❌ Don't make assumptions about backend contracts
-❌ Don't use English-only labels
-❌ Don't use localStorage/sessionStorage in components
+❌ Don't skip localization requirements
+❌ Don't use localStorage/sessionStorage in components (SSR considerations)
 ✅ Do provide concise, actionable summaries
 ✅ Do clearly state integration needs
 ✅ Do identify potential issues early
-✅ Do use Spanish-first approach
-✅ Do follow Colombian formatting standards
+✅ Do follow project standards (refer to PRDs)
+✅ Do query context files for detailed specifications
 </anti_patterns>
 ```
 
@@ -208,34 +195,24 @@ Example for MODULE 1:
 - Role model (lines 80-103)
 </database_schema>
 
-<colombian_business_rules>
-- Currency: COP (Colombian Peso) - no decimal places
-- Timezone: America/Bogota (COT-5)
-- NIT validation: Colombian tax ID format
-- IVA: 19% tax rate (when applicable)
-- DANE codes: Municipality codes for geographic data
-- Regulatory compliance:
-  * INVIMA: Cannabis regulations (individual tracking optional)
-  * ICA: Agricultural chemical registrations
-  * Business entities: S.A.S, S.A., Ltda., E.U.
-</colombian_business_rules>
+<business_rules>
+**See Product PRD for complete Colombian business rules and compliance requirements**
+**See Engineering PRD for technical implementation details**
 
-<batch_first_logic>
-- Default tracking level: BATCH (not individual plants)
-- Individual plant tracking: OPTIONAL configuration
-- QR codes: Generated for batches by default
-- Quality checks: Sample-based for batch operations
-- Inventory: Track batch quantities
-- Activities: Log against batch entities primarily
-</batch_first_logic>
+Key patterns:
+- Refer to Product PRD for: NIT validation, IVA rates, regulatory requirements (INVIMA, ICA), business entity types
+- Refer to Engineering PRD for: Currency handling (COP), timezone (America/Bogota), DANE codes
+- Batch-first logic: Default tracking at BATCH level (see Product PRD for details)
+- Tenant isolation: ALWAYS filter queries by companyId (multi-tenant architecture)
+</business_rules>
 
 <success_criteria>
 - All endpoints respond correctly (200/201/400/401/403/404)
-- Database queries work with tenant isolation
+- Database queries work with tenant isolation (companyId filter)
 - Zod validation schemas match frontend
-- Colombian business rules enforced
-- Batch-first logic implemented
-- Error messages include Spanish translations
+- Business rules enforced (see Product PRD)
+- Batch-first logic implemented (see Product PRD)
+- Error messages include localization (Spanish/English)
 - Performance: <1s response time for CRUD operations
 </success_criteria>
 
@@ -252,31 +229,30 @@ Return implementation report with:
    - Purpose
    - Request body (if applicable)
    - Response format
-   - Colombian-specific logic
+   - Business logic implemented
 
 3. **Database Operations**
    - Models queried/modified
    - Tenant isolation applied
-   - Colombian data validations
+   - Business data validations
    - Performance considerations
 
-4. **Colombian Compliance Implemented**
-   - NIT validation
-   - ICA/INVIMA requirements
-   - Business entity validations
-   - COP currency handling
+4. **Business Rules Implemented**
+   - List key business rules from Product PRD that were implemented
+   - Regulatory compliance (if applicable to this module)
+   - Data validations (refer to specific PRD sections)
 
 5. **Testing Status** (checklist)
    - [ ] Endpoints respond correctly
    - [ ] Database queries work
    - [ ] Validation working
-   - [ ] Colombian rules enforced
+   - [ ] Business rules enforced (refer to acceptance criteria)
    - [ ] Tenant isolation verified
 
 6. **Integration Points** (what frontend can expect)
    - API contracts (types/interfaces)
    - Error codes and messages
-   - Colombian-specific fields
+   - Business-specific fields and formatting
 
 7. **Next Steps Identified**
    - Blockers or dependencies
@@ -297,15 +273,16 @@ Return implementation report with:
 
 <anti_patterns>
 ❌ Don't include full file contents in report
-❌ Don't skip tenant isolation in queries
-❌ Don't use hardcoded Colombian data (use env vars)
-❌ Don't ignore Colombian business rules
-❌ Don't implement individual-plant-first logic
+❌ Don't skip tenant isolation in queries (CRITICAL security requirement)
+❌ Don't use hardcoded business data (use env vars or database)
+❌ Don't ignore business rules defined in Product PRD
+❌ Don't deviate from architectural patterns (e.g., batch-first vs individual-first)
 ✅ Do provide concise, actionable summaries
-✅ Do apply row-level security (tenant context)
-✅ Do validate Colombian-specific fields (NIT, DANE codes)
-✅ Do follow batch-first design patterns
-✅ Do include Spanish error messages
+✅ Do apply row-level security (tenant isolation via companyId)
+✅ Do validate business-specific fields (query Product PRD for rules)
+✅ Do follow design patterns defined in PRDs
+✅ Do include localized error messages (Spanish/English)
+✅ Do query context files (PRDs, schema) for detailed specifications
 </anti_patterns>
 ```
 
@@ -366,9 +343,9 @@ Main Claude updates documentation
    - Spanish translations for auth module
 
 ### Components Built
-- **Button**: Primary/secondary/danger variants, Colombian green primary
-- **Input**: Text input with error states, Spanish labels
-- **LoginForm**: Complete login form with Zod validation, Spanish-first
+- **Button**: Primary/secondary/danger variants, project color scheme
+- **Input**: Text input with error states, localized labels
+- **LoginForm**: Complete login form with Zod validation, localization support
 
 ### Integration Points
 Backend needs:
@@ -379,7 +356,7 @@ Backend needs:
 
 ### Testing Status
 - [x] Components render
-- [x] Spanish/English switching works
+- [x] Localization works (language switching)
 - [x] Form validation working (Zod)
 - [x] Mobile responsive
 - [ ] Backend integration (pending API)
@@ -400,18 +377,18 @@ Backend needs:
 2. `apps/api/src/middleware/auth.ts`
    - JWT middleware with Lucia v3
 
-3. `apps/api/src/lib/validation/colombian.ts`
-   - NIT validation for Colombian tax IDs
+3. `apps/api/src/lib/validation/business.ts`
+   - Business-specific validations (NIT, tax IDs, etc.)
 
 ### API Endpoints
 - **POST /api/auth/login**
   * Validates email/password
   * Returns JWT token + user object
-  * Colombian timezone in timestamps
+  * Timestamps in configured timezone
 
 - **POST /api/auth/register**
   * Creates user with company
-  * Validates Colombian NIT
+  * Validates business tax ID (NIT)
   * Returns user with default role
 
 ### Database Operations
@@ -419,11 +396,11 @@ Backend needs:
 - NIT uniqueness validation
 - Role assignment (default: Técnico)
 
-### Colombian Compliance
-- [x] NIT format validation
-- [x] COP currency default
-- [x] America/Bogota timezone
-- [x] Spanish error messages
+### Business Rules Implemented
+- [x] Tax ID format validation (NIT)
+- [x] Currency defaults (COP)
+- [x] Timezone configuration (America/Bogota)
+- [x] Localized error messages (Spanish/English)
 
 ### Testing Status
 - [x] Endpoints respond correctly
@@ -434,9 +411,9 @@ Backend needs:
 ### Integration Points
 Frontend can expect:
 - 200: Success with { user, token }
-- 400: Validation errors (Spanish messages)
+- 400: Validation errors (localized messages)
 - 401: Invalid credentials
-- 409: NIT already exists
+- 409: Tax ID already exists (duplicate NIT)
 
 ### Next Steps
 - Ready for frontend integration

@@ -33,10 +33,12 @@ packages/
 ## 🔄 Development Flow
 
 ### 1. Planning Phase (Main Claude + User)
-- Review current state: `@state current`
-- Collaborative PRD creation
-- Generate module PRD in [docs/MODULE_PRDS/](docs/MODULE_PRDS/)
-- Create frontend/backend backlogs in [docs/BACKLOGS/](docs/BACKLOGS/)
+- Check development readiness: `@state current`
+- Begin module planning: `@plan module [X]`
+  - System loads Product/Engineering PRDs for context
+  - System reviews database schema for existing models
+  - Collaborative MODULE PRD creation with user
+  - Generate simplified frontend/backend backlogs (Epic/Task structure)
 - **Git**: Create feature branch `git checkout -b feature/module-X-name`
 
 ### 2. Implementation Phase (Subagents)
@@ -58,27 +60,120 @@ packages/
 
 ## 📋 Core Commands
 
-### State Management
-- `@state current` - Check current development status
-- `@compact [module|conversation|components]` - Manage context size
-- `@module current` - Current module full details
-- `@module recall [X]` - Load archived module summary
+### State Management (Enhanced Workflows)
 
-### Subagent Coordination
-- `@assign frontend MODULE[X]` - Assign frontend tasks
-- `@assign backend MODULE[X]` - Assign backend tasks
-- `@review implementations` - Review subagent reports
+- **`@state current`** - Complete development environment check
+  - Reads PROJECT_STATE.md for module context
+  - Checks git status and current branch
+  - Verifies Docker services running (db, redis, minio, mailhog)
+  - Tests database connectivity
+  - Suggests next action (planning, implementation, integration)
+  - Offers to start services if not running
+
+- **`@module current`** - Active module detailed status
+  - Loads current module PRD from MODULE_PRDS/
+  - Shows backlog progress (frontend/backend)
+  - Displays acceptance criteria checklist
+  - Lists blockers and integration points
+
+- **`@module recall [X]`** - Load archived module summary
+  - Retrieves from ARCHIVE/MODULE-X-complete.md
+  - Shows components built, endpoints created
+  - Displays lessons learned from that module
+
+- **`@compact [module|conversation|components]`** - Manage context size
+  - Archives completed modules
+  - Reorganizes component catalog
+  - Creates conversation summaries
+
+### Module Planning Workflow
+
+- **`@plan module [X]`** - Guided module planning (Main Claude + User)
+  - Loads Product PRD for global feature context
+  - Loads Engineering PRD for technical architecture
+  - Reads database schema for existing models
+  - Reviews COMPONENT_INVENTORY for reusable components
+  - Guides collaborative MODULE PRD creation
+  - Generates frontend/backend backlogs from templates
+  - Avoids duplicating already-defined features
+  - Creates feature branch: `feature/module-X-name`
+
+### Subagent Coordination (Context-Aware)
+
+- **`@assign frontend MODULE[X]`** - Assign frontend implementation
+  - Loads SUBAGENT_SPECS.md for context package format
+  - Loads Product/Engineering PRDs for requirements
+  - Reads relevant sections of database schema
+  - Includes available components from COMPONENT_INVENTORY
+  - Creates structured context package with full context
+  - Subagent works autonomously, commits incrementally
+
+- **`@assign backend MODULE[X]`** - Assign backend implementation
+  - Loads SUBAGENT_SPECS.md for context package format
+  - Loads Product/Engineering PRDs for business rules
+  - Reads relevant database models from schema
+  - Includes existing services and patterns
+  - Creates structured context package with full context
+  - Subagent works autonomously, commits incrementally
+
+- **`@review implementations`** - Integration phase
+  - Reviews frontend/backend implementation reports
+  - Validates integration points match
+  - Updates COMPONENT_INVENTORY, IMPLEMENTATION_LOG
+  - Updates PROJECT_STATE with module summary
+
+### Development Services
+
+- **`@services status`** - Check Docker services
+  - Lists running containers (db, redis, minio, mailhog)
+  - Shows service health and uptime
+
+- **`@services start`** - Start development environment
+  - Starts Docker Compose services
+  - Waits for database ready
+  - Confirms all services healthy
+
+- **`@db check`** - Verify database connectivity
+  - Tests PostgreSQL connection
+  - Shows database name and schema version
+  - Counts tables and confirms seed data
 
 ### Context Retrieval (JIT)
-- `@component get [name]` - Load component full spec
-- `@component list [category]` - List components
-- `@file show [path]` - Load specific file
-- `@file recent [N]` - Show last N files
 
-### Documentation
-- `@update state` - Update PROJECT_STATE.md
-- `@sync components` - Update COMPONENT_INVENTORY.md
-- `@track files` - Update IMPLEMENTATION_LOG.md
+- **`@component get [name]`** - Load component full spec
+  - Retrieves from COMPONENTS/[category]/[name].md
+  - Shows props, usage, dependencies
+
+- **`@component list [category]`** - List components by category
+  - Categories: ui, features, layouts
+
+- **`@context load`** - Load global project context
+  - Loads Product PRD (feature specifications)
+  - Loads Engineering PRD (technical architecture)
+  - Reads database schema (all models)
+  - Reviews COMPONENT_INVENTORY (existing components)
+
+- **`@context check`** - Verify context health
+  - Shows active context size in tokens
+  - Identifies documents needing compaction
+  - Suggests optimization if over budget
+
+### Documentation Updates
+
+- **`@update state`** - Update PROJECT_STATE.md
+  - Adds module completion summary
+  - Updates metrics (components, endpoints, files)
+  - Moves to next module
+
+- **`@sync components`** - Update COMPONENT_INVENTORY.md
+  - Adds new components with lightweight entries
+  - Creates detailed files in COMPONENTS/ for JIT loading
+  - Updates statistics
+
+- **`@track files`** - Update IMPLEMENTATION_LOG.md
+  - Logs all files created this module
+  - Organizes by frontend/backend/shared
+  - Updates file counts
 
 ## 🔀 Git Workflow
 

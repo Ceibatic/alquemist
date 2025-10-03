@@ -3,7 +3,7 @@
 **Module**: [Module Name]
 **Subagent**: @backend
 **Priority**: [Critical|High|Medium|Low]
-**Dependencies**: [List module dependencies]
+**Dependencies**: [List module dependencies or "None"]
 **Estimated Duration**: [X days/weeks]
 
 ---
@@ -14,326 +14,146 @@
 
 ---
 
-## 🎯 Tasks
+## 🎯 Epics & Tasks
 
-### Task 1: [Feature/Endpoint Group Name]
+### Epic 1: [Epic Name - e.g., "Authentication Endpoints"]
 
-**Purpose**: [What these endpoints do]
+**Purpose**: [What this epic accomplishes]
 
-**Endpoints to Build**:
+**Tasks**:
+1. Build `POST /api/[endpoint]` for [purpose]
+2. Build `GET /api/[endpoint]` for [purpose]
+3. Create [ServiceName] service for [business logic]
+4. Add [ValidationName] validation schemas (Zod)
 
-#### Endpoint 1: [Endpoint Name]
-- **Method**: [GET|POST|PUT|PATCH|DELETE]
-- **Path**: `/api/[path]`
-- **Purpose**: [What this does]
-- **Authentication**: [Required|Optional|Not Required]
-- **Authorization**: [Required roles/permissions]
-- **Request Body**:
-```typescript
-{
-  field1: string;
-  field2: number;
-  // Colombian-specific fields
-  nit?: string;
-}
-```
-- **Response**:
-```typescript
-{
-  data: {
-    id: string;
-    // response fields
-  };
-}
-```
-- **Validation Rules**:
-  - [Rule 1]
-  - [Rule 2]
-- **Colombian Business Logic**:
-  - [Colombian-specific rule 1]
-  - [Colombian-specific rule 2]
+### Epic 2: [Epic Name - e.g., "Database Operations"]
 
-#### Endpoint 2: [Another Endpoint]
-[Same structure]
+**Purpose**: [What this epic accomplishes]
 
-### Task 2: [Database Operations]
+**Tasks**:
+1. Implement [OperationName] using [Model] queries
+2. Add tenant isolation to all [Model] queries
+3. Create [HelperFunction] for [purpose]
+4. Add database indexes for performance
 
-**Purpose**: [What database operations are needed]
+### Epic 3: [Epic Name - if applicable]
 
-**Models to Query/Modify**:
-- [Model 1] - [Operation type]
-- [Model 2] - [Operation type]
+**Purpose**: [What this epic accomplishes]
 
-**Query Requirements**:
-- Tenant isolation (filter by `company_id`)
-- [Other query requirements]
-
-**Performance Considerations**:
-- [Index needed on X field]
-- [Pagination required for Y endpoint]
-
-### Task 3: [Business Logic/Services]
-
-**Purpose**: [What business logic is needed]
-
-**Services to Create**:
-1. **[ServiceName]**
-   - Purpose: [Brief description]
-   - Methods:
-     - `[methodName]()` - [What it does]
-     - `[anotherMethod]()` - [What it does]
+**Tasks**:
+1. [Task description]
+2. [Task description]
 
 ---
 
-## 📁 Files to Create/Modify
+## 📁 Files to Create
 
 ### New Files
 - `apps/api/src/routes/[module].ts` (Fastify routes)
 - `apps/api/src/domains/[module]/service.ts` (Business logic)
 - `apps/api/src/domains/[module]/validation.ts` (Zod schemas)
-- `apps/api/src/middleware/[middleware-name].ts` (if needed)
-- `apps/api/src/lib/colombian/[utility].ts` (Colombian-specific utilities)
-- `packages/types/src/[module].ts` (Shared types)
+- `apps/api/src/middleware/[middleware].ts` (if needed)
+- `packages/types/src/[module].ts` (Shared types with frontend)
 
 ### Modified Files
 - `apps/api/src/index.ts` (register new routes)
-- `[other-existing-files].ts` (if modifying existing code)
+- `[other-file].ts` (if modifying existing code - specify reason)
 
 ---
 
-## 🗄️ Database Schema
+## 🗄️ Database Schema Reference
 
 ### Relevant Models
 
-**From `packages/database/prisma/schema.prisma`**:
+**Agent should query `packages/database/prisma/schema.prisma` for full details**
 
-#### Model 1: [ModelName]
-```prisma
-model [ModelName] {
-  id          String   @id @default(cuid())
-  companyId   String   @map("company_id")  // Tenant isolation
-  // ... relevant fields for this module
+**Models Used**:
+- [ModelName] - Lines [XX-YY] in schema.prisma
+- [AnotherModel] - Lines [XX-YY] in schema.prisma
 
-  // Relations
-  company     Company  @relation(fields: [companyId], references: [id])
-
-  @@map("[table_name]")
-}
-```
-
-**Lines**: [XX-YY] in schema.prisma
-
-**Key Fields for This Module**:
-- `[field1]` - [Purpose]
-- `[field2]` - [Purpose]
-
-#### Model 2: [AnotherModel]
-[Same structure]
-
-### Database Operations Needed
-
-**Queries**:
-- Find [entity] by [field] with tenant isolation
-- List [entities] with pagination
-- [Other query requirements]
-
-**Mutations**:
-- Create [entity] with Colombian validation
-- Update [entity] fields
-- Soft delete [entity] (status = 'inactive')
-
-**Performance**:
-- Index needed on: `[field1]`, `[field2]`
-- Pagination required for: [endpoint]
-- Query optimization for: [complex query]
+**Key Operations**:
+- Query [Model] with tenant isolation (`where: { companyId }`)
+- Create/Update [Model] with [validation]
+- Soft delete [Model] (set status = 'inactive')
 
 ---
 
-## 🇨🇴 Colombian Business Rules
+## 🔌 Integration Points
 
-### Localization
-- **Timezone**: America/Bogota (COT-5)
-  - All timestamps in UTC, convert for display
-  - Use `new Date()` with proper timezone handling
+### API Endpoints
 
-- **Currency**: COP (Colombian Peso)
-  - No decimal places
-  - Store as integer (cents)
-  - Format: 1000000 (no decimals)
+#### Endpoint 1: [Endpoint Name]
+- **Method & Path**: `POST /api/[path]`
+- **Purpose**: [What this endpoint does]
+- **Auth**: Required (role: [RoleName] or higher)
+- **Request**: `{ field1: type, field2: type }`
+- **Response**: `{ data: {...} }`
+- **Errors**: 400, 401, 403, 409, 500
 
-- **Error Messages**: Spanish + English
+#### Endpoint 2: [Another Endpoint]
+- **Method & Path**: `GET /api/[path]`
+- **Purpose**: [What this endpoint does]
+- **Auth**: Required (role: [RoleName] or higher)
+- **Response**: `{ data: [...], meta: { total, page } }`
+
+### Data Contracts
+
+**Types to Create** (in `packages/types/src/[module].ts`):
 ```typescript
-const errors = {
-  es: "Error en validación del NIT",
-  en: "NIT validation error"
-};
-```
+export interface [TypeName]Request {
+  // Request fields
+}
 
-### Colombian-Specific Validations
-
-#### NIT (Colombian Tax ID)
-- **Format**: `XXXXXXXXX-X` (9 digits + check digit)
-- **Validation**: Check digit algorithm
-```typescript
-// Example validation function
-function validateNIT(nit: string): boolean {
-  // Implement check digit algorithm
-  // Reference: Colombian DIAN standards
+export interface [TypeName]Response {
+  id: string;
+  // Response fields
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
 }
 ```
 
-#### Business Entity Types
-Valid values:
-- `S.A.S` - Sociedad por Acciones Simplificada
-- `S.A.` - Sociedad Anónima
-- `Ltda.` - Limitada
-- `E.U.` - Empresa Unipersonal
+### Error Response Format
 
-#### DANE Codes
-- Department codes (2 digits)
-- Municipality codes (5 digits: department + 3)
-- Validation: Must exist in DANE registry
+```typescript
+{
+  error: {
+    code: 'ERROR_CODE',
+    message: 'Human-readable (Spanish)',
+    messageKey: 'i18n.key',
+    timestamp: string,
+    traceId: string
+  }
+}
+```
 
-#### IVA (Tax Calculation)
-- Standard rate: 19%
-- Calculate: `amount * 1.19` for total with tax
-- Store tax separately in database
-
-### Regulatory Compliance
-
-#### INVIMA (Cannabis)
-- Individual plant tracking: OPTIONAL (check facility configuration)
-- Batch tracking: DEFAULT
-- QR codes: Generate for batches
-- [Other INVIMA requirements for this module]
-
-#### ICA (Agriculture)
-- Chemical registration validation
-- Supplier license verification
-- [Other ICA requirements for this module]
-
-### Batch-First Logic
-
-**Default Behavior**:
-- Track at BATCH level (not individual plants)
-- QR codes for batches
-- Quality checks on batch samples
-- Inventory at batch level
-
-**Individual Tracking** (Optional):
-- Check `facility.enableIndividualTracking` flag
-- Only enable if explicitly configured
-- Colombian compliance may require for cannabis
+**Status Codes**: 200 (success), 201 (created), 400 (validation), 401 (auth), 403 (forbidden), 404 (not found), 409 (conflict), 500 (server error)
 
 ---
 
 ## 🔐 Security & Authorization
 
 ### Authentication
-- **Method**: Lucia v3 session-based auth
-- **Middleware**: `apps/api/src/middleware/auth.ts`
-- **Usage**: Apply to all authenticated routes
+- **Method**: Lucia v3 session-based
+- **Middleware**: Apply to all authenticated routes
 
 ### Authorization (RBAC)
-**Role Hierarchy** (Spanish/English):
-1. Administrador del Sistema / System Administrator
-2. Propietario de Empresa / Company Owner
-3. Gerente de Instalación / Facility Manager
-4. Supervisor de Departamento / Department Supervisor
-5. Técnico Líder / Lead Technician
-6. Técnico / Technician
-
-**Permissions for This Module**:
+**Permissions for this module**:
 - [Endpoint 1]: Requires role [X] or higher
-- [Endpoint 2]: Requires role [Y] or higher
-- [Endpoint 3]: Any authenticated user
+- [Endpoint 2]: Any authenticated user
+- [Endpoint 3]: System Administrator only
 
-### Tenant Isolation
-**CRITICAL**: All queries must filter by `company_id`
+### Tenant Isolation (CRITICAL)
+**All queries MUST filter by `companyId` or related tenant field**
 
 ```typescript
-// Correct (with tenant isolation)
-const batches = await prisma.batch.findMany({
+// Example - Agent should implement tenant isolation
+const items = await prisma.item.findMany({
   where: {
-    facility: {
-      companyId: request.tenant.companyId, // Tenant filter
-    },
+    companyId: request.tenant.companyId, // REQUIRED
     // ... other filters
   },
 });
-
-// WRONG (missing tenant isolation)
-const batches = await prisma.batch.findMany({
-  where: {
-    status: 'active', // Missing companyId filter!
-  },
-});
 ```
-
----
-
-## 🔌 Integration Points
-
-### Frontend Contracts
-
-**Request/Response Types** (create in `packages/types/src/[module].ts`):
-
-```typescript
-// Request types
-export interface Create[Entity]Request {
-  // fields
-}
-
-export interface Update[Entity]Request {
-  // fields
-}
-
-// Response types
-export interface [Entity]Response {
-  id: string;
-  // fields
-  createdAt: string; // ISO 8601
-  updatedAt: string; // ISO 8601
-}
-
-// Colombian-specific types
-export interface ColombianAddress {
-  department: string;
-  municipality: string;
-  daneCode: string;
-  addressLine1: string;
-  addressLine2?: string;
-}
-```
-
-### Error Response Format
-
-**Standard Error Response**:
-```typescript
-{
-  error: {
-    code: 'ERROR_CODE',
-    message: 'Human-readable message (Spanish)',
-    messageKey: 'i18n.key.for.translation',
-    details?: {
-      // Additional context
-    },
-    timestamp: '2025-01-30T10:00:00.000Z',
-    traceId: 'request-trace-id'
-  }
-}
-```
-
-**HTTP Status Codes**:
-- 200: Success (GET)
-- 201: Created (POST)
-- 204: No Content (DELETE)
-- 400: Validation Error
-- 401: Unauthorized (no token)
-- 403: Forbidden (insufficient permissions)
-- 404: Not Found
-- 409: Conflict (e.g., NIT already exists)
-- 500: Internal Server Error
 
 ---
 
@@ -342,112 +162,69 @@ export interface ColombianAddress {
 ### Functionality
 - [ ] All endpoints respond with correct status codes
 - [ ] Request validation working (Zod schemas)
-- [ ] Database queries work with tenant isolation
-- [ ] Colombian business rules enforced
-- [ ] Batch-first logic implemented
-- [ ] Error handling complete
+- [ ] Database queries work correctly
+- [ ] Error handling complete (all error scenarios)
 
-### Colombian Compliance
-- [ ] NIT validation working
-- [ ] IVA calculation correct (19%)
-- [ ] COP currency handling (no decimals)
-- [ ] Timezone: America/Bogota
-- [ ] DANE code validation
-- [ ] Business entity type validation
-- [ ] INVIMA/ICA requirements met (if applicable)
+### Business Rules
+- [ ] Colombian business rules enforced (refer to Product PRD)
+- [ ] Batch-first logic implemented (default tracking level)
+- [ ] Data validations working (NIT, DANE codes, etc. as needed)
 
 ### Security
-- [ ] Authentication middleware applied
+- [ ] Authentication middleware applied to protected routes
 - [ ] Authorization checks working (RBAC)
 - [ ] Tenant isolation verified (all queries filter by companyId)
-- [ ] SQL injection prevented (Prisma parameterized queries)
 - [ ] Input sanitization complete
+- [ ] SQL injection prevented (Prisma parameterized queries)
 
 ### Performance
-- [ ] Database indexes created
-- [ ] Pagination implemented (for list endpoints)
+- [ ] Database indexes created where needed
+- [ ] Pagination implemented for list endpoints
 - [ ] Query optimization done
 - [ ] Response time < 1s for CRUD operations
-- [ ] Connection pooling configured
 
 ### Integration
 - [ ] Types exported in `packages/types`
 - [ ] Frontend can consume API contracts
 - [ ] Error messages include Spanish translations
-- [ ] Zod schemas shared with frontend
+- [ ] Zod schemas shared with frontend where applicable
 
 ### Testing
 - [ ] Unit tests for business logic
 - [ ] Integration tests for endpoints
-- [ ] Colombian validation tests
 - [ ] Tenant isolation tests
 - [ ] Manual API testing complete
 
 ---
 
-## 📦 Colombian Sample Data
+## 📚 Context References
 
-Use this realistic Colombian data for testing:
-
-```typescript
-const sampleCompany = {
-  id: "cuid-company-123",
-  name: "Valle Verde S.A.S",
-  legalName: "Valle Verde Cultivos Sostenibles S.A.S",
-  taxId: "900123456-7", // Valid NIT with check digit
-  businessEntityType: "S.A.S",
-  department: "Putumayo",
-  daneMunicipalityCode: "86001", // Mocoa
-  colombianDepartment: "Putumayo",
-  defaultLocale: "es",
-  defaultCurrency: "COP",
-  defaultTimezone: "America/Bogota",
-};
-
-const sampleUser = {
-  id: "cuid-user-123",
-  companyId: "cuid-company-123",
-  email: "carlos.rodriguez@valleverde.com.co",
-  firstName: "Carlos",
-  lastName: "Rodríguez",
-  phone: "+573145551234",
-  locale: "es",
-  timezone: "America/Bogota",
-  roleId: "facility_manager",
-};
-
-const sampleFacility = {
-  id: "cuid-facility-123",
-  companyId: "cuid-company-123",
-  name: "Instalación Principal Mocoa",
-  licenseNumber: "INVIMA-2024-001",
-  department: "Putumayo",
-  municipality: "Mocoa",
-  daneCode: "86001",
-  latitude: 1.1483,
-  longitude: -76.6444,
-  altitudeMsnm: 655,
-};
-```
+**Agent should load these for detailed specifications**:
+- Colombian business rules → Product PRD (specific sections)
+- Technical architecture → Engineering PRD
+- Database schema → [packages/database/prisma/schema.prisma](../../packages/database/prisma/schema.prisma)
+- Sample data → Query seed files for realistic test data
+- Batch-first logic → Engineering PRD, Product PRD
+- Regulatory compliance → Product PRD (INVIMA, ICA sections)
 
 ---
 
-## 🚀 Future Enhancements (Out of Scope)
+## 📝 Notes
 
-[List items that are related but not part of this module]
+[Any special considerations, edge cases, or important context for this module]
 
-- [Enhancement 1]
-- [Enhancement 2]
+**Colombian-Specific**:
+- Refer to Product PRD for NIT validation, IVA rates, business entity types
+- Refer to Engineering PRD for timezone (America/Bogota), currency (COP) handling
+- Query database schema for Colombian reference data (departments, municipalities, roles, etc.)
 
----
+**Batch-First**:
+- Default tracking: BATCH level (not individual plants)
+- Individual tracking: Check facility configuration flag if needed
+- Refer to Engineering PRD for batch-first design patterns
 
-## 📚 Resources
-
-- **Prisma Schema**: `packages/database/prisma/schema.prisma`
-- **Product PRD**: `docs/Product PRD - Alquemist v4.0.md`
-- **Engineering PRD**: `docs/Engineering PRD - Alquemist v4.0.md`
-- **Module PRD**: `docs/MODULE_PRDS/[XX]-[module]-PRD.md`
-- **Colombian Compliance**: [Reference docs]
+**Out of Scope**:
+- [Features explicitly not part of this module]
 
 ---
 

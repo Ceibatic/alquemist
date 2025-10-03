@@ -20,20 +20,23 @@ Backlogs are task lists for @frontend and @backend subagents. They should be:
 ## 🎯 Backlog Philosophy
 
 ### ✅ Good Backlog
+- **Epic/Task structure** - Organized by epics with clear tasks
 - Lists specific files to create
-- Defines component requirements clearly
-- Specifies Colombian-specific logic
+- Defines component/endpoint requirements clearly
+- **References PRDs** for business rules (don't duplicate)
 - Identifies integration points
 - Includes acceptance criteria
+- **Trusts agent intelligence** - Agent queries context files as needed
 - Trusts subagent to implement details
 
 ### ❌ Bad Backlog
 - Overly detailed implementation instructions
 - Code snippets or pseudo-code
 - Vague requirements ("make it look good")
-- Missing Colombian context
-- No acceptance criteria
+- **Duplicates information from PRDs/schema** (redundant context)
+- Missing acceptance criteria
 - Micromanagement of subagent decisions
+- Over-specification of business rules already in PRDs
 
 ---
 
@@ -85,44 +88,39 @@ Main Claude reviews report, updates documentation, marks backlog complete
 
 ### Required Sections
 
-1. **Module Overview** - Brief context
-2. **Tasks** - Specific items to complete
+1. **Module Overview** - Brief context (1-2 paragraphs)
+2. **Epics & Tasks** - Organized by epic with specific tasks
 3. **Files to Create/Modify** - Expected file paths
-4. **Colombian Requirements** - Localization, compliance, business rules
-5. **Integration Points** - How frontend/backend connect
-6. **Acceptance Criteria** - How to know it's done
-7. **Resources** - Available components, patterns, references
+4. **Integration Points** - How frontend/backend connect (API contracts)
+5. **Acceptance Criteria** - Checklist for completion
+6. **Context References** - Where agent should query for details (PRDs, schema, etc.)
 
 ### Optional Sections
 
-- **Colombian Sample Data** - Test data with realistic Colombian values
-- **Performance Targets** - Specific performance requirements
-- **Security Notes** - Auth, permissions, data protection
-- **Future Enhancements** - Out of scope but documented for later
+- **Notes** - Special considerations, edge cases, out of scope items
+- **Performance Targets** - Specific performance requirements (if not in PRDs)
+- **Security Notes** - Auth, permissions (if module-specific, not general)
 
 ---
 
-## 🇨🇴 Colombian Context Checklist
+## 🎯 Context References Philosophy
 
-Every backlog should address:
+**Key Principle**: Don't duplicate information - reference it!
 
-### Frontend
-- [ ] Spanish labels (primary)
-- [ ] English labels (secondary)
-- [ ] Colombian date format (DD/MM/YYYY)
-- [ ] COP currency format ($1.000.000)
-- [ ] Colombian phone format (+57 XXX XXX XXXX)
-- [ ] Colombian address fields (Departamento, Municipio)
-- [ ] Colombian color scheme (green primary: #00A859)
+### Agent Should Query These Files:
+- **Product PRD** - Feature specifications, business rules, Colombian requirements
+- **Engineering PRD** - Technical architecture, localization standards, performance targets
+- **Database Schema** - Existing models, Colombian reference data (departments, municipalities, roles)
+- **COMPONENT_INVENTORY** - Available components for reuse
+- **Seed Files** - Realistic sample data for testing
 
-### Backend
-- [ ] COP currency (no decimals)
-- [ ] America/Bogota timezone
-- [ ] NIT validation (Colombian tax ID)
-- [ ] IVA calculation (19%)
-- [ ] DANE municipality codes
-- [ ] Colombian business entity types (S.A.S, S.A., Ltda., E.U.)
-- [ ] INVIMA/ICA compliance (when applicable)
+### Backlog Should Reference, Not Duplicate:
+- ✅ "Refer to Product PRD for NIT validation rules"
+- ✅ "See Engineering PRD for Colombian localization standards"
+- ✅ "Query schema.prisma for Department and Municipality models"
+- ❌ Don't copy entire NIT validation algorithm into backlog
+- ❌ Don't list all Colombian formatting rules (they're in PRDs)
+- ❌ Don't excerpt database schema (agent can read it)
 
 ---
 
@@ -192,21 +190,22 @@ Backend endpoints needed:
 ## 🎨 Backlog Best Practices
 
 ### DO:
+✅ **Use Epic/Task structure** for organization
 ✅ List specific components/files to create
-✅ Define clear requirements per component
-✅ Specify Colombian-specific logic
-✅ Identify backend integration points
+✅ Define clear requirements per epic/task
+✅ **Reference PRDs** for business rules ("See Product PRD section X")
+✅ **Reference schema** for data models ("Query schema.prisma lines XX-YY")
+✅ Identify backend integration points (API contracts)
 ✅ Include realistic acceptance criteria
-✅ Provide Colombian sample data for testing
-✅ Reference available components for reuse
+✅ Trust agent to query context files as needed
 
 ### DON'T:
 ❌ Write code snippets or pseudo-code
 ❌ Over-specify implementation details
-❌ Include full API specifications (link to PRD instead)
-❌ Micromanage UI design choices
-❌ Duplicate information from PRD
-❌ Ignore Colombian context
+❌ **Duplicate PRD content** (Colombian rules, formatting, etc.)
+❌ **Excerpt database schema** (agent can read it)
+❌ **Copy sample data** from seed files (agent can query)
+❌ Micromanage UI/UX design choices
 ❌ Create ambiguous tasks
 
 ---

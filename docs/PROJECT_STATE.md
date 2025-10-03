@@ -20,12 +20,24 @@
   - ⏳ Module system initialization pending
 
 ### Immediate Next Steps
-1. Complete Phase 0 setup
-2. Begin MODULE 1 planning with user
-3. Create MODULE 1 PRD collaboratively
-4. Generate frontend/backend backlogs
-5. **Git**: Create feature branch `git checkout -b feature/module-1-auth-company-setup`
-6. Assign to subagents
+1. **Run `@state current`** - Complete development environment check
+   - Reviews this file (PROJECT_STATE.md)
+   - Checks git status and current branch
+   - Verifies Docker services running
+   - Tests database connectivity
+   - Suggests next action
+
+2. **Run `@plan module 1`** - Begin guided module planning
+   - System loads Product PRD and Engineering PRD for context
+   - System reads database schema for existing models
+   - Collaborative MODULE 1 PRD creation with user
+   - Generate simplified frontend/backend backlogs (Epic/Task structure)
+
+3. **Git**: Create feature branch `git checkout -b feature/module-1-auth-company-setup`
+
+4. **Assign to subagents**:
+   - `@assign frontend MODULE1` - Frontend implementation
+   - `@assign backend MODULE1` - Backend implementation
 
 ---
 
