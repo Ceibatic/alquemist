@@ -6,35 +6,39 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Seeding Alquemist database with Colombian data...')
 
-  // 1. Create Roles
+  // 1. Create Subscription Plans
+  const plans = await createPlans()
+  console.log('✅ Created 3 subscription plans (Trial, Starter, Professional)')
+
+  // 2. Create Roles
   const roles = await createRoles()
   console.log('✅ Created 6 system roles')
 
-  // 2. Create Crop Types
+  // 3. Create Crop Types
   const cropTypes = await createCropTypes()
   console.log('✅ Created Cannabis and Coffee crop types')
 
-  // 3. Create Company
+  // 4. Create Company
   const company = await createCompany()
   console.log('✅ Created Cultivos del Valle Verde S.A.S')
 
-  // 4. Create Users
+  // 5. Create Users
   const users = await createUsers(company.id, roles)
   console.log('✅ Created 4 Colombian users')
 
-  // 5. Create Facility
+  // 6. Create Facility
   const facility = await createFacility(company.id, cropTypes)
   console.log('✅ Created Centro de Cultivo Valle Verde')
 
-  // 6. Create Areas
+  // 7. Create Areas
   const areas = await createAreas(facility.id, cropTypes)
   console.log('✅ Created 7 specialized cultivation areas')
 
-  // 7. Create Suppliers
+  // 8. Create Suppliers
   const suppliers = await createSuppliers(company.id)
   console.log('✅ Created 4 Colombian suppliers')
 
-  // 8. Create Products & Inventory
+  // 9. Create Products & Inventory
   const { products, inventory } = await createProductsAndInventory(
     suppliers,
     areas,
@@ -43,11 +47,11 @@ async function main() {
   console.log('✅ Created 12 products with Colombian pricing')
   console.log('✅ Created 24 inventory items with stock')
 
-  // 9. Create Cultivars
+  // 10. Create Cultivars
   const cultivars = await createCultivars(cropTypes, suppliers)
   console.log('✅ Created White Widow and Castillo cultivars')
 
-  // 10. Create Production Templates
+  // 11. Create Production Templates
   const templates = await createProductionTemplates(
     company.id,
     cropTypes,
@@ -56,7 +60,7 @@ async function main() {
   )
   console.log('✅ Created 2 production templates with 47 activities')
 
-  // 11. Create Quality Check Templates
+  // 12. Create Quality Check Templates
   const qualityTemplates = await createQualityCheckTemplates(
     company.id,
     cropTypes,
@@ -64,7 +68,7 @@ async function main() {
   )
   console.log('✅ Created 15 AI-enhanced quality templates')
 
-  // 12. Create Mother Plants
+  // 13. Create Mother Plants
   const motherPlants = await createMotherPlants(
     facility.id,
     areas,
@@ -72,11 +76,15 @@ async function main() {
   )
   console.log('✅ Created 2 mother plants')
 
-  // 13. Create Colombian Pests & Diseases Database
+  // 14. Create Colombian Pests & Diseases Database
   const pestsAndDiseases = await createColombianPestsDatabase(cropTypes)
   console.log('✅ Created Colombian pests & diseases database (57 species)')
 
   console.log('\n🎉 Seed completed successfully!')
+  console.log('\n💳 Subscription Plans Available:')
+  console.log('   1. Trial: $0 COP/month (30 days free)')
+  console.log('   2. Starter: $290,000 COP/month (AI pest detection)')
+  console.log('   3. Professional: $890,000 COP/month (All AI features)')
   console.log('\n🔐 Login credentials:')
   console.log('   Owner: carlos@cultivosvalleverde.com / AlquemistDev2025!')
   console.log('   Manager: maria@cultivosvalleverde.com / AlquemistDev2025!')
@@ -1526,6 +1534,69 @@ async function createColombianPestsDatabase(cropTypes: any) {
   }
 
   return pestsAndDiseases
+}
+
+async function createPlans() {
+  const plans = [
+    {
+      name: 'trial',
+      displayNameEs: 'Prueba Gratuita',
+      displayNameEn: 'Free Trial',
+      description: 'Prueba gratuita de 30 días sin necesidad de método de pago',
+      monthlyPriceCop: 0,
+      maxFacilities: 1,
+      maxUsers: 3,
+      maxCropTypes: 1,
+      maxActivitiesPerMonth: 100,
+      storageGb: 1,
+      trialDays: 30,
+      requiresPaymentMethod: false,
+      sortOrder: 1
+    },
+    {
+      name: 'starter',
+      displayNameEs: 'Starter',
+      displayNameEn: 'Starter',
+      description: 'Plan básico para pequeños productores que inician su operación',
+      monthlyPriceCop: 290000,
+      maxFacilities: 1,
+      maxUsers: 5,
+      maxCropTypes: 2,
+      maxActivitiesPerMonth: 500,
+      storageGb: 5,
+      aiPestDetection: true,
+      sortOrder: 2
+    },
+    {
+      name: 'professional',
+      displayNameEs: 'Professional',
+      displayNameEn: 'Professional',
+      description: 'Plan completo con todas las funcionalidades AI y análisis avanzados',
+      monthlyPriceCop: 890000,
+      maxFacilities: 3,
+      maxUsers: 15,
+      storageGb: 50,
+      aiPestDetection: true,
+      aiTemplateGeneration: true,
+      aiPhotoAnalysis: true,
+      apiAccessEnabled: true,
+      advancedAnalytics: true,
+      prioritySupport: true,
+      sortOrder: 3
+    }
+  ]
+
+  const createdPlans = []
+  for (const plan of plans) {
+    const created = await prisma.plan.upsert({
+      where: { name: plan.name },
+      update: plan,
+      create: plan
+    })
+    createdPlans.push(created)
+  }
+
+  return createdPlans
 }
 
 main()

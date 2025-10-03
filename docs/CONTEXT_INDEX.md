@@ -11,7 +11,7 @@
 - **MODULE 1** [PLANNING] → Authentication & Company Setup
 
 ### Planned
-- MODULE 2: Crop Types & Facilities → PRD: [docs/MODULE_PRDS/02-crops-facilities-PRD.md](MODULE_PRDS/02-crops-facilities-PRD.md)
+- MODULE 2: Crop Types & Facilities → PRD: TBD
 - MODULE 3: Inventory & Suppliers → PRD: TBD
 - MODULE 4: Production Templates → PRD: TBD
 - MODULE 5: Operations Registry → PRD: TBD

@@ -39,24 +39,24 @@ packages/
   - System reviews database schema for existing models
   - Collaborative MODULE PRD creation with user
   - Generate simplified frontend/backend backlogs (Epic/Task structure)
-- **Git**: Create feature branch `git checkout -b feature/module-X-name`
+  - Git: Create feature branch `git checkout -b feature/module-X-name`
 
 ### 2. Implementation Phase (Subagents)
 - Assign tasks: `@assign [frontend|backend] MODULE[X]`
 - Subagents execute independently
 - Generate implementation reports (1,000-2,000 tokens)
-- **Git**: Commit and push incrementally with conventional commits
+- Git: Commit and push incrementally with conventional commits
 
 ### 3. Integration Phase (Main Claude)
 - Review subagent reports: `@review implementations`
 - Update documentation: `@update state`, `@sync components`
 - Track files: `@track files`
 - Validate acceptance criteria
-- **Git**: Create PR, merge after approval → auto-deploy to staging
+- Git: Create PR, merge after approval → auto-deploy to staging
 
 ### 4. Release Phase (Every 3 Modules)
 - Execute compaction: `@compact module`, `@compact conversation`
-- **Git**: Create version tag `git tag -a v0.X.0` → auto-deploy to production
+- Git: Create version tag `git tag -a v0.X.0` → auto-deploy to production
 
 ## 📋 Core Commands
 

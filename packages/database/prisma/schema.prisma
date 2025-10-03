@@ -13,154 +13,156 @@ datasource db {
 // =============================================
 
 model Company {
-  id                        String    @id @default(cuid())
-  name                      String
-  legalName                 String?   @map("legal_name")
-  taxId                     String?   @unique @map("tax_id")
+  id        String  @id @default(cuid())
+  name      String
+  legalName String? @map("legal_name")
+  taxId     String? @unique @map("tax_id")
 
   // Business classification
-  companyType               String    @map("company_type")
-  businessEntityType        String?   @map("business_entity_type")
+  companyType        String  @map("company_type")
+  businessEntityType String? @map("business_entity_type")
 
   // Colombian-specific fields
   camaraComercioRegistration String? @map("camara_comercio_registration")
-  daneMunicipalityCode      String?   @map("dane_municipality_code")
-  colombianDepartment       String?   @map("colombian_department")
+  daneMunicipalityCode       String? @map("dane_municipality_code")
+  colombianDepartment        String? @map("colombian_department")
 
   // Licenses and certifications
-  primaryLicenseNumber      String?   @map("primary_license_number")
-  licenseAuthority          String?   @map("license_authority")
-  complianceCertifications  Json?     @map("compliance_certifications")
+  primaryLicenseNumber     String? @map("primary_license_number")
+  licenseAuthority         String? @map("license_authority")
+  complianceCertifications Json?   @map("compliance_certifications")
 
   // Contact information
-  primaryContactName        String?   @map("primary_contact_name")
-  primaryContactEmail       String?   @map("primary_contact_email")
-  primaryContactPhone       String?   @map("primary_contact_phone")
+  primaryContactName  String? @map("primary_contact_name")
+  primaryContactEmail String? @map("primary_contact_email")
+  primaryContactPhone String? @map("primary_contact_phone")
 
   // Address (Colombian format)
-  addressLine1              String?   @map("address_line1")
-  addressLine2              String?   @map("address_line2")
-  city                      String?
-  department                String?
-  postalCode                String?   @map("postal_code")
-  country                   String    @default("Colombia")
+  addressLine1 String? @map("address_line1")
+  addressLine2 String? @map("address_line2")
+  city         String?
+  department   String?
+  postalCode   String? @map("postal_code")
+  country      String  @default("Colombia")
 
   // Localization preferences
-  defaultLocale             String    @default("es") @map("default_locale")
-  defaultCurrency           String    @default("COP") @map("default_currency")
-  defaultTimezone           String    @default("America/Bogota") @map("default_timezone")
+  defaultLocale   String @default("es") @map("default_locale")
+  defaultCurrency String @default("COP") @map("default_currency")
+  defaultTimezone String @default("America/Bogota") @map("default_timezone")
 
   // System configuration
-  subscriptionPlan          String    @default("basic") @map("subscription_plan")
-  maxFacilities             Int       @default(3) @map("max_facilities")
-  maxUsers                  Int       @default(10) @map("max_users")
-  featureFlags              Json      @default("{}") @map("feature_flags")
+  subscriptionPlan String @default("basic") @map("subscription_plan")
+  maxFacilities    Int    @default(3) @map("max_facilities")
+  maxUsers         Int    @default(10) @map("max_users")
+  featureFlags     Json   @default("{}") @map("feature_flags")
 
   // Audit
-  status                    String    @default("active")
-  createdBy                 String?   @map("created_by")
-  createdAt                 DateTime  @default(now()) @map("created_at")
-  updatedAt                 DateTime  @updatedAt @map("updated_at")
+  status    String   @default("active")
+  createdBy String?  @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  users                     User[]
-  facilities                Facility[]
-  suppliers                 Supplier[]
-  productionTemplates       ProductionTemplate[]
-  qualityCheckTemplates     QualityCheckTemplate[]
-  complianceEvents          ComplianceEvent[]
-  certificates              Certificate[]
-  recipes                   Recipe[]
-  mediaFiles                MediaFile[]
+  users                 User[]
+  facilities            Facility[]
+  suppliers             Supplier[]
+  productionTemplates   ProductionTemplate[]
+  qualityCheckTemplates QualityCheckTemplate[]
+  complianceEvents      ComplianceEvent[]
+  certificates          Certificate[]
+  recipes               Recipe[]
+  mediaFiles            MediaFile[]
+  subscription          Subscription?
+  payments              Payment[]
 
   @@map("companies")
 }
 
 model Role {
-  id                  String   @id @default(cuid())
-  name                String
-  displayNameEs       String   @map("display_name_es")
-  displayNameEn       String   @map("display_name_en")
-  description         String?
-  level               Int
-  scopeLevel          String   @map("scope_level")
+  id            String  @id @default(cuid())
+  name          String
+  displayNameEs String  @map("display_name_es")
+  displayNameEn String  @map("display_name_en")
+  description   String?
+  level         Int
+  scopeLevel    String  @map("scope_level")
 
   // Permission matrix
-  permissions         Json
+  permissions Json
 
   // Role inheritance
   inheritsFromRoleIds String[] @map("inherits_from_role_ids")
 
-  isSystemRole        Boolean  @default(true) @map("is_system_role")
-  isActive            Boolean  @default(true) @map("is_active")
-  createdAt           DateTime @default(now()) @map("created_at")
+  isSystemRole Boolean  @default(true) @map("is_system_role")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   // Relations
-  users               User[]
+  users User[]
 
   @@map("roles")
 }
 
 model User {
-  id                    String    @id @default(cuid())
-  companyId             String    @map("company_id")
+  id        String @id @default(cuid())
+  companyId String @map("company_id")
 
   // Authentication
-  email                 String    @unique
-  passwordHash          String    @map("password_hash")
-  emailVerified         Boolean   @default(false) @map("email_verified")
+  email         String  @unique
+  passwordHash  String  @map("password_hash")
+  emailVerified Boolean @default(false) @map("email_verified")
 
   // Personal information
-  firstName             String?   @map("first_name")
-  lastName              String?   @map("last_name")
-  phone                 String?
-  identificationType    String?   @map("identification_type")
-  identificationNumber  String?   @map("identification_number")
+  firstName            String? @map("first_name")
+  lastName             String? @map("last_name")
+  phone                String?
+  identificationType   String? @map("identification_type")
+  identificationNumber String? @map("identification_number")
 
   // Role and permissions
-  roleId                String    @map("role_id")
-  additionalRoleIds     String[]  @map("additional_role_ids")
+  roleId            String   @map("role_id")
+  additionalRoleIds String[] @map("additional_role_ids")
 
   // Access scope
-  primaryFacilityId     String?   @map("primary_facility_id")
-  accessibleFacilityIds String[]  @map("accessible_facility_ids")
-  accessibleAreaIds     String[]  @map("accessible_area_ids")
+  primaryFacilityId     String?  @map("primary_facility_id")
+  accessibleFacilityIds String[] @map("accessible_facility_ids")
+  accessibleAreaIds     String[] @map("accessible_area_ids")
 
   // Localization preferences
-  locale                String    @default("es")
-  timezone              String    @default("America/Bogota")
+  locale   String @default("es")
+  timezone String @default("America/Bogota")
 
   // Security
-  mfaEnabled            Boolean   @default(false) @map("mfa_enabled")
-  mfaSecret             String?   @map("mfa_secret")
-  lastLogin             DateTime? @map("last_login")
-  failedLoginAttempts   Int       @default(0) @map("failed_login_attempts")
-  accountLockedUntil    DateTime? @map("account_locked_until")
+  mfaEnabled          Boolean   @default(false) @map("mfa_enabled")
+  mfaSecret           String?   @map("mfa_secret")
+  lastLogin           DateTime? @map("last_login")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  accountLockedUntil  DateTime? @map("account_locked_until")
 
   // Status
-  status                String    @default("active")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  company               Company   @relation(fields: [companyId], references: [id])
-  role                  Role      @relation(fields: [roleId], references: [id])
-  primaryFacility       Facility? @relation("UserPrimaryFacility", fields: [primaryFacilityId], references: [id])
+  company         Company   @relation(fields: [companyId], references: [id])
+  role            Role      @relation(fields: [roleId], references: [id])
+  primaryFacility Facility? @relation("UserPrimaryFacility", fields: [primaryFacilityId], references: [id])
 
   // Activities performed
-  activitiesPerformed   Activity[] @relation("ActivityPerformedBy")
-  scheduledActivities   ScheduledActivity[] @relation("ActivityAssignedTo")
-  productionOrdersRequested ProductionOrder[] @relation("ProductionOrderRequestedBy")
-  productionOrdersApproved ProductionOrder[] @relation("ProductionOrderApprovedBy")
-  pestDiseaseRecords    PestDiseaseRecord[]
-  complianceEventsCreated ComplianceEvent[] @relation("ComplianceEventCreatedBy")
-  complianceEventsAssigned ComplianceEvent[] @relation("ComplianceEventAssignedTo")
-  mediaFiles            MediaFile[]
-  recipesCreated        Recipe[]
-  templatesCreated      ProductionTemplate[]
-  qualityTemplatesCreated QualityCheckTemplate[]
-  certificatesUploaded  Certificate[] @relation("CertificateUploadedBy")
-  certificatesVerified  Certificate[] @relation("CertificateVerifiedBy")
+  activitiesPerformed         Activity[]             @relation("ActivityPerformedBy")
+  scheduledActivities         ScheduledActivity[]    @relation("ActivityAssignedTo")
+  productionOrdersRequested   ProductionOrder[]      @relation("ProductionOrderRequestedBy")
+  productionOrdersApproved    ProductionOrder[]      @relation("ProductionOrderApprovedBy")
+  pestDiseaseRecords          PestDiseaseRecord[]
+  complianceEventsCreated     ComplianceEvent[]      @relation("ComplianceEventCreatedBy")
+  complianceEventsAssigned    ComplianceEvent[]      @relation("ComplianceEventAssignedTo")
+  mediaFiles                  MediaFile[]
+  recipesCreated              Recipe[]
+  templatesCreated            ProductionTemplate[]
+  qualityTemplatesCreated     QualityCheckTemplate[]
+  certificatesUploaded        Certificate[]          @relation("CertificateUploadedBy")
+  certificatesVerified        Certificate[]          @relation("CertificateVerifiedBy")
   complianceEventsCreatedByMe ComplianceEvent[]
 
   @@map("users")
@@ -171,79 +173,79 @@ model User {
 // =============================================
 
 model CropType {
-  id                          String   @id @default(cuid())
-  name                        String   @unique
-  displayNameEs               String   @map("display_name_es")
-  displayNameEn               String   @map("display_name_en")
-  scientificName              String?  @map("scientific_name")
+  id             String  @id @default(cuid())
+  name           String  @unique
+  displayNameEs  String  @map("display_name_es")
+  displayNameEn  String  @map("display_name_en")
+  scientificName String? @map("scientific_name")
 
   // BATCH-FIRST TRACKING CONFIGURATION
-  defaultTrackingLevel        String   @default("batch") @map("default_tracking_level")
-  individualTrackingOptional  Boolean  @default(true) @map("individual_tracking_optional")
+  defaultTrackingLevel       String  @default("batch") @map("default_tracking_level")
+  individualTrackingOptional Boolean @default(true) @map("individual_tracking_optional")
 
   // Colombian regulatory compliance profile
-  complianceProfile           Json     @map("compliance_profile")
+  complianceProfile Json @map("compliance_profile")
 
   // Default production phases per crop
-  defaultPhases               Json     @map("default_phases")
+  defaultPhases Json @map("default_phases")
 
   // Colombian environmental requirements
-  environmentalRequirements   Json?    @map("environmental_requirements")
+  environmentalRequirements Json? @map("environmental_requirements")
 
   // Economic data
-  averageCycleDays            Int?     @map("average_cycle_days")
-  averageYieldPerPlant        Decimal? @map("average_yield_per_plant")
-  yieldUnit                   String?  @map("yield_unit")
+  averageCycleDays     Int?     @map("average_cycle_days")
+  averageYieldPerPlant Decimal? @map("average_yield_per_plant")
+  yieldUnit            String?  @map("yield_unit")
 
-  isActive                    Boolean  @default(true) @map("is_active")
-  createdAt                   DateTime @default(now()) @map("created_at")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
-  cultivars                   Cultivar[]
-  productionTemplates         ProductionTemplate[]
-  qualityCheckTemplates       QualityCheckTemplate[]
-  batches                     Batch[]
-  plants                      Plant[]
-  areas                       Area[]
-  productionOrders            ProductionOrder[]
+  cultivars             Cultivar[]
+  productionTemplates   ProductionTemplate[]
+  qualityCheckTemplates QualityCheckTemplate[]
+  batches               Batch[]
+  plants                Plant[]
+  areas                 Area[]
+  productionOrders      ProductionOrder[]
 
   @@map("crop_types")
 }
 
 model Cultivar {
-  id                    String   @id @default(cuid())
-  name                  String
-  cropTypeId            String   @map("crop_type_id")
+  id         String @id @default(cuid())
+  name       String
+  cropTypeId String @map("crop_type_id")
 
   // Genetic information
-  varietyType           String?  @map("variety_type")
-  geneticLineage        String?  @map("genetic_lineage")
+  varietyType    String? @map("variety_type")
+  geneticLineage String? @map("genetic_lineage")
 
   // Colombian origin information
-  supplierId            String?  @map("supplier_id")
-  colombianOrigin       Json?    @map("colombian_origin")
+  supplierId      String? @map("supplier_id")
+  colombianOrigin Json?   @map("colombian_origin")
 
   // Crop-specific characteristics (flexible JSONB)
-  characteristics       Json?
+  characteristics Json?
 
   // Growing requirements
-  optimalConditions     Json?    @map("optimal_conditions")
+  optimalConditions Json? @map("optimal_conditions")
 
   // Performance tracking
-  performanceMetrics    Json     @default("{}") @map("performance_metrics")
+  performanceMetrics Json @default("{}") @map("performance_metrics")
 
-  status                String   @default("active")
-  notes                 String?
-  createdAt             DateTime @default(now()) @map("created_at")
+  status    String   @default("active")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
-  cropType              CropType @relation(fields: [cropTypeId], references: [id])
-  supplier              Supplier? @relation(fields: [supplierId], references: [id])
-  productionTemplates   ProductionTemplate[]
-  productionOrders      ProductionOrder[]
-  batches               Batch[]
-  plants                Plant[]
-  motherPlants          MotherPlant[]
+  cropType            CropType             @relation(fields: [cropTypeId], references: [id])
+  supplier            Supplier?            @relation(fields: [supplierId], references: [id])
+  productionTemplates ProductionTemplate[]
+  productionOrders    ProductionOrder[]
+  batches             Batch[]
+  plants              Plant[]
+  motherPlants        MotherPlant[]
 
   @@map("cultivars")
 }
@@ -253,109 +255,109 @@ model Cultivar {
 // =============================================
 
 model Facility {
-  id                      String   @id @default(cuid())
-  companyId               String   @map("company_id")
-  name                    String
+  id        String @id @default(cuid())
+  companyId String @map("company_id")
+  name      String
 
   // Colombian licensing
-  licenseNumber           String   @unique @map("license_number")
-  licenseType             String?  @map("license_type")
-  licenseAuthority        String?  @map("license_authority")
-  licenseIssuedDate       DateTime? @map("license_issued_date")
-  licenseExpiryDate       DateTime? @map("license_expiry_date")
+  licenseNumber     String    @unique @map("license_number")
+  licenseType       String?   @map("license_type")
+  licenseAuthority  String?   @map("license_authority")
+  licenseIssuedDate DateTime? @map("license_issued_date")
+  licenseExpiryDate DateTime? @map("license_expiry_date")
 
   // Facility classification
-  facilityType            String?  @map("facility_type")
-  primaryCropTypeIds      String[] @map("primary_crop_type_ids")
+  facilityType       String?  @map("facility_type")
+  primaryCropTypeIds String[] @map("primary_crop_type_ids")
 
   // Colombian geographic location
-  address                 String?
-  city                    String?
-  department              String?
-  municipality            String?
-  daneCode                String?  @map("dane_code")
-  postalCode              String?  @map("postal_code")
-  latitude                Decimal? @db.Decimal(10, 8)
-  longitude               Decimal? @db.Decimal(11, 8)
-  altitudeMsnm            Int?     @map("altitude_msnm")
+  address      String?
+  city         String?
+  department   String?
+  municipality String?
+  daneCode     String?  @map("dane_code")
+  postalCode   String?  @map("postal_code")
+  latitude     Decimal? @db.Decimal(10, 8)
+  longitude    Decimal? @db.Decimal(11, 8)
+  altitudeMsnm Int?     @map("altitude_msnm")
 
   // Physical specifications
-  totalAreaM2             Decimal? @map("total_area_m2") @db.Decimal(10, 2)
-  canopyAreaM2            Decimal? @map("canopy_area_m2") @db.Decimal(10, 2)
-  cultivationAreaM2       Decimal? @map("cultivation_area_m2") @db.Decimal(10, 2)
+  totalAreaM2       Decimal? @map("total_area_m2") @db.Decimal(10, 2)
+  canopyAreaM2      Decimal? @map("canopy_area_m2") @db.Decimal(10, 2)
+  cultivationAreaM2 Decimal? @map("cultivation_area_m2") @db.Decimal(10, 2)
 
   // Infrastructure
-  facilitySpecifications  Json?    @map("facility_specifications")
+  facilitySpecifications Json? @map("facility_specifications")
 
   // Climate integration
-  climateMonitoring       Boolean  @default(false) @map("climate_monitoring")
-  weatherApiProvider      String?  @map("weather_api_provider")
-  weatherStationId        String?  @map("weather_station_id")
+  climateMonitoring  Boolean @default(false) @map("climate_monitoring")
+  weatherApiProvider String? @map("weather_api_provider")
+  weatherStationId   String? @map("weather_station_id")
 
-  status                  String   @default("active")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  company                 Company  @relation(fields: [companyId], references: [id])
-  areas                   Area[]
-  primaryUsers            User[]   @relation("UserPrimaryFacility")
-  productionOrders        ProductionOrder[]
-  batches                 Batch[]
-  plants                  Plant[]
-  motherPlants            MotherPlant[]
-  pestDiseaseRecords      PestDiseaseRecord[]
-  complianceEvents        ComplianceEvent[]
+  company            Company             @relation(fields: [companyId], references: [id])
+  areas              Area[]
+  primaryUsers       User[]              @relation("UserPrimaryFacility")
+  productionOrders   ProductionOrder[]
+  batches            Batch[]
+  plants             Plant[]
+  motherPlants       MotherPlant[]
+  pestDiseaseRecords PestDiseaseRecord[]
+  complianceEvents   ComplianceEvent[]
 
   @@map("facilities")
 }
 
 model Area {
-  id                      String   @id @default(cuid())
-  facilityId              String   @map("facility_id")
-  name                    String
-  areaType                String   @map("area_type")
+  id         String @id @default(cuid())
+  facilityId String @map("facility_id")
+  name       String
+  areaType   String @map("area_type")
 
   // Multi-crop compatibility
-  compatibleCropTypeIds   String[] @map("compatible_crop_type_ids")
-  currentCropTypeId       String?  @map("current_crop_type_id")
+  compatibleCropTypeIds String[] @map("compatible_crop_type_ids")
+  currentCropTypeId     String?  @map("current_crop_type_id")
 
   // Physical dimensions
-  lengthMeters            Decimal? @map("length_meters") @db.Decimal(8, 2)
-  widthMeters             Decimal? @map("width_meters") @db.Decimal(8, 2)
-  heightMeters            Decimal? @map("height_meters") @db.Decimal(8, 2)
-  totalAreaM2             Decimal? @map("total_area_m2") @db.Decimal(10, 2)
-  usableAreaM2            Decimal? @map("usable_area_m2") @db.Decimal(10, 2)
+  lengthMeters Decimal? @map("length_meters") @db.Decimal(8, 2)
+  widthMeters  Decimal? @map("width_meters") @db.Decimal(8, 2)
+  heightMeters Decimal? @map("height_meters") @db.Decimal(8, 2)
+  totalAreaM2  Decimal? @map("total_area_m2") @db.Decimal(10, 2)
+  usableAreaM2 Decimal? @map("usable_area_m2") @db.Decimal(10, 2)
 
   // Capacity management
-  capacityConfigurations  Json?    @map("capacity_configurations")
-  currentOccupancy        Int      @default(0) @map("current_occupancy")
-  reservedCapacity        Int      @default(0) @map("reserved_capacity")
+  capacityConfigurations Json? @map("capacity_configurations")
+  currentOccupancy       Int   @default(0) @map("current_occupancy")
+  reservedCapacity       Int   @default(0) @map("reserved_capacity")
 
   // Environmental control
-  climateControlled       Boolean  @default(false) @map("climate_controlled")
-  lightingControlled      Boolean  @default(false) @map("lighting_controlled")
-  irrigationSystem        Boolean  @default(false) @map("irrigation_system")
+  climateControlled  Boolean @default(false) @map("climate_controlled")
+  lightingControlled Boolean @default(false) @map("lighting_controlled")
+  irrigationSystem   Boolean @default(false) @map("irrigation_system")
 
   // Area specifications
-  environmentalSpecs      Json?    @map("environmental_specs")
-  equipmentList           Json     @default("[]") @map("equipment_list")
+  environmentalSpecs Json? @map("environmental_specs")
+  equipmentList      Json  @default("[]") @map("equipment_list")
 
-  status                  String   @default("active")
-  notes                   String?
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  status    String   @default("active")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  facility                Facility @relation(fields: [facilityId], references: [id])
-  currentCropType         CropType? @relation(fields: [currentCropTypeId], references: [id])
-  inventoryItems          InventoryItem[]
-  batches                 Batch[]
-  plants                  Plant[]
-  motherPlants            MotherPlant[]
-  activitiesFrom          Activity[] @relation("ActivityAreaFrom")
-  activitiesTo            Activity[] @relation("ActivityAreaTo")
-  pestDiseaseRecords      PestDiseaseRecord[]
+  facility           Facility            @relation(fields: [facilityId], references: [id])
+  currentCropType    CropType?           @relation(fields: [currentCropTypeId], references: [id])
+  inventoryItems     InventoryItem[]
+  batches            Batch[]
+  plants             Plant[]
+  motherPlants       MotherPlant[]
+  activitiesFrom     Activity[]          @relation("ActivityAreaFrom")
+  activitiesTo       Activity[]          @relation("ActivityAreaTo")
+  pestDiseaseRecords PestDiseaseRecord[]
 
   @@map("areas")
 }
@@ -365,183 +367,183 @@ model Area {
 // =============================================
 
 model Supplier {
-  id                      String   @id @default(cuid())
-  companyId               String   @map("company_id")
+  id        String @id @default(cuid())
+  companyId String @map("company_id")
 
   // Basic supplier information
-  name                    String
-  legalName               String?  @map("legal_name")
-  taxId                   String?  @map("tax_id")
+  name      String
+  legalName String? @map("legal_name")
+  taxId     String? @map("tax_id")
 
   // Colombian business details
-  businessType            String?  @map("business_type")
-  registrationNumber      String?  @map("registration_number")
+  businessType       String? @map("business_type")
+  registrationNumber String? @map("registration_number")
 
   // Contact information
-  primaryContactName      String?  @map("primary_contact_name")
-  primaryContactEmail     String?  @map("primary_contact_email")
-  primaryContactPhone     String?  @map("primary_contact_phone")
+  primaryContactName  String? @map("primary_contact_name")
+  primaryContactEmail String? @map("primary_contact_email")
+  primaryContactPhone String? @map("primary_contact_phone")
 
   // Colombian address
-  address                 String?
-  city                    String?
-  department              String?
-  country                 String   @default("Colombia")
+  address    String?
+  city       String?
+  department String?
+  country    String  @default("Colombia")
 
   // Supplier capabilities
-  productCategories       String[] @map("product_categories")
-  cropSpecialization      String[] @map("crop_specialization")
+  productCategories  String[] @map("product_categories")
+  cropSpecialization String[] @map("crop_specialization")
 
   // Performance tracking
-  rating                  Decimal? @db.Decimal(3, 2)
-  deliveryReliability     Decimal? @map("delivery_reliability") @db.Decimal(5, 2)
-  qualityScore            Decimal? @map("quality_score") @db.Decimal(5, 2)
+  rating              Decimal? @db.Decimal(3, 2)
+  deliveryReliability Decimal? @map("delivery_reliability") @db.Decimal(5, 2)
+  qualityScore        Decimal? @map("quality_score") @db.Decimal(5, 2)
 
   // Colombian compliance
-  certifications          Json?
-  licenses                Json?
+  certifications Json?
+  licenses       Json?
 
   // Financial terms
-  paymentTerms            String?  @map("payment_terms")
-  currency                String   @default("COP")
+  paymentTerms String? @map("payment_terms")
+  currency     String  @default("COP")
 
   // Status
-  isApproved              Boolean  @default(false) @map("is_approved")
-  isActive                Boolean  @default(true) @map("is_active")
-  notes                   String?
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  isApproved Boolean  @default(false) @map("is_approved")
+  isActive   Boolean  @default(true) @map("is_active")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   // Relations
-  company                 Company  @relation(fields: [companyId], references: [id])
-  products                Product[]
-  inventoryItems          InventoryItem[]
-  cultivars               Cultivar[]
-  batches                 Batch[]
-  productionOrders        ProductionOrder[]
+  company          Company           @relation(fields: [companyId], references: [id])
+  products         Product[]
+  inventoryItems   InventoryItem[]
+  cultivars        Cultivar[]
+  batches          Batch[]
+  productionOrders ProductionOrder[]
 
   @@map("suppliers")
 }
 
 model Product {
-  id                      String   @id @default(cuid())
-  sku                     String   @unique
-  gtin                    String?
-  name                    String
-  description             String?
+  id          String  @id @default(cuid())
+  sku         String  @unique
+  gtin        String?
+  name        String
+  description String?
 
   // Simplified categorization
-  category                String
-  subcategory             String?
+  category    String
+  subcategory String?
 
   // Multi-crop applicability
-  applicableCropTypeIds   String[] @map("applicable_crop_type_ids")
+  applicableCropTypeIds String[] @map("applicable_crop_type_ids")
 
   // Brand and manufacturer
-  brandId                 String?  @map("brand_id")
-  manufacturer            String?
+  brandId      String? @map("brand_id")
+  manufacturer String?
 
   // Colombian supplier information
-  preferredSupplierId     String?  @map("preferred_supplier_id")
-  colombianSuppliers      String[] @map("colombian_suppliers")
+  preferredSupplierId String?  @map("preferred_supplier_id")
+  colombianSuppliers  String[] @map("colombian_suppliers")
 
   // Physical characteristics
-  weightValue             Decimal? @map("weight_value") @db.Decimal(10, 3)
-  weightUnit              String?  @map("weight_unit")
-  dimensionsLength        Decimal? @map("dimensions_length") @db.Decimal(10, 2)
-  dimensionsWidth         Decimal? @map("dimensions_width") @db.Decimal(10, 2)
-  dimensionsHeight        Decimal? @map("dimensions_height") @db.Decimal(10, 2)
-  dimensionsUnit          String?  @map("dimensions_unit")
+  weightValue      Decimal? @map("weight_value") @db.Decimal(10, 3)
+  weightUnit       String?  @map("weight_unit")
+  dimensionsLength Decimal? @map("dimensions_length") @db.Decimal(10, 2)
+  dimensionsWidth  Decimal? @map("dimensions_width") @db.Decimal(10, 2)
+  dimensionsHeight Decimal? @map("dimensions_height") @db.Decimal(10, 2)
+  dimensionsUnit   String?  @map("dimensions_unit")
 
   // Crop and compliance specific metadata
-  productMetadata         Json?    @map("product_metadata")
+  productMetadata Json? @map("product_metadata")
 
   // Colombian compliance
-  icaRegistered           Boolean  @default(false) @map("ica_registered")
-  icaRegistrationNumber   String?  @map("ica_registration_number")
-  organicCertified        Boolean  @default(false) @map("organic_certified")
-  organicCertNumber       String?  @map("organic_cert_number")
+  icaRegistered         Boolean @default(false) @map("ica_registered")
+  icaRegistrationNumber String? @map("ica_registration_number")
+  organicCertified      Boolean @default(false) @map("organic_certified")
+  organicCertNumber     String? @map("organic_cert_number")
 
   // Pricing (COP default)
-  defaultPrice            Decimal? @map("default_price") @db.Decimal(12, 2)
-  priceCurrency           String   @default("COP") @map("price_currency")
-  priceUnit               String?  @map("price_unit")
+  defaultPrice  Decimal? @map("default_price") @db.Decimal(12, 2)
+  priceCurrency String   @default("COP") @map("price_currency")
+  priceUnit     String?  @map("price_unit")
 
-  status                  String   @default("active")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  preferredSupplier       Supplier? @relation(fields: [preferredSupplierId], references: [id])
-  inventoryItems          InventoryItem[]
+  preferredSupplier Supplier?       @relation(fields: [preferredSupplierId], references: [id])
+  inventoryItems    InventoryItem[]
 
   @@map("products")
 }
 
 model InventoryItem {
-  id                      String   @id @default(cuid())
-  productId               String   @map("product_id")
-  areaId                  String   @map("area_id")
-  supplierId              String?  @map("supplier_id")
+  id         String  @id @default(cuid())
+  productId  String  @map("product_id")
+  areaId     String  @map("area_id")
+  supplierId String? @map("supplier_id")
 
   // CORE INVENTORY QUANTITIES
-  quantityAvailable       Decimal  @default(0) @map("quantity_available") @db.Decimal(15, 3)
-  quantityReserved        Decimal  @default(0) @map("quantity_reserved") @db.Decimal(15, 3)
-  quantityCommitted       Decimal  @default(0) @map("quantity_committed") @db.Decimal(15, 3)
-  quantityUnit            String   @map("quantity_unit")
+  quantityAvailable Decimal @default(0) @map("quantity_available") @db.Decimal(15, 3)
+  quantityReserved  Decimal @default(0) @map("quantity_reserved") @db.Decimal(15, 3)
+  quantityCommitted Decimal @default(0) @map("quantity_committed") @db.Decimal(15, 3)
+  quantityUnit      String  @map("quantity_unit")
 
   // Batch and lot information
-  batchNumber             String?  @map("batch_number")
-  supplierLotNumber       String?  @map("supplier_lot_number")
-  serialNumbers           String[] @map("serial_numbers")
+  batchNumber       String?  @map("batch_number")
+  supplierLotNumber String?  @map("supplier_lot_number")
+  serialNumbers     String[] @map("serial_numbers")
 
   // Quality and dates
-  receivedDate            DateTime? @map("received_date")
-  manufacturingDate       DateTime? @map("manufacturing_date")
-  expirationDate          DateTime? @map("expiration_date")
-  lastTestedDate          DateTime? @map("last_tested_date")
+  receivedDate      DateTime? @map("received_date")
+  manufacturingDate DateTime? @map("manufacturing_date")
+  expirationDate    DateTime? @map("expiration_date")
+  lastTestedDate    DateTime? @map("last_tested_date")
 
   // Colombian pricing (COP)
-  purchasePriceCop        Decimal? @map("purchase_price_cop") @db.Decimal(12, 2)
-  currentValueCop         Decimal? @map("current_value_cop") @db.Decimal(12, 2)
-  costPerUnitCop          Decimal? @map("cost_per_unit_cop") @db.Decimal(12, 2)
+  purchasePriceCop Decimal? @map("purchase_price_cop") @db.Decimal(12, 2)
+  currentValueCop  Decimal? @map("current_value_cop") @db.Decimal(12, 2)
+  costPerUnitCop   Decimal? @map("cost_per_unit_cop") @db.Decimal(12, 2)
 
   // Quality grading
-  qualityGrade            String?  @map("quality_grade")
-  qualityNotes            String?  @map("quality_notes")
+  qualityGrade String? @map("quality_grade")
+  qualityNotes String? @map("quality_notes")
 
   // Compliance and certificates
-  certificates            Json     @default("[]")
+  certificates Json @default("[]")
 
   // Source tracking
-  sourceType              String?  @map("source_type")
-  sourceRecipeId          String?  @map("source_recipe_id")
-  sourceBatchId           String?  @map("source_batch_id")
-  productionDate          DateTime? @map("production_date")
+  sourceType     String?   @map("source_type")
+  sourceRecipeId String?   @map("source_recipe_id")
+  sourceBatchId  String?   @map("source_batch_id")
+  productionDate DateTime? @map("production_date")
 
   // Storage requirements
-  storageConditions       Json?    @map("storage_conditions")
+  storageConditions Json? @map("storage_conditions")
 
   // Inventory management
-  minimumStockLevel       Decimal? @map("minimum_stock_level") @db.Decimal(10, 3)
-  maximumStockLevel       Decimal? @map("maximum_stock_level") @db.Decimal(10, 3)
-  reorderPoint            Decimal? @map("reorder_point") @db.Decimal(10, 3)
-  leadTimeDays            Int?     @map("lead_time_days")
+  minimumStockLevel Decimal? @map("minimum_stock_level") @db.Decimal(10, 3)
+  maximumStockLevel Decimal? @map("maximum_stock_level") @db.Decimal(10, 3)
+  reorderPoint      Decimal? @map("reorder_point") @db.Decimal(10, 3)
+  leadTimeDays      Int?     @map("lead_time_days")
 
   // Status and audit
-  lotStatus               String   @default("available") @map("lot_status")
-  lastMovementDate        DateTime @default(now()) @map("last_movement_date")
-  notes                   String?
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  lotStatus        String   @default("available") @map("lot_status")
+  lastMovementDate DateTime @default(now()) @map("last_movement_date")
+  notes            String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   // Relations
-  product                 Product  @relation(fields: [productId], references: [id])
-  area                    Area     @relation(fields: [areaId], references: [id])
-  supplier                Supplier? @relation(fields: [supplierId], references: [id])
-  sourceRecipe            Recipe?  @relation(fields: [sourceRecipeId], references: [id])
-  sourceBatch             Batch?   @relation(fields: [sourceBatchId], references: [id])
-  productionOrders        ProductionOrder[]
+  product          Product           @relation(fields: [productId], references: [id])
+  area             Area              @relation(fields: [areaId], references: [id])
+  supplier         Supplier?         @relation(fields: [supplierId], references: [id])
+  sourceRecipe     Recipe?           @relation(fields: [sourceRecipeId], references: [id])
+  sourceBatch      Batch?            @relation(fields: [sourceBatchId], references: [id])
+  productionOrders ProductionOrder[]
 
   @@map("inventory_items")
 }
@@ -551,224 +553,224 @@ model InventoryItem {
 // =============================================
 
 model Recipe {
-  id                      String   @id @default(cuid())
-  name                    String
-  description             String?
-  recipeType              String   @map("recipe_type")
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  recipeType  String  @map("recipe_type")
 
   // Crop application
-  applicableCropTypes     String[] @map("applicable_crop_types")
-  applicableGrowthStages  String[] @map("applicable_growth_stages")
+  applicableCropTypes    String[] @map("applicable_crop_types")
+  applicableGrowthStages String[] @map("applicable_growth_stages")
 
   // Recipe formulation
-  ingredients             Json
+  ingredients Json
 
   // Output specifications
-  outputQuantity          Decimal? @map("output_quantity") @db.Decimal(10, 3)
-  outputUnit              String?  @map("output_unit")
-  batchSize               Int?     @map("batch_size")
+  outputQuantity Decimal? @map("output_quantity") @db.Decimal(10, 3)
+  outputUnit     String?  @map("output_unit")
+  batchSize      Int?     @map("batch_size")
 
   // Instructions
-  preparationSteps        Json?    @map("preparation_steps")
-  applicationMethod       String?  @map("application_method")
-  storageInstructions     String?  @map("storage_instructions")
-  shelfLifeHours          Int?     @map("shelf_life_hours")
+  preparationSteps    Json?   @map("preparation_steps")
+  applicationMethod   String? @map("application_method")
+  storageInstructions String? @map("storage_instructions")
+  shelfLifeHours      Int?    @map("shelf_life_hours")
 
   // Quality parameters
-  targetPh                Decimal? @map("target_ph") @db.Decimal(4, 2)
-  targetEc                Decimal? @map("target_ec") @db.Decimal(6, 3)
-  acceptablePhRange       Json?    @map("acceptable_ph_range")
-  acceptableEcRange       Json?    @map("acceptable_ec_range")
+  targetPh          Decimal? @map("target_ph") @db.Decimal(4, 2)
+  targetEc          Decimal? @map("target_ec") @db.Decimal(6, 3)
+  acceptablePhRange Json?    @map("acceptable_ph_range")
+  acceptableEcRange Json?    @map("acceptable_ec_range")
 
   // Cost tracking
-  estimatedCostCop        Decimal? @map("estimated_cost_cop") @db.Decimal(12, 2)
-  costPerUnitCop          Decimal? @map("cost_per_unit_cop") @db.Decimal(12, 2)
+  estimatedCostCop Decimal? @map("estimated_cost_cop") @db.Decimal(12, 2)
+  costPerUnitCop   Decimal? @map("cost_per_unit_cop") @db.Decimal(12, 2)
 
   // Usage tracking
-  timesUsed               Int      @default(0) @map("times_used")
-  successRate             Decimal? @map("success_rate") @db.Decimal(5, 2)
-  lastUsedDate            DateTime? @map("last_used_date")
+  timesUsed    Int       @default(0) @map("times_used")
+  successRate  Decimal?  @map("success_rate") @db.Decimal(5, 2)
+  lastUsedDate DateTime? @map("last_used_date")
 
-  companyId               String   @map("company_id")
-  createdBy               String?  @map("created_by")
-  status                  String   @default("active")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  companyId String   @map("company_id")
+  createdBy String?  @map("created_by")
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  company                 Company  @relation(fields: [companyId], references: [id])
-  creator                 User?    @relation(fields: [createdBy], references: [id])
-  derivedInventoryItems   InventoryItem[]
+  company               Company         @relation(fields: [companyId], references: [id])
+  creator               User?           @relation(fields: [createdBy], references: [id])
+  derivedInventoryItems InventoryItem[]
 
   @@map("recipes")
 }
 
 model ProductionTemplate {
-  id                      String   @id @default(cuid())
-  name                    String
-  cropTypeId              String   @map("crop_type_id")
-  cultivarId              String?  @map("cultivar_id")
+  id         String  @id @default(cuid())
+  name       String
+  cropTypeId String  @map("crop_type_id")
+  cultivarId String? @map("cultivar_id")
 
   // Template classification
-  templateCategory        String?  @map("template_category")
-  productionMethod        String?  @map("production_method")
-  sourceType              String?  @map("source_type")
+  templateCategory String? @map("template_category")
+  productionMethod String? @map("production_method")
+  sourceType       String? @map("source_type")
 
   // BATCH-FIRST TEMPLATE DESIGN
-  defaultBatchSize        Int      @default(50) @map("default_batch_size")
+  defaultBatchSize         Int     @default(50) @map("default_batch_size")
   enableIndividualTracking Boolean @default(false) @map("enable_individual_tracking")
 
   // Template specifications
-  description             String?
-  estimatedDurationDays   Int?     @map("estimated_duration_days")
-  estimatedYield          Decimal? @map("estimated_yield") @db.Decimal(10, 3)
-  yieldUnit               String?  @map("yield_unit")
-  difficultyLevel         String?  @map("difficulty_level")
+  description           String?
+  estimatedDurationDays Int?     @map("estimated_duration_days")
+  estimatedYield        Decimal? @map("estimated_yield") @db.Decimal(10, 3)
+  yieldUnit             String?  @map("yield_unit")
+  difficultyLevel       String?  @map("difficulty_level")
 
   // Colombian environmental requirements
   environmentalRequirements Json? @map("environmental_requirements")
 
   // Resource requirements
-  spaceRequirements       Json?    @map("space_requirements")
+  spaceRequirements Json? @map("space_requirements")
 
   // Cost estimation (COP)
-  estimatedCostCop        Decimal? @map("estimated_cost_cop") @db.Decimal(12, 2)
-  costBreakdown           Json?    @map("cost_breakdown")
+  estimatedCostCop Decimal? @map("estimated_cost_cop") @db.Decimal(12, 2)
+  costBreakdown    Json?    @map("cost_breakdown")
 
   // Performance tracking
-  usageCount              Int      @default(0) @map("usage_count")
-  averageSuccessRate      Decimal? @map("average_success_rate") @db.Decimal(5, 2)
-  averageActualYield      Decimal? @map("average_actual_yield") @db.Decimal(10, 3)
-  lastUsedDate            DateTime? @map("last_used_date")
+  usageCount         Int       @default(0) @map("usage_count")
+  averageSuccessRate Decimal?  @map("average_success_rate") @db.Decimal(5, 2)
+  averageActualYield Decimal?  @map("average_actual_yield") @db.Decimal(10, 3)
+  lastUsedDate       DateTime? @map("last_used_date")
 
   // Ownership
-  companyId               String   @map("company_id")
-  isPublic                Boolean  @default(false) @map("is_public")
-  createdBy               String?  @map("created_by")
+  companyId String  @map("company_id")
+  isPublic  Boolean @default(false) @map("is_public")
+  createdBy String? @map("created_by")
 
-  status                  String   @default("active")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  cropType                CropType @relation(fields: [cropTypeId], references: [id])
-  cultivar                Cultivar? @relation(fields: [cultivarId], references: [id])
-  company                 Company  @relation(fields: [companyId], references: [id])
-  creator                 User?    @relation(fields: [createdBy], references: [id])
-  phases                  TemplatePhase[]
-  productionOrders        ProductionOrder[]
-  batches                 Batch[]
+  cropType         CropType          @relation(fields: [cropTypeId], references: [id])
+  cultivar         Cultivar?         @relation(fields: [cultivarId], references: [id])
+  company          Company           @relation(fields: [companyId], references: [id])
+  creator          User?             @relation(fields: [createdBy], references: [id])
+  phases           TemplatePhase[]
+  productionOrders ProductionOrder[]
+  batches          Batch[]
 
   @@map("production_templates")
 }
 
 model TemplatePhase {
-  id                      String   @id @default(cuid())
-  templateId              String   @map("template_id")
-  phaseName               String   @map("phase_name")
-  phaseOrder              Int      @map("phase_order")
+  id         String @id @default(cuid())
+  templateId String @map("template_id")
+  phaseName  String @map("phase_name")
+  phaseOrder Int    @map("phase_order")
 
   // Phase specifications
-  estimatedDurationDays   Int      @map("estimated_duration_days")
-  areaType                String   @map("area_type")
-  previousPhaseId         String?  @map("previous_phase_id")
+  estimatedDurationDays Int     @map("estimated_duration_days")
+  areaType              String  @map("area_type")
+  previousPhaseId       String? @map("previous_phase_id")
 
   // Requirements
-  requiredConditions      Json?    @map("required_conditions")
-  completionCriteria      Json?    @map("completion_criteria")
+  requiredConditions Json? @map("required_conditions")
+  completionCriteria Json? @map("completion_criteria")
 
   // Resources
-  requiredEquipment       Json     @default("[]") @map("required_equipment")
-  requiredMaterials       Json     @default("[]") @map("required_materials")
+  requiredEquipment Json @default("[]") @map("required_equipment")
+  requiredMaterials Json @default("[]") @map("required_materials")
 
-  description             String?
-  createdAt               DateTime @default(now()) @map("created_at")
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
 
   // Relations
-  template                ProductionTemplate @relation(fields: [templateId], references: [id])
-  previousPhase           TemplatePhase? @relation("PhaseSequence", fields: [previousPhaseId], references: [id])
-  nextPhases              TemplatePhase[] @relation("PhaseSequence")
-  activities              TemplateActivity[]
+  template      ProductionTemplate @relation(fields: [templateId], references: [id])
+  previousPhase TemplatePhase?     @relation("PhaseSequence", fields: [previousPhaseId], references: [id])
+  nextPhases    TemplatePhase[]    @relation("PhaseSequence")
+  activities    TemplateActivity[]
 
   @@map("template_phases")
 }
 
 model TemplateActivity {
-  id                      String   @id @default(cuid())
-  phaseId                 String   @map("phase_id")
-  activityName            String   @map("activity_name")
-  activityOrder           Int      @map("activity_order")
+  id            String @id @default(cuid())
+  phaseId       String @map("phase_id")
+  activityName  String @map("activity_name")
+  activityOrder Int    @map("activity_order")
 
   // Activity classification
-  activityType            String   @map("activity_type")
-  isRecurring             Boolean  @default(false) @map("is_recurring")
-  isQualityCheck          Boolean  @default(false) @map("is_quality_check")
+  activityType   String  @map("activity_type")
+  isRecurring    Boolean @default(false) @map("is_recurring")
+  isQualityCheck Boolean @default(false) @map("is_quality_check")
 
   // Timing configuration
-  timingConfiguration     Json     @map("timing_configuration")
+  timingConfiguration Json @map("timing_configuration")
 
   // Requirements
-  requiredMaterials       Json     @default("[]") @map("required_materials")
+  requiredMaterials        Json    @default("[]") @map("required_materials")
   estimatedDurationMinutes Int?    @map("estimated_duration_minutes")
-  skillLevelRequired      String?  @map("skill_level_required")
+  skillLevelRequired       String? @map("skill_level_required")
 
   // Quality check integration
-  qualityCheckTemplateId  String?  @map("quality_check_template_id")
+  qualityCheckTemplateId String? @map("quality_check_template_id")
 
   // Instructions
-  instructions            String?
-  safetyNotes             String?  @map("safety_notes")
+  instructions String?
+  safetyNotes  String? @map("safety_notes")
 
-  createdAt               DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
-  phase                   TemplatePhase @relation(fields: [phaseId], references: [id])
-  qualityCheckTemplate    QualityCheckTemplate? @relation(fields: [qualityCheckTemplateId], references: [id])
-  scheduledActivities     ScheduledActivity[]
+  phase                TemplatePhase         @relation(fields: [phaseId], references: [id])
+  qualityCheckTemplate QualityCheckTemplate? @relation(fields: [qualityCheckTemplateId], references: [id])
+  scheduledActivities  ScheduledActivity[]
 
   @@map("template_activities")
 }
 
 model QualityCheckTemplate {
-  id                      String   @id @default(cuid())
-  name                    String
-  cropTypeId              String   @map("crop_type_id")
+  id         String @id @default(cuid())
+  name       String
+  cropTypeId String @map("crop_type_id")
 
   // Template classification
-  procedureType           String?  @map("procedure_type")
-  inspectionLevel         String?  @map("inspection_level")
+  procedureType   String? @map("procedure_type")
+  inspectionLevel String? @map("inspection_level")
 
   // Colombian compliance
-  regulatoryRequirement   Boolean  @default(false) @map("regulatory_requirement")
-  complianceStandard      String?  @map("compliance_standard")
+  regulatoryRequirement Boolean @default(false) @map("regulatory_requirement")
+  complianceStandard    String? @map("compliance_standard")
 
   // Template structure
-  templateStructure       Json     @map("template_structure")
+  templateStructure Json @map("template_structure")
 
   // AI integration
-  aiAssisted              Boolean  @default(false) @map("ai_assisted")
-  aiAnalysisTypes         String[] @map("ai_analysis_types")
+  aiAssisted      Boolean  @default(false) @map("ai_assisted")
+  aiAnalysisTypes String[] @map("ai_analysis_types")
 
   // Application scope
   applicableStages        String[] @map("applicable_stages")
   frequencyRecommendation String?  @map("frequency_recommendation")
 
   // Performance tracking
-  usageCount              Int      @default(0) @map("usage_count")
+  usageCount                   Int  @default(0) @map("usage_count")
   averageCompletionTimeMinutes Int? @map("average_completion_time_minutes")
 
-  companyId               String   @map("company_id")
-  createdBy               String?  @map("created_by")
-  status                  String   @default("active")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  companyId String   @map("company_id")
+  createdBy String?  @map("created_by")
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  cropType                CropType @relation(fields: [cropTypeId], references: [id])
-  company                 Company  @relation(fields: [companyId], references: [id])
-  creator                 User?    @relation(fields: [createdBy], references: [id])
-  templateActivities      TemplateActivity[]
-  scheduledActivities     ScheduledActivity[]
+  cropType            CropType            @relation(fields: [cropTypeId], references: [id])
+  company             Company             @relation(fields: [companyId], references: [id])
+  creator             User?               @relation(fields: [createdBy], references: [id])
+  templateActivities  TemplateActivity[]
+  scheduledActivities ScheduledActivity[]
 
   @@map("quality_check_templates")
 }
@@ -778,34 +780,34 @@ model QualityCheckTemplate {
 // =============================================
 
 model ProductionOrder {
-  id                      String   @id @default(cuid())
-  orderNumber             String   @unique @map("order_number")
+  id          String @id @default(cuid())
+  orderNumber String @unique @map("order_number")
 
   // Template and crop configuration
-  templateId              String   @map("template_id")
-  cropTypeId              String   @map("crop_type_id")
-  cultivarId              String   @map("cultivar_id")
+  templateId String @map("template_id")
+  cropTypeId String @map("crop_type_id")
+  cultivarId String @map("cultivar_id")
 
   // Order classification
-  orderType               String   @map("order_type")
-  sourceType              String   @map("source_type")
+  orderType  String @map("order_type")
+  sourceType String @map("source_type")
 
   // Quantity and units
-  requestedQuantity       Int      @map("requested_quantity")
-  unitOfMeasure           String   @map("unit_of_measure")
+  requestedQuantity Int    @map("requested_quantity")
+  unitOfMeasure     String @map("unit_of_measure")
 
   // BATCH-FIRST ORDER DESIGN
-  batchSize               Int?     @map("batch_size")
+  batchSize                Int?    @map("batch_size")
   enableIndividualTracking Boolean @default(false) @map("enable_individual_tracking")
 
   // Source references
-  motherPlantId           String?  @map("mother_plant_id")
-  seedInventoryId         String?  @map("seed_inventory_id")
-  supplierId              String?  @map("supplier_id")
+  motherPlantId   String? @map("mother_plant_id")
+  seedInventoryId String? @map("seed_inventory_id")
+  supplierId      String? @map("supplier_id")
 
   // Destination
-  targetFacilityId        String   @map("target_facility_id")
-  targetAreaId            String   @map("target_area_id")
+  targetFacilityId String @map("target_facility_id")
+  targetAreaId     String @map("target_area_id")
 
   // Schedule
   requestedDeliveryDate   DateTime? @map("requested_delivery_date")
@@ -817,283 +819,283 @@ model ProductionOrder {
   // Colombian compliance
   transportManifestRequired Boolean @default(false) @map("transport_manifest_required")
   phytosanitaryCertRequired Boolean @default(false) @map("phytosanitary_cert_required")
-  regulatoryDocumentation Json     @default("{}") @map("regulatory_documentation")
+  regulatoryDocumentation   Json    @default("{}") @map("regulatory_documentation")
 
   // Financial
-  estimatedCostCop        Decimal? @map("estimated_cost_cop") @db.Decimal(15, 2)
-  actualCostCop           Decimal? @map("actual_cost_cop") @db.Decimal(15, 2)
+  estimatedCostCop Decimal? @map("estimated_cost_cop") @db.Decimal(15, 2)
+  actualCostCop    Decimal? @map("actual_cost_cop") @db.Decimal(15, 2)
 
   // Approval workflow
-  requestedBy             String   @map("requested_by")
-  approvedBy              String?  @map("approved_by")
-  approvalDate            DateTime? @map("approval_date")
+  requestedBy  String    @map("requested_by")
+  approvedBy   String?   @map("approved_by")
+  approvalDate DateTime? @map("approval_date")
 
   // Status tracking
-  status                  String   @default("pendiente")
-  priority                String   @default("normal")
-  completionPercentage    Decimal  @default(0) @map("completion_percentage") @db.Decimal(5, 2)
+  status               String  @default("pendiente")
+  priority             String  @default("normal")
+  completionPercentage Decimal @default(0) @map("completion_percentage") @db.Decimal(5, 2)
 
-  notes                   String?
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  template                ProductionTemplate @relation(fields: [templateId], references: [id])
-  cropType                CropType @relation(fields: [cropTypeId], references: [id])
-  cultivar                Cultivar @relation(fields: [cultivarId], references: [id])
-  motherPlant             MotherPlant? @relation(fields: [motherPlantId], references: [id])
-  seedInventory           InventoryItem? @relation(fields: [seedInventoryId], references: [id])
-  supplier                Supplier? @relation(fields: [supplierId], references: [id])
-  targetFacility          Facility @relation(fields: [targetFacilityId], references: [id])
-  requestedByUser         User     @relation("ProductionOrderRequestedBy", fields: [requestedBy], references: [id])
-  approvedByUser          User?    @relation("ProductionOrderApprovedBy", fields: [approvedBy], references: [id])
-  scheduledActivities     ScheduledActivity[]
-  batches                 Batch[]
+  template            ProductionTemplate  @relation(fields: [templateId], references: [id])
+  cropType            CropType            @relation(fields: [cropTypeId], references: [id])
+  cultivar            Cultivar            @relation(fields: [cultivarId], references: [id])
+  motherPlant         MotherPlant?        @relation(fields: [motherPlantId], references: [id])
+  seedInventory       InventoryItem?      @relation(fields: [seedInventoryId], references: [id])
+  supplier            Supplier?           @relation(fields: [supplierId], references: [id])
+  targetFacility      Facility            @relation(fields: [targetFacilityId], references: [id])
+  requestedByUser     User                @relation("ProductionOrderRequestedBy", fields: [requestedBy], references: [id])
+  approvedByUser      User?               @relation("ProductionOrderApprovedBy", fields: [approvedBy], references: [id])
+  scheduledActivities ScheduledActivity[]
+  batches             Batch[]
 
   @@map("production_orders")
 }
 
 model ScheduledActivity {
-  id                      String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Entity association (flexible)
-  entityType              String   @map("entity_type")
-  entityId                String   @map("entity_id")
+  entityType String @map("entity_type")
+  entityId   String @map("entity_id")
 
   // Activity definition
-  activityType            String   @map("activity_type")
-  activityTemplateId      String?  @map("activity_template_id")
-  productionOrderId       String?  @map("production_order_id")
+  activityType       String  @map("activity_type")
+  activityTemplateId String? @map("activity_template_id")
+  productionOrderId  String? @map("production_order_id")
 
   // Scheduling
-  scheduledDate           DateTime @map("scheduled_date")
-  estimatedDurationMinutes Int?    @map("estimated_duration_minutes")
+  scheduledDate            DateTime @map("scheduled_date")
+  estimatedDurationMinutes Int?     @map("estimated_duration_minutes")
 
   // Recurring activities
-  isRecurring             Boolean  @default(false) @map("is_recurring")
-  recurringPattern        String?  @map("recurring_pattern")
-  recurringEndDate        DateTime? @map("recurring_end_date")
-  parentRecurringId       String?  @map("parent_recurring_id")
+  isRecurring       Boolean   @default(false) @map("is_recurring")
+  recurringPattern  String?   @map("recurring_pattern")
+  recurringEndDate  DateTime? @map("recurring_end_date")
+  parentRecurringId String?   @map("parent_recurring_id")
 
   // Assignment
-  assignedTo              String?  @map("assigned_to")
-  assignedTeam            String[] @map("assigned_team")
+  assignedTo   String?  @map("assigned_to")
+  assignedTeam String[] @map("assigned_team")
 
   // Requirements
-  requiredMaterials       Json     @default("[]") @map("required_materials")
-  requiredEquipment       Json     @default("[]") @map("required_equipment")
+  requiredMaterials Json @default("[]") @map("required_materials")
+  requiredEquipment Json @default("[]") @map("required_equipment")
 
   // Quality check integration
-  qualityCheckTemplateId  String?  @map("quality_check_template_id")
+  qualityCheckTemplateId String? @map("quality_check_template_id")
 
   // Instructions and metadata
-  instructions            String?
-  activityMetadata        Json     @default("{}") @map("activity_metadata")
+  instructions     String?
+  activityMetadata Json    @default("{}") @map("activity_metadata")
 
   // Status and execution
-  status                  String   @default("pending")
-  actualStartTime         DateTime? @map("actual_start_time")
-  actualEndTime           DateTime? @map("actual_end_time")
-  completedBy             String?  @map("completed_by")
-  completionNotes         String?  @map("completion_notes")
+  status          String    @default("pending")
+  actualStartTime DateTime? @map("actual_start_time")
+  actualEndTime   DateTime? @map("actual_end_time")
+  completedBy     String?   @map("completed_by")
+  completionNotes String?   @map("completion_notes")
 
   // Performance tracking
-  executionResults        Json?    @map("execution_results")
-  executionVariance       Json?    @map("execution_variance")
+  executionResults  Json? @map("execution_results")
+  executionVariance Json? @map("execution_variance")
 
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  activityTemplate        TemplateActivity? @relation(fields: [activityTemplateId], references: [id])
-  productionOrder         ProductionOrder? @relation(fields: [productionOrderId], references: [id])
-  assignedToUser          User?    @relation("ActivityAssignedTo", fields: [assignedTo], references: [id])
-  parentRecurring         ScheduledActivity? @relation("RecurringActivity", fields: [parentRecurringId], references: [id])
-  childRecurring          ScheduledActivity[] @relation("RecurringActivity")
-  qualityCheckTemplate    QualityCheckTemplate? @relation(fields: [qualityCheckTemplateId], references: [id])
-  activities              Activity[]
+  activityTemplate     TemplateActivity?     @relation(fields: [activityTemplateId], references: [id])
+  productionOrder      ProductionOrder?      @relation(fields: [productionOrderId], references: [id])
+  assignedToUser       User?                 @relation("ActivityAssignedTo", fields: [assignedTo], references: [id])
+  parentRecurring      ScheduledActivity?    @relation("RecurringActivity", fields: [parentRecurringId], references: [id])
+  childRecurring       ScheduledActivity[]   @relation("RecurringActivity")
+  qualityCheckTemplate QualityCheckTemplate? @relation(fields: [qualityCheckTemplateId], references: [id])
+  activities           Activity[]
 
   @@map("scheduled_activities")
 }
 
 model MotherPlant {
-  id                      String   @id @default(cuid())
-  qrCode                  String   @unique @map("qr_code")
+  id     String @id @default(cuid())
+  qrCode String @unique @map("qr_code")
 
   // Basic identification
-  facilityId              String   @map("facility_id")
-  areaId                  String   @map("area_id")
-  cultivarId              String   @map("cultivar_id")
+  facilityId String @map("facility_id")
+  areaId     String @map("area_id")
+  cultivarId String @map("cultivar_id")
 
   // Mother plant specific data
-  name                    String?
-  generation              Int      @default(1)
-  sourceType              String?  @map("source_type")
-  sourceReference         String?  @map("source_reference")
+  name            String?
+  generation      Int     @default(1)
+  sourceType      String? @map("source_type")
+  sourceReference String? @map("source_reference")
 
   // Lifecycle tracking
-  establishedDate         DateTime @map("established_date")
-  lastCloneDate           DateTime? @map("last_clone_date")
-  retirementDate          DateTime? @map("retirement_date")
-  retirementReason        String?  @map("retirement_reason")
+  establishedDate  DateTime  @map("established_date")
+  lastCloneDate    DateTime? @map("last_clone_date")
+  retirementDate   DateTime? @map("retirement_date")
+  retirementReason String?   @map("retirement_reason")
 
   // Performance metrics
-  totalClonesTaken        Int      @default(0) @map("total_clones_taken")
-  successfulClones        Int      @default(0) @map("successful_clones")
+  totalClonesTaken Int @default(0) @map("total_clones_taken")
+  successfulClones Int @default(0) @map("successful_clones")
 
   // Health and maintenance
-  healthStatus            String   @default("healthy") @map("health_status")
-  lastHealthCheck         DateTime? @map("last_health_check")
-  maintenanceNotes        String?  @map("maintenance_notes")
+  healthStatus     String    @default("healthy") @map("health_status")
+  lastHealthCheck  DateTime? @map("last_health_check")
+  maintenanceNotes String?   @map("maintenance_notes")
 
   // Genetic tracking
-  geneticStability        String?  @map("genetic_stability")
-  phenotypeNotes          String?  @map("phenotype_notes")
+  geneticStability String? @map("genetic_stability")
+  phenotypeNotes   String? @map("phenotype_notes")
 
   // Physical characteristics
-  plantMetrics            Json?    @map("plant_metrics")
+  plantMetrics Json? @map("plant_metrics")
 
   // Status
-  status                  String   @default("active")
-  notes                   String?
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  status    String   @default("active")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  facility                Facility @relation(fields: [facilityId], references: [id])
-  area                    Area     @relation(fields: [areaId], references: [id])
-  cultivar                Cultivar @relation(fields: [cultivarId], references: [id])
-  productionOrders        ProductionOrder[]
-  derivedPlants           Plant[]
+  facility         Facility          @relation(fields: [facilityId], references: [id])
+  area             Area              @relation(fields: [areaId], references: [id])
+  cultivar         Cultivar          @relation(fields: [cultivarId], references: [id])
+  productionOrders ProductionOrder[]
+  derivedPlants    Plant[]
 
   @@map("mother_plants")
 }
 
 model Batch {
-  id                      String   @id @default(cuid())
-  qrCode                  String   @unique @map("qr_code")
+  id     String @id @default(cuid())
+  qrCode String @unique @map("qr_code")
 
   // Core identification
-  facilityId              String   @map("facility_id")
-  areaId                  String?  @map("area_id")
-  cropTypeId              String   @map("crop_type_id")
-  cultivarId              String   @map("cultivar_id")
+  facilityId String  @map("facility_id")
+  areaId     String? @map("area_id")
+  cropTypeId String  @map("crop_type_id")
+  cultivarId String  @map("cultivar_id")
 
   // Source tracking
-  productionOrderId       String?  @map("production_order_id")
-  templateId              String?  @map("template_id")
-  sourceBatchId           String?  @map("source_batch_id")
+  productionOrderId String? @map("production_order_id")
+  templateId        String? @map("template_id")
+  sourceBatchId     String? @map("source_batch_id")
 
   // BATCH-FIRST TRACKING CONFIGURATION
-  batchType               String   @map("batch_type")
-  trackingLevel           String   @default("batch") @map("tracking_level")
-  individualPlantTracking Boolean  @default(false) @map("individual_plant_tracking")
+  batchType               String  @map("batch_type")
+  trackingLevel           String  @default("batch") @map("tracking_level")
+  individualPlantTracking Boolean @default(false) @map("individual_plant_tracking")
 
   // Quantity management
-  plannedQuantity         Int?     @map("planned_quantity")
-  currentQuantity         Int      @map("current_quantity")
-  initialQuantity         Int?     @map("initial_quantity")
-  unitOfMeasure           String   @map("unit_of_measure")
+  plannedQuantity Int?   @map("planned_quantity")
+  currentQuantity Int    @map("current_quantity")
+  initialQuantity Int?   @map("initial_quantity")
+  unitOfMeasure   String @map("unit_of_measure")
 
   // For batch-level quality sampling
-  sampleSize              Int?     @map("sample_size")
-  sampleFrequency         String?  @map("sample_frequency")
+  sampleSize      Int?    @map("sample_size")
+  sampleFrequency String? @map("sample_frequency")
 
   // Lifecycle dates
-  createdDate             DateTime @default(now()) @map("created_date")
-  plannedCompletionDate   DateTime? @map("planned_completion_date")
-  actualCompletionDate    DateTime? @map("actual_completion_date")
+  createdDate           DateTime  @default(now()) @map("created_date")
+  plannedCompletionDate DateTime? @map("planned_completion_date")
+  actualCompletionDate  DateTime? @map("actual_completion_date")
 
   // Quality metrics
-  qualityGrade            String?  @map("quality_grade")
-  qualityDistribution     Json?    @map("quality_distribution")
+  qualityGrade        String? @map("quality_grade")
+  qualityDistribution Json?   @map("quality_distribution")
 
   // CROP-SPECIFIC BATCH METRICS
-  batchMetrics            Json?    @map("batch_metrics")
+  batchMetrics Json? @map("batch_metrics")
 
   // Environmental tracking
-  environmentalHistory    Json     @default("[]") @map("environmental_history")
+  environmentalHistory Json @default("[]") @map("environmental_history")
 
   // External source tracking
-  supplierId              String?  @map("supplier_id")
-  externalLotNumber       String?  @map("external_lot_number")
-  receivedDate            DateTime? @map("received_date")
-  phytosanitaryCertificate String? @map("phytosanitary_certificate")
+  supplierId               String?   @map("supplier_id")
+  externalLotNumber        String?   @map("external_lot_number")
+  receivedDate             DateTime? @map("received_date")
+  phytosanitaryCertificate String?   @map("phytosanitary_certificate")
 
   // Status
-  status                  String   @default("active")
-  priority                String   @default("normal")
-  notes                   String?
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  status    String   @default("active")
+  priority  String   @default("normal")
+  notes     String?
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  facility                Facility @relation(fields: [facilityId], references: [id])
-  area                    Area?    @relation(fields: [areaId], references: [id])
-  cropType                CropType @relation(fields: [cropTypeId], references: [id])
-  cultivar                Cultivar @relation(fields: [cultivarId], references: [id])
-  productionOrder         ProductionOrder? @relation(fields: [productionOrderId], references: [id])
-  template                ProductionTemplate? @relation(fields: [templateId], references: [id])
-  sourceBatch             Batch?   @relation("BatchSource", fields: [sourceBatchId], references: [id])
-  derivedBatches          Batch[]  @relation("BatchSource")
-  supplier                Supplier? @relation(fields: [supplierId], references: [id])
-  plants                  Plant[]
-  activities              Activity[] @relation("ActivityBatch")
-  derivedInventoryItems   InventoryItem[]
+  facility              Facility            @relation(fields: [facilityId], references: [id])
+  area                  Area?               @relation(fields: [areaId], references: [id])
+  cropType              CropType            @relation(fields: [cropTypeId], references: [id])
+  cultivar              Cultivar            @relation(fields: [cultivarId], references: [id])
+  productionOrder       ProductionOrder?    @relation(fields: [productionOrderId], references: [id])
+  template              ProductionTemplate? @relation(fields: [templateId], references: [id])
+  sourceBatch           Batch?              @relation("BatchSource", fields: [sourceBatchId], references: [id])
+  derivedBatches        Batch[]             @relation("BatchSource")
+  supplier              Supplier?           @relation(fields: [supplierId], references: [id])
+  plants                Plant[]
+  activities            Activity[]          @relation("ActivityBatch")
+  derivedInventoryItems InventoryItem[]
 
   @@map("batches")
 }
 
 model Plant {
-  id                      String   @id @default(cuid())
-  qrCode                  String   @unique @map("qr_code")
+  id     String @id @default(cuid())
+  qrCode String @unique @map("qr_code")
 
   // Batch relationship
-  batchId                 String   @map("batch_id")
-  motherPlantId           String?  @map("mother_plant_id")
+  batchId       String  @map("batch_id")
+  motherPlantId String? @map("mother_plant_id")
 
   // Location
-  facilityId              String   @map("facility_id")
-  areaId                  String   @map("area_id")
-  cropTypeId              String   @map("crop_type_id")
-  cultivarId              String   @map("cultivar_id")
+  facilityId String @map("facility_id")
+  areaId     String @map("area_id")
+  cropTypeId String @map("crop_type_id")
+  cultivarId String @map("cultivar_id")
 
   // INDIVIDUAL PLANT LIFECYCLE
-  plantStage              String   @map("plant_stage")
-  sex                     String?
+  plantStage String  @map("plant_stage")
+  sex        String?
 
   // Key dates
-  plantedDate             DateTime @map("planted_date")
-  stageProgressionDates   Json?    @map("stage_progression_dates")
-  harvestedDate           DateTime? @map("harvested_date")
-  destroyedDate           DateTime? @map("destroyed_date")
-  destructionReason       String?  @map("destruction_reason")
+  plantedDate           DateTime  @map("planted_date")
+  stageProgressionDates Json?     @map("stage_progression_dates")
+  harvestedDate         DateTime? @map("harvested_date")
+  destroyedDate         DateTime? @map("destroyed_date")
+  destructionReason     String?   @map("destruction_reason")
 
   // Individual plant metrics
-  plantMetrics            Json?    @map("plant_metrics")
+  plantMetrics Json? @map("plant_metrics")
 
   // Health and status
-  healthStatus            String   @default("healthy") @map("health_status")
-  lastInspectionDate      DateTime? @map("last_inspection_date")
-  inspectionNotes         String?  @map("inspection_notes")
+  healthStatus       String    @default("healthy") @map("health_status")
+  lastInspectionDate DateTime? @map("last_inspection_date")
+  inspectionNotes    String?   @map("inspection_notes")
 
   // Position tracking
-  positionX               Decimal? @map("position_x") @db.Decimal(8, 2)
-  positionY               Decimal? @map("position_y") @db.Decimal(8, 2)
-  containerId             String?  @map("container_id")
+  positionX   Decimal? @map("position_x") @db.Decimal(8, 2)
+  positionY   Decimal? @map("position_y") @db.Decimal(8, 2)
+  containerId String?  @map("container_id")
 
-  status                  String   @default("active")
-  notes                   String?
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  status    String   @default("active")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  batch                   Batch    @relation(fields: [batchId], references: [id])
-  motherPlant             MotherPlant? @relation(fields: [motherPlantId], references: [id])
-  facility                Facility @relation(fields: [facilityId], references: [id])
-  area                    Area     @relation(fields: [areaId], references: [id])
-  cropType                CropType @relation(fields: [cropTypeId], references: [id])
-  cultivar                Cultivar @relation(fields: [cultivarId], references: [id])
-  activities              Activity[] @relation("ActivityPlant")
+  batch       Batch        @relation(fields: [batchId], references: [id])
+  motherPlant MotherPlant? @relation(fields: [motherPlantId], references: [id])
+  facility    Facility     @relation(fields: [facilityId], references: [id])
+  area        Area         @relation(fields: [areaId], references: [id])
+  cropType    CropType     @relation(fields: [cropTypeId], references: [id])
+  cultivar    Cultivar     @relation(fields: [cultivarId], references: [id])
+  activities  Activity[]   @relation("ActivityPlant")
 
   @@map("plants")
 }
@@ -1103,168 +1105,168 @@ model Plant {
 // =============================================
 
 model Activity {
-  id                      String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Entity association
-  entityType              String   @map("entity_type")
-  entityId                String   @map("entity_id")
+  entityType String @map("entity_type")
+  entityId   String @map("entity_id")
 
   // Activity classification
-  activityType            String   @map("activity_type")
-  scheduledActivityId     String?  @map("scheduled_activity_id")
+  activityType        String  @map("activity_type")
+  scheduledActivityId String? @map("scheduled_activity_id")
 
   // Execution details
-  performedBy             String   @map("performed_by")
-  timestamp               DateTime @default(now())
-  durationMinutes         Int?     @map("duration_minutes")
+  performedBy     String   @map("performed_by")
+  timestamp       DateTime @default(now())
+  durationMinutes Int?     @map("duration_minutes")
 
   // Location tracking
-  areaFrom                String?  @map("area_from")
-  areaTo                  String?  @map("area_to")
+  areaFrom String? @map("area_from")
+  areaTo   String? @map("area_to")
 
   // Quantity tracking
-  quantityBefore          Int?     @map("quantity_before")
-  quantityAfter           Int?     @map("quantity_after")
+  quantityBefore Int? @map("quantity_before")
+  quantityAfter  Int? @map("quantity_after")
 
   // QR code scanning record
-  qrScanned               String?  @map("qr_scanned")
-  scanTimestamp           DateTime? @map("scan_timestamp")
+  qrScanned     String?   @map("qr_scanned")
+  scanTimestamp DateTime? @map("scan_timestamp")
 
   // Materials and resources used
-  materialsConsumed       Json     @default("[]") @map("materials_consumed")
-  equipmentUsed           Json     @default("[]") @map("equipment_used")
+  materialsConsumed Json @default("[]") @map("materials_consumed")
+  equipmentUsed     Json @default("[]") @map("equipment_used")
 
   // Quality check data
-  qualityCheckData        Json?    @map("quality_check_data")
+  qualityCheckData Json? @map("quality_check_data")
 
   // Environmental conditions
-  environmentalData       Json?    @map("environmental_data")
+  environmentalData Json? @map("environmental_data")
 
   // Media attachments
-  photos                  String[] @map("photos")
-  files                   String[] @map("files")
-  mediaMetadata           Json?    @map("media_metadata")
+  photos        String[] @map("photos")
+  files         String[] @map("files")
+  mediaMetadata Json?    @map("media_metadata")
 
   // AI assistance data
-  aiAssistanceData        Json?    @map("ai_assistance_data")
+  aiAssistanceData Json? @map("ai_assistance_data")
 
   // Results and notes
-  activityMetadata        Json     @default("{}") @map("activity_metadata")
-  notes                   String?
+  activityMetadata Json    @default("{}") @map("activity_metadata")
+  notes            String?
 
-  createdAt               DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
-  scheduledActivity       ScheduledActivity? @relation(fields: [scheduledActivityId], references: [id])
-  performedByUser         User     @relation("ActivityPerformedBy", fields: [performedBy], references: [id])
-  areaFromRel             Area?    @relation("ActivityAreaFrom", fields: [areaFrom], references: [id])
-  areaToRel               Area?    @relation("ActivityAreaTo", fields: [areaTo], references: [id])
-  batch                   Batch?   @relation("ActivityBatch", fields: [entityId], references: [id], map: "activities_batch_fkey")
-  plant                   Plant?   @relation("ActivityPlant", fields: [entityId], references: [id], map: "activities_plant_fkey")
-  mediaFiles              MediaFile[]
+  scheduledActivity ScheduledActivity? @relation(fields: [scheduledActivityId], references: [id])
+  performedByUser   User               @relation("ActivityPerformedBy", fields: [performedBy], references: [id])
+  areaFromRel       Area?              @relation("ActivityAreaFrom", fields: [areaFrom], references: [id])
+  areaToRel         Area?              @relation("ActivityAreaTo", fields: [areaTo], references: [id])
+  batch             Batch?             @relation("ActivityBatch", fields: [entityId], references: [id], map: "activities_batch_fkey")
+  plant             Plant?             @relation("ActivityPlant", fields: [entityId], references: [id], map: "activities_plant_fkey")
+  mediaFiles        MediaFile[]
 
   @@map("activities")
 }
 
 model PestDiseaseRecord {
-  id                      String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Location and entity
-  facilityId              String   @map("facility_id")
-  areaId                  String   @map("area_id")
-  entityType              String   @map("entity_type")
-  entityId                String   @map("entity_id")
+  facilityId String @map("facility_id")
+  areaId     String @map("area_id")
+  entityType String @map("entity_type")
+  entityId   String @map("entity_id")
 
   // Pest/Disease identification
-  pestDiseaseId           String   @map("pest_disease_id")
-  detectionMethod         String?  @map("detection_method")
-  confidenceLevel         String?  @map("confidence_level")
+  pestDiseaseId   String  @map("pest_disease_id")
+  detectionMethod String? @map("detection_method")
+  confidenceLevel String? @map("confidence_level")
 
   // Assessment
-  severityLevel           String?  @map("severity_level")
-  affectedPercentage      Decimal? @map("affected_percentage") @db.Decimal(5, 2)
-  affectedPlantCount      Int?     @map("affected_plant_count")
-  progressionStage        String?  @map("progression_stage")
+  severityLevel      String?  @map("severity_level")
+  affectedPercentage Decimal? @map("affected_percentage") @db.Decimal(5, 2)
+  affectedPlantCount Int?     @map("affected_plant_count")
+  progressionStage   String?  @map("progression_stage")
 
   // Detection details
-  detectedBy              String   @map("detected_by")
-  detectionDate           DateTime @default(now()) @map("detection_date")
-  aiDetectionData         Json?    @map("ai_detection_data")
+  detectedBy      String   @map("detected_by")
+  detectionDate   DateTime @default(now()) @map("detection_date")
+  aiDetectionData Json?    @map("ai_detection_data")
 
   // Environmental factors
   environmentalConditions Json?    @map("environmental_conditions")
   likelyCauses            String[] @map("likely_causes")
 
   // Documentation
-  photos                  String[] @map("photos")
-  description             String?
+  photos      String[] @map("photos")
+  description String?
 
   // Treatment and follow-up
-  immediateActionTaken    Boolean  @default(false) @map("immediate_action_taken")
-  immediateActions        Json?    @map("immediate_actions")
-  treatmentPlanId         String?  @map("treatment_plan_id")
-  followupRequired        Boolean  @default(true) @map("followup_required")
-  scheduledFollowupDate   DateTime? @map("scheduled_followup_date")
+  immediateActionTaken  Boolean   @default(false) @map("immediate_action_taken")
+  immediateActions      Json?     @map("immediate_actions")
+  treatmentPlanId       String?   @map("treatment_plan_id")
+  followupRequired      Boolean   @default(true) @map("followup_required")
+  scheduledFollowupDate DateTime? @map("scheduled_followup_date")
 
   // Resolution tracking
-  resolutionStatus        String   @default("active") @map("resolution_status")
-  resolutionDate          DateTime? @map("resolution_date")
-  resolutionNotes         String?  @map("resolution_notes")
+  resolutionStatus String    @default("active") @map("resolution_status")
+  resolutionDate   DateTime? @map("resolution_date")
+  resolutionNotes  String?   @map("resolution_notes")
 
-  notes                   String?
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  facility                Facility @relation(fields: [facilityId], references: [id])
-  area                    Area     @relation(fields: [areaId], references: [id])
-  pestDisease             PestDisease @relation(fields: [pestDiseaseId], references: [id])
-  detectedByUser          User     @relation(fields: [detectedBy], references: [id])
+  facility       Facility    @relation(fields: [facilityId], references: [id])
+  area           Area        @relation(fields: [areaId], references: [id])
+  pestDisease    PestDisease @relation(fields: [pestDiseaseId], references: [id])
+  detectedByUser User        @relation(fields: [detectedBy], references: [id])
 
   @@map("pest_disease_records")
 }
 
 model PestDisease {
-  id                      String   @id @default(cuid())
-  name                    String
-  scientificName          String?  @map("scientific_name")
+  id             String  @id @default(cuid())
+  name           String
+  scientificName String? @map("scientific_name")
 
   // Classification
-  type                    String
-  category                String?
+  type     String
+  category String?
 
   // Colombian context
-  affectedCropTypes       String[] @map("affected_crop_types")
-  colombianRegions        String[] @map("colombian_regions")
-  seasonalPattern         String?  @map("seasonal_pattern")
+  affectedCropTypes String[] @map("affected_crop_types")
+  colombianRegions  String[] @map("colombian_regions")
+  seasonalPattern   String?  @map("seasonal_pattern")
 
   // Identification
-  identificationGuide     String?  @map("identification_guide")
-  symptoms                Json?
-  similarConditions       String[] @map("similar_conditions")
+  identificationGuide String?  @map("identification_guide")
+  symptoms            Json?
+  similarConditions   String[] @map("similar_conditions")
 
   // AI training status
-  aiModelTrained          Boolean  @default(false) @map("ai_model_trained")
-  aiDetectionAccuracy     Decimal? @map("ai_detection_accuracy") @db.Decimal(5, 2)
+  aiModelTrained      Boolean  @default(false) @map("ai_model_trained")
+  aiDetectionAccuracy Decimal? @map("ai_detection_accuracy") @db.Decimal(5, 2)
 
   // Treatment information
-  preventionMethods       Json?    @map("prevention_methods")
-  treatmentOptions        Json?    @map("treatment_options")
+  preventionMethods Json? @map("prevention_methods")
+  treatmentOptions  Json? @map("treatment_options")
 
   // Severity and impact
-  economicImpact          String?  @map("economic_impact")
-  spreadRate              String?  @map("spread_rate")
+  economicImpact String? @map("economic_impact")
+  spreadRate     String? @map("spread_rate")
 
   // Status
-  isQuarantinable         Boolean  @default(false) @map("is_quarantinable")
-  regulatoryStatus        String?  @map("regulatory_status")
+  isQuarantinable  Boolean @default(false) @map("is_quarantinable")
+  regulatoryStatus String? @map("regulatory_status")
 
-  status                  String   @default("active")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  records                 PestDiseaseRecord[]
+  records PestDiseaseRecord[]
 
   @@map("pests_diseases")
 }
@@ -1274,204 +1276,204 @@ model PestDisease {
 // =============================================
 
 model MediaFile {
-  id                      String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // File identification
-  filename                String
-  originalFilename        String   @map("original_filename")
-  fileSizeBytes           BigInt   @map("file_size_bytes")
-  mimeType                String   @map("mime_type")
-  fileExtension           String?  @map("file_extension")
+  filename         String
+  originalFilename String  @map("original_filename")
+  fileSizeBytes    BigInt  @map("file_size_bytes")
+  mimeType         String  @map("mime_type")
+  fileExtension    String? @map("file_extension")
 
   // Storage location
-  storageProvider         String?  @map("storage_provider")
-  storagePath             String   @map("storage_path")
-  storageBucket           String?  @map("storage_bucket")
-  publicUrl               String?  @map("public_url")
+  storageProvider String? @map("storage_provider")
+  storagePath     String  @map("storage_path")
+  storageBucket   String? @map("storage_bucket")
+  publicUrl       String? @map("public_url")
 
   // Colombian GPS and location data
-  gpsCoordinates          Json?    @map("gps_coordinates")
-  locationTaken           String?  @map("location_taken")
-  colombianMunicipality   String?  @map("colombian_municipality")
-  altitudeMsnm            Int?     @map("altitude_msnm")
+  gpsCoordinates        Json?   @map("gps_coordinates")
+  locationTaken         String? @map("location_taken")
+  colombianMunicipality String? @map("colombian_municipality")
+  altitudeMsnm          Int?    @map("altitude_msnm")
 
   // Image/video metadata
-  resolutionWidth         Int?     @map("resolution_width")
-  resolutionHeight        Int?     @map("resolution_height")
-  durationSeconds         Int?     @map("duration_seconds")
+  resolutionWidth  Int? @map("resolution_width")
+  resolutionHeight Int? @map("resolution_height")
+  durationSeconds  Int? @map("duration_seconds")
 
   // Content analysis
-  aiAnalysisPerformed     Boolean  @default(false) @map("ai_analysis_performed")
-  aiAnalysisResults       Json?    @map("ai_analysis_results")
+  aiAnalysisPerformed Boolean @default(false) @map("ai_analysis_performed")
+  aiAnalysisResults   Json?   @map("ai_analysis_results")
 
   // Association with entities
-  associatedEntityType    String?  @map("associated_entity_type")
-  associatedEntityId      String?  @map("associated_entity_id")
-  activityId              String?  @map("activity_id")
+  associatedEntityType String? @map("associated_entity_type")
+  associatedEntityId   String? @map("associated_entity_id")
+  activityId           String? @map("activity_id")
 
   // Tagging and organization
-  tags                    String[] @map("tags")
-  autoGeneratedTags       String[] @map("auto_generated_tags")
-  category                String?
+  tags              String[] @map("tags")
+  autoGeneratedTags String[] @map("auto_generated_tags")
+  category          String?
 
   // Colombian compliance
-  isComplianceDocument    Boolean  @default(false) @map("is_compliance_document")
-  regulatorySignificance  String?  @map("regulatory_significance")
-  retentionPeriodYears    Int?     @map("retention_period_years")
+  isComplianceDocument   Boolean @default(false) @map("is_compliance_document")
+  regulatorySignificance String? @map("regulatory_significance")
+  retentionPeriodYears   Int?    @map("retention_period_years")
 
   // Quality and processing
-  qualityScore            Decimal? @map("quality_score") @db.Decimal(3, 2)
-  isProcessed             Boolean  @default(false) @map("is_processed")
-  processingStatus        String?  @map("processing_status")
+  qualityScore     Decimal? @map("quality_score") @db.Decimal(3, 2)
+  isProcessed      Boolean  @default(false) @map("is_processed")
+  processingStatus String?  @map("processing_status")
 
   // Access control
-  visibility              String   @default("private")
-  companyId               String   @map("company_id")
-  uploadedBy              String   @map("uploaded_by")
+  visibility String @default("private")
+  companyId  String @map("company_id")
+  uploadedBy String @map("uploaded_by")
 
   // Timestamps
-  capturedAt              DateTime? @map("captured_at")
-  uploadedAt              DateTime @default(now()) @map("uploaded_at")
-  processedAt             DateTime? @map("processed_at")
+  capturedAt  DateTime? @map("captured_at")
+  uploadedAt  DateTime  @default(now()) @map("uploaded_at")
+  processedAt DateTime? @map("processed_at")
 
-  notes                   String?
-  status                  String   @default("active")
+  notes  String?
+  status String  @default("active")
 
   // Relations
-  company                 Company  @relation(fields: [companyId], references: [id])
-  uploadedByUser          User     @relation(fields: [uploadedBy], references: [id])
-  activity                Activity? @relation(fields: [activityId], references: [id])
+  company        Company   @relation(fields: [companyId], references: [id])
+  uploadedByUser User      @relation(fields: [uploadedBy], references: [id])
+  activity       Activity? @relation(fields: [activityId], references: [id])
 
   @@map("media_files")
 }
 
 model ComplianceEvent {
-  id                      String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Event identification
-  eventType               String   @map("event_type")
-  eventCategory           String?  @map("event_category")
+  eventType     String  @map("event_type")
+  eventCategory String? @map("event_category")
 
   // Colombian regulatory context
-  regulatoryAuthority     String?  @map("regulatory_authority")
-  regulationReference     String?  @map("regulation_reference")
-  complianceRequirement   String?  @map("compliance_requirement")
+  regulatoryAuthority   String? @map("regulatory_authority")
+  regulationReference   String? @map("regulation_reference")
+  complianceRequirement String? @map("compliance_requirement")
 
   // Entity association
-  entityType              String   @map("entity_type")
-  entityId                String   @map("entity_id")
-  companyId               String   @map("company_id")
-  facilityId              String?  @map("facility_id")
+  entityType String  @map("entity_type")
+  entityId   String  @map("entity_id")
+  companyId  String  @map("company_id")
+  facilityId String? @map("facility_id")
 
   // Event details
-  title                   String
-  description             String
-  severity                String?
+  title       String
+  description String
+  severity    String?
 
   // Detection and reporting
-  detectedBy              String?  @map("detected_by")
-  detectedByUserId        String?  @map("detected_by_user_id")
-  detectionDate           DateTime @default(now()) @map("detection_date")
+  detectedBy       String?  @map("detected_by")
+  detectedByUserId String?  @map("detected_by_user_id")
+  detectionDate    DateTime @default(now()) @map("detection_date")
 
   // Status and resolution
-  status                  String   @default("open")
-  assignedTo              String?  @map("assigned_to")
-  dueDate                 DateTime? @map("due_date")
-  resolutionDate          DateTime? @map("resolution_date")
-  resolutionNotes         String?  @map("resolution_notes")
+  status          String    @default("open")
+  assignedTo      String?   @map("assigned_to")
+  dueDate         DateTime? @map("due_date")
+  resolutionDate  DateTime? @map("resolution_date")
+  resolutionNotes String?   @map("resolution_notes")
 
   // Actions taken
-  immediateActions        Json?    @map("immediate_actions")
-  preventiveActions       Json?    @map("preventive_actions")
-  correctiveActions       Json?    @map("corrective_actions")
+  immediateActions  Json? @map("immediate_actions")
+  preventiveActions Json? @map("preventive_actions")
+  correctiveActions Json? @map("corrective_actions")
 
   // Documentation
-  supportingDocuments     String[] @map("supporting_documents")
-  photos                  String[] @map("photos")
+  supportingDocuments String[] @map("supporting_documents")
+  photos              String[] @map("photos")
 
   // Colombian specific fields
-  requiresGovernmentNotification Boolean @default(false) @map("requires_government_notification")
-  notificationSent        DateTime? @map("notification_sent")
-  governmentResponse      String?  @map("government_response")
+  requiresGovernmentNotification Boolean   @default(false) @map("requires_government_notification")
+  notificationSent               DateTime? @map("notification_sent")
+  governmentResponse             String?   @map("government_response")
 
   // Financial impact
-  estimatedCostCop        Decimal? @map("estimated_cost_cop") @db.Decimal(12, 2)
-  actualCostCop           Decimal? @map("actual_cost_cop") @db.Decimal(12, 2)
+  estimatedCostCop Decimal? @map("estimated_cost_cop") @db.Decimal(12, 2)
+  actualCostCop    Decimal? @map("actual_cost_cop") @db.Decimal(12, 2)
 
   // Follow-up
-  followupRequired        Boolean  @default(false) @map("followup_required")
+  followupRequired        Boolean   @default(false) @map("followup_required")
   followupDate            DateTime? @map("followup_date")
-  recurringCheckFrequency String?  @map("recurring_check_frequency")
+  recurringCheckFrequency String?   @map("recurring_check_frequency")
 
   // Audit trail
-  createdBy               String?  @map("created_by")
-  updatedBy               String?  @map("updated_by")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Immutable audit flag
-  isAuditLocked           Boolean  @default(false) @map("is_audit_locked")
-  auditLockReason         String?  @map("audit_lock_reason")
+  isAuditLocked   Boolean @default(false) @map("is_audit_locked")
+  auditLockReason String? @map("audit_lock_reason")
 
   // Relations
-  company                 Company  @relation(fields: [companyId], references: [id])
-  facility                Facility? @relation(fields: [facilityId], references: [id])
-  detectedByUser          User?    @relation("ComplianceEventCreatedBy", fields: [detectedByUserId], references: [id])
-  assignedToUser          User?    @relation("ComplianceEventAssignedTo", fields: [assignedTo], references: [id])
-  createdByUser           User?    @relation(fields: [createdBy], references: [id])
+  company        Company   @relation(fields: [companyId], references: [id])
+  facility       Facility? @relation(fields: [facilityId], references: [id])
+  detectedByUser User?     @relation("ComplianceEventCreatedBy", fields: [detectedByUserId], references: [id])
+  assignedToUser User?     @relation("ComplianceEventAssignedTo", fields: [assignedTo], references: [id])
+  createdByUser  User?     @relation(fields: [createdBy], references: [id])
 
   @@map("compliance_events")
 }
 
 model Certificate {
-  id                      String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Certificate identification
-  certificateNumber       String   @map("certificate_number")
-  certificateName         String   @map("certificate_name")
-  certificateType         String   @map("certificate_type")
+  certificateNumber String @map("certificate_number")
+  certificateName   String @map("certificate_name")
+  certificateType   String @map("certificate_type")
 
   // Issuing authority
-  issuingAuthority        String   @map("issuing_authority")
-  issuerAccreditation     String?  @map("issuer_accreditation")
+  issuingAuthority    String  @map("issuing_authority")
+  issuerAccreditation String? @map("issuer_accreditation")
 
   // Certificate scope
-  appliesToEntityType     String   @map("applies_to_entity_type")
-  appliesToEntityId       String   @map("applies_to_entity_id")
-  companyId               String   @map("company_id")
+  appliesToEntityType String @map("applies_to_entity_type")
+  appliesToEntityId   String @map("applies_to_entity_id")
+  companyId           String @map("company_id")
 
   // Colombian context
-  colombianAuthority      String?  @map("colombian_authority")
-  nationalRegistration    String?  @map("national_registration")
+  colombianAuthority   String? @map("colombian_authority")
+  nationalRegistration String? @map("national_registration")
 
   // Validity
-  issuedDate              DateTime @map("issued_date")
-  expiryDate              DateTime? @map("expiry_date")
-  isRenewable             Boolean  @default(true) @map("is_renewable")
-  renewalNoticeDays       Int      @default(90) @map("renewal_notice_days")
+  issuedDate        DateTime  @map("issued_date")
+  expiryDate        DateTime? @map("expiry_date")
+  isRenewable       Boolean   @default(true) @map("is_renewable")
+  renewalNoticeDays Int       @default(90) @map("renewal_notice_days")
 
   // Certificate details
-  scopeDescription        String?  @map("scope_description")
-  conditions              Json?
-  standardsMet            String[] @map("standards_met")
+  scopeDescription String?  @map("scope_description")
+  conditions       Json?
+  standardsMet     String[] @map("standards_met")
 
   // Documentation
-  certificateDocumentUrl  String?  @map("certificate_document_url")
-  supportingDocuments     String[] @map("supporting_documents")
+  certificateDocumentUrl String?  @map("certificate_document_url")
+  supportingDocuments    String[] @map("supporting_documents")
 
   // Verification
-  verificationMethod      String?  @map("verification_method")
-  verificationUrl         String?  @map("verification_url")
-  verificationCode        String?  @map("verification_code")
+  verificationMethod String? @map("verification_method")
+  verificationUrl    String? @map("verification_url")
+  verificationCode   String? @map("verification_code")
 
   // Status tracking
-  status                  String   @default("valid")
-  suspensionReason        String?  @map("suspension_reason")
-  suspensionDate          DateTime? @map("suspension_date")
-  reinstatementDate       DateTime? @map("reinstatement_date")
+  status            String    @default("valid")
+  suspensionReason  String?   @map("suspension_reason")
+  suspensionDate    DateTime? @map("suspension_date")
+  reinstatementDate DateTime? @map("reinstatement_date")
 
   // Compliance integration
-  regulatoryWeight        Int?     @map("regulatory_weight")
+  regulatoryWeight         Int?    @map("regulatory_weight")
   automaticComplianceCheck Boolean @default(true) @map("automatic_compliance_check")
 
   // Notifications
@@ -1480,17 +1482,198 @@ model Certificate {
   renewalNotificationSent DateTime? @map("renewal_notification_sent")
 
   // Audit
-  uploadedBy              String?  @map("uploaded_by")
-  verifiedBy              String?  @map("verified_by")
-  notes                   String?
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  uploadedBy String?  @map("uploaded_by")
+  verifiedBy String?  @map("verified_by")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   // Relations
-  company                 Company  @relation(fields: [companyId], references: [id])
-  uploadedByUser          User?    @relation("CertificateUploadedBy", fields: [uploadedBy], references: [id])
-  verifiedByUser          User?    @relation("CertificateVerifiedBy", fields: [verifiedBy], references: [id])
+  company        Company @relation(fields: [companyId], references: [id])
+  uploadedByUser User?   @relation("CertificateUploadedBy", fields: [uploadedBy], references: [id])
+  verifiedByUser User?   @relation("CertificateVerifiedBy", fields: [verifiedBy], references: [id])
 
   @@map("certificates")
 }
 
+// =============================================
+// SUBSCRIPTION & PAYMENTS
+// =============================================
+
+model Plan {
+  id            String  @id @default(cuid())
+  name          String  @unique
+  displayNameEs String  @map("display_name_es")
+  displayNameEn String  @map("display_name_en")
+  description   String?
+
+  // Pricing (COP)
+  monthlyPriceCop Decimal  @map("monthly_price_cop") @db.Decimal(12, 2)
+  annualPriceCop  Decimal? @map("annual_price_cop") @db.Decimal(12, 2)
+
+  // Limits
+  maxFacilities         Int  @map("max_facilities")
+  maxUsers              Int  @map("max_users")
+  maxCropTypes          Int? @map("max_crop_types")
+  maxActivitiesPerMonth Int? @map("max_activities_per_month")
+  storageGb             Int? @map("storage_gb")
+
+  // Features
+  aiPestDetection      Boolean @default(false) @map("ai_pest_detection")
+  aiTemplateGeneration Boolean @default(false) @map("ai_template_generation")
+  aiPhotoAnalysis      Boolean @default(false) @map("ai_photo_analysis")
+  apiAccessEnabled     Boolean @default(false) @map("api_access_enabled")
+  advancedAnalytics    Boolean @default(false) @map("advanced_analytics")
+  prioritySupport      Boolean @default(false) @map("priority_support")
+
+  // Trial
+  trialDays             Int?    @map("trial_days")
+  requiresPaymentMethod Boolean @default(true) @map("requires_payment_method")
+
+  // Visibility
+  isActive  Boolean @default(true) @map("is_active")
+  isPublic  Boolean @default(true) @map("is_public")
+  sortOrder Int     @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id        String @id @default(cuid())
+  companyId String @unique @map("company_id")
+  planId    String @map("plan_id")
+
+  // Status
+  status String @default("active") // active, trialing, past_due, canceled, expired
+
+  // Trial
+  isTrialing     Boolean   @default(false) @map("is_trialing")
+  trialStartedAt DateTime? @map("trial_started_at")
+  trialEndsAt    DateTime? @map("trial_ends_at")
+
+  // Current billing period
+  currentPeriodStart DateTime @map("current_period_start")
+  currentPeriodEnd   DateTime @map("current_period_end")
+
+  // Payment
+  lastPaymentDate DateTime? @map("last_payment_date")
+  nextPaymentDue  DateTime? @map("next_payment_due")
+  autoRenew       Boolean   @default(false) @map("auto_renew")
+
+  // Notifications
+  expirationReminderSent Boolean   @default(false) @map("expiration_reminder_sent")
+  reminderSentAt         DateTime? @map("reminder_sent_at")
+
+  // Usage tracking
+  currentMonthActivities Int      @default(0) @map("current_month_activities")
+  usageResetDate         DateTime @map("usage_reset_date")
+
+  // Cancellation
+  canceledAt         DateTime? @map("canceled_at")
+  cancellationReason String?   @map("cancellation_reason")
+  cancelAtPeriodEnd  Boolean   @default(false) @map("cancel_at_period_end")
+
+  // Audit
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  company   Company    @relation(fields: [companyId], references: [id])
+  plan      Plan       @relation(fields: [planId], references: [id])
+  payments  Payment[]
+  usageLogs UsageLog[]
+
+  @@map("subscriptions")
+}
+
+model Payment {
+  id             String @id @default(cuid())
+  subscriptionId String @map("subscription_id")
+  companyId      String @map("company_id")
+
+  // Payment details
+  amountCop Decimal @map("amount_cop") @db.Decimal(12, 2)
+  currency  String  @default("COP")
+
+  // Wompi integration
+  wompiTransactionId String? @unique @map("wompi_transaction_id")
+  wompiReferenceCode String  @unique @map("wompi_reference_code")
+  wompiCheckoutUrl   String? @map("wompi_checkout_url")
+
+  // Payment method
+  paymentMethod      String? @map("payment_method") // pse, card, nequi
+  paymentMethodBrand String? @map("payment_method_brand")
+  lastFourDigits     String? @map("last_four_digits")
+
+  // Status
+  status String @default("pending") // pending, completed, failed, refunded, expired
+
+  // Billing period covered
+  billingPeriodStart DateTime @map("billing_period_start")
+  billingPeriodEnd   DateTime @map("billing_period_end")
+
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  attemptedAt DateTime? @map("attempted_at")
+  completedAt DateTime? @map("completed_at")
+  failedAt    DateTime? @map("failed_at")
+  expiredAt   DateTime? @map("expired_at")
+
+  // Failure details
+  failureCode    String? @map("failure_code")
+  failureMessage String? @map("failure_message")
+
+  // Invoice
+  invoiceNumber String? @unique @map("invoice_number")
+  invoicePdfUrl String? @map("invoice_pdf_url")
+
+  // Colombian tax
+  subtotalCop   Decimal @map("subtotal_cop") @db.Decimal(12, 2)
+  ivaCop        Decimal @map("iva_cop") @db.Decimal(12, 2)
+  ivaPercentage Decimal @default(19) @map("iva_percentage") @db.Decimal(5, 2)
+
+  // Refund
+  refundedAt        DateTime? @map("refunded_at")
+  refundReason      String?   @map("refund_reason")
+  refundedAmountCop Decimal?  @map("refunded_amount_cop") @db.Decimal(12, 2)
+
+  // Metadata
+  metadata Json?
+
+  // Relations
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  company      Company      @relation(fields: [companyId], references: [id])
+
+  @@map("payments")
+}
+
+model UsageLog {
+  id             String @id @default(cuid())
+  subscriptionId String @map("subscription_id")
+  companyId      String @map("company_id")
+
+  // Usage metrics
+  usageType String @map("usage_type") // activities, storage, api_calls
+  count     Int    @default(1)
+
+  // Period
+  periodStart DateTime @map("period_start")
+  periodEnd   DateTime @map("period_end")
+
+  // Metadata
+  metadata Json?
+
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  // Relations
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@index([subscriptionId, periodStart])
+  @@map("usage_logs")
+}

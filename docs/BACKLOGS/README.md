@@ -20,13 +20,13 @@ Backlogs are task lists for @frontend and @backend subagents. They should be:
 ## 🎯 Backlog Philosophy
 
 ### ✅ Good Backlog
-- **Epic/Task structure** - Organized by epics with clear tasks
+- Epic/Task structure - Organized by epics with clear tasks
 - Lists specific files to create
 - Defines component/endpoint requirements clearly
-- **References PRDs** for business rules (don't duplicate)
+- References PRDs for business rules (don't duplicate)
 - Identifies integration points
 - Includes acceptance criteria
-- **Trusts agent intelligence** - Agent queries context files as needed
+- Trusts agent intelligence - Agent queries context files as needed
 - Trusts subagent to implement details
 
 ### ❌ Bad Backlog
@@ -193,8 +193,8 @@ Backend endpoints needed:
 ✅ **Use Epic/Task structure** for organization
 ✅ List specific components/files to create
 ✅ Define clear requirements per epic/task
-✅ **Reference PRDs** for business rules ("See Product PRD section X")
-✅ **Reference schema** for data models ("Query schema.prisma lines XX-YY")
+✅ Reference PRDs for business rules ("See Product PRD section X")
+✅ Reference schema for data models ("Query schema.prisma lines XX-YY")
 ✅ Identify backend integration points (API contracts)
 ✅ Include realistic acceptance criteria
 ✅ Trust agent to query context files as needed
@@ -202,9 +202,9 @@ Backend endpoints needed:
 ### DON'T:
 ❌ Write code snippets or pseudo-code
 ❌ Over-specify implementation details
-❌ **Duplicate PRD content** (Colombian rules, formatting, etc.)
-❌ **Excerpt database schema** (agent can read it)
-❌ **Copy sample data** from seed files (agent can query)
+❌ Duplicate PRD content (Colombian rules, formatting, etc.)
+❌ Excerpt database schema (agent can read it)
+❌ Copy sample data from seed files (agent can query)
 ❌ Micromanage UI/UX design choices
 ❌ Create ambiguous tasks
 
