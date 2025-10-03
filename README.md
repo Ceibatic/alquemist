@@ -186,8 +186,8 @@ npm run format:check     # Check code formatting
 - [Development Setup Guide](docs/Development%20Setup%20Guide%20v4.0.md)
 - [GitHub Setup & CI/CD](docs/GITHUB_SETUP.md)
 - [Database Schema](docs/Alquemist%20-%20Database%20Schema%20&%20Colombian%20Seeds%20v4.0.md)
-- [Engineering PRD](docs/Engineering%20PRD%20-%20Alquemist%20v4.0%20(Updated).md)
-- [Product PRD](docs/Product%20PRD%20-%20Alquemist%20v4.0%20(Updated).md)
+- [Engineering PRD](docs/Engineering%20PRD%20-%20Alquemist%20v4.1.md)
+- [Product PRD](docs/Product%20PRD%20-%20Alquemist%20v4.1.md)
 
 ---
 

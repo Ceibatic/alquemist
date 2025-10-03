@@ -258,8 +258,8 @@
 - [CONTEXT_MANAGEMENT.md](CONTEXT_MANAGEMENT.md) - Compaction strategy
 - [COMPONENT_INVENTORY.md](COMPONENT_INVENTORY.md) - Component catalog (empty)
 - [IMPLEMENTATION_LOG.md](IMPLEMENTATION_LOG.md) - File tracking (empty)
-- [Product PRD](Product%20PRD%20-%20Alquemist%20v4.0%20%28Updated%29.md) - Feature specifications
-- [Engineering PRD](Engineering%20PRD%20-%20Alquemist%20v4.0%20%28Updated%29.md) - Technical specs
+- [Product PRD](Product%20PRD%20-%20Alquemist%20v4.1.md) - Feature specifications
+- [Engineering PRD](Engineering%20PRD%20-%20Alquemist%20v4.1.md) - Technical specs
 - [Database Schema](../packages/database/prisma/schema.prisma) - Prisma schema
 
 ---
