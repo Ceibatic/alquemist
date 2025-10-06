@@ -35,7 +35,9 @@
       "Bash(git checkout:*)",
       "Bash(DATABASE_URL=\"postgresql://alquemist:alquemist_dev_2025@localhost:5432/alquemist_dev\" npx prisma migrate dev --name add_session_model)",
       "Bash(DATABASE_URL=\"postgresql://alquemist:alquemist_dev_2025@localhost:5432/alquemist_dev\" npx prisma db push)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(chmod:*)",
+      "Read(//home/kris/.npm/_logs/**)"
     ],
     "deny": [],
     "ask": []

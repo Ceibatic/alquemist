@@ -31,12 +31,20 @@ npm run docker:up
 ### 2. Environment Setup
 
 ```bash
-# Verify .env.local exists
+# Verify root .env.local exists
 ls -la .env.local
 
 # If missing, create it
 cp .env.example .env.local
 ```
+
+**Frontend Environment** (prevents ENOWORKSPACES warning):
+
+The file `apps/web/.env.local` is already configured with:
+- `NEXT_TELEMETRY_DISABLED=1` - Disables Next.js telemetry (fixes npm workspace error)
+- `NEXT_PUBLIC_API_URL=http://localhost:8000` - Backend API URL
+
+**Note**: This fixes the harmless `npm error code ENOWORKSPACES` message during Next.js startup.
 
 ### 3. Database Setup
 
@@ -306,6 +314,31 @@ Or create `.env` file in `apps/api/`:
 ```bash
 # apps/api/.env
 DATABASE_URL="postgresql://alquemist:alquemist_dev_2025@localhost:5432/alquemist_dev"
+```
+
+---
+
+### Issue: "npm error code ENOWORKSPACES" during Next.js startup
+
+**Error**:
+```
+npm error code ENOWORKSPACES
+npm error This command does not support workspaces.
+```
+
+**Status**: ✅ **Harmless** - Next.js runs fine despite this message
+
+**What's happening**:
+- Next.js telemetry tries to run `npm config get registry`
+- This command doesn't support monorepo workspaces in npm 10.9+
+- Server continues running normally ("Ready in 2.5s")
+
+**Already Fixed in MODULE 1**:
+The file `apps/web/.env.local` contains `NEXT_TELEMETRY_DISABLED=1` which prevents this error.
+
+**If you still see it**: Make sure `apps/web/.env.local` exists with:
+```bash
+NEXT_TELEMETRY_DISABLED=1
 ```
 
 ---
