@@ -164,8 +164,24 @@ model User {
   certificatesUploaded        Certificate[]          @relation("CertificateUploadedBy")
   certificatesVerified        Certificate[]          @relation("CertificateVerifiedBy")
   complianceEventsCreatedByMe ComplianceEvent[]
+  sessions                    Session[]
 
   @@map("users")
+}
+
+// =============================================
+// SESSION MANAGEMENT (Lucia Auth)
+// =============================================
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
 }
 
 // =============================================

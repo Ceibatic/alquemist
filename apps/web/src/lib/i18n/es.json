@@ -1,0 +1,64 @@
+{
+  "auth": {
+    "register": {
+      "title": "Crear Cuenta",
+      "subtitle": "Regístrate para comenzar con Alquemist",
+      "firstName": "Nombre(s)",
+      "lastName": "Apellido(s)",
+      "email": "Correo Electrónico",
+      "password": "Contraseña",
+      "confirmPassword": "Confirmar Contraseña",
+      "companyName": "Nombre de la Empresa",
+      "businessEntityType": "Tipo de Entidad Comercial",
+      "department": "Departamento",
+      "municipality": "Municipio",
+      "submit": "Crear Cuenta",
+      "hasAccount": "¿Ya tienes cuenta?",
+      "loginLink": "Inicia sesión",
+      "selectPlaceholder": "Seleccionar...",
+      "searchPlaceholder": "Buscar..."
+    },
+    "login": {
+      "title": "Iniciar Sesión",
+      "subtitle": "Ingresa a tu cuenta de Alquemist",
+      "email": "Correo Electrónico",
+      "password": "Contraseña",
+      "submit": "Iniciar Sesión",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "noAccount": "¿No tienes cuenta?",
+      "registerLink": "Regístrate"
+    },
+    "dashboard": {
+      "welcome": "Bienvenido",
+      "company": "Empresa",
+      "logout": "Cerrar Sesión"
+    },
+    "businessEntityTypes": {
+      "SAS": "S.A.S - Sociedad por Acciones Simplificada",
+      "SA": "S.A. - Sociedad Anónima",
+      "LTDA": "Ltda - Sociedad Limitada",
+      "EU": "E.U. - Empresa Unipersonal",
+      "PERSONA_NATURAL": "Persona Natural"
+    },
+    "errors": {
+      "emailRequired": "El correo electrónico es obligatorio",
+      "emailInvalid": "Correo electrónico inválido",
+      "passwordRequired": "La contraseña es obligatoria",
+      "passwordMinLength": "La contraseña debe tener al menos 8 caracteres",
+      "passwordsDontMatch": "Las contraseñas no coinciden",
+      "emailExists": "Este correo electrónico ya está registrado",
+      "invalidCredentials": "Email o contraseña incorrectos",
+      "serverError": "Error del servidor. Inténtalo de nuevo.",
+      "networkError": "Error de conexión. Verifica tu conexión a internet.",
+      "unknownError": "Error desconocido. Inténtalo de nuevo."
+    }
+  },
+  "common": {
+    "loading": "Cargando...",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar"
+  }
+}

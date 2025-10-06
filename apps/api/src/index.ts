@@ -1,5 +1,7 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import cookie from '@fastify/cookie'
+import { authRoutes } from './routes/auth'
 
 const fastify = Fastify({
   logger: true
@@ -7,13 +9,22 @@ const fastify = Fastify({
 
 // Register plugins
 fastify.register(cors, {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000'
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  credentials: true
+})
+
+fastify.register(cookie, {
+  secret: process.env.COOKIE_SECRET || 'alquemist-dev-secret-change-in-production',
+  parseOptions: {}
 })
 
 // Health check route
 fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() }
 })
+
+// Register routes
+fastify.register(authRoutes, { prefix: '/api/auth' })
 
 // Start server
 const start = async () => {

@@ -18,11 +18,5 @@ export interface ColombianAddress {
   postalCode?: string
 }
 
-// Re-export tipos de Prisma
-export type {
-  Company,
-  User,
-  Facility,
-  Batch,
-  Activity
-} from '@prisma/client'
+// Re-export auth types
+export * from './auth'
