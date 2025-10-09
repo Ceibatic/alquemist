@@ -1,6 +1,6 @@
 # Product Requirements - Alquemist
 
-**Multi-Crop Agriculture Platform for Colombian Market**
+**Multi-Crop Agriculture Platform**
 
 **Version**: 1.0
 **Date**: January 2025
@@ -11,7 +11,7 @@
 
 This document defines **what** we're building and **why** it matters to users. Each module provides:
 - Clear feature descriptions
-- User stories from Colombian market perspective
+- User stories from cultivator perspective
 - Success metrics
 - Dependencies
 
@@ -22,14 +22,14 @@ This document defines **what** we're building and **why** it matters to users. E
 
 ## Product Vision
 
-Alquemist is a multi-crop agriculture platform designed for Colombian operations, providing **batch-first tracking**, **AI-powered features**, and **automated compliance** to achieve 400%+ ROI for cultivators.
+Alquemist is a multi-crop agriculture platform providing **batch-first tracking**, **AI-powered features**, and **automated compliance** to achieve 400%+ ROI for cultivators.
 
 ### Core Differentiators
 
 - **Batch-first design** - Scalable, not plant-by-plant overhead
-- **Colombian regulatory compliance built-in** - INVIMA, ICA, FNC
-- **AI features trained on Colombian agricultural data**
-- **Spanish-first with Colombian terminology**
+- **Regional regulatory compliance** - Configurable for different markets
+- **AI features** - Pest detection and form digitization
+- **Multilingual** - Default Spanish, extensible to other languages
 
 ### User Onboarding Flow
 
@@ -48,29 +48,29 @@ Alquemist is a multi-crop agriculture platform designed for Colombian operations
 ## MODULE 1: Authentication & Account Creation
 
 ### Overview
-User registration with Colombian business entity support. Creates company account with owner user in single flow.
+User registration with regional business entity support. Creates company account with owner user in single flow.
 
 ### Key Features
-- Sign up with minimal fields: name, email, password, company name, business type, department, municipality
-- Colombian business entity types (S.A.S, S.A., Ltda, E.U., Persona Natural)
+- Sign up with minimal fields: name, email, password, company name, business type, region, locality
+- Regional business entity types (configurable, e.g., S.A.S, S.A., Ltda, E.U., Persona Natural for Colombia)
 - Automatic company workspace creation
 - Owner role assignment
-- Colombian geographic data integration (departments, municipalities)
+- Regional geographic data integration (administrative divisions)
 
 ### User Stories
 
-**As a Colombian Cultivator:**
+**As a Cultivator:**
 - I want to sign up quickly with minimal information
-- I want to select my Colombian business entity type
-- I want to use my department and municipality from a list
+- I want to select my business entity type from relevant options
+- I want to use my region and locality from a list
 - I want my account created immediately without complex forms
 
-### Colombian Market Requirements
-- Business entity types: S.A.S, S.A., Ltda, E.U., Persona Natural
-- Department and municipality dropdowns with DANE codes
-- Spanish as default language
-- Colombian phone number format validation
-- COP as default currency
+### Regional Requirements (Colombia Default)
+- Business entity types: S.A.S, S.A., Ltda, E.U., Persona Natural (extensible)
+- Region and locality dropdowns with administrative codes (DANE for Colombia)
+- Spanish as default language (multilingual support)
+- Phone number format validation (configurable by region)
+- Default currency configurable (COP for Colombia)
 
 ### Success Metrics
 - Registration completion rate: >85%
@@ -78,7 +78,7 @@ User registration with Colombian business entity support. Creates company accoun
 - Form abandonment rate: <15%
 
 ### Dependencies
-- Requires: PostgreSQL/Database, Colombian geographic data
+- Requires: PostgreSQL/Database, regional geographic data
 - Integrates with: Email service
 
 ---
@@ -100,12 +100,12 @@ Email confirmation system to verify user accounts before platform access.
 **As a New User:**
 - I want to receive verification email immediately
 - I want to resend email if not received
-- I want clear instructions in Spanish
+- I want clear instructions in my language
 - I want to be directed to next step after confirmation
 
-### Colombian Market Requirements
-- Spanish email templates
-- Colombian time zone for expiration display
+### Regional Requirements
+- Multilingual email templates (default: Spanish)
+- Time zone configurable for expiration display
 - SMS backup option (future enhancement)
 
 ### Success Metrics
@@ -122,14 +122,14 @@ Email confirmation system to verify user accounts before platform access.
 ## MODULE 3: Subscription & Payments
 
 ### Overview
-Payment system for Colombian market. Users select plan, pay monthly in advance via Colombian payment methods.
+Payment system with regional payment method support. Users select plan, pay monthly in advance via local payment methods.
 
 ### Key Features
 - 4 plans: Trial (free 30 days), Starter, Professional, Enterprise
-- Payment integration (Colombian payment methods: PSE, cards, Nequi, Bancolombia)
+- Payment integration (regional payment methods configurable)
 - Manual monthly renewal with automated reminders (7-day and 1-day)
 - Usage tracking against plan limits
-- Colombian invoice generation (DIAN-compliant)
+- Regional invoice generation (tax compliant)
 - Payment history and receipts
 - Plan upgrade/downgrade
 - Grace period handling (3 days past due)
@@ -138,17 +138,17 @@ Payment system for Colombian market. Users select plan, pay monthly in advance v
 
 **As a Company Owner:**
 - I want to start with free trial without credit card
-- I want to pay monthly using PSE or my Colombian bank
+- I want to pay monthly using local payment methods
 - I want to receive reminders before subscription expires
 - I want to upgrade plan when my business grows
 - I want to download invoices for accounting
 
-### Colombian Market Requirements
-- Payment methods: PSE, credit/debit cards, Nequi, Bancolombia, Daviplata
-- Currency: COP only with proper formatting ($290.000)
-- IVA: 19% tax calculation and display
-- Invoices: Electronic format compliant with DIAN
-- RUT requirement for enterprise invoices
+### Regional Requirements (Colombia Example)
+- Payment methods: PSE, credit/debit cards, Nequi, Bancolombia, Daviplata (extensible)
+- Currency: Multi-currency support (COP default: $290.000)
+- Tax: Configurable tax calculation (IVA 19% in Colombia)
+- Invoices: Electronic format compliant with regional regulations (DIAN in Colombia)
+- Tax ID requirement for enterprise invoices (RUT in Colombia)
 
 ### Plan Details
 
@@ -193,11 +193,11 @@ Post-onboarding company profile configuration. Users complete legal, contact, an
 - I want to add billing information for proper invoices
 - I want to invite team members with specific roles
 
-### Colombian Market Requirements
-- NIT validation and format
-- Cámara de Comercio registration fields
-- Colombian address format (nomenclature)
-- License types: INVIMA (cannabis), ICA (agricultural), municipal
+### Regional Requirements (Colombia Example)
+- Tax ID validation and format (NIT in Colombia)
+- Business registration fields (Cámara de Comercio in Colombia)
+- Regional address format (nomenclature in Colombia)
+- License types: Cannabis (INVIMA), Agricultural (ICA), municipal
 - RUT upload for invoicing
 
 ### Success Metrics
@@ -219,7 +219,7 @@ First facility setup during onboarding. User provides basic facility information
 ### Key Features
 - Facility creation with minimal required fields
 - License number assignment
-- Colombian geographic location
+- Regional geographic location
 - Facility type selection (indoor, outdoor, greenhouse, mixed)
 - Area calculations (total, canopy, cultivation)
 - Climate monitoring enablement
@@ -229,16 +229,16 @@ First facility setup during onboarding. User provides basic facility information
 
 **As a Company Owner:**
 - I want to create my first facility quickly
-- I want to specify my Colombian location accurately
+- I want to specify my location accurately from regional data
 - I want sample areas created automatically
 - I want to start using the platform immediately
 
-### Colombian Market Requirements
-- Colombian departments and municipalities
-- DANE municipality codes
+### Regional Requirements (Colombia Example)
+- Administrative divisions (departments and municipalities in Colombia)
+- Regional administrative codes (e.g., DANE in Colombia)
 - Altitude in MSNM (meters above sea level)
-- Colombian license format validation
-- IDEAM weather station integration
+- Regional license format validation (configurable)
+- Weather station integration (e.g., IDEAM in Colombia)
 
 ### Success Metrics
 - Facility creation completion: >95%
@@ -247,7 +247,7 @@ First facility setup during onboarding. User provides basic facility information
 
 ### Dependencies
 - Requires: Module 3 (Subscription), Module 4 (Company Profile)
-- Integrates with: Colombian geographic database, IDEAM API
+- Integrates with: Regional geographic database, Weather data API (e.g., IDEAM in Colombia)
 
 ---
 
@@ -257,7 +257,7 @@ First facility setup during onboarding. User provides basic facility information
 User selects primary crop type(s) for their facility during onboarding. System loads crop-specific configurations, compliance profiles, and sample data.
 
 ### Key Features
-- Pre-configured Colombian crop types (Cannabis, Coffee, Cocoa, Flowers)
+- Pre-configured crop types (Cannabis, Coffee, Cocoa, Flowers)
 - Crop-specific compliance profiles
 - Default production phases per crop
 - Environmental requirements configuration
@@ -272,12 +272,12 @@ User selects primary crop type(s) for their facility during onboarding. System l
 - I want production phases pre-loaded
 - I want to add more crop types later as I expand
 
-### Colombian Market Requirements
-- Cannabis: INVIMA compliance, individual tracking optional
-- Coffee: FNC standards, batch tracking default
+### Regional Requirements (Colombia Example)
+- Cannabis: Regulatory compliance (e.g., INVIMA in Colombia), individual tracking optional
+- Coffee: Quality standards (e.g., FNC in Colombia), batch tracking default
 - Cocoa: Export quality standards
 - Flowers: Export certification requirements
-- Colombian terminology for all crop types
+- Regional terminology configurable (default: Spanish)
 
 ### Success Metrics
 - Crop type selection: 100% (required step)
@@ -315,10 +315,10 @@ Automatic generation of sample cultivation areas based on selected crop type(s).
 - **Cannabis**: Propagation room, Vegetative room, Flowering room, Drying room, Curing room
 - **Coffee**: Nursery, Field section 1, Processing area, Drying patio, Storage
 
-### Colombian Market Requirements
-- Colombian area naming conventions
+### Regional Requirements (Colombia Example)
+- Regional area naming conventions (customizable)
 - Metric system (m², MSNM)
-- Colombian equipment brands in sample data
+- Regional equipment brands in sample data (configurable)
 - Local construction standards reference
 
 ### Success Metrics
@@ -338,32 +338,32 @@ Automatic generation of sample cultivation areas based on selected crop type(s).
 Sample cultivars and suppliers pre-loaded for selected crop types. Users can immediately create production orders or customize later.
 
 ### Key Features
-- Pre-configured Colombian cultivars per crop type
-- Sample Colombian suppliers with local addresses
-- Product catalog with COP pricing
+- Pre-configured regional cultivars per crop type
+- Sample suppliers with local addresses
+- Product catalog with local currency pricing
 - Initial inventory items for demonstrations
-- Colombian genetic sources
+- Regional genetic sources
 - Supplier performance tracking setup
 
 ### User Stories
 
 **As a New User:**
 - I want to see realistic cultivar options for my crops
-- I want sample suppliers with Colombian addresses
+- I want sample suppliers with local addresses in my region
 - I want to understand product categorization
 - I want to start production planning immediately
 
-**Example Sample Data:**
-- **Cannabis Cultivars**: White Widow, OG Kush (with Colombian genetics info)
+**Example Sample Data (Colombia Default):**
+- **Cannabis Cultivars**: White Widow, OG Kush (with regional genetics info)
 - **Coffee Cultivars**: Castillo, Cenicafé 1, Tabi
-- **Sample Suppliers**: Colombian nutrients companies, local equipment distributors
+- **Sample Suppliers**: Regional nutrients companies, local equipment distributors
 
-### Colombian Market Requirements
-- Colombian supplier business entity types
-- Colombian addresses with DANE codes
-- COP pricing for all products
-- ICA registration for agricultural chemicals
-- Colombian cultivar naming conventions
+### Regional Requirements (Colombia Example)
+- Regional supplier business entity types (configurable)
+- Regional addresses with administrative codes (e.g., DANE in Colombia)
+- Local currency pricing (e.g., COP in Colombia)
+- Agricultural chemical registration (e.g., ICA in Colombia)
+- Regional cultivar naming conventions
 
 ### Success Metrics
 - Sample data satisfaction: >80%
@@ -388,11 +388,11 @@ Unified inventory system across multiple crop types with automated consumption t
 - Real-time quantity tracking (available, reserved, committed)
 - Automatic consumption from recipe execution
 - Batch and lot tracking
-- Colombian supplier management
-- ICA registration for agricultural chemicals
+- Regional supplier management
+- Agricultural chemical registration tracking (configurable)
 - Expiration date monitoring
 - Reorder point alerts
-- COP cost tracking
+- Local currency cost tracking
 
 ### User Stories
 
@@ -400,13 +400,13 @@ Unified inventory system across multiple crop types with automated consumption t
 - I want to see all inventory across crops in one place
 - I want automatic deductions when activities are performed
 - I want alerts when inventory runs low
-- I want to track costs in COP for accounting
+- I want to track costs in local currency for accounting
 
-### Colombian Market Requirements
-- ICA registration validation for chemicals
-- Colombian supplier data with NIT
-- COP currency for all pricing
-- Colombian product categories
+### Regional Requirements (Colombia Example)
+- Chemical registration validation (e.g., ICA in Colombia)
+- Regional supplier data with tax ID (e.g., NIT in Colombia)
+- Local currency for all pricing (e.g., COP in Colombia)
+- Regional product categories (configurable)
 - Weight/volume in metric units
 
 ### Success Metrics
@@ -424,33 +424,33 @@ Unified inventory system across multiple crop types with automated consumption t
 ## MODULE 10: Production Templates
 
 ### Overview
-Template-based production workflow system. Pre-configured templates for Colombian crops with automatic activity scheduling.
+Template-based production workflow system. Pre-configured templates for regional crops with automatic activity scheduling.
 
 ### Key Features
 - Visual template builder with phases and activities
-- Pre-loaded Colombian crop templates
+- Pre-loaded regional crop templates
 - Automatic activity scheduling with dependencies
 - Resource requirement specification
 - Batch-first design (50-1000+ plant batches)
 - Template versioning and cloning
 - Performance analytics per template
 - Recipe integration for nutrients
-- Colombian best practices built-in
+- Regional best practices built-in (configurable)
 
 ### User Stories
 
 **As a Production Manager:**
-- I want to use proven templates for Colombian cannabis cultivation
+- I want to use proven templates for regional cannabis cultivation
 - I want activities automatically scheduled when I create production order
 - I want to customize templates for my specific operation
 - I want to see which templates perform best
 
-### Colombian Market Requirements
-- Templates for Colombian climate conditions
-- Spanish activity names and instructions
-- Colombian growing cycles and timing
-- Integration with Colombian compliance requirements
-- INVIMA-compliant workflows for cannabis
+### Regional Requirements (Colombia Example)
+- Templates for regional climate conditions (configurable)
+- Multilingual activity names and instructions (default: Spanish)
+- Regional growing cycles and timing
+- Integration with regional compliance requirements
+- Regulatory-compliant workflows (e.g., INVIMA for cannabis in Colombia)
 
 ### Success Metrics
 - Template usage rate: >80% of production orders
@@ -467,16 +467,16 @@ Template-based production workflow system. Pre-configured templates for Colombia
 ## MODULE 11: Quality Check Templates + AI
 
 ### Overview
-AI-powered quality control system with template generation from Spanish documents. Colombian pest/disease detection.
+AI-powered quality control system with template generation from multilingual documents. Regional pest/disease detection.
 
 ### Key Features
-- AI template generation from photos/PDFs of Spanish forms
+- AI template generation from photos/PDFs of regional forms
 - Dynamic quality check forms with conditional logic
-- Photo-based pest/disease detection (40+ Colombian species)
+- Photo-based pest/disease detection (40+ regional species)
 - Batch-level health assessment with confidence scoring
 - Automated quality grading and distribution
 - Export to Excel/PDF for compliance
-- Colombian compliance documentation
+- Regional compliance documentation
 - Performance tracking against quality standards
 
 ### User Stories
@@ -485,19 +485,19 @@ AI-powered quality control system with template generation from Spanish document
 - I want to upload my existing quality forms and have them digitized automatically
 - I want AI to help detect pests early before they spread
 - I want to assess batch health with photo analysis
-- I want automated compliance documentation for INVIMA/ICA
+- I want automated compliance documentation for regulatory agencies
 
 **As a Field Technician:**
 - I want to complete quality checks on mobile
 - I want AI to tell me if there are pests in my photos
 - I want simple yes/no questions, not complex forms
 
-### Colombian Market Requirements
-- Spanish OCR and form recognition
-- Colombian pest database (Araña roja, Broca del café, etc.)
-- Colombian disease identification
+### Regional Requirements (Colombia Example)
+- Multilingual OCR and form recognition (default: Spanish)
+- Regional pest database (e.g., Araña roja, Broca del café in Colombia)
+- Regional disease identification
 - Treatment recommendations with local products
-- Compliance export formats for INVIMA/ICA
+- Compliance export formats for regulatory agencies (e.g., INVIMA/ICA in Colombia)
 
 ### Success Metrics
 - Template generation accuracy: >90%
@@ -542,11 +542,11 @@ Core operations management with batch-first tracking. Template-based production 
 - I want to take photos as documentation
 - I want to complete work offline if internet drops
 
-### Colombian Market Requirements
-- Batch-first default (scalable for Colombian operations)
-- Individual plant tracking when INVIMA requires
-- Colombian timezone for all timestamps
-- Spanish mobile interface
+### Regional Requirements (Colombia Example)
+- Batch-first default (scalable for regional operations)
+- Individual plant tracking when regulations require (e.g., INVIMA in Colombia)
+- Regional timezone for all timestamps (configurable)
+- Multilingual mobile interface (default: Spanish)
 - Offline capability for rural areas
 
 ### Success Metrics
@@ -565,17 +565,17 @@ Core operations management with batch-first tracking. Template-based production 
 ## MODULE 13: AI Engine & Intelligent Services
 
 ### Overview
-Computer vision and NLP services trained on Colombian agricultural data.
+Computer vision and NLP services trained on regional agricultural data.
 
 ### Key Features
-- Pest/disease detection (40+ Colombian species trained)
+- Pest/disease detection (40+ regional species trained)
 - Plant health scoring (1-10 scale with confidence)
-- Spanish OCR for form digitization
+- Multilingual OCR for form digitization (default: Spanish)
 - Photo analysis and automatic tagging
 - Harvest timing prediction
 - Treatment recommendations with local products
 - Performance optimization suggestions
-- Colombian seasonal pattern analysis
+- Regional seasonal pattern analysis
 
 ### User Stories
 
@@ -585,18 +585,18 @@ Computer vision and NLP services trained on Colombian agricultural data.
 - I want harvest timing predictions to maximize quality
 - I want treatment recommendations with products I can buy locally
 
-### Colombian Market Requirements
-- Training data from Colombian operations
-- Colombian pest/disease species
-- Spanish text processing
-- Colombian product database for recommendations
+### Regional Requirements (Colombia Example)
+- Training data from regional operations (extensible)
+- Regional pest/disease species (e.g., Colombia database)
+- Multilingual text processing (default: Spanish)
+- Regional product database for recommendations
 - Altitude and climate zone considerations
-- Colombian seasonal patterns
+- Regional seasonal patterns
 
 ### Success Metrics
 - Pest detection accuracy: >90%
 - Plant health assessment correlation with expert: >85%
-- OCR accuracy for Spanish forms: >90%
+- OCR accuracy for regional forms: >90%
 - Harvest prediction accuracy (±3 days): >85%
 - Treatment recommendation adoption rate: >70%
 
@@ -611,12 +611,12 @@ Computer vision and NLP services trained on Colombian agricultural data.
 ## MODULE 14: Compliance & Reporting
 
 ### Overview
-Automated Colombian regulatory compliance monitoring with real-time tracking and report generation.
+Automated regional regulatory compliance monitoring with real-time tracking and report generation.
 
 ### Key Features
-- INVIMA cannabis compliance automation
-- ICA agricultural chemical tracking
-- FNC coffee quality standards
+- Cannabis regulatory compliance automation (configurable)
+- Agricultural chemical tracking
+- Quality standards monitoring (configurable)
 - Municipal permit monitoring
 - Automatic violation detection
 - Preventive action recommendations
@@ -630,67 +630,67 @@ Automated Colombian regulatory compliance monitoring with real-time tracking and
 **As a Compliance Officer:**
 - I want automatic tracking of all regulatory requirements
 - I want alerts before violations occur
-- I want one-click report generation for INVIMA inspections
+- I want one-click report generation for regulatory inspections
 - I want complete audit trail for all operations
 
-### Colombian Market Requirements
-- INVIMA seed-to-sale tracking (when required)
-- ICA chemical application documentation
-- FNC coffee quality certification
+### Regional Requirements (Colombia Example)
+- Cannabis seed-to-sale tracking (e.g., INVIMA when required)
+- Agricultural chemical application documentation (e.g., ICA in Colombia)
+- Quality certification standards (e.g., FNC coffee in Colombia)
 - Municipal waste disposal compliance
 - Transport manifest generation
 - Laboratory test result tracking
-- Electronic reporting to government agencies
+- Electronic reporting to regulatory agencies
 
 ### Success Metrics
-- Compliance coverage: 100% of Colombian requirements
+- Compliance coverage: 100% of regional requirements
 - Violation prevention rate: >95%
 - Report generation time: <5 minutes
 - Audit readiness: 100% at any time
 
 ### Dependencies
 - Requires: Module 12 (Operations), Module 4 (Company Profile)
-- Integrates with: Government APIs (future), File storage
+- Integrates with: Regional regulatory APIs (future), File storage
 
 ---
 
 ## MODULE 15: Analytics & Business Intelligence
 
 ### Overview
-Real-time operational dashboards and predictive analytics for Colombian agricultural operations.
+Real-time operational dashboards and predictive analytics for regional agricultural operations.
 
 ### Key Features
 - Customizable dashboards by role
 - Operational KPIs (yield, efficiency, cost per unit)
-- Financial analytics in COP
+- Financial analytics in local currency
 - Predictive harvest timing
 - Resource utilization tracking
-- Colombian industry benchmarking
+- Regional industry benchmarking
 - Multi-facility comparison
 - Export to Excel/PDF
-- Colombian seasonal pattern analysis
-- Weather correlation with IDEAM data
+- Regional seasonal pattern analysis
+- Weather correlation with regional data
 
 ### User Stories
 
 **As a Company Owner:**
 - I want to see profitability across all facilities
-- I want to compare my yields to Colombian industry averages
+- I want to compare my yields to regional industry averages
 - I want to predict harvest timing for market planning
-- I want cost analysis in COP for accounting
+- I want cost analysis in local currency for accounting
 
 **As a Facility Manager:**
 - I want to see real-time operational metrics
 - I want to identify bottlenecks in production
 - I want to optimize resource allocation
 
-### Colombian Market Requirements
-- COP currency formatting throughout
-- Colombian timezone for all date displays
-- Spanish terminology for all metrics
-- Colombian industry benchmarks
-- IDEAM weather data integration
-- FNC coffee market data (when available)
+### Regional Requirements (Colombia Example)
+- Local currency formatting (e.g., COP in Colombia)
+- Regional timezone for all date displays (configurable)
+- Multilingual terminology for all metrics (default: Spanish)
+- Regional industry benchmarks (configurable)
+- Weather data integration (e.g., IDEAM in Colombia)
+- Market data when available (e.g., FNC coffee in Colombia)
 
 ### Success Metrics
 - Dashboard daily active usage: >70%
@@ -700,14 +700,14 @@ Real-time operational dashboards and predictive analytics for Colombian agricult
 
 ### Dependencies
 - Requires: Module 12 (Operations), Module 9 (Inventory)
-- Integrates with: IDEAM API, Colombian market data sources
+- Integrates with: Regional weather API (e.g., IDEAM in Colombia), Regional market data sources
 
 ---
 
 ## MODULE 16: Mobile Experience & Media Management
 
 ### Overview
-Progressive Web App optimized for Colombian rural connectivity with offline capability.
+Progressive Web App optimized for regional rural connectivity with offline capability.
 
 ### Key Features
 - Native app-like PWA experience
@@ -715,8 +715,8 @@ Progressive Web App optimized for Colombian rural connectivity with offline capa
 - High-quality photo capture and compression
 - AI-powered photo analysis and tagging
 - QR code scanning for entities
-- GPS tagging with Colombian coordinates
-- Touch-optimized Spanish interface
+- GPS tagging with regional coordinates
+- Touch-optimized multilingual interface
 - Rural connectivity optimization
 - Batch photo upload
 - Organized media library
@@ -729,12 +729,12 @@ Progressive Web App optimized for Colombian rural connectivity with offline capa
 - I want QR code scanning to be fast and reliable
 - I want AI to tell me about problems in photos
 
-### Colombian Market Requirements
-- Optimization for Colombian rural networks (3G)
-- Colombian GPS coordinates (MAGNA-SIRGAS)
-- Colombian timezone for all timestamps
-- Spanish voice commands (future)
-- WhatsApp integration for notifications (future)
+### Regional Requirements (Colombia Example)
+- Optimization for regional rural networks (3G)
+- Regional GPS coordinate systems (e.g., MAGNA-SIRGAS in Colombia)
+- Regional timezone for all timestamps (configurable)
+- Multilingual voice commands (future, default: Spanish)
+- Messaging integration for notifications (future, e.g., WhatsApp)
 
 ### Success Metrics
 - PWA installation rate: >60%
@@ -744,23 +744,23 @@ Progressive Web App optimized for Colombian rural connectivity with offline capa
 
 ### Dependencies
 - Requires: Module 12 (Operations), Module 13 (AI)
-- Integrates with: File storage, Colombian GPS services
+- Integrates with: File storage, Regional GPS services
 
 ---
 
 ## MODULE 17: Integrations & APIs
 
 ### Overview
-REST API and integrations for Colombian agricultural equipment, laboratories, and market data.
+REST API and integrations for regional agricultural equipment, laboratories, and market data.
 
 ### Key Features
-- RESTful API with Spanish/English docs
+- RESTful API with multilingual documentation
 - OAuth 2.0 authentication
 - Webhook support for real-time notifications
-- Colombian equipment IoT integration (MQTT/HTTP)
+- Regional equipment IoT integration (MQTT/HTTP)
 - Laboratory test result automation
-- Colombian market data integration
-- Rate limiting adapted to Colombian infrastructure
+- Regional market data integration
+- Rate limiting adapted to regional infrastructure
 - Comprehensive API documentation
 - Sandbox environment for testing
 
@@ -770,20 +770,20 @@ REST API and integrations for Colombian agricultural equipment, laboratories, an
 - I want to integrate our equipment with Alquemist
 - I want to automatically import lab results
 - I want to build custom reports with API data
-- I want Spanish documentation for our Colombian team
+- I want documentation in my language
 
 **As a Laboratory:**
 - I want to send test results automatically to customer accounts
 - I want secure API authentication
-- I want to support Colombian regulatory formats
+- I want to support regional regulatory formats
 
-### Colombian Market Requirements
-- Spanish API documentation
-- Colombian equipment brand compatibility
-- Colombian laboratory formats (INVIMA, ICA)
-- Colombian market data sources
-- COP currency in all API responses
-- Colombian timezone handling
+### Regional Requirements (Colombia Example)
+- Multilingual API documentation (default: Spanish/English)
+- Regional equipment brand compatibility
+- Regional laboratory formats (e.g., INVIMA, ICA in Colombia)
+- Regional market data sources
+- Local currency in all API responses (e.g., COP in Colombia)
+- Regional timezone handling (configurable)
 
 ### Success Metrics
 - API uptime: >99.5%
@@ -810,21 +810,21 @@ Operations (12) + AI (13) →
 
 ---
 
-## Colombian Compliance Cross-Reference
+## Regional Compliance Cross-Reference (Colombia Example)
 
-### INVIMA (Cannabis)
+### Cannabis Regulatory Agency (e.g., INVIMA in Colombia)
 - **Modules**: 6 (Crop Config), 12 (Operations), 14 (Compliance)
 - **Requirements**: Individual tracking (optional), seed-to-sale, waste docs, transport manifests
 
-### ICA (Agricultural Chemicals)
+### Agricultural Regulatory Agency (e.g., ICA in Colombia)
 - **Modules**: 9 (Inventory), 12 (Operations), 14 (Compliance)
 - **Requirements**: Chemical registration, application records, pest monitoring
 
-### FNC (Coffee Standards)
+### Quality Standards Organization (e.g., FNC Coffee in Colombia)
 - **Modules**: 6 (Crop Config), 11 (Quality), 14 (Compliance)
 - **Requirements**: Quality scoring, organic certification, export docs
 
-### Municipal
+### Municipal Regulations
 - **Modules**: 4 (Company), 5 (Facility), 14 (Compliance)
 - **Requirements**: Local permits, waste disposal, water usage
 
@@ -833,7 +833,7 @@ Operations (12) + AI (13) →
 ## Success Metrics Summary
 
 ### Business Goals
-- Monthly recurring revenue: Target $100M COP by month 12
+- Monthly recurring revenue: Target $100M COP (Colombia) by month 12
 - Customer retention: >85% after 6 months
 - Net promoter score: >50
 
@@ -843,7 +843,7 @@ Operations (12) + AI (13) →
 - Support ticket volume: <2 per customer per month
 - Feature adoption (AI): >60% within 3 months
 
-### Colombian Market Goals
-- Market share in Colombian cannabis: >25% by year 2
-- Colombian supplier partnerships: >50 by year 1
-- Government API integrations: INVIMA + ICA by year 2
+### Regional Market Goals (Colombia Initial Target)
+- Market share in regional cannabis: >25% by year 2
+- Regional supplier partnerships: >50 by year 1
+- Government API integrations: Regional agencies (e.g., INVIMA + ICA in Colombia) by year 2

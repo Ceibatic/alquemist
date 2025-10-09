@@ -31,7 +31,7 @@ Frontend:
   Language: TypeScript 5.x
   Styling: Tailwind CSS 3.x
   UI Components: shadcn/ui
-  i18n: next-intl (Spanish-first)
+  i18n: next-intl (multilingual, default: Spanish)
   Forms: React Hook Form + Zod
 
 Backend:
@@ -49,7 +49,7 @@ Deployment:
   Frontend Platform: Vercel
   Database Platform: Convex Cloud
   CDN: Vercel Edge Network
-  Region: São Paulo (closest to Colombia)
+  Region: São Paulo (optimal for Latin America)
   Cost: Starts FREE, scales to $20-70/month
 ```
 
@@ -60,7 +60,7 @@ Deployment:
 - **Type-Safe End-to-End** - TypeScript from DB to UI with automatic type generation
 - **Built-In Real-Time** - WebSocket subscriptions for live data updates
 - **Serverless Auto-Scaling** - Handles traffic spikes automatically
-- **Optimized for Colombian Market** - São Paulo CDN edge, Spanish-first, COP formatting
+- **Optimized for Latin American Market** - São Paulo CDN edge, multilingual support, regional currency formatting
 - **Cost-Effective** - $0/month to start, minimal scaling costs
 
 ---
@@ -71,7 +71,7 @@ Deployment:
 
 ```
 ┌──────────────────────────────────────────────┐
-│     USERS (Colombian Market)                 │
+│     USERS (Latin American Market)            │
 │     Mobile PWA + Desktop Browser             │
 └─────────────────┬────────────────────────────┘
                   │ HTTPS
@@ -105,7 +105,7 @@ Deployment:
 - Every record has `companyId` foreign key
 - Users belong to one company (Clerk Organization)
 - Row-level security enforced in Convex queries
-- Colombian companies = Clerk Organizations
+- Each company = one Clerk Organization
 
 **Role-Based Access Control (5 Levels):**
 1. **COMPANY_OWNER** (level 1000) - Full access
@@ -139,30 +139,30 @@ Deployment:
 - Batches represent 50-1000 plants as single unit
 - QR code on batch container
 - Sample-based quality checks
-- Scalable for Colombian operations
+- Scalable for large-scale operations
 
 **Individual Tracking (Optional):**
-- Enable when INVIMA requires seed-to-sale
+- Enable when regulatory requirements mandate seed-to-sale tracking
 - Each plant gets unique QR code
 - Still grouped under batch for reporting
 
-### Colombian-Specific Fields
+### Regional-Specific Fields
 
 **Geographic:**
-- `daneMunicipalityCode` - DANE codes
-- `colombianDepartment` - Department
+- `regionalAdministrativeCode` - Regional administrative codes (e.g., DANE in Colombia)
+- `administrativeDivision` - State/Department/Province
 - `altitudeMsnm` - Altitude (MSNM)
-- `latitude/longitude` - MAGNA-SIRGAS
+- `latitude/longitude` - Geographic coordinates
 
 **Business:**
-- `businessEntityType` - S.A.S, S.A., Ltda, E.U., Persona Natural
-- `taxId` - NIT format
-- `camaraComercioRegistration` - Chamber of Commerce
-- `defaultCurrency` - COP ($290.000)
+- `businessEntityType` - Legal entity types (default: S.A.S, S.A., Ltda, E.U., Persona Natural)
+- `taxId` - Tax identification number (e.g., NIT in Colombia)
+- `commerceRegistration` - Chamber of Commerce registration
+- `defaultCurrency` - Local currency (e.g., COP in Colombia)
 
 **Compliance:**
-- `icaRegistrationNumber` - ICA chemical registration
-- `invimaCertification` - Cannabis licensing
+- `regulatoryRegistrationNumber` - Regulatory agency registration (e.g., ICA in Colombia)
+- `specialLicensing` - Industry-specific licensing (e.g., INVIMA for cannabis)
 - `phytosanitaryCertificate` - Transport permits
 - `regulatoryDocumentation` - Flexible JSON compliance data
 
@@ -174,7 +174,7 @@ Deployment:
 
 **Multi-Tenancy Pattern:**
 - Clerk Organizations = Alquemist Companies
-- Organization metadata stores Colombian business data
+- Organization metadata stores regional business data
 - Users assigned to single organization
 - Automatic tenant isolation
 
@@ -219,7 +219,7 @@ const batches = await ctx.db
 - Activity recording on scan
 - Offline queue for poor connectivity
 
-**Colombian Rural Optimization:**
+**Rural Area Optimization:**
 - Works on 3G networks
 - Offline-first with sync when online
 - Compressed image uploads
@@ -231,13 +231,13 @@ const batches = await ctx.db
 - All activities logged with timestamp
 - User tracking for accountability
 - Never delete/edit audit logs
-- 5-year retention for INVIMA/ICA
+- Configurable retention for regulatory compliance (default: 5 years)
 
 **Batch Traceability:**
 - Full genealogy from seed to harvest
 - All activities, compliance events, photos
 - Export to PDF for inspections
-- Colombian timezone for all timestamps
+- Configurable timezone for all timestamps
 
 ### Progressive Web App (PWA)
 
@@ -250,14 +250,14 @@ const batches = await ctx.db
 **Mobile Optimization:**
 - Touch-friendly UI
 - QR camera integration
-- GPS tagging (MAGNA-SIRGAS)
+- GPS tagging with configurable coordinate systems
 - WhatsApp integration (future)
 
 ---
 
-## Colombian Compliance
+## Regulatory Compliance
 
-### INVIMA Cannabis Tracking
+### Cannabis Tracking (e.g., INVIMA in Colombia)
 
 **Requirements:**
 - Individual plant tracking (optional config)
@@ -272,7 +272,7 @@ const batches = await ctx.db
 - Compliance event tracking
 - Certificate management with expiry alerts
 
-### ICA Agricultural Compliance
+### Agricultural Compliance (e.g., ICA in Colombia)
 
 **Requirements:**
 - Chemical registration validation
@@ -281,12 +281,12 @@ const batches = await ctx.db
 - Treatment documentation
 
 **Implementation:**
-- ICA registration number validation
-- Inventory blocked without ICA registration
-- Pest/disease database (Colombian species)
-- AI-powered pest detection (40+ species)
+- Registration number validation
+- Inventory blocking without required registration
+- Pest/disease database (extensible for regional species)
+- AI-powered pest detection (40+ species, expandable)
 
-### FNC Coffee Standards
+### Industry Standards (e.g., FNC for Coffee in Colombia)
 
 **Requirements:**
 - Quality scoring
@@ -296,7 +296,7 @@ const batches = await ctx.db
 **Implementation:**
 - Quality check templates
 - Certificate upload/verification
-- Colombian cup profile standards
+- Industry-specific quality standards
 - Export report generation
 
 ---
@@ -317,7 +317,7 @@ const batches = await ctx.db
 **Features:**
 - Automatic SSL certificates
 - Edge Functions globally
-- São Paulo region (closest to Colombia)
+- São Paulo region (optimal for Latin America)
 - Preview deployments for PRs
 - Zero configuration
 
@@ -376,7 +376,7 @@ open http://localhost:3000
 
 ## Performance
 
-### Colombian Market Optimization
+### Latin American Market Optimization
 
 **Rural Connectivity:**
 - PWA offline mode (3G networks)
@@ -385,7 +385,7 @@ open http://localhost:3000
 - Lazy loading
 
 **CDN Strategy:**
-- São Paulo edge (low latency)
+- São Paulo edge (low latency for Latin America)
 - Global asset caching
 - Next.js Image optimization
 - Incremental Static Regeneration
@@ -414,7 +414,7 @@ open http://localhost:3000
 
 ### Compliance Security
 - Immutable audit logs
-- 5-year data retention
+- Configurable data retention (default: 5 years)
 - Encrypted file storage
 - Access logging for audits
 
@@ -467,7 +467,7 @@ Total: $70-219/month
 
 **Foundation:**
 1. Set up Next.js + Convex + Clerk
-2. Configure Colombian i18n (Spanish-first)
+2. Configure multilingual i18n (default: Spanish)
 3. Implement multi-tenancy
 4. Deploy to Vercel
 

@@ -12,10 +12,10 @@ For a new greenfield implementation of Alquemist, start with these **3 core docu
 **What to build** - Complete feature specifications
 
 - 17 modules across 3 phases
-- Colombian market requirements
+- Regional requirements (default: Colombia)
 - User stories and success metrics
 - Module dependency map
-- Compliance cross-reference (INVIMA, ICA, FNC)
+- Compliance cross-reference (configurable by region)
 
 **Size**: 27KB | **Read time**: 30 minutes
 
@@ -29,7 +29,7 @@ For a new greenfield implementation of Alquemist, start with these **3 core docu
 - Authentication & authorization
 - Key implementation patterns
 - Deployment strategy
-- Colombian compliance implementation
+- Regional compliance implementation
 
 **Size**: 21KB | **Read time**: 20 minutes
 
@@ -41,7 +41,7 @@ For a new greenfield implementation of Alquemist, start with these **3 core docu
 - 26 tables organized in 8 functional groups
 - All fields with types and descriptions
 - Relationships and indexes
-- Colombian-specific fields documented
+- Regional fields documented (default: Colombia)
 - Batch-first tracking philosophy
 - Implementation notes
 
@@ -55,7 +55,7 @@ These v1.0 documents represent the **definitive, complete specification** for Al
 
 - **Single source of truth** - No versioning needed, these are final
 - **Technology-agnostic** - Can implement with any modern stack
-- **Colombian-focused** - Built specifically for Colombian agricultural market
+- **Regional design** - Default configuration for Colombia, extensible to other regions
 - **Production-ready** - Complete enough to start building immediately
 
 ---
@@ -85,7 +85,7 @@ Old versioned documents moved to `archive/` directory:
 - **Multi-tenant**: Company-based isolation with RBAC
 - **Multi-crop**: Cannabis, Coffee, Cocoa, Flowers
 - **Batch-first tracking**: 50-1000 plants per batch (optional individual)
-- **Colombian compliance**: INVIMA, ICA, FNC, Municipal
+- **Regional compliance**: Configurable by region (e.g., INVIMA, ICA, FNC in Colombia)
 - **AI-powered**: Pest detection, quality checks, form digitization
 - **Mobile-first**: PWA with offline capability, QR scanning
 
@@ -98,12 +98,12 @@ Old versioned documents moved to `archive/` directory:
 - Deployment: Vercel + Convex Cloud
 - Cost: Starts FREE, scales to $20-70/month
 
-**Colombian Requirements:**
-- Spanish-first (default locale: "es")
-- Colombian timezone (America/Bogota)
-- COP currency with proper formatting ($290.000)
-- DANE codes for geographic data
-- MAGNA-SIRGAS coordinate system
+**Regional Configuration (Colombia Default):**
+- Multilingual (default locale: "es")
+- Configurable timezone (default: America/Bogota)
+- Multi-currency support (default: COP with formatting $290.000)
+- Regional administrative codes (e.g., DANE in Colombia)
+- Configurable coordinate systems (e.g., MAGNA-SIRGAS in Colombia)
 
 ---
 
@@ -179,7 +179,7 @@ See [Agentic-Dev-System-Simple.md](Agentic-Dev-System-Simple.md) for complete wo
 2. Update Database-Schema.md if data model changes
 3. Keep Product-Requirements.md unchanged (features don't change)
 
-**Update for Colombian regulations:**
+**Update for regional regulations:**
 1. Update compliance requirements in Product-Requirements.md
 2. Update compliance implementation in Technical-Specification.md
 3. Update compliance fields in Database-Schema.md
@@ -229,11 +229,11 @@ These documents are version 1.0 and should remain stable. For significant change
 ### Questions About Development Workflow
 → See [CLAUDE.MD](CLAUDE.MD) for commands and [Agentic-Dev-System-Simple.md](Agentic-Dev-System-Simple.md) for complete workflow
 
-### Questions About Colombian Compliance
-All three documents have Colombian-specific sections:
-- Product Requirements: Compliance cross-reference
-- Technical Spec: Compliance implementation
-- Database Schema: Colombian-specific fields
+### Questions About Regional Compliance
+All three documents have regional compliance sections:
+- Product Requirements: Compliance cross-reference (regional examples)
+- Technical Spec: Compliance implementation (configurable by region)
+- Database Schema: Regional fields (default: Colombia)
 
 ---
 

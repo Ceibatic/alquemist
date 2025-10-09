@@ -32,9 +32,9 @@
 - Planning module implementation
 - Verifying feature completeness
 - Understanding user stories
-- Checking Colombian compliance requirements
+- Checking regional compliance requirements
 
-**Size**: 27KB | **Key sections**: Modules 1-17, Colombian requirements, compliance cross-reference
+**Size**: 27KB | **Key sections**: Modules 1-17, Regional requirements, compliance cross-reference
 
 ---
 
@@ -45,9 +45,9 @@
 - Implementing new features
 - Choosing patterns (auth, data fetching, multi-tenancy)
 - Understanding deployment strategy
-- Applying Colombian-specific implementations
+- Applying regional-specific implementations
 
-**Size**: 21KB | **Key sections**: Final tech stack, architecture, Colombian compliance, deployment
+**Size**: 21KB | **Key sections**: Final tech stack, architecture, Regional compliance, deployment
 
 ---
 
@@ -58,9 +58,9 @@
 - Adding new tables/fields
 - Understanding relationships
 - Implementing queries
-- Applying Colombian-specific fields
+- Applying regional-specific fields
 
-**Size**: 54KB | **Key sections**: 26 tables in 8 groups, Colombian fields, batch-first tracking
+**Size**: 54KB | **Key sections**: 26 tables in 8 groups, Regional fields, batch-first tracking
 
 ---
 

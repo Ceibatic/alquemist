@@ -8,19 +8,19 @@
 
 ## Project Identity
 
-**Alquemist** - Colombian agricultural management SaaS platform for Cannabis, Coffee, Cocoa, and Flowers.
+**Alquemist** - Multi-region agricultural management SaaS platform for Cannabis, Coffee, Cocoa, and Flowers.
 
 **Tech Stack (Final):**
 - Frontend: Next.js 14 + TypeScript + Tailwind CSS + shadcn/ui
 - Database: Convex (serverless, real-time)
 - Auth: Clerk (Organizations = Companies)
 - Deployment: Vercel + Convex Cloud
-- i18n: Spanish-first (next-intl)
+- i18n: Multilingual (next-intl, default: Spanish)
 
 **Core Requirements:**
 - Multi-tenant (company-based isolation)
 - Batch-first tracking (50-1000 plants per batch)
-- Colombian compliance (INVIMA, ICA, FNC)
+- Regulatory compliance (configurable by region)
 - Mobile PWA with offline capability
 - Real-time updates via WebSocket
 
@@ -35,7 +35,7 @@
 **Context Files (Load on demand):**
 - [Product-Requirements.md](Product-Requirements.md) - 17 modules, feature specs
 - [Technical-Specification.md](Technical-Specification.md) - Architecture, patterns
-- [Database-Schema.md](Database-Schema.md) - 26 tables, Colombian fields
+- [Database-Schema.md](Database-Schema.md) - 26 tables, regional configuration
 
 ---
 
@@ -59,7 +59,7 @@ Load feature context and implement functionality.
 1. Load relevant sections from Product-Requirements.md
 2. Load relevant tables from Database-Schema.md
 3. Apply patterns from Technical-Specification.md
-4. Implement feature with Colombian requirements
+4. Implement feature with regional requirements (default: Colombia)
 5. Update Active Context with progress
 
 **Example:**
@@ -81,7 +81,7 @@ Review current implementation against requirements.
 - ✓ Feature matches Product Requirements
 - ✓ Database schema matches Database-Schema.md
 - ✓ Tech stack follows Technical-Specification.md
-- ✓ Colombian requirements implemented (Spanish, COP, DANE codes)
+- ✓ Regional requirements implemented (i18n, multi-currency, regional codes)
 - ✓ Multi-tenancy enforced (companyId filtering)
 - ✓ Type safety (TypeScript end-to-end)
 
@@ -103,7 +103,7 @@ Generate comprehensive pull request for completed module.
    - **Title**: `feat: implement MODULE X - <name>`
    - **Summary**: Feature overview (3-5 bullet points)
    - **Implementation Details**: Key technical decisions
-   - **Colombian Requirements**: Compliance implemented
+   - **Regional Requirements**: Compliance implemented
    - **Database Changes**: Schema updates (if any)
    - **Testing**: Manual test checklist
    - **Screenshots**: UI changes (if applicable)
@@ -119,29 +119,29 @@ feat: implement MODULE 1 - Authentication & Company Setup
 
 ## Summary
 - Clerk authentication with email/password + OAuth
-- Company registration with Colombian business types
+- Company registration with regional business types
 - Multi-tenant isolation via Clerk Organizations
-- Spanish-first UI with next-intl
+- Multilingual UI with next-intl (default: Spanish)
 
 ## Implementation Details
 - Convex schema: users, companies, roles tables
 - Clerk Organizations mapped to companyId
 - Row-level security in all queries
-- Colombian business entity types: S.A.S, S.A., Ltda, E.U.
+- Regional business entity types configurable
 
-## Colombian Requirements
-✓ Spanish locale (es) as default
+## Regional Requirements (Colombia Default)
+✓ Multi-language support (default: Spanish)
 ✓ Business entity types (S.A.S, S.A., Ltda, etc.)
-✓ NIT validation pattern
-✓ DANE municipality codes
-✓ Timezone: America/Bogota
+✓ Tax ID validation pattern
+✓ Regional administrative codes (DANE for Colombia)
+✓ Timezone configurable (default: America/Bogota)
 
 ## Database Changes
 Added 3 tables: companies, roles, users
 See Database-Schema.md for full definitions
 
 ## Testing
-- [ ] User registration with Colombian company
+- [ ] User registration with company
 - [ ] Email verification flow
 - [ ] Login with email/password
 - [ ] OAuth login (Google)
@@ -165,7 +165,7 @@ MODULE 2 - Email Verification
 ### 2. Implement
 - Claude implements feature following Technical-Specification.md
 - Uses database schema from Database-Schema.md
-- Applies Colombian requirements throughout
+- Applies regional requirements throughout (default: Colombia)
 - Updates git commits incrementally
 
 ### 3. PR
@@ -206,26 +206,28 @@ MODULE 2 - Email Verification
 
 ## Tech Constraints
 
-**Colombian Market:**
-- Default locale: `es` (Spanish)
-- Default currency: `COP` (format: $290.000)
-- Timezone: `America/Bogota`
-- DANE codes for municipalities
-- MAGNA-SIRGAS for coordinates
-- Altitude in MSNM (meters above sea level)
+**Regional Configuration (Colombia as Default):**
+- Default locale: `es` (Spanish) - configurable per region
+- Default currency: `COP` (format: $290.000) - multi-currency support
+- Timezone: `America/Bogota` - configurable
+- Regional administrative codes (e.g., DANE in Colombia)
+- Coordinate systems configurable (MAGNA-SIRGAS for Colombia)
+- Altitude units configurable (MSNM default)
 
-**Business Types:**
+**Business Types (Colombia Example):**
 - S.A.S (Sociedad por Acciones Simplificada)
 - S.A. (Sociedad Anónima)
 - Ltda (Limitada)
 - E.U. (Empresa Unipersonal)
 - Persona Natural
+- *Extensible for other regions*
 
-**Compliance:**
-- INVIMA: Cannabis licensing, seed-to-sale tracking
-- ICA: Agricultural chemical registration
-- FNC: Coffee quality standards
-- Municipal: Business registration, land use permits
+**Compliance (Configurable by Region):**
+- Cannabis: Regulatory tracking (e.g., INVIMA in Colombia)
+- Agricultural chemicals: Registration validation (e.g., ICA in Colombia)
+- Coffee: Quality standards (e.g., FNC in Colombia)
+- Municipal: Business registration, permits
+- *Architecture supports adding new regulatory frameworks*
 
 **Data Architecture:**
 - Multi-tenancy: Every record has `companyId`

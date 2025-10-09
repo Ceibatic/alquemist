@@ -35,7 +35,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 - **Multi-tenant**: All tables include `company_id` for tenant isolation
 - **Batch-first**: Primary tracking at batch level (50-1000 plants)
-- **Colombian compliance**: Extensive Colombian-specific fields
+- **Regional compliance**: Extensible fields for regional requirements (default: Colombia)
 - **Audit trail**: Immutable activity and audit logging
 - **Flexible metadata**: JSON fields for crop-specific/evolving data
 
@@ -45,7 +45,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ## Table: companies
 
-**Purpose**: Multi-tenant company accounts with Colombian business details
+**Purpose**: Multi-tenant company accounts with regional business details
 
 ### Fields
 
@@ -54,12 +54,12 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | id | String | Yes | Primary key |
 | name | String | Yes | Company name |
 | legal_name | String | No | Legal business name |
-| tax_id | String | No | Tax ID (NIT) - unique |
+| tax_id | String | No | Tax identification number (e.g., NIT in Colombia) - unique |
 | company_type | String | Yes | Business classification |
-| business_entity_type | String | No | S.A.S, S.A., Ltda, E.U., Persona Natural |
-| camara_comercio_registration | String | No | Chamber of Commerce registration |
-| dane_municipality_code | String | No | DANE code for municipality |
-| colombian_department | String | No | Colombian department |
+| business_entity_type | String | No | Legal entity type (e.g., S.A.S, S.A., Ltda in Colombia) |
+| business_registration_number | String | No | Business registration number (e.g., Chamber of Commerce in Colombia) |
+| regional_administrative_code | String | No | Regional administrative code (e.g., DANE municipality code in Colombia) |
+| administrative_division_1 | String | No | Primary administrative division (e.g., department in Colombia) |
 | primary_license_number | String | No | Primary license number |
 | license_authority | String | No | Licensing authority |
 | compliance_certifications | JSON | No | Array of certifications |
@@ -69,12 +69,12 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | address_line1 | String | No | Address line 1 |
 | address_line2 | String | No | Address line 2 |
 | city | String | No | City |
-| department | String | No | Department/state |
+| administrative_division_2 | String | No | Secondary division (e.g., department/state) |
 | postal_code | String | No | Postal code |
-| country | String | Yes | Default: "Colombia" |
-| default_locale | String | Yes | Default: "es" |
-| default_currency | String | Yes | Default: "COP" |
-| default_timezone | String | Yes | Default: "America/Bogota" |
+| country | String | Yes | Country code (default: "CO" for Colombia) |
+| default_locale | String | Yes | Language code (default: "es") |
+| default_currency | String | Yes | Currency code (default: "COP") |
+| default_timezone | String | Yes | Timezone (default: "America/Bogota") |
 | subscription_plan | String | Yes | Current plan (default: "basic") |
 | max_facilities | Number | Yes | Facility limit (default: 3) |
 | max_users | Number | Yes | User limit (default: 10) |
@@ -137,7 +137,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ## Table: users
 
-**Purpose**: User accounts with authentication and Colombian identification
+**Purpose**: User accounts with authentication and regional identification
 
 ### Fields
 
@@ -151,7 +151,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | first_name | String | No | First name |
 | last_name | String | No | Last name |
 | phone | String | No | Phone number |
-| identification_type | String | No | CC/CE/NIT/Passport |
+| identification_type | String | No | ID document type (e.g., CC/CE/NIT/Passport in Colombia) |
 | identification_number | String | No | ID number |
 | role_id | String | Yes | Foreign key → roles.id |
 | additional_role_ids | Array[String] | Yes | Multiple roles support |
@@ -198,7 +198,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | scientific_name | String | No | Scientific name |
 | default_tracking_level | String | Yes | "batch" or "individual" (default: "batch") |
 | individual_tracking_optional | Boolean | Yes | Allow individual tracking (default: true) |
-| compliance_profile | JSON | Yes | Colombian regulatory requirements |
+| compliance_profile | JSON | Yes | Regional regulatory requirements (default: Colombia) |
 | default_phases | JSON | Yes | Production phases for crop |
 | environmental_requirements | JSON | No | Temperature, humidity, etc. |
 | average_cycle_days | Number | No | Typical growing cycle |
@@ -218,8 +218,8 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ### Standard Crop Types
 
-1. **Cannabis** - INVIMA compliance, batch/individual tracking
-2. **Coffee** - FNC standards, batch tracking
+1. **Cannabis** - Regulatory compliance (e.g., INVIMA in Colombia), batch/individual tracking
+2. **Coffee** - Industry standards (e.g., FNC in Colombia), batch tracking
 3. **Cocoa** - Export quality standards
 4. **Flowers** - Export certification requirements
 
@@ -239,7 +239,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | variety_type | String | No | Indica/Sativa/Hybrid, Arabica/Robusta, etc. |
 | genetic_lineage | String | No | Parent genetics |
 | supplier_id | String | No | Foreign key → suppliers.id |
-| colombian_origin | JSON | No | Colombian origin information |
+| origin_metadata | JSON | No | Origin information (e.g., Colombian origin) |
 | characteristics | JSON | No | Crop-specific characteristics |
 | optimal_conditions | JSON | No | Growing requirements |
 | performance_metrics | JSON | Yes | Tracked performance data (default: {}) |
@@ -262,7 +262,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ## Table: facilities
 
-**Purpose**: Licensed cultivation facilities with Colombian geographic data
+**Purpose**: Licensed cultivation facilities with regional geographic data
 
 ### Fields
 
@@ -272,7 +272,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | company_id | String | Yes | Foreign key → companies.id |
 | name | String | Yes | Facility name |
 | license_number | String | Yes | Unique license number |
-| license_type | String | No | INVIMA/ICA/Municipal |
+| license_type | String | No | License category (e.g., INVIMA/ICA/Municipal in Colombia) |
 | license_authority | String | No | Issuing authority |
 | license_issued_date | DateTime | No | Issue date |
 | license_expiry_date | DateTime | No | Expiration date |
@@ -280,19 +280,19 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | primary_crop_type_ids | Array[String] | Yes | Supported crop types |
 | address | String | No | Street address |
 | city | String | No | City |
-| department | String | No | Colombian department |
-| municipality | String | No | Municipality |
-| dane_code | String | No | DANE municipality code |
+| administrative_division_1 | String | No | Primary administrative division (e.g., department in Colombia) |
+| administrative_division_2 | String | No | Secondary division (e.g., municipality) |
+| regional_code | String | No | Regional administrative code (e.g., DANE code in Colombia) |
 | postal_code | String | No | Postal code |
-| latitude | Decimal | No | GPS latitude (MAGNA-SIRGAS) |
-| longitude | Decimal | No | GPS longitude (MAGNA-SIRGAS) |
-| altitude_msnm | Number | No | Altitude in meters above sea level |
+| latitude | Decimal | No | GPS latitude (default coordinate system: MAGNA-SIRGAS for Colombia) |
+| longitude | Decimal | No | GPS longitude (default coordinate system: MAGNA-SIRGAS for Colombia) |
+| altitude_meters | Number | No | Altitude in meters above sea level |
 | total_area_m2 | Decimal | No | Total facility area |
 | canopy_area_m2 | Decimal | No | Canopy area |
 | cultivation_area_m2 | Decimal | No | Cultivation area |
 | facility_specifications | JSON | No | Infrastructure details |
 | climate_monitoring | Boolean | Yes | Climate monitoring enabled (default: false) |
-| weather_api_provider | String | No | IDEAM/other |
+| weather_api_provider | String | No | Weather data provider (e.g., IDEAM in Colombia) |
 | weather_station_id | String | No | Weather station ID |
 | status | String | Yes | active/inactive/suspended |
 | created_at | DateTime | Yes | Creation timestamp |
@@ -306,7 +306,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 ### Indexes
 
 - Unique: license_number
-- Index: company_id, status, dane_code
+- Index: company_id, status, regional_code
 
 ---
 
@@ -357,7 +357,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ## Table: suppliers
 
-**Purpose**: Colombian suppliers with performance tracking
+**Purpose**: Regional suppliers with performance tracking
 
 ### Fields
 
@@ -367,16 +367,16 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | company_id | String | Yes | Foreign key → companies.id |
 | name | String | Yes | Supplier name |
 | legal_name | String | No | Legal business name |
-| tax_id | String | No | NIT/tax ID |
-| business_type | String | No | S.A.S/S.A./Ltda/etc. |
-| registration_number | String | No | Registration number |
+| tax_id | String | No | Tax identification number (e.g., NIT in Colombia) |
+| business_type | String | No | Legal entity type (e.g., S.A.S/S.A./Ltda in Colombia) |
+| registration_number | String | No | Business registration number |
 | primary_contact_name | String | No | Contact person |
 | primary_contact_email | String | No | Contact email |
 | primary_contact_phone | String | No | Contact phone |
 | address | String | No | Street address |
 | city | String | No | City |
-| department | String | No | Colombian department |
-| country | String | Yes | Default: "Colombia" |
+| administrative_division_1 | String | No | Primary administrative division (e.g., department in Colombia) |
+| country | String | Yes | Country code (default: "CO" for Colombia) |
 | product_categories | Array[String] | Yes | Product categories supplied |
 | crop_specialization | Array[String] | Yes | Crop specialization |
 | rating | Decimal | No | Overall rating (0-5) |
@@ -405,7 +405,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ## Table: products
 
-**Purpose**: Product catalog with Colombian compliance and multi-crop applicability
+**Purpose**: Product catalog with regional compliance and multi-crop applicability
 
 ### Fields
 
@@ -422,7 +422,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | brand_id | String | No | Brand identifier |
 | manufacturer | String | No | Manufacturer name |
 | preferred_supplier_id | String | No | Foreign key → suppliers.id |
-| colombian_suppliers | Array[String] | Yes | Colombian supplier IDs |
+| regional_suppliers | Array[String] | Yes | Regional supplier IDs (default: local suppliers) |
 | weight_value | Decimal | No | Product weight |
 | weight_unit | String | No | kg/g/lb |
 | dimensions_length | Decimal | No | Length |
@@ -430,8 +430,8 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | dimensions_height | Decimal | No | Height |
 | dimensions_unit | String | No | cm/m/in |
 | product_metadata | JSON | No | Additional product data |
-| ica_registered | Boolean | Yes | ICA registration (default: false) |
-| ica_registration_number | String | No | ICA registration number |
+| regulatory_registered | Boolean | Yes | Regulatory registration status (e.g., ICA in Colombia) (default: false) |
+| regulatory_registration_number | String | No | Registration number (e.g., ICA number in Colombia) |
 | organic_certified | Boolean | Yes | Organic certification (default: false) |
 | organic_cert_number | String | No | Certification number |
 | default_price | Decimal | No | Default price |
@@ -449,13 +449,13 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 ### Indexes
 
 - Unique: sku
-- Index: category, ica_registered, status
+- Index: category, regulatory_registered, status
 
 ---
 
 ## Table: inventory_items
 
-**Purpose**: Stock management with batch tracking and Colombian pricing
+**Purpose**: Stock management with batch tracking and regional pricing
 
 ### Fields
 
@@ -476,9 +476,9 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | manufacturing_date | DateTime | No | Manufacturing date |
 | expiration_date | DateTime | No | Expiration date |
 | last_tested_date | DateTime | No | Quality test date |
-| purchase_price_cop | Decimal | No | Purchase price in COP |
-| current_value_cop | Decimal | No | Current value in COP |
-| cost_per_unit_cop | Decimal | No | Cost per unit in COP |
+| purchase_price | Decimal | No | Purchase price (local currency) |
+| current_value | Decimal | No | Current value (local currency) |
+| cost_per_unit | Decimal | No | Cost per unit (local currency) |
 | quality_grade | String | No | A/B/C quality grade |
 | quality_notes | String | No | Quality notes |
 | certificates | JSON | Yes | Quality certificates (default: []) |
@@ -535,8 +535,8 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | target_ec | Decimal | No | Target EC level |
 | acceptable_ph_range | JSON | No | pH range object |
 | acceptable_ec_range | JSON | No | EC range object |
-| estimated_cost_cop | Decimal | No | Estimated cost in COP |
-| cost_per_unit_cop | Decimal | No | Cost per unit in COP |
+| estimated_cost | Decimal | No | Estimated cost (local currency) |
+| cost_per_unit | Decimal | No | Cost per unit (local currency) |
 | times_used | Number | Yes | Usage count (default: 0) |
 | success_rate | Decimal | No | Success percentage |
 | last_used_date | DateTime | No | Last usage date |
@@ -581,7 +581,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | difficulty_level | String | No | beginner/intermediate/advanced |
 | environmental_requirements | JSON | No | Environmental requirements |
 | space_requirements | JSON | No | Space requirements |
-| estimated_cost_cop | Decimal | No | Estimated cost in COP |
+| estimated_cost | Decimal | No | Estimated cost (local currency) |
 | cost_breakdown | JSON | No | Cost breakdown details |
 | usage_count | Number | Yes | Times used (default: 0) |
 | average_success_rate | Decimal | No | Success percentage |
@@ -687,7 +687,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | procedure_type | String | No | visual/measurement/laboratory |
 | inspection_level | String | No | batch/sample/individual |
 | regulatory_requirement | Boolean | Yes | Required by regulation (default: false) |
-| compliance_standard | String | No | INVIMA/ICA/FNC/etc. |
+| compliance_standard | String | No | Compliance standard (e.g., INVIMA/ICA/FNC in Colombia) |
 | template_structure | JSON | Yes | Form structure definition |
 | ai_assisted | Boolean | Yes | AI analysis (default: false) |
 | ai_analysis_types | Array[String] | Yes | Types of AI analysis |
@@ -716,7 +716,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ## Table: production_orders
 
-**Purpose**: Work orders for production runs with Colombian compliance
+**Purpose**: Work orders for production runs with regional compliance
 
 ### Fields
 
@@ -744,10 +744,10 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | actual_start_date | DateTime | No | Actual start |
 | actual_completion_date | DateTime | No | Actual completion |
 | transport_manifest_required | Boolean | Yes | Requires transport manifest (default: false) |
-| phytosanitary_cert_required | Boolean | Yes | Requires phytosanitary cert (default: false) |
+| phytosanitary_cert_required | Boolean | Yes | Requires phytosanitary certificate (default: false) |
 | regulatory_documentation | JSON | Yes | Compliance documentation (default: {}) |
-| estimated_cost_cop | Decimal | No | Estimated cost in COP |
-| actual_cost_cop | Decimal | No | Actual cost in COP |
+| estimated_cost | Decimal | No | Estimated cost (local currency) |
+| actual_cost | Decimal | No | Actual cost (local currency) |
 | requested_by | String | Yes | Foreign key → users.id |
 | approved_by | String | No | Foreign key → users.id |
 | approval_date | DateTime | No | Approval timestamp |
@@ -1063,7 +1063,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ## Table: pest_diseases
 
-**Purpose**: Colombian pest and disease database with AI training data
+**Purpose**: Regional pest and disease database with AI training data
 
 ### Fields
 
@@ -1075,7 +1075,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | type | String | Yes | pest/disease/deficiency |
 | category | String | Yes | insect/fungal/bacterial/viral/etc. |
 | affected_crop_types | Array[String] | Yes | Affected crop types |
-| colombian_regions | Array[String] | Yes | Colombian regions affected |
+| regional_prevalence | Array[String] | Yes | Regions where prevalent (e.g., Colombian departments) |
 | seasonal_pattern | String | No | Seasonal occurrence pattern |
 | identification_guide | String | No | How to identify |
 | symptoms | JSON | No | Symptom descriptions |
@@ -1087,7 +1087,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | economic_impact | String | No | Economic impact level |
 | spread_rate | String | No | How fast it spreads |
 | is_quarantinable | Boolean | Yes | Quarantine required (default: false) |
-| regulatory_status | String | No | ICA/INVIMA status |
+| regulatory_status | String | No | Regulatory classification (e.g., ICA/INVIMA status in Colombia) |
 | status | String | Yes | active/archived |
 | created_at | DateTime | Yes | Creation timestamp |
 | updated_at | DateTime | Yes | Last update timestamp |
@@ -1100,7 +1100,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 - Index: type, category, affected_crop_types, status
 
-### Common Colombian Pests
+### Common Regional Pests (Colombia Examples)
 
 - **Araña roja** (Red spider mite)
 - **Broca del café** (Coffee berry borer)
@@ -1113,7 +1113,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ## Table: media_files
 
-**Purpose**: Photos, videos, documents with Colombian GPS data and AI analysis
+**Purpose**: Photos, videos, documents with GPS data and AI analysis
 
 ### Fields
 
@@ -1129,10 +1129,10 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | storage_path | String | Yes | Storage path |
 | storage_bucket | String | Yes | Storage bucket |
 | public_url | String | No | Public URL (if public) |
-| gps_coordinates | JSON | No | GPS coordinates (MAGNA-SIRGAS) |
+| gps_coordinates | JSON | No | GPS coordinates (default: MAGNA-SIRGAS for Colombia) |
 | location_taken | String | No | Location description |
-| colombian_municipality | String | No | Municipality name |
-| altitude_msnm | Number | No | Altitude in meters |
+| administrative_location | String | No | Administrative location (e.g., municipality) |
+| altitude_meters | Number | No | Altitude in meters above sea level |
 | resolution_width | Number | No | Image width |
 | resolution_height | Number | No | Image height |
 | duration_seconds | Number | No | Video duration |
@@ -1145,8 +1145,8 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | auto_generated_tags | Array[String] | Yes | AI-generated tags |
 | category | String | No | photo/document/certificate |
 | is_compliance_document | Boolean | Yes | Compliance doc (default: false) |
-| regulatory_significance | String | No | INVIMA/ICA/FNC |
-| retention_period_years | Number | No | Retention requirement |
+| regulatory_significance | String | No | Regulatory authority (e.g., INVIMA/ICA/FNC in Colombia) |
+| retention_period_years | Number | No | Retention requirement (default: 5 years for compliance) |
 | quality_score | Decimal | No | Image quality (0-100) |
 | is_processed | Boolean | Yes | Processing complete (default: false) |
 | processing_status | String | No | pending/processing/complete/error |
@@ -1171,7 +1171,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ## Table: compliance_events
 
-**Purpose**: Regulatory compliance tracking with Colombian authorities
+**Purpose**: Regulatory compliance tracking with regional authorities
 
 ### Fields
 
@@ -1179,7 +1179,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 |-------|------|----------|-------------|
 | id | String | Yes | Primary key |
 | event_type | String | Yes | inspection/violation/permit/audit |
-| event_category | String | Yes | ica/invima/municipal/fnc |
+| event_category | String | Yes | Regulatory category (e.g., ica/invima/municipal/fnc in Colombia) |
 | regulatory_authority | String | No | Authority name |
 | regulation_reference | String | No | Regulation reference |
 | compliance_requirement | String | No | Specific requirement |
@@ -1203,11 +1203,11 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | corrective_actions | JSON | No | Corrective actions |
 | supporting_documents | Array[String] | Yes | Document references |
 | photos | Array[String] | Yes | Photo references |
-| requires_government_notification | Boolean | Yes | Notify government (default: false) |
+| requires_authority_notification | Boolean | Yes | Notify regulatory authority (default: false) |
 | notification_sent | DateTime | No | Notification sent date |
-| government_response | String | No | Government response |
-| estimated_cost_cop | Decimal | No | Estimated cost |
-| actual_cost_cop | Decimal | No | Actual cost |
+| authority_response | String | No | Regulatory authority response |
+| estimated_cost | Decimal | No | Estimated cost (local currency) |
+| actual_cost | Decimal | No | Actual cost (local currency) |
 | followup_required | Boolean | Yes | Followup needed (default: false) |
 | followup_date | DateTime | No | Followup date |
 | recurring_check_frequency | String | No | daily/weekly/monthly |
@@ -1245,8 +1245,8 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 | applies_to_entity_type | String | Yes | company/facility/batch |
 | applies_to_entity_id | String | Yes | Foreign key to entity |
 | company_id | String | Yes | Foreign key → companies.id |
-| colombian_authority | String | No | INVIMA/ICA/FNC/Municipal |
-| national_registration | String | No | National registration number |
+| regulatory_authority | String | No | Issuing authority (e.g., INVIMA/ICA/FNC/Municipal in Colombia) |
+| national_registration_number | String | No | National registration number |
 | issued_date | DateTime | Yes | Issue date |
 | expiry_date | DateTime | Yes | Expiration date |
 | is_renewable | Boolean | Yes | Can be renewed (default: true) |
@@ -1299,25 +1299,26 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ---
 
-## Colombian-Specific Fields Summary
+## Regional Fields Summary (Default: Colombia)
 
 ### Geographic Fields
-- `dane_municipality_code` - DANE codes for all locations
-- `colombian_department` - Department selection
-- `altitude_msnm` - Altitude in meters above sea level
-- GPS coordinates in MAGNA-SIRGAS system
+- `regional_administrative_code` - Regional codes (e.g., DANE municipality codes in Colombia)
+- `administrative_division_1` - Primary division (e.g., department in Colombia)
+- `administrative_division_2` - Secondary division (e.g., municipality)
+- `altitude_meters` - Altitude in meters above sea level
+- GPS coordinates - Default coordinate system: MAGNA-SIRGAS for Colombia
 
 ### Business Fields
-- `business_entity_type` - S.A.S, S.A., Ltda, E.U., Persona Natural
-- `tax_id` - NIT format
-- `camara_comercio_registration` - Chamber of Commerce
-- `default_currency` - COP currency
+- `business_entity_type` - Legal entity type (e.g., S.A.S, S.A., Ltda, E.U., Persona Natural in Colombia)
+- `tax_id` - Tax identification (e.g., NIT format in Colombia)
+- `business_registration_number` - Business registration (e.g., Chamber of Commerce in Colombia)
+- `default_currency` - Currency code (default: COP)
 
 ### Compliance Fields
-- `ica_registration_number` - ICA chemical registration
+- `regulatory_registration_number` - Regulatory registration (e.g., ICA chemical registration in Colombia)
 - `phytosanitary_certificate` - Transport requirements
 - `regulatory_documentation` - Flexible compliance data
-- `colombian_authority` - INVIMA/ICA/FNC/Municipal
+- `regulatory_authority` - Regulatory bodies (e.g., INVIMA/ICA/FNC/Municipal in Colombia)
 
 ---
 
@@ -1332,13 +1333,13 @@ The `batches` table is the **primary tracking entity**. Individual `plants` are 
 ### Immutable Audit Trails
 Activity logs and compliance events should never be deleted or modified after creation. Implement "soft deletes" or status changes instead.
 
-### Colombian Compliance
-5-year data retention required for compliance documents. Implement automatic archival and retention policies.
+### Regional Compliance
+Data retention requirements vary by region (default: 5 years for Colombia). Implement automatic archival and retention policies based on regional requirements.
 
 ### JSON Field Usage
 JSON fields provide flexibility for:
 - Crop-specific characteristics
-- Evolving regulatory requirements
+- Evolving regional regulatory requirements
 - Multi-crop compatibility
 - AI analysis results
 
@@ -1350,7 +1351,7 @@ JSON fields provide flexibility for:
 2. **Implement schema** using chosen technology
 3. **Add indexes** for performance optimization
 4. **Set up migrations** for schema changes
-5. **Implement seed data** with Colombian sample data
+5. **Implement seed data** with regional sample data (default: Colombia)
 
 **For feature requirements**, see [Product-Requirements.md]
 **For technical implementation**, see [Technical-Specification.md]
