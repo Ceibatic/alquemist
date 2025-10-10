@@ -1,6 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
+import Link from 'next/link'
 
 export default async function DashboardPage() {
   const { userId, orgId } = await auth()
@@ -107,15 +108,21 @@ export default async function DashboardPage() {
                       />
                     </svg>
                   </div>
-                  <div className="ml-3">
+                  <div className="ml-3 flex-1">
                     <h3 className="text-sm font-medium text-yellow-800">
                       No Organization
                     </h3>
                     <div className="mt-2 text-sm text-yellow-700">
-                      <p>
+                      <p className="mb-3">
                         You need to create or join an organization to use the full
                         platform features.
                       </p>
+                      <Link
+                        href="/create-organization"
+                        className="inline-flex items-center rounded-md bg-yellow-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-yellow-500"
+                      >
+                        Create Organization
+                      </Link>
                     </div>
                   </div>
                 </div>
