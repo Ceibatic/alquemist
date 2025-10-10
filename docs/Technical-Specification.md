@@ -69,34 +69,55 @@ Deployment:
 
 ### High-Level Architecture
 
+**Dual-Frontend Architecture (Bubble + Next.js)**
+
 ```
-┌──────────────────────────────────────────────┐
-│     USERS (Latin American Market)            │
-│     Mobile PWA + Desktop Browser             │
-└─────────────────┬────────────────────────────┘
-                  │ HTTPS
+┌──────────────────────────────────────────────────────────┐
+│              USERS (Latin American Market)               │
+│              Mobile PWA + Desktop Browser                │
+└─────────────────────┬────────────────────────────────────┘
+                      │ HTTPS
+         ┌────────────┴────────────┐
+         │                         │
+         ↓                         ↓
+┌─────────────────┐       ┌──────────────────────────┐
+│  BUBBLE APP     │       │   NEXT.JS 14             │
+│  (Rapid UI)     │       │   (Vercel Edge)          │
+│                 │       │                          │
+│  - Standard UI  │       │  - Custom Features       │
+│  - Forms        │       │  - AI Components         │
+│  - CRUD Ops     │       │  - Analytics             │
+│  - Workflows    │       │  - PWA Features          │
+└────────┬────────┘       └──────────┬───────────────┘
+         │                           │
+         └────────┬──────────────────┘
                   ↓
-┌──────────────────────────────────────────────┐
-│     NEXT.JS 14 (Vercel Edge)                 │
-│                                              │
-│  ┌────────────────────────────────────────┐ │
-│  │  Server Components (SEO)               │ │
-│  │  Client Components (Interactivity)     │ │
-│  │  Server Actions (Mutations)            │ │
-│  │  Middleware (Auth + i18n)              │ │
-│  └────────────────────────────────────────┘ │
-└─────────┬───────────────────┬────────────────┘
-          │                   │
-          ↓                   ↓
-┌──────────────────┐   ┌─────────────────────┐
-│   CLERK AUTH     │   │   CONVEX DATABASE   │
-│   (clerk.com)    │   │   (convex.dev)      │
-│                  │   │                     │
-│  - User Mgmt     │   │  - 26 Tables        │
-│  - OAuth         │   │  - Real-time Sync   │
-│  - Organizations │   │  - File Storage     │
-│  - RBAC          │   │  - TypeScript API   │
-└──────────────────┘   └─────────────────────┘
+         ┌────────────────────┐
+         │   REST API v1      │
+         │   /api/v1/*        │
+         │                    │
+         │  - Auth            │
+         │  - Companies       │
+         │  - Facilities      │
+         │  - Batches         │
+         │  - Activities      │
+         │  - Compliance      │
+         │  - Inventory       │
+         └────────┬───────────┘
+                  │
+         ┌────────┴─────────────────┐
+         │                          │
+         ↓                          ↓
+┌──────────────────┐       ┌─────────────────────┐
+│   CLERK AUTH     │       │   CONVEX DATABASE   │
+│   (clerk.com)    │       │   (convex.dev)      │
+│                  │       │                     │
+│  - User Mgmt     │       │  - 26 Tables        │
+│  - OAuth         │       │  - Real-time Sync   │
+│  - Organizations │       │  - File Storage     │
+│  - RBAC          │       │  - TypeScript API   │
+│  - JWT Tokens    │       │  - WebSocket        │
+└──────────────────┘       └─────────────────────┘
 ```
 
 ### Multi-Tenancy Design
@@ -165,6 +186,195 @@ Deployment:
 - `specialLicensing` - Industry-specific licensing (e.g., INVIMA for cannabis)
 - `phytosanitaryCertificate` - Transport permits
 - `regulatoryDocumentation` - Flexible JSON compliance data
+
+---
+
+## API Layer
+
+### REST API Architecture
+
+**Purpose:** Frontend-agnostic access to backend resources for Bubble, mobile apps, and third-party integrations.
+
+**Base URL:**
+- Development: `http://localhost:3000/api/v1`
+- Production: `https://your-domain.com/api/v1`
+
+**Design Principles:**
+- RESTful conventions (GET, POST, PATCH, DELETE)
+- Consistent JSON response format
+- JWT authentication via Clerk
+- Comprehensive error handling
+- Request validation with Zod schemas
+- CORS support for Bubble integration
+
+### API Structure
+
+**Core Infrastructure:**
+
+```typescript
+lib/api/
+├── middleware.ts       // Auth, validation, pagination
+├── errors.ts          // Error classes (ApiError, etc.)
+├── response.ts        // Standard response helpers
+└── validations/
+    └── schemas.ts     // Shared Zod schemas
+```
+
+**Endpoints:**
+
+```
+/api/v1/
+├── auth/
+│   ├── session        GET    - Get current session
+│   └── token          POST   - Get API token for Bubble
+├── companies/         GET    - List companies
+│                      POST   - Create company
+├── facilities/        GET    - List facilities
+│                      POST   - Create facility
+│   └── [id]/          GET    - Get facility
+│                      PATCH  - Update facility
+│                      DELETE - Delete facility
+├── batches/           GET    - List batches
+│                      POST   - Create batch
+├── activities/        GET    - List activities
+│                      POST   - Log activity
+├── compliance/        GET    - List compliance events
+│                      POST   - Create event
+└── inventory/         GET    - List inventory
+                       POST   - Add inventory item
+```
+
+### Response Format
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "data": { /* response data */ },
+  "meta": {
+    "timestamp": "2025-01-09T10:30:00Z"
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human-readable error",
+    "details": { /* optional */ }
+  },
+  "meta": {
+    "timestamp": "2025-01-09T10:30:00Z"
+  }
+}
+```
+
+**Paginated Response:**
+```json
+{
+  "success": true,
+  "data": [ /* items */ ],
+  "meta": {
+    "timestamp": "2025-01-09T10:30:00Z",
+    "pagination": {
+      "page": 1,
+      "limit": 50,
+      "total": 150,
+      "totalPages": 3
+    }
+  }
+}
+```
+
+### Authentication Flow
+
+1. User authenticates via Clerk (Bubble or Next.js)
+2. Client calls `POST /api/v1/auth/token` with Clerk session token
+3. Server returns JWT token valid for 1 hour
+4. Client includes token in all API requests: `Authorization: Bearer <token>`
+5. Middleware validates token and extracts user/organization context
+
+### CORS Configuration
+
+**Configuration:** `next.config.ts`
+
+```typescript
+headers: {
+  'Access-Control-Allow-Origin': process.env.BUBBLE_APP_URL || '*',
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+}
+```
+
+**Environment Variables:**
+```bash
+BUBBLE_APP_URL=https://your-app.bubbleapps.io
+ALLOWED_ORIGINS=https://your-app.bubbleapps.io,http://localhost:3000
+```
+
+### Validation
+
+**Shared Schemas:** `lib/validations/schemas.ts`
+
+All input validation uses Zod schemas shared between:
+- REST API endpoints
+- Next.js Server Actions
+- Bubble API Connector
+
+**Example:**
+```typescript
+export const createBatchSchema = z.object({
+  facility_id: z.string().min(1),
+  crop_type_id: z.string().min(1),
+  planned_quantity: z.number().int().positive(),
+  tracking_level: z.enum(['batch', 'individual']),
+  // ...
+})
+```
+
+### Error Handling
+
+**HTTP Status Codes:**
+- `200` OK - Success
+- `201` Created - Resource created
+- `204` No Content - Deletion success
+- `400` Bad Request - Invalid request
+- `401` Unauthorized - Auth required
+- `403` Forbidden - Insufficient permissions
+- `404` Not Found - Resource not found
+- `422` Validation Error - Input validation failed
+- `500` Internal Server Error - Server error
+
+**Error Classes:**
+```typescript
+BadRequestError      // 400
+UnauthorizedError    // 401
+ForbiddenError       // 403
+NotFoundError        // 404
+ConflictError        // 409
+ValidationError      // 422
+InternalServerError  // 500
+```
+
+### Bubble Integration
+
+**Setup Steps:**
+
+1. **Install Clerk Plugin** in Bubble for authentication
+2. **Configure API Connector** in Bubble:
+   - Add Alquemist API
+   - Set base URL: `https://your-domain.com/api/v1`
+   - Add shared header: `Authorization: Bearer [token]`
+3. **Get API Token** workflow:
+   - Call `POST /api/v1/auth/token`
+   - Store token in Bubble state
+4. **Create API Calls** for each endpoint
+5. **Handle Responses** in Bubble workflows
+
+**Full Documentation:** See [API-Integration.md](API-Integration.md)
 
 ---
 
