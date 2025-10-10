@@ -608,35 +608,62 @@ npm run build
 - [docs/Browser-API-Testing.md](docs/Browser-API-Testing.md) - Complete testing guide
 - [docs/Authentication-Guide.md](docs/Authentication-Guide.md) - Auth troubleshooting
 
-### Next Steps
+### Module 1: Company & Facility Setup (PLANNING COMPLETE) 📋
 
-**Foundation is 100% complete and tested!** 🎉
+**Status:** Planning phase complete, ready to implement
+**Planning Date:** 2025-10-10
+**Estimated Effort:** 12-14 hours (4 sprints)
 
-**Ready for Module Development:**
+**Planning Documents Created:**
+- [docs/Module-1-Planning.md](docs/Module-1-Planning.md) - Full planning with 15 user stories, technical architecture
+- [docs/Module-1-Quick-Start.md](docs/Module-1-Quick-Start.md) - TL;DR implementation guide
+- [docs/Module-1-Task-Board.md](docs/Module-1-Task-Board.md) - 47 tasks in Kanban format
 
-1. **MODULE 1: Company & Facility Setup UI** (Recommended next)
-   - Company profile management interface
-   - Facility creation wizard with license tracking
-   - Area configuration and management
-   - User role assignment
+**What We'll Build (MVP):**
+1. ✅ **Company Profile** - View and edit company information
+2. ✅ **Facilities List** - Browse with search, filter, pagination
+3. ✅ **Create Facility Wizard** - 3-step guided creation flow
+4. ✅ **Facility Details** - Tabbed view (Overview | License | Areas)
+5. ✅ **License Alerts** - Visual expiration indicators
 
-2. **MODULE 2: Batch Creation & Tracking**
-   - Batch creation with QR code generation
-   - Plant tracking (individual or batch-level)
-   - Phase management (Propagation → Harvest)
-   - Movement tracking between areas
+**Key Features:**
+- Multi-step facility creation wizard
+- Real-time updates via Convex
+- License expiration color coding (green/yellow/red)
+- Responsive design (mobile-first)
+- Multi-tenant isolation enforced
 
-3. **MODULE 3: Activity Logging**
-   - Activity templates and scheduling
-   - Task assignment to users
-   - Activity history and audit trail
-   - Mobile-friendly activity capture
+**Tech Stack for Module 1:**
+- UI Components: shadcn/ui (card, button, form, tabs, badge, dialog)
+- Forms: react-hook-form + Zod validation
+- State: Convex React hooks (useQuery, useMutation)
+- Notifications: Sonner (toast)
+- Styling: Tailwind CSS (Emerald theme)
 
-**Current Status:** Foundation 100% complete, all tests passing, ready for feature development
+**Implementation Sprints:**
+- Sprint 1: Foundation & Company Profile (4-5h)
+- Sprint 2: Facilities List & Details (4-5h)
+- Sprint 3: Create Facility Wizard (3-4h)
+- Sprint 4: Testing & Polish (2-3h)
+
+**Deferred to Later Modules:**
+- Logo/document uploads
+- Advanced area layouts
+- Team member invitation UI
+- Batch and activity features
+
+**Next Steps:**
+1. ✅ Review planning documents
+2. ✅ Approve approach
+3. [ ] Run: `npm install react-hook-form @hookform/resolvers zod sonner date-fns`
+4. [ ] Run: `npx shadcn@latest add card button input label form select tabs badge dialog alert`
+5. [ ] Start Sprint 1: `@implement module-1-sprint-1`
+
+**Current Status:** Foundation 100% complete, Module 1 fully planned, ready to implement
 
 **Git Status:**
-- Latest commit: `ea00657` - Organization setup and complete API testing flow
+- Latest commit: `a23dba4` - Add comprehensive session summary
 - Branch: `main`
 - Status: ✅ All changes committed and pushed
 
-Use `@implement module-1` to begin building the first feature module.
+Use `@implement module-1-sprint-1` to begin implementation!
