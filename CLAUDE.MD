@@ -94,10 +94,15 @@ Alquemist supports two parallel frontend options that share the same backend:
 ### Development Workflow
 
 **For Bubble Development:**
-1. Use API documentation (see API-Integration.md)
-2. Configure Clerk authentication in Bubble
+1. Use API documentation (see API-Integration.md and API-Bubble-Reference.md)
+2. Configure Clerk authentication in Bubble (Clerk plugin)
 3. Call REST API endpoints from Bubble workflows
 4. Use Bubble's API Connector for all backend operations
+5. **NEW:** Complete Module 1 Bubble documentation available:
+   - [Module-1-Bubble-Guide.md](docs/Module-1-Bubble-Guide.md) - Full implementation guide (170+ pages)
+   - [API-Bubble-Reference.md](docs/API-Bubble-Reference.md) - Complete API reference with Bubble config
+   - [Module-1-Bubble-Quick-Start.md](docs/Module-1-Bubble-Quick-Start.md) - 6-8h checklist
+   - [Bubble-UI-Wireframes.md](docs/Bubble-UI-Wireframes.md) - Visual page designs
 
 **For Next.js Development:**
 1. Use Convex queries directly (real-time)
@@ -666,4 +671,70 @@ npm run build
 - Branch: `main`
 - Status: ✅ All changes committed and pushed
 
-Use `@implement module-1-sprint-1` to begin implementation!
+Use `@implement module-1-sprint-1` to begin Next.js implementation!
+
+### Module 1: Bubble Implementation Path 🟣
+
+**Status:** Complete documentation ready
+**Created:** 2025-10-10
+**Estimated Effort:** 6-8 hours implementation
+
+**Bubble Documentation Suite (4 comprehensive guides):**
+
+1. **[Module-1-Bubble-Guide.md](docs/Module-1-Bubble-Guide.md)** (Comprehensive)
+   - Complete setup guide (Clerk + API Connector)
+   - 5 pages with detailed layouts and elements
+   - All workflows explained step-by-step
+   - Data types and custom states
+   - Troubleshooting section
+   - Best practices
+
+2. **[API-Bubble-Reference.md](docs/API-Bubble-Reference.md)** (API Reference)
+   - All 9 API endpoints configured for Bubble
+   - Headers, parameters, body structure
+   - Response handling examples
+   - Error codes and solutions
+   - Testing sequences
+   - Pro tips for reusable patterns
+
+3. **[Module-1-Bubble-Quick-Start.md](docs/Module-1-Bubble-Quick-Start.md)** (Checklist)
+   - 4 phases with time estimates
+   - Step-by-step checkboxes
+   - Quick tests at each phase
+   - Time breakdown (6-8h total)
+   - Troubleshooting shortcuts
+
+4. **[Bubble-UI-Wireframes.md](docs/Bubble-UI-Wireframes.md)** (Visual Design)
+   - ASCII wireframes for all 5 pages
+   - Design system (colors, typography, spacing)
+   - Element specifications
+   - Mobile responsive patterns
+   - Bubble-specific layout tips
+
+**What You Can Build in Bubble:**
+- ✅ Complete Company & Facility Management UI
+- ✅ Multi-step facility creation wizard
+- ✅ License tracking with expiration alerts
+- ✅ Search, filter, and pagination
+- ✅ Full CRUD operations via REST API
+- ✅ Clerk authentication integrated
+- ✅ Multi-tenant isolation enforced
+
+**Implementation Time:**
+- Phase 1: Setup (1-1.5h) - Clerk + API Connector
+- Phase 2: Company Profile (2h) - View + Edit
+- Phase 3: Facilities (3-4h) - List + Details + Create
+- Phase 4: Testing (30min) - Full flow + multi-tenancy
+
+**Dual-Frontend Strategy:**
+- **Option A:** Build in Bubble first (faster prototyping)
+- **Option B:** Build in Next.js first (more features)
+- **Option C:** Build both in parallel (maximum coverage)
+
+**Ready to Start Bubble Implementation:**
+1. ✅ Review [Module-1-Bubble-Quick-Start.md](docs/Module-1-Bubble-Quick-Start.md)
+2. ✅ Follow Phase 1: Setup (1-1.5h)
+3. ✅ Reference [API-Bubble-Reference.md](docs/API-Bubble-Reference.md) for API calls
+4. ✅ Use [Bubble-UI-Wireframes.md](docs/Bubble-UI-Wireframes.md) for UI design
+
+Use `@implement module-1-bubble` to get implementation support!
