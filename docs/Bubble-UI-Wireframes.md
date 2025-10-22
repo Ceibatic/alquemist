@@ -1,277 +1,279 @@
-# Bubble UI Wireframes - Module 1
+# Wireframes UI de Bubble - Módulo 1
 
-**Visual reference for building pages in Bubble**
+**Referencia visual para construir páginas en Bubble**
 
-Use these wireframes as a guide when designing your Bubble pages.
+Usa estos wireframes como guía al diseñar tus páginas en Bubble.
 
 ---
 
-## 🎨 Design System
+## 🎨 Sistema de Diseño
 
-### Colors
-- **Primary:** `#059669` (Emerald-600) - Agriculture theme
-- **Success:** `#16a34a` (Green-600)
-- **Warning:** `#f59e0b` (Amber-500)
-- **Danger:** `#dc2626` (Red-600)
-- **Gray:** `#6b7280` (Gray-500)
+### Colores
+- **Primario:** `#059669` (Emerald-600) - Tema agricultura
+- **Éxito:** `#16a34a` (Green-600)
+- **Advertencia:** `#f59e0b` (Amber-500)
+- **Peligro:** `#dc2626` (Red-600)
+- **Gris:** `#6b7280` (Gray-500)
 
-### Typography
-- **Headings:** Inter or Poppins (Bold)
-- **Body:** Inter or Open Sans (Regular)
-- **Size Scale:** 12px, 14px, 16px, 20px, 24px, 32px
+### Tipografía
+- **Encabezados:** Inter o Poppins (Bold)
+- **Cuerpo:** Inter o Open Sans (Regular)
+- **Escala de tamaño:** 12px, 14px, 16px, 20px, 24px, 32px
 
-### Spacing
+### Espaciado
 - **Padding:** 8px, 16px, 24px, 32px
-- **Margins:** 8px, 16px, 24px, 32px
-- **Card radius:** 8px
-- **Button radius:** 6px
+- **Márgenes:** 8px, 16px, 24px, 32px
+- **Radio de tarjetas:** 8px
+- **Radio de botones:** 6px
 
 ---
 
-## Page 1: Dashboard
+## Página 1: Panel de Control
 
-### Layout
+### Diseño
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Header (Reusable Element)                                   │
-│ ┌─────────┐  Navigation  Company  Facilities  [User •]     │
+│ Header (Elemento Reusable)                                  │
+│ ┌─────────┐  Navegación  Empresa  Instalaciones  [Usuario •]│
 │ │  Logo   │                                                 │
 │ └─────────┘                                                 │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Welcome, [Company Name]                                    │
-│  [User Email]                                               │
+│  Bienvenido, [Nombre de Empresa]                           │
+│  [Email del Usuario]                                        │
 │                                                             │
 │  ┌───────────────────┐  ┌───────────────────┐              │
-│  │  📁 Company       │  │  🏭 Facilities    │              │
+│  │  📁 Empresa       │  │  🏭 Instalaciones │              │
 │  │                   │  │                   │              │
-│  │  Profile          │  │  5 Active         │              │
+│  │  Perfil           │  │  5 Activas        │              │
 │  │                   │  │                   │              │
-│  │  [View Profile]   │  │  [View All]       │              │
+│  │  [Ver Perfil]     │  │  [Ver Todas]      │              │
 │  └───────────────────┘  └───────────────────┘              │
 │                                                             │
-│  Quick Actions                                              │
+│  Acciones Rápidas                                           │
 │  ┌───────────────────────────────────────────┐             │
-│  │ [+ Create New Facility]                   │             │
+│  │ [+ Crear Nueva Instalación]               │             │
 │  └───────────────────────────────────────────┘             │
 │  ┌───────────────────────────────────────────┐             │
-│  │ [📊 View Reports]                         │             │
+│  │ [📊 Ver Reportes]                         │             │
 │  └───────────────────────────────────────────┘             │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Elements
+### Elementos
 
-**Group: Page Container**
-- Width: 100%
-- Max width: 1200px
-- Center aligned
+**Grupo: Contenedor de Página**
+- Ancho: 100%
+- Ancho máximo: 1200px
+- Alineación: centrado
 - Padding: 32px
 
-**Group: Welcome Section**
-- Text: "Welcome, [Dynamic: Company name]" (32px, bold)
-- Text: [Dynamic: User email] (14px, gray)
-- Margin bottom: 32px
+**Grupo: Sección de Bienvenida**
+- Texto: "Bienvenido, [Dinámico: Nombre empresa]" (32px, negrita)
+- Texto: [Dinámico: Email usuario] (14px, gris)
+- Margen inferior: 32px
 
-**Group: Stats Cards (Row)**
-- Layout: Row (2 columns)
-- Gap: 16px
+**Grupo: Tarjetas de Estadísticas (Fila)**
+- Layout: Fila (2 columnas)
+- Espacio: 16px
 
-**Card: Company Profile**
-- Width: 50%
+**Tarjeta: Perfil de Empresa**
+- Ancho: 50%
 - Padding: 24px
-- Background: White
-- Border radius: 8px
-- Shadow: 0 1px 3px rgba(0,0,0,0.1)
-- Icon: 📁 (40px)
-- Text: "Profile" (20px, bold)
-- Button: "View Profile" → company-profile
+- Fondo: Blanco
+- Radio del borde: 8px
+- Sombra: 0 1px 3px rgba(0,0,0,0.1)
+- Icono: 📁 (40px)
+- Texto: "Perfil" (20px, negrita)
+- Botón: "Ver Perfil" → company-profile
 
-**Card: Facilities**
-- Same styling as Company Profile
-- Icon: 🏭
-- Text: "Facilities"
-- Text: [Dynamic: Count] " Active" (16px, gray)
-- Button: "View All" → facilities-list
+**Tarjeta: Instalaciones**
+- Mismo estilo que Perfil de Empresa
+- Icono: 🏭
+- Texto: "Instalaciones"
+- Texto: [Dinámico: Cantidad] " Activas" (16px, gris)
+- Botón: "Ver Todas" → facilities-list
 
-**Group: Quick Actions**
-- Margin top: 32px
-- Full width buttons
-- Gap: 12px
+**Grupo: Acciones Rápidas**
+- Margen superior: 32px
+- Botones de ancho completo
+- Espacio: 12px
 
 ---
 
-## Page 2: Company Profile
+## Página 2: Perfil de Empresa
 
-### Layout - View Mode
+### Diseño - Modo Vista
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Header (Reusable Element)                                   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Company Profile                              [Edit Button] │
+│  Perfil de Empresa                            [Botón Editar]│
 │  ━━━━━━━━━━━━━━━                                            │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ Basic Information                                       ││
+│  │ Información Básica                                      ││
 │  │                                                         ││
-│  │ Company Name           [Alquemist Test Company]        ││
-│  │ Legal Name             [Alquemist Test Company SAS]    ││
-│  │ Tax ID (NIT)           [900123456-7]                   ││
-│  │ Business Entity Type   [S.A.S]                         ││
-│  │ Type                   [Agriculture]                    ││
-│  │ Status                 [🟢 Active]                      ││
+│  │ Nombre de Empresa      [Alquemist Test Company]        ││
+│  │ Razón Social           [Alquemist Test Company SAS]    ││
+│  │ NIT                    [900123456-7]                   ││
+│  │ Tipo de Entidad        [S.A.S]                         ││
+│  │ Tipo                   [Agricultura]                    ││
+│  │ Estado                 [🟢 Activo]                      ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ Contact Information                                     ││
+│  │ Información de Contacto                                 ││
 │  │                                                         ││
 │  │ Email                  [contact@company.com]           ││
-│  │ Phone                  [+57 300 123 4567]              ││
+│  │ Teléfono               [+57 300 123 4567]              ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ Regional Settings                                       ││
+│  │ Configuración Regional                                  ││
 │  │                                                         ││
-│  │ Country                [Colombia (CO)]                  ││
-│  │ Language               [Spanish (es)]                   ││
-│  │ Currency               [COP]                            ││
-│  │ Timezone               [America/Bogota]                 ││
+│  │ País                   [Colombia (CO)]                  ││
+│  │ Idioma                 [Español (es)]                   ││
+│  │ Moneda                 [COP]                            ││
+│  │ Zona Horaria           [America/Bogota]                 ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Layout - Edit Mode
+### Diseño - Modo Edición
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Header (Reusable Element)                                   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Edit Company Profile                                       │
-│  ━━━━━━━━━━━━━━━━━━━                                        │
+│  Editar Perfil de Empresa                                   │
+│  ━━━━━━━━━━━━━━━━━━━━━━━                                    │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ Basic Information                                       ││
+│  │ Información Básica                                      ││
 │  │                                                         ││
-│  │ Company Name *                                          ││
+│  │ Nombre de Empresa *                                     ││
 │  │ [_____________________________________________]         ││
 │  │                                                         ││
-│  │ Legal Name *                                            ││
+│  │ Razón Social *                                          ││
 │  │ [_____________________________________________]         ││
 │  │                                                         ││
-│  │ Tax ID (NIT) *                                          ││
+│  │ NIT *                                                   ││
 │  │ [_____________________________________________]         ││
 │  │                                                         ││
-│  │ Business Entity Type                                    ││
+│  │ Tipo de Entidad                                         ││
 │  │ [S.A.S ▼]                                              ││
 │  │                                                         ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ Contact Information                                     ││
+│  │ Información de Contacto                                 ││
 │  │                                                         ││
 │  │ Email                                                   ││
 │  │ [_____________________________________________]         ││
 │  │                                                         ││
-│  │ Phone                                                   ││
+│  │ Teléfono                                                ││
 │  │ [_____________________________________________]         ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
-│              [Cancel Button]  [Save Button]                 │
+│              [Botón Cancelar]  [Botón Guardar]              │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Elements
+### Elementos
 
-**Group: Info Section** (View Mode)
+**Group: Sección Info** (Modo Vista)
 - Conditional: When is_editing = no
-- Label + Value pairs
+- Pares Label + Value
 - Label: 14px, gray-600, uppercase
 - Value: 16px, gray-900, regular
 
-**Group: Form Section** (Edit Mode)
+**Group: Sección Formulario** (Modo Edición)
 - Conditional: When is_editing = yes
-- Input fields with labels
-- Input styling: Border 1px gray-300, focus: emerald-500
-- Button group: Cancel (gray) + Save (emerald)
+- Campos de entrada con etiquetas
+- Estilo Input: Border 1px gray-300, focus: emerald-500
+- Grupo de botones: Cancelar (gris) + Guardar (esmeralda)
 
 ---
 
-## Page 3: Facilities List
+## Página 3: Lista de Instalaciones
 
-### Layout
+### Diseño
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Header (Reusable Element)                                   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Facilities                           [+ New Facility]      │
-│  ━━━━━━━━━━                                                 │
+│  Instalaciones                      [+ Nueva Instalación]   │
+│  ━━━━━━━━━━━━━                                              │
 │                                                             │
-│  [🔍 Search facilities...]  [Type: All ▼]  [Status: All ▼]│
+│  [🔍 Buscar instalaciones...]  [Tipo: Todas ▼] [Estado: Todos ▼]│
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ 🏭 Greenhouse Facility #1                              ││
+│  │ 🏭 Instalación Invernadero #1                          ││
 │  │                                                         ││
-│  │ Type: Greenhouse • License: LIC-2025-001               ││
+│  │ Tipo: Invernadero • Licencia: LIC-2025-001            ││
 │  │ 📍 Bogotá, Cundinamarca                                ││
 │  │                                                         ││
-│  │ License expires: 2026-12-31 🟢 450 days                ││
+│  │ Licencia vence: 2026-12-31 🟢 450 días                ││
 │  │                                                         ││
-│  │                                          [View Details] ││
+│  │                                          [Ver Detalles] ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ 🏢 Indoor Facility A                                   ││
+│  │ 🏢 Instalación Interior A                              ││
 │  │                                                         ││
-│  │ Type: Indoor • License: LIC-2025-002                   ││
+│  │ Tipo: Interior • Licencia: LIC-2025-002               ││
 │  │ 📍 Medellín, Antioquia                                 ││
 │  │                                                         ││
-│  │ License expires: 2025-03-15 🟡 45 days                 ││
+│  │ Licencia vence: 2025-03-15 🟡 45 días                 ││
 │  │                                                         ││
-│  │                                          [View Details] ││
+│  │                                          [Ver Detalles] ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ 🌱 Outdoor Farm B                                      ││
+│  │ 🌱 Granja Exterior B                                   ││
 │  │                                                         ││
-│  │ Type: Outdoor • License: LIC-2025-003                  ││
+│  │ Tipo: Exterior • Licencia: LIC-2025-003               ││
 │  │ 📍 Cali, Valle del Cauca                               ││
 │  │                                                         ││
-│  │ License expires: 2025-02-01 🔴 15 days                 ││
+│  │ Licencia vence: 2025-02-01 🔴 15 días                 ││
 │  │                                                         ││
-│  │                                          [View Details] ││
+│  │                                          [Ver Detalles] ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
-│  Page 1 of 2                             [< 1 2 3 4 5 >]   │
+│  Página 1 de 2                           [< 1 2 3 4 5 >]   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Empty State
+### Estado Vacío
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Header (Reusable Element)                                   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Facilities                           [+ New Facility]      │
-│  ━━━━━━━━━━                                                 │
+│  Instalaciones                      [+ Nueva Instalación]   │
+│  ━━━━━━━━━━━━━                                              │
 │                                                             │
 │                                                             │
 │              ┌────────────────────────┐                     │
 │              │                        │                     │
 │              │         📦             │                     │
 │              │                        │                     │
-│              │  No facilities yet     │                     │
+│              │  No hay instalaciones  │                     │
+│              │         aún            │                     │
 │              │                        │                     │
-│              │  Create your first     │                     │
-│              │  facility to start     │                     │
-│              │  tracking production   │                     │
+│              │  Crea tu primera       │                     │
+│              │  instalación para      │                     │
+│              │  comenzar a rastrear   │                     │
+│              │  producción            │                     │
 │              │                        │                     │
-│              │  [Create Facility]     │                     │
+│              │ [Crear Instalación]    │                     │
 │              │                        │                     │
 │              └────────────────────────┘                     │
 │                                                             │
@@ -279,13 +281,13 @@ Use these wireframes as a guide when designing your Bubble pages.
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Elements
+### Elementos
 
-**Group: Search & Filter Bar**
+**Group: Barra de Búsqueda y Filtros**
 - Layout: Row
-- Input: Search (width: 60%, icon: 🔍)
-- Dropdown: Type filter (width: 20%)
-- Dropdown: Status filter (width: 20%)
+- Input: Búsqueda (width: 60%, icon: 🔍)
+- Dropdown: Filtro de tipo (width: 20%)
+- Dropdown: Filtro de estado (width: 20%)
 
 **Repeating Group: Facilities**
 - Type: Facility
@@ -294,7 +296,7 @@ Use these wireframes as a guide when designing your Bubble pages.
 - Gap: 16px
 - Items per page: 10
 
-**Facility Card** (inside repeating group):
+**Card de Instalación** (dentro de repeating group):
 - Background: White
 - Border: 1px gray-200
 - Border radius: 8px
@@ -302,47 +304,47 @@ Use these wireframes as a guide when designing your Bubble pages.
 - Shadow: 0 1px 2px rgba(0,0,0,0.05)
 - Hover: Shadow increases
 
-**Card Content:**
-- Icon + Name (24px, bold)
-- Type + License (14px, gray, bullet separator)
-- Location with icon (14px, gray)
-- License expiration with badge
-- View Details button (right aligned)
+**Contenido de Card:**
+- Icono + Nombre (24px, bold)
+- Tipo + Licencia (14px, gray, separador bullet)
+- Ubicación con icono (14px, gray)
+- Vencimiento de licencia con badge
+- Botón Ver Detalles (alineado a la derecha)
 
-**License Expiration Badge:**
-- Conditional colors:
-  - Green (🟢): > 60 days
-  - Yellow (🟡): 30-60 days
-  - Red (🔴): < 30 days
+**Badge de Vencimiento de Licencia:**
+- Colores condicionales:
+  - Verde (🟢): > 60 días
+  - Amarillo (🟡): 30-60 días
+  - Rojo (🔴): < 30 días
 - Border radius: 12px
 - Padding: 4px 12px
 - Font size: 12px, medium weight
 
 ---
 
-## Page 4: Create Facility Wizard
+## Página 4: Asistente de Creación de Instalación
 
-### Step 1: Basic Information
+### Paso 1: Información Básica
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Header (Reusable Element)                                   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Create New Facility                                        │
-│  ━━━━━━━━━━━━━━━━━━                                         │
+│  Crear Nueva Instalación                                    │
+│  ━━━━━━━━━━━━━━━━━━━━━━                                     │
 │                                                             │
-│  Step 1 of 3: Basic Information                            │
+│  Paso 1 de 3: Información Básica                           │
 │  ●━━━━━━○━━━━━━○                                            │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
 │  │                                                         ││
-│  │  Facility Name *                                        ││
+│  │  Nombre de Instalación *                                ││
 │  │  [_______________________________________________]      ││
 │  │                                                         ││
-│  │  Facility Type *                                        ││
-│  │  [Greenhouse ▼]                                        ││
+│  │  Tipo de Instalación *                                  ││
+│  │  [Invernadero ▼]                                       ││
 │  │                                                         ││
-│  │  Description (optional)                                 ││
+│  │  Descripción (opcional)                                 ││
 │  │  [_______________________________________________]      ││
 │  │  [_______________________________________________]      ││
 │  │  [_______________________________________________]      ││
@@ -350,323 +352,323 @@ Use these wireframes as a guide when designing your Bubble pages.
 │  │                                                         ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
-│                     [Cancel]        [Next →]                │
+│                     [Cancelar]        [Siguiente →]         │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Step 2: Location
+### Paso 2: Ubicación
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Header (Reusable Element)                                   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Create New Facility                                        │
-│  ━━━━━━━━━━━━━━━━━━                                         │
+│  Crear Nueva Instalación                                    │
+│  ━━━━━━━━━━━━━━━━━━━━━━                                     │
 │                                                             │
-│  Step 2 of 3: Location                                     │
+│  Paso 2 de 3: Ubicación                                    │
 │  ○━━━━━━●━━━━━━○                                            │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
 │  │                                                         ││
-│  │  Address *                                              ││
+│  │  Dirección *                                            ││
 │  │  [_______________________________________________]      ││
 │  │                                                         ││
-│  │  City *              State/Department *                 ││
+│  │  Ciudad *            Departamento *                     ││
 │  │  [__________________] [Cundinamarca ▼]                 ││
 │  │                                                         ││
-│  │  Coordinates (optional)                                 ││
-│  │  Latitude            Longitude                          ││
+│  │  Coordenadas (opcional)                                 ││
+│  │  Latitud             Longitud                           ││
 │  │  [__________________] [__________________]             ││
 │  │                                                         ││
-│  │  Altitude (meters)   Total Area (m²) *                  ││
+│  │  Altitud (metros)    Área Total (m²) *                  ││
 │  │  [__________________] [__________________]             ││
 │  │                                                         ││
-│  │  Canopy Area (m²)                                       ││
+│  │  Área de Dosel (m²)                                     ││
 │  │  [_______________________________________________]      ││
 │  │                                                         ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
-│                     [← Back]        [Next →]                │
+│                     [← Atrás]        [Siguiente →]          │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Step 3: License
+### Paso 3: Licencia
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Header (Reusable Element)                                   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Create New Facility                                        │
-│  ━━━━━━━━━━━━━━━━━━                                         │
+│  Crear Nueva Instalación                                    │
+│  ━━━━━━━━━━━━━━━━━━━━━━                                     │
 │                                                             │
-│  Step 3 of 3: License Information                          │
+│  Paso 3 de 3: Información de Licencia                      │
 │  ○━━━━━━○━━━━━━●                                            │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
 │  │                                                         ││
-│  │  License Number *                                       ││
+│  │  Número de Licencia *                                   ││
 │  │  [_______________________________________________]      ││
 │  │                                                         ││
-│  │  License Type *                                         ││
-│  │  [Cannabis Cultivation ▼]                              ││
+│  │  Tipo de Licencia *                                     ││
+│  │  [Cultivo de Cannabis ▼]                               ││
 │  │                                                         ││
-│  │  License Authority *                                    ││
+│  │  Autoridad de Licencia *                                ││
 │  │  [INVIMA ▼]                                            ││
 │  │                                                         ││
-│  │  Issue Date          Expiration Date *                  ││
+│  │  Fecha de Emisión    Fecha de Vencimiento *             ││
 │  │  [📅 2025-01-01]    [📅 2026-12-31]                    ││
 │  │                                                         ││
-│  │  Upload License Document (optional)                     ││
-│  │  [📎 Choose file...]                                    ││
+│  │  Subir Documento de Licencia (opcional)                 ││
+│  │  [📎 Elegir archivo...]                                 ││
 │  │                                                         ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
-│                     [← Back]        [Create Facility]       │
+│                     [← Atrás]        [Crear Instalación]    │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Elements
+### Elementos
 
-**Group: Wizard Container**
+**Group: Contenedor Wizard**
 - Max width: 800px
 - Center aligned
 - Padding: 32px
 
-**Progress Indicator**
-- Text: "Step X of 3: [Step Name]" (20px)
-- Visual: ●━━━━○━━━━○ (circles + lines)
-- Active step: Filled circle (emerald)
-- Inactive step: Empty circle (gray)
+**Indicador de Progreso**
+- Text: "Paso X de 3: [Nombre del Paso]" (20px)
+- Visual: ●━━━━○━━━━○ (círculos + líneas)
+- Paso activo: Círculo relleno (esmeralda)
+- Paso inactivo: Círculo vacío (gris)
 
-**Group: Form Card**
+**Group: Card de Formulario**
 - Background: White
 - Padding: 32px
 - Border radius: 12px
 - Shadow: 0 4px 6px rgba(0,0,0,0.1)
 
-**Conditional Groups** (one per step):
+**Conditional Groups** (uno por paso):
 - Group Step 1: When wizard_step = 1
 - Group Step 2: When wizard_step = 2
 - Group Step 3: When wizard_step = 3
 
-**Buttons:**
-- Cancel: Gray outline, hover: gray background
-- Back: Gray solid, icon: ←
-- Next: Emerald solid, icon: →
-- Create: Emerald solid, bold
+**Botones:**
+- Cancelar: Outline gris, hover: fondo gris
+- Atrás: Sólido gris, icono: ←
+- Siguiente: Sólido esmeralda, icono: →
+- Crear: Sólido esmeralda, bold
 
 ---
 
-## Page 5: Facility Details
+## Página 5: Detalles de Instalación
 
-### Layout
+### Diseño
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Header (Reusable Element)                                   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  [← Back]                                                   │
+│  [← Atrás]                                                  │
 │                                                             │
-│  🏭 Greenhouse Facility #1                   [Edit Button]  │
+│  🏭 Instalación Invernadero #1               [Botón Editar] │
 │  📍 Km 5 Vía La Calera, Bogotá, Cundinamarca               │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
 │                                                             │
-│  [Overview]  [License]  [Areas]  [Team]                    │
-│  ━━━━━━━━━━                                                 │
+│  [Resumen]  [Licencia]  [Áreas]  [Equipo]                  │
+│  ━━━━━━━━━                                                  │
 │                                                             │
 │  ┌───────────────────┐  ┌─────────────────────────────────┐│
-│  │ Overview          │  │ Quick Stats                     ││
+│  │ Resumen           │  │ Estadísticas Rápidas            ││
 │  │                   │  │                                 ││
-│  │ Type              │  │ Total Area      5,000 m²       ││
-│  │ Greenhouse        │  │ Canopy Area     3,500 m²       ││
-│  │                   │  │ Utilization     70%            ││
-│  │ Status            │  │                                 ││
-│  │ 🟢 Active         │  │ Active Batches  12             ││
-│  │                   │  │ Total Plants    850            ││
-│  │ License           │  │                                 ││
+│  │ Tipo              │  │ Área Total      5,000 m²       ││
+│  │ Invernadero       │  │ Área de Dosel   3,500 m²       ││
+│  │                   │  │ Utilización     70%            ││
+│  │ Estado            │  │                                 ││
+│  │ 🟢 Activo         │  │ Lotes Activos   12             ││
+│  │                   │  │ Total Plantas   850            ││
+│  │ Licencia          │  │                                 ││
 │  │ LIC-2025-001      │  └─────────────────────────────────┘│
-│  │ 🟢 Valid          │                                     │
+│  │ 🟢 Válida         │                                     │
 │  │                   │                                     │
 │  └───────────────────┘                                     │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ Location Details                                        ││
+│  │ Detalles de Ubicación                                   ││
 │  │                                                         ││
-│  │ Address:    Km 5 Vía La Calera                         ││
-│  │ City:       Bogotá                                      ││
-│  │ Department: Cundinamarca                                ││
-│  │ Country:    Colombia                                    ││
+│  │ Dirección:      Km 5 Vía La Calera                     ││
+│  │ Ciudad:         Bogotá                                  ││
+│  │ Departamento:   Cundinamarca                            ││
+│  │ País:           Colombia                                ││
 │  │                                                         ││
-│  │ Coordinates: 4.7110, -74.0721                          ││
-│  │ Altitude:    2,600 MSNM                                ││
+│  │ Coordenadas:    4.7110, -74.0721                       ││
+│  │ Altitud:        2,600 MSNM                             ││
 │  │                                                         ││
-│  │ [📍 View on Map]                                        ││
+│  │ [📍 Ver en Mapa]                                        ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### License Tab
+### Pestaña Licencia
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  [Overview]  [License]  [Areas]  [Team]                    │
-│              ━━━━━━━━━                                      │
+│  [Resumen]  [Licencia]  [Áreas]  [Equipo]                  │
+│             ━━━━━━━━━━                                      │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ License Information                                     ││
+│  │ Información de Licencia                                 ││
 │  │                                                         ││
-│  │ License Number:      LIC-2025-001                      ││
-│  │ License Type:        Cannabis Cultivation              ││
-│  │ Authority:           INVIMA                            ││
+│  │ Número de Licencia:  LIC-2025-001                      ││
+│  │ Tipo de Licencia:    Cultivo de Cannabis              ││
+│  │ Autoridad:           INVIMA                            ││
 │  │                                                         ││
-│  │ Issue Date:          2025-01-01                        ││
-│  │ Expiration Date:     2026-12-31                        ││
+│  │ Fecha de Emisión:    2025-01-01                        ││
+│  │ Fecha de Vencimiento: 2026-12-31                       ││
 │  │                                                         ││
-│  │ Status:              🟢 Active • Valid                  ││
-│  │ Days Remaining:      450 days                          ││
+│  │ Estado:              🟢 Activa • Válida                 ││
+│  │ Días Restantes:      450 días                          ││
 │  │                                                         ││
 │  │ ┌─────────────────────────────────────────────────────┐││
-│  │ │ ⚠️  License expires in 450 days                     │││
-│  │ │    Plan your renewal to avoid disruptions           │││
-│  │ │                              [Set Reminder]         │││
+│  │ │ ⚠️  La licencia vence en 450 días                   │││
+│  │ │    Planifica tu renovación para evitar interrupciones│││
+│  │ │                              [Establecer Recordatorio]│││
 │  │ └─────────────────────────────────────────────────────┘││
 │  │                                                         ││
-│  │ Documents                                               ││
+│  │ Documentos                                              ││
 │  │ ┌──────────────────────────────────────┐               ││
 │  │ │ 📄 License_LIC-2025-001.pdf          │               ││
-│  │ │ Uploaded: 2025-01-01                 │               ││
-│  │ │                      [Download]      │               ││
+│  │ │ Subido: 2025-01-01                   │               ││
+│  │ │                      [Descargar]     │               ││
 │  │ └──────────────────────────────────────┘               ││
 │  │                                                         ││
-│  │ [📤 Upload New Document]                               ││
+│  │ [📤 Subir Nuevo Documento]                             ││
 │  │                                                         ││
 │  └─────────────────────────────────────────────────────────┘│
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Elements
+### Elementos
 
-**Page Header:**
-- Back button: ← Back to list
-- Facility name: 32px, bold, with icon
-- Location subtitle: 14px, gray
+**Encabezado de Página:**
+- Botón Atrás: ← Volver a lista
+- Nombre de instalación: 32px, bold, con icono
+- Subtítulo de ubicación: 14px, gris
 
-**Tab Navigation:**
-- Layout: Horizontal row
-- Active tab: Underline (emerald), bold
-- Inactive tab: Gray, regular
-- Hover: Color change
+**Navegación por Pestañas:**
+- Layout: Fila horizontal
+- Pestaña activa: Subrayado (esmeralda), bold
+- Pestaña inactiva: Gris, regular
+- Hover: Cambio de color
 
-**Conditional Groups** (one per tab):
-- Overview Tab: Default visible
-- License Tab: When active_tab = "license"
-- Areas Tab: When active_tab = "areas"
-- Team Tab: When active_tab = "team"
+**Conditional Groups** (uno por pestaña):
+- Pestaña Resumen: Visible por defecto
+- Pestaña Licencia: When active_tab = "license"
+- Pestaña Áreas: When active_tab = "areas"
+- Pestaña Equipo: When active_tab = "team"
 
-**License Status Badge:**
-- Conditional formatting based on expiration
-- Green: > 60 days
-- Yellow: 30-60 days with warning icon
-- Red: < 30 days with urgent icon
+**Badge de Estado de Licencia:**
+- Formato condicional basado en vencimiento
+- Verde: > 60 días
+- Amarillo: 30-60 días con icono de advertencia
+- Rojo: < 30 días con icono urgente
 
-**Alert Banner** (conditional):
-- Visible when license expires < 90 days
-- Yellow background for 60-90 days
-- Orange background for 30-60 days
-- Red background for < 30 days
+**Banner de Alerta** (condicional):
+- Visible cuando licencia vence < 90 días
+- Fondo amarillo para 60-90 días
+- Fondo naranja para 30-60 días
+- Fondo rojo para < 30 días
 
 ---
 
-## 📱 Mobile Responsive Patterns
+## 📱 Patrones Responsive para Móvil
 
 ### Breakpoints
-- **Mobile:** < 768px
+- **Móvil:** < 768px
 - **Tablet:** 768px - 1024px
-- **Desktop:** > 1024px
+- **Escritorio:** > 1024px
 
-### Mobile Adaptations
+### Adaptaciones Móviles
 
-**Dashboard:**
-- Stats cards: Stack vertically (1 column)
-- Buttons: Full width
+**Tablero:**
+- Cards de estadísticas: Apiladas verticalmente (1 columna)
+- Botones: Ancho completo
 
-**Company Profile:**
-- Info groups: Stack vertically
-- Labels and values: Stack vertically
+**Perfil de Empresa:**
+- Grupos de información: Apilados verticalmente
+- Etiquetas y valores: Apilados verticalmente
 
-**Facilities List:**
-- Search bar: Full width
-- Filters: Stack below search
-- Cards: Single column
-- Pagination: Compact (< 1 2 3 >)
+**Lista de Instalaciones:**
+- Barra de búsqueda: Ancho completo
+- Filtros: Apilados debajo de búsqueda
+- Cards: Una sola columna
+- Paginación: Compacta (< 1 2 3 >)
 
-**Create Wizard:**
-- Progress: Horizontal scroll if needed
-- Form: Full width inputs
-- Buttons: Stack vertically on very small screens
+**Asistente de Creación:**
+- Progreso: Scroll horizontal si es necesario
+- Formulario: Inputs de ancho completo
+- Botones: Apilados verticalmente en pantallas muy pequeñas
 
-**Facility Details:**
-- Tabs: Horizontal scroll
-- Overview cards: Stack vertically
-- Stats: 2 columns max
+**Detalles de Instalación:**
+- Pestañas: Scroll horizontal
+- Cards de resumen: Apiladas verticalmente
+- Estadísticas: Máximo 2 columnas
 
 ---
 
-## 🎨 Bubble-Specific Tips
+## 🎨 Consejos Específicos de Bubble
 
-### Layout Setup
-1. Use **Column** containers for vertical stacking
-2. Use **Row** containers for horizontal layouts
-3. Set **Max width** on page containers (1200px)
-4. Use **Center aligned** for page containers
+### Configuración de Layout
+1. Usa contenedores **Column** para apilamiento vertical
+2. Usa contenedores **Row** para diseños horizontales
+3. Establece **Max width** en contenedores de página (1200px)
+4. Usa **Center aligned** para contenedores de página
 
-### Responsive Settings
-1. Enable **responsive engine** in Settings
-2. Set **breakpoints**: 768px (mobile), 1024px (tablet)
-3. Use **column wrapping** for adaptive layouts
-4. Test in **responsive tab** (mobile, tablet, desktop)
+### Configuración Responsive
+1. Habilita **responsive engine** en Settings
+2. Establece **breakpoints**: 768px (móvil), 1024px (tablet)
+3. Usa **column wrapping** para layouts adaptativos
+4. Prueba en **responsive tab** (móvil, tablet, escritorio)
 
 ### Reusable Elements
-1. Create **Header** as reusable element
-2. Create **Card** as reusable element with parameters
-3. Create **Button** styles as presets
-4. Create **Badge** as reusable element
+1. Crea **Header** como reusable element
+2. Crea **Card** como reusable element con parámetros
+3. Crea estilos de **Button** como presets
+4. Crea **Badge** como reusable element
 
-### Styling
-1. Use **Styles** tab for consistent colors
-2. Create **Button styles**: Primary, Secondary, Danger
-3. Create **Text styles**: Heading 1-6, Body, Caption
-4. Use **Conditional formatting** for dynamic colors
-
----
-
-## ✅ Design Checklist
-
-Before considering UI complete:
-
-- [ ] All pages match wireframes
-- [ ] Colors match design system
-- [ ] Typography is consistent
-- [ ] Spacing follows 8px grid
-- [ ] Mobile responsive tested
-- [ ] Loading states designed
-- [ ] Empty states designed
-- [ ] Error states designed
-- [ ] Success/error messages styled
-- [ ] Hover states defined
-- [ ] Focus states accessible
+### Estilización
+1. Usa la pestaña **Styles** para colores consistentes
+2. Crea **Button styles**: Primary, Secondary, Danger
+3. Crea **Text styles**: Heading 1-6, Body, Caption
+4. Usa **Conditional formatting** para colores dinámicos
 
 ---
 
-**Version:** 1.0
-**Last Updated:** 2025-10-10
-**Next Review:** After user testing
+## ✅ Lista de Verificación de Diseño
 
-**Related Docs:**
-- [Module-1-Bubble-Guide.md](Module-1-Bubble-Guide.md) - Full implementation guide
-- [API-Bubble-Reference.md](API-Bubble-Reference.md) - API endpoints
-- [Module-1-Bubble-Quick-Start.md](Module-1-Bubble-Quick-Start.md) - Quick start checklist
+Antes de considerar la UI completa:
+
+- [ ] Todas las páginas coinciden con los wireframes
+- [ ] Los colores coinciden con el sistema de diseño
+- [ ] La tipografía es consistente
+- [ ] El espaciado sigue la cuadrícula de 8px
+- [ ] Responsive móvil probado
+- [ ] Estados de carga diseñados
+- [ ] Estados vacíos diseñados
+- [ ] Estados de error diseñados
+- [ ] Mensajes de éxito/error estilizados
+- [ ] Estados hover definidos
+- [ ] Estados de foco accesibles
+
+---
+
+**Versión:** 1.0
+**Última Actualización:** 2025-10-10
+**Próxima Revisión:** Después de pruebas de usuario
+
+**Documentos Relacionados:**
+- [Module-1-Bubble-Guide.md](Module-1-Bubble-Guide.md) - Guía completa de implementación
+- [API-Bubble-Reference.md](API-Bubble-Reference.md) - Endpoints de API
+- [Module-1-Bubble-Quick-Start.md](Module-1-Bubble-Quick-Start.md) - Lista de verificación de inicio rápido

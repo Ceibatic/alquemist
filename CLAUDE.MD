@@ -16,7 +16,7 @@
 - Auth: Clerk (Organizations = Companies)
 - API: RESTful API (v1) for frontend-agnostic access
 - Deployment: Vercel + Convex Cloud
-- i18n: Multilingual (next-intl, default: Spanish)
+- i18n: UI 100% español, datos técnicos en inglés (next-intl)
 
 **Dual-Frontend Architecture:**
 - **Bubble Frontend:** Rapid prototyping, 80% of standard UI
@@ -314,6 +314,12 @@ MODULE 2 - Email Verification
 ---
 
 ## Tech Constraints
+
+**Internationalization Strategy:**
+- **UI Language:** 100% español - todos los textos visibles al usuario
+- **Database Values:** Inglés técnico (indoor, active, greenhouse) para compatibilidad API
+- **User Display:** Traducciones automáticas desde messages/es.json
+- **Example:** BD guarda "indoor", usuario ve "Interior"
 
 **Regional Configuration (Colombia as Default):**
 - Default locale: `es` (Spanish) - configurable per region
@@ -679,46 +685,46 @@ Use `@implement module-1-sprint-1` to begin Next.js implementation!
 **Created:** 2025-10-10
 **Estimated Effort:** 6-8 hours implementation
 
-**Bubble Documentation Suite (4 comprehensive guides):**
+**Bubble Documentation Suite (4 guías completas en español):**
 
-1. **[Module-1-Bubble-Guide.md](docs/Module-1-Bubble-Guide.md)** (Comprehensive)
-   - Complete setup guide (Clerk + API Connector)
-   - 5 pages with detailed layouts and elements
-   - All workflows explained step-by-step
-   - Data types and custom states
-   - Troubleshooting section
-   - Best practices
+1. **[Module-1-Bubble-Guide.md](docs/Module-1-Bubble-Guide.md)** (Guía completa)
+   - Guía completa de configuración (Clerk + API Connector)
+   - 5 páginas con diseños y elementos detallados
+   - Todos los workflows explicados paso a paso
+   - Tipos de datos y estados personalizados
+   - Sección de solución de problemas
+   - Mejores prácticas
 
-2. **[API-Bubble-Reference.md](docs/API-Bubble-Reference.md)** (API Reference)
-   - All 9 API endpoints configured for Bubble
-   - Headers, parameters, body structure
-   - Response handling examples
-   - Error codes and solutions
-   - Testing sequences
-   - Pro tips for reusable patterns
+2. **[API-Bubble-Reference.md](docs/API-Bubble-Reference.md)** (Referencia API)
+   - Los 9 endpoints API configurados para Bubble
+   - Headers, parámetros, estructura de body
+   - Ejemplos de manejo de respuestas
+   - Códigos de error y soluciones
+   - Secuencias de prueba
+   - Consejos para patrones reutilizables
 
 3. **[Module-1-Bubble-Quick-Start.md](docs/Module-1-Bubble-Quick-Start.md)** (Checklist)
-   - 4 phases with time estimates
-   - Step-by-step checkboxes
-   - Quick tests at each phase
-   - Time breakdown (6-8h total)
-   - Troubleshooting shortcuts
+   - 4 fases con estimaciones de tiempo
+   - Checkboxes paso a paso
+   - Pruebas rápidas en cada fase
+   - Desglose de tiempo (6-8h total)
+   - Atajos para solución de problemas
 
-4. **[Bubble-UI-Wireframes.md](docs/Bubble-UI-Wireframes.md)** (Visual Design)
-   - ASCII wireframes for all 5 pages
-   - Design system (colors, typography, spacing)
-   - Element specifications
-   - Mobile responsive patterns
-   - Bubble-specific layout tips
+4. **[Bubble-UI-Wireframes.md](docs/Bubble-UI-Wireframes.md)** (Diseño visual)
+   - Wireframes ASCII para las 5 páginas
+   - Sistema de diseño (colores, tipografía, espaciado)
+   - Especificaciones de elementos
+   - Patrones responsive móviles
+   - Consejos de layout específicos de Bubble
 
-**What You Can Build in Bubble:**
-- ✅ Complete Company & Facility Management UI
-- ✅ Multi-step facility creation wizard
-- ✅ License tracking with expiration alerts
-- ✅ Search, filter, and pagination
-- ✅ Full CRUD operations via REST API
-- ✅ Clerk authentication integrated
-- ✅ Multi-tenant isolation enforced
+**Lo que puedes construir en Bubble:**
+- ✅ UI completa de gestión de Empresa e Instalaciones
+- ✅ Wizard multi-paso para crear instalaciones
+- ✅ Rastreo de licencias con alertas de vencimiento
+- ✅ Búsqueda, filtros y paginación
+- ✅ Operaciones CRUD completas vía REST API
+- ✅ Autenticación con Clerk integrada
+- ✅ Aislamiento multi-tenant aplicado
 
 **Implementation Time:**
 - Phase 1: Setup (1-1.5h) - Clerk + API Connector

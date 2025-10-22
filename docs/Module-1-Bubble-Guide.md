@@ -1,165 +1,165 @@
-# Module 1: Bubble Implementation Guide
+# Módulo 1: Guía de Implementación en Bubble
 
-**Complete guide for implementing Company & Facility Setup in Bubble.io**
+**Guía completa para implementar Configuración de Empresa e Instalaciones en Bubble.io**
 
-**Version:** 1.0
-**Created:** 2025-10-10
-**Estimated Time:** 6-8 hours
-**Difficulty:** Intermediate
+**Versión:** 1.0
+**Creado:** 2025-10-10
+**Tiempo Estimado:** 6-8 horas
+**Dificultad:** Intermedio
 
 ---
 
-## 📋 Table of Contents
+## 📋 Tabla de Contenidos
 
-1. [Prerequisites](#prerequisites)
-2. [Clerk Authentication Setup](#clerk-authentication-setup)
-3. [API Connector Configuration](#api-connector-configuration)
-4. [Data Types & Custom States](#data-types--custom-states)
-5. [Pages & UI Design](#pages--ui-design)
+1. [Prerequisitos](#prerequisitos)
+2. [Configuración de Autenticación Clerk](#configuración-de-autenticación-clerk)
+3. [Configuración del API Connector](#configuración-del-api-connector)
+4. [Tipos de Datos y Estados Personalizados](#tipos-de-datos-y-estados-personalizados)
+5. [Páginas y Diseño de UI](#páginas-y-diseño-de-ui)
 6. [Workflows](#workflows)
-7. [Testing](#testing)
-8. [Troubleshooting](#troubleshooting)
+7. [Pruebas](#pruebas)
+8. [Solución de Problemas](#solución-de-problemas)
 
 ---
 
-## Prerequisites
+## Prerequisitos
 
-### What You Need
-- ✅ Bubble.io account (Free or paid plan)
-- ✅ Alquemist REST API running (localhost:3000 or production)
-- ✅ Clerk account with Organizations enabled
-- ✅ Basic Bubble.io knowledge (pages, workflows, API Connector)
+### Lo que Necesitas
+- ✅ Cuenta de Bubble.io (Plan gratuito o de pago)
+- ✅ API REST de Alquemist en ejecución (localhost:3000 o producción)
+- ✅ Cuenta de Clerk con Organizations habilitadas
+- ✅ Conocimientos básicos de Bubble.io (páginas, workflows, API Connector)
 
-### Foundation Complete
-- ✅ REST API operational (7 endpoints tested)
-- ✅ Clerk Organizations configured
-- ✅ Test company and facility created
-- ✅ Multi-tenant isolation verified
-
----
-
-## Clerk Authentication Setup
-
-### Step 1: Install Clerk Plugin in Bubble
-
-1. Go to **Plugins** tab in Bubble editor
-2. Click **Add plugins**
-3. Search for "Clerk"
-4. Install **"Clerk - Authentication"** plugin
-
-### Step 2: Configure Clerk Plugin
-
-**In Bubble Editor:**
-1. Go to **Plugins** → **Clerk - Authentication**
-2. Add your Clerk credentials:
-   - **Publishable Key:** `pk_test_...` (from Clerk dashboard)
-   - **Frontend API:** `https://[your-clerk-app].clerk.accounts.dev`
-   - **Enable Organizations:** ✅ YES
-
-**In Clerk Dashboard:**
-1. Go to **Settings** → **API Keys**
-2. Copy **Publishable Key**
-3. Go to **Organizations** → Enable organizations
-4. Add your Bubble app URL to **Allowed origins**:
-   - Development: `https://[your-app].bubbleapps.io/version-test`
-   - Production: `https://[your-app].bubbleapps.io`
-
-### Step 3: Create Authentication Pages
-
-#### Sign Up Page (`signup`)
-
-**Elements:**
-- **Clerk SignUp Component** (from plugin)
-  - Appearance: Custom theme (Alquemist colors)
-  - Redirect after signup: `/create-organization`
-
-**Workflows:**
-```
-When Clerk signup is complete:
-  - Go to page create-organization
-```
-
-#### Sign In Page (`signin`)
-
-**Elements:**
-- **Clerk SignIn Component** (from plugin)
-  - Appearance: Custom theme
-  - Redirect after signin: `/dashboard`
-
-**Workflows:**
-```
-When Clerk signin is complete:
-  - If user has organization → Go to dashboard
-  - Else → Go to create-organization
-```
-
-#### Create Organization Page (`create-organization`)
-
-**Elements:**
-- **Clerk CreateOrganization Component** (from plugin)
-  - Skip if already has organization
-
-**Workflows:**
-```
-When Organization is created:
-  - Create company via API (POST /api/v1/companies)
-  - Go to dashboard
-```
-
-### Step 4: Get Session Token
-
-**Create a Reusable Element: "Get Session Token"**
-
-This element will be used on every page to get the Clerk session token.
-
-**Elements:**
-- Hidden group: `group_session`
-- Text element: `text_token` (not visible)
-- Text element: `text_org_id` (not visible)
-
-**Workflow on Page Load:**
-```
-When page is loaded:
-  - Plugin Action: Clerk - Get session token
-  - Set state: text_token's text = Result of step 1's token
-  - Set state: text_org_id's text = Result of step 1's organization ID
-```
+### Base Completa
+- ✅ API REST operacional (7 endpoints probados)
+- ✅ Clerk Organizations configuradas
+- ✅ Empresa e instalación de prueba creadas
+- ✅ Aislamiento multi-tenant verificado
 
 ---
 
-## API Connector Configuration
+## Configuración de Autenticación Clerk
 
-### Step 1: Initialize API Connector
+### Paso 1: Instalar el Plugin de Clerk en Bubble
 
-1. Go to **Plugins** → **API Connector**
-2. Click **Add another API**
-3. Name: `Alquemist API`
+1. Ve a la pestaña **Plugins** en el editor de Bubble
+2. Haz clic en **Add plugins**
+3. Busca "Clerk"
+4. Instala el plugin **"Clerk - Authentication"**
 
-### Step 2: Configure API Settings
+### Paso 2: Configurar el Plugin de Clerk
 
-**API Settings:**
-- **Name:** Alquemist API
-- **Authentication:** Self-handled
-- **Add a shared header:**
-  - Key: `Content-Type`
-  - Value: `application/json`
+**En el Editor de Bubble:**
+1. Ve a **Plugins** → **Clerk - Authentication**
+2. Agrega tus credenciales de Clerk:
+   - **Publishable Key:** `pk_test_...` (desde el panel de Clerk)
+   - **Frontend API:** `https://[tu-app-clerk].clerk.accounts.dev`
+   - **Enable Organizations:** ✅ SÍ
 
-### Step 3: Configure Endpoints
+**En el Panel de Clerk:**
+1. Ve a **Settings** → **API Keys**
+2. Copia la **Publishable Key**
+3. Ve a **Organizations** → Habilita organizations
+4. Agrega la URL de tu app Bubble a **Allowed origins**:
+   - Desarrollo: `https://[tu-app].bubbleapps.io/version-test`
+   - Producción: `https://[tu-app].bubbleapps.io`
 
-#### 1. Health Check (GET /api/v1)
+### Paso 3: Crear Páginas de Autenticación
 
-**Use as:** Action
-**Name:** `health_check`
-**Method:** GET
-**URL:** `https://your-domain.com/api/v1` or `http://localhost:3000/api/v1`
+#### Página de Registro (`signup`)
 
-**Headers:**
-- None required (no auth)
+**Elementos:**
+- **Clerk SignUp Component** (del plugin)
+  - Apariencia: Tema personalizado (colores de Alquemist)
+  - Redirigir después del registro: `/create-organization`
 
-**Parameters:**
-- None
+**Workflows:**
+```
+Cuando el registro de Clerk se complete:
+  - Ir a la página create-organization
+```
 
-**Response:**
+#### Página de Inicio de Sesión (`signin`)
+
+**Elementos:**
+- **Clerk SignIn Component** (del plugin)
+  - Apariencia: Tema personalizado
+  - Redirigir después del inicio de sesión: `/dashboard`
+
+**Workflows:**
+```
+Cuando el inicio de sesión de Clerk se complete:
+  - Si el usuario tiene organización → Ir a dashboard
+  - Si no → Ir a create-organization
+```
+
+#### Página de Crear Organización (`create-organization`)
+
+**Elementos:**
+- **Clerk CreateOrganization Component** (del plugin)
+  - Omitir si ya tiene organización
+
+**Workflows:**
+```
+Cuando se crea la Organización:
+  - Crear empresa vía API (POST /api/v1/companies)
+  - Ir a dashboard
+```
+
+### Paso 4: Obtener Token de Sesión
+
+**Crear un Elemento Reutilizable: "Get Session Token"**
+
+Este elemento se usará en cada página para obtener el token de sesión de Clerk.
+
+**Elementos:**
+- Grupo oculto: `group_session`
+- Elemento de texto: `text_token` (no visible)
+- Elemento de texto: `text_org_id` (no visible)
+
+**Workflow al Cargar la Página:**
+```
+Cuando se carga la página:
+  - Acción del Plugin: Clerk - Get session token
+  - Establecer estado: texto de text_token = token del Resultado del paso 1
+  - Establecer estado: texto de text_org_id = ID de organización del Resultado del paso 1
+```
+
+---
+
+## Configuración del API Connector
+
+### Paso 1: Inicializar API Connector
+
+1. Ve a **Plugins** → **API Connector**
+2. Haz clic en **Add another API**
+3. Nombre: `Alquemist API`
+
+### Paso 2: Configurar Ajustes de la API
+
+**Ajustes de API:**
+- **Nombre:** Alquemist API
+- **Autenticación:** Self-handled
+- **Agregar un encabezado compartido:**
+  - Clave: `Content-Type`
+  - Valor: `application/json`
+
+### Paso 3: Configurar Endpoints
+
+#### 1. Verificación de Salud (GET /api/v1)
+
+**Usar como:** Action
+**Nombre:** `health_check`
+**Método:** GET
+**URL:** `https://tu-dominio.com/api/v1` o `http://localhost:3000/api/v1`
+
+**Encabezados:**
+- Ninguno requerido (sin autenticación)
+
+**Parámetros:**
+- Ninguno
+
+**Respuesta:**
 ```json
 {
   "success": true,
@@ -170,21 +170,21 @@ When page is loaded:
 }
 ```
 
-#### 2. Get Company (GET /api/v1/companies)
+#### 2. Obtener Empresa (GET /api/v1/companies)
 
-**Use as:** Data (so you can use it in repeating groups)
-**Name:** `get_company`
-**Method:** GET
-**URL:** `https://your-domain.com/api/v1/companies`
+**Usar como:** Data (para poder usarlo en Repeating Groups)
+**Nombre:** `get_company`
+**Método:** GET
+**URL:** `https://tu-dominio.com/api/v1/companies`
 
-**Headers:**
+**Encabezados:**
 - **Authorization:** `Bearer <token>`
-  - Make `<token>` a parameter (private)
+  - Hacer `<token>` un parámetro (privado)
 
-**Parameters:**
-- `token` (private, text)
+**Parámetros:**
+- `token` (privado, texto)
 
-**Response Structure:**
+**Estructura de Respuesta:**
 ```json
 {
   "success": true,
@@ -200,26 +200,26 @@ When page is loaded:
 }
 ```
 
-**Bubble Configuration:**
-- Check "Capture response headers"
-- Check "Allow this API call to be used as data"
-- Click **Initialize call** to capture structure
+**Configuración en Bubble:**
+- Marcar "Capture response headers"
+- Marcar "Allow this API call to be used as data"
+- Hacer clic en **Initialize call** para capturar la estructura
 
-#### 3. Create Company (POST /api/v1/companies)
+#### 3. Crear Empresa (POST /api/v1/companies)
 
-**Use as:** Action
-**Name:** `create_company`
-**Method:** POST
-**URL:** `https://your-domain.com/api/v1/companies`
+**Usar como:** Action
+**Nombre:** `create_company`
+**Método:** POST
+**URL:** `https://tu-dominio.com/api/v1/companies`
 
-**Headers:**
-- **Authorization:** `Bearer <token>` (parameter)
-- **Content-Type:** `application/json` (already in shared headers)
+**Encabezados:**
+- **Authorization:** `Bearer <token>` (parámetro)
+- **Content-Type:** `application/json` (ya en encabezados compartidos)
 
-**Parameters:**
-- `token` (private, text)
+**Parámetros:**
+- `token` (privado, texto)
 
-**Body type:** JSON
+**Tipo de Body:** JSON
 **Body:**
 ```json
 {
@@ -237,46 +237,46 @@ When page is loaded:
 }
 ```
 
-**Parameters to add:**
-- `name` (text)
-- `company_type` (text) - "Agriculture"
-- `legal_name` (text)
-- `tax_id` (text)
-- `business_entity_type` (text) - "S.A.S", "S.A.", "Ltda", etc.
-- `country` (text) - default "CO"
-- `locale` (text) - default "es"
-- `currency` (text) - default "COP"
-- `timezone` (text) - default "America/Bogota"
-- `email` (text)
-- `phone` (text)
+**Parámetros a agregar:**
+- `name` (texto)
+- `company_type` (texto) - "Agriculture"
+- `legal_name` (texto)
+- `tax_id` (texto)
+- `business_entity_type` (texto) - "S.A.S", "S.A.", "Ltda", etc.
+- `country` (texto) - por defecto "CO"
+- `locale` (texto) - por defecto "es"
+- `currency` (texto) - por defecto "COP"
+- `timezone` (texto) - por defecto "America/Bogota"
+- `email` (texto)
+- `phone` (texto)
 
-**Test with sample data and Initialize**
+**Probar con datos de ejemplo e Inicializar**
 
-#### 4. Update Company (PATCH /api/v1/companies)
+#### 4. Actualizar Empresa (PATCH /api/v1/companies)
 
-**Use as:** Action
-**Name:** `update_company`
-**Method:** PATCH
-**URL:** `https://your-domain.com/api/v1/companies`
+**Usar como:** Action
+**Nombre:** `update_company`
+**Método:** PATCH
+**URL:** `https://tu-dominio.com/api/v1/companies`
 
-**Headers & Body:** Same as Create Company
+**Encabezados y Body:** Igual que Crear Empresa
 
-#### 5. List Facilities (GET /api/v1/facilities)
+#### 5. Listar Instalaciones (GET /api/v1/facilities)
 
-**Use as:** Data
-**Name:** `list_facilities`
-**Method:** GET
-**URL:** `https://your-domain.com/api/v1/facilities?page=<page>&limit=<limit>`
+**Usar como:** Data
+**Nombre:** `list_facilities`
+**Método:** GET
+**URL:** `https://tu-dominio.com/api/v1/facilities?page=<page>&limit=<limit>`
 
-**Headers:**
-- **Authorization:** `Bearer <token>` (parameter)
+**Encabezados:**
+- **Authorization:** `Bearer <token>` (parámetro)
 
-**Parameters:**
-- `token` (private, text)
-- `page` (number, optional) - default 1
-- `limit` (number, optional) - default 50
+**Parámetros:**
+- `token` (privado, texto)
+- `page` (número, opcional) - por defecto 1
+- `limit` (número, opcional) - por defecto 50
 
-**Response Structure:**
+**Estructura de Respuesta:**
 ```json
 {
   "success": true,
@@ -307,22 +307,22 @@ When page is loaded:
 }
 ```
 
-**Important:** Mark as "Data" and initialize to capture structure
+**Importante:** Marcar como "Data" e inicializar para capturar la estructura
 
-#### 6. Create Facility (POST /api/v1/facilities)
+#### 6. Crear Instalación (POST /api/v1/facilities)
 
-**Use as:** Action
-**Name:** `create_facility`
-**Method:** POST
-**URL:** `https://your-domain.com/api/v1/facilities`
+**Usar como:** Action
+**Nombre:** `create_facility`
+**Método:** POST
+**URL:** `https://tu-dominio.com/api/v1/facilities`
 
-**Headers:**
-- **Authorization:** `Bearer <token>` (parameter)
+**Encabezados:**
+- **Authorization:** `Bearer <token>` (parámetro)
 
-**Parameters:**
-- `token` (private, text)
+**Parámetros:**
+- `token` (privado, texto)
 
-**Body type:** JSON
+**Tipo de Body:** JSON
 **Body:**
 ```json
 {
@@ -344,113 +344,113 @@ When page is loaded:
 }
 ```
 
-**Parameters:**
-- `name` (text)
-- `facility_type` (text) - "greenhouse", "indoor", "outdoor", "mixed"
-- `license_number` (text)
-- `license_type` (text) - "cannabis_cultivation", "processing", etc.
-- `license_authority` (text) - "INVIMA", "ICA", etc.
-- `expiration_date` (text) - ISO date format "2025-12-31"
-- `address` (text)
-- `city` (text)
-- `state` (text)
-- `latitude` (number, optional)
-- `longitude` (number, optional)
-- `altitude` (number, optional)
-- `total_area` (number)
-- `canopy_area` (number, optional)
-- `status` (text) - default "active"
+**Parámetros:**
+- `name` (texto)
+- `facility_type` (texto) - "greenhouse", "indoor", "outdoor", "mixed"
+- `license_number` (texto)
+- `license_type` (texto) - "cannabis_cultivation", "processing", etc.
+- `license_authority` (texto) - "INVIMA", "ICA", etc.
+- `expiration_date` (texto) - formato de fecha ISO "2025-12-31"
+- `address` (texto)
+- `city` (texto)
+- `state` (texto)
+- `latitude` (número, opcional)
+- `longitude` (número, opcional)
+- `altitude` (número, opcional)
+- `total_area` (número)
+- `canopy_area` (número, opcional)
+- `status` (texto) - por defecto "active"
 
-#### 7. Get Facility (GET /api/v1/facilities/:id)
+#### 7. Obtener Instalación (GET /api/v1/facilities/:id)
 
-**Use as:** Data
-**Name:** `get_facility`
-**Method:** GET
-**URL:** `https://your-domain.com/api/v1/facilities/<facility_id>`
+**Usar como:** Data
+**Nombre:** `get_facility`
+**Método:** GET
+**URL:** `https://tu-dominio.com/api/v1/facilities/<facility_id>`
 
-**Headers:**
-- **Authorization:** `Bearer <token>` (parameter)
+**Encabezados:**
+- **Authorization:** `Bearer <token>` (parámetro)
 
-**Parameters:**
-- `token` (private, text)
-- `facility_id` (text, private)
+**Parámetros:**
+- `token` (privado, texto)
+- `facility_id` (texto, privado)
 
-**Response:** Same as facility object in list
+**Respuesta:** Igual que el objeto de instalación en la lista
 
 ---
 
-## Data Types & Custom States
+## Tipos de Datos y Estados Personalizados
 
-### Custom Data Types
+### Tipos de Datos Personalizados
 
 #### Company
-**Fields:**
-- `id` (text)
-- `organization_id` (text)
-- `name` (text)
-- `company_type` (text)
-- `legal_name` (text)
-- `tax_id` (text)
-- `business_entity_type` (text)
-- `status` (text)
-- `default_locale` (text)
-- `default_currency` (text)
-- `default_timezone` (text)
+**Campos:**
+- `id` (texto)
+- `organization_id` (texto)
+- `name` (texto)
+- `company_type` (texto)
+- `legal_name` (texto)
+- `tax_id` (texto)
+- `business_entity_type` (texto)
+- `status` (texto)
+- `default_locale` (texto)
+- `default_currency` (texto)
+- `default_timezone` (texto)
 
 #### Facility
-**Fields:**
-- `id` (text)
-- `company_id` (text)
-- `name` (text)
-- `facility_type` (text)
-- `license_number` (text)
-- `license_type` (text)
-- `license_authority` (text)
-- `license_expiration_date` (date)
-- `status` (text)
-- `address` (text)
-- `city` (text)
-- `administrative_division_1` (text)
-- `total_area_m2` (number)
-- `canopy_area_m2` (number)
-- `latitude` (number)
-- `longitude` (number)
+**Campos:**
+- `id` (texto)
+- `company_id` (texto)
+- `name` (texto)
+- `facility_type` (texto)
+- `license_number` (texto)
+- `license_type` (texto)
+- `license_authority` (texto)
+- `license_expiration_date` (fecha)
+- `status` (texto)
+- `address` (texto)
+- `city` (texto)
+- `administrative_division_1` (texto)
+- `total_area_m2` (número)
+- `canopy_area_m2` (número)
+- `latitude` (número)
+- `longitude` (número)
 
-### Custom States
+### Estados Personalizados
 
-#### Page Level States
+#### Estados a Nivel de Página
 
-**All pages should have:**
-- `session_token` (text)
-- `organization_id` (text)
-- `user_id` (text)
+**Todas las páginas deben tener:**
+- `session_token` (texto)
+- `organization_id` (texto)
+- `user_id` (texto)
 
-**Company Profile page:**
+**Página de Perfil de Empresa:**
 - `current_company` (Company)
-- `is_editing` (yes/no)
+- `is_editing` (sí/no)
 
-**Facilities List page:**
-- `facilities_list` (list of Facilities)
-- `search_query` (text)
-- `filter_type` (text)
-- `current_page` (number)
+**Página de Lista de Instalaciones:**
+- `facilities_list` (lista de Facilities)
+- `search_query` (texto)
+- `filter_type` (texto)
+- `current_page` (número)
 
-**Create Facility page:**
-- `wizard_step` (number) - 1, 2, or 3
+**Página de Crear Instalación:**
+- `wizard_step` (número) - 1, 2, o 3
 - `draft_facility` (Facility)
 
 ---
 
-## Pages & UI Design
+## Páginas y Diseño de UI
 
-### Page Structure
+### Estructura de Páginas
 
 ```
 index (/)
   ↓
 signin
   ↓
-create-organization (if needed)
+create-organization (si es necesario)
   ↓
 dashboard
   ├─ company-profile
@@ -460,702 +460,702 @@ dashboard
       └─ facility-details
 ```
 
-### 1. Dashboard Page (`dashboard`)
+### 1. Página Dashboard (`dashboard`)
 
-**Layout:**
+**Diseño:**
 ```
 ┌─────────────────────────────────────────┐
-│ Header (Reusable)                       │
+│ Header (Reutilizable)                   │
 │  - Logo                                 │
-│  - Navigation Menu                      │
-│  - User Profile (Clerk UserButton)     │
+│  - Menú de Navegación                   │
+│  - Perfil de Usuario (Clerk UserButton)│
 ├─────────────────────────────────────────┤
 │                                         │
-│  Welcome, [Company Name]                │
+│  Bienvenido, [Nombre de Empresa]        │
 │                                         │
 │  ┌──────────┐  ┌──────────┐            │
-│  │ Company  │  │Facilities│            │
-│  │ Profile  │  │    5     │            │
+│  │ Perfil de│  │Instala-  │            │
+│  │ Empresa  │  │ ciones 5 │            │
 │  └──────────┘  └──────────┘            │
 │                                         │
-│  Quick Actions:                         │
-│  - View Company Profile                 │
-│  - Manage Facilities                    │
-│  - Create New Facility                  │
+│  Acciones Rápidas:                      │
+│  - Ver Perfil de Empresa                │
+│  - Administrar Instalaciones            │
+│  - Crear Nueva Instalación              │
 │                                         │
 └─────────────────────────────────────────┘
 ```
 
-**Elements:**
-- Reusable Header
-- Group: Welcome Section
-  - Text: "Welcome, [Company Name]"
-  - Text: [User email]
-- Group: Stats Cards
-  - Card: Company Profile (clickable)
-  - Card: Facilities Count (clickable)
-- Group: Quick Actions
-  - Button: "View Company Profile" → company-profile
-  - Button: "Manage Facilities" → facilities-list
-  - Button: "Create New Facility" → create-facility
+**Elementos:**
+- Header Reutilizable
+- Grupo: Sección de Bienvenida
+  - Texto: "Bienvenido, [Nombre de Empresa]"
+  - Texto: [Correo del usuario]
+- Grupo: Tarjetas de Estadísticas
+  - Tarjeta: Perfil de Empresa (clicable)
+  - Tarjeta: Contador de Instalaciones (clicable)
+- Grupo: Acciones Rápidas
+  - Botón: "Ver Perfil de Empresa" → company-profile
+  - Botón: "Administrar Instalaciones" → facilities-list
+  - Botón: "Crear Nueva Instalación" → create-facility
 
-**Workflow on Page Load:**
+**Workflow al Cargar la Página:**
 ```
-1. Get session token (Clerk plugin)
-2. Set state: session_token, organization_id
-3. API Call: get_company with token
-4. Display result in welcome text
-5. API Call: list_facilities with token (limit: 1000)
-6. Count facilities and display in card
+1. Obtener token de sesión (plugin Clerk)
+2. Establecer estado: session_token, organization_id
+3. Llamada API: get_company con token
+4. Mostrar resultado en texto de bienvenida
+5. Llamada API: list_facilities con token (límite: 1000)
+6. Contar instalaciones y mostrar en tarjeta
 ```
 
-### 2. Company Profile Page (`company-profile`)
+### 2. Página de Perfil de Empresa (`company-profile`)
 
-**Layout:**
+**Diseño:**
 ```
 ┌─────────────────────────────────────────┐
-│ Header (Reusable)                       │
+│ Header (Reutilizable)                   │
 ├─────────────────────────────────────────┤
 │                                         │
-│  Company Profile                [Edit]  │
+│  Perfil de Empresa             [Editar] │
 │                                         │
 │  ┌────────────────────────────────────┐│
-│  │ Basic Information                  ││
+│  │ Información Básica                 ││
 │  │                                    ││
-│  │ Company Name: [Alquemist Test...]  ││
-│  │ Legal Name:   [Alquemist Test...]  ││
-│  │ Tax ID:       [900123456-7]        ││
-│  │ Business Type:[S.A.S]              ││
-│  │ Type:         [Agriculture]        ││
+│  │ Nombre de Empresa: [Empresa de...] ││
+│  │ Razón Social:      [Empresa de...] ││
+│  │ NIT:               [900123456-7]   ││
+│  │ Tipo de Negocio:   [S.A.S]         ││
+│  │ Tipo:              [Agriculture]   ││
 │  └────────────────────────────────────┘│
 │                                         │
 │  ┌────────────────────────────────────┐│
-│  │ Contact Information                ││
+│  │ Información de Contacto            ││
 │  │                                    ││
-│  │ Email:  [contact@company.com]      ││
-│  │ Phone:  [+57 300 123 4567]         ││
+│  │ Correo: [contacto@empresa.com]     ││
+│  │ Teléfono: [+57 300 123 4567]       ││
 │  └────────────────────────────────────┘│
 │                                         │
 │  ┌────────────────────────────────────┐│
-│  │ Regional Settings                  ││
+│  │ Configuración Regional             ││
 │  │                                    ││
-│  │ Country:  [Colombia (CO)]          ││
-│  │ Locale:   [Spanish (es)]           ││
-│  │ Currency: [COP]                    ││
-│  │ Timezone: [America/Bogota]         ││
+│  │ País:     [Colombia (CO)]          ││
+│  │ Idioma:   [Español (es)]           ││
+│  │ Moneda:   [COP]                    ││
+│  │ Zona Horaria: [America/Bogota]     ││
 │  └────────────────────────────────────┘│
 │                                         │
 └─────────────────────────────────────────┘
 ```
 
-**View Mode Elements:**
-- Page header with "Edit" button
-- Group: Basic Information (Company data type)
-  - Text fields showing company data
-- Group: Contact Information
-- Group: Regional Settings
+**Elementos en Modo Vista:**
+- Encabezado de página con botón "Editar"
+- Grupo: Información Básica (tipo de dato Company)
+  - Campos de texto mostrando datos de la empresa
+- Grupo: Información de Contacto
+- Grupo: Configuración Regional
 
-**Edit Mode Elements:**
-- Replace texts with inputs
-- "Save" and "Cancel" buttons
-- Form validation
+**Elementos en Modo Edición:**
+- Reemplazar textos con inputs
+- Botones "Guardar" y "Cancelar"
+- Validación de formulario
 
 **Workflows:**
 
-**On Page Load:**
+**Al Cargar la Página:**
 ```
-1. Get session token
-2. API Call: get_company
-3. Set state: current_company = result
-4. Display company data in text fields
-```
-
-**When Edit button is clicked:**
-```
-1. Set state: is_editing = yes
-2. Show input fields (conditional visibility)
-3. Pre-fill inputs with current values
+1. Obtener token de sesión
+2. Llamada API: get_company
+3. Establecer estado: current_company = resultado
+4. Mostrar datos de empresa en campos de texto
 ```
 
-**When Save button is clicked:**
+**Cuando se hace clic en botón Editar:**
 ```
-1. Validate inputs (required fields)
-2. API Call: update_company with form values
-3. If success:
-   - Show success message (alert or toast)
-   - Refresh company data
-   - Set state: is_editing = no
-4. If error:
-   - Show error message
+1. Establecer estado: is_editing = sí
+2. Mostrar campos de entrada (visibilidad condicional)
+3. Pre-llenar inputs con valores actuales
 ```
 
-**When Cancel button is clicked:**
+**Cuando se hace clic en botón Guardar:**
 ```
-1. Set state: is_editing = no
-2. Reset inputs to original values
+1. Validar inputs (campos requeridos)
+2. Llamada API: update_company con valores del formulario
+3. Si tiene éxito:
+   - Mostrar mensaje de éxito (alerta o toast)
+   - Actualizar datos de empresa
+   - Establecer estado: is_editing = no
+4. Si hay error:
+   - Mostrar mensaje de error
 ```
 
-### 3. Facilities List Page (`facilities-list`)
+**Cuando se hace clic en botón Cancelar:**
+```
+1. Establecer estado: is_editing = no
+2. Restaurar inputs a valores originales
+```
 
-**Layout:**
+### 3. Página de Lista de Instalaciones (`facilities-list`)
+
+**Diseño:**
 ```
 ┌─────────────────────────────────────────┐
-│ Header (Reusable)                       │
+│ Header (Reutilizable)                   │
 ├─────────────────────────────────────────┤
 │                                         │
-│  Facilities                [+ New]      │
+│  Instalaciones                 [+ Nueva]│
 │                                         │
-│  [Search...]  [Type: All ▼]            │
+│  [Buscar...]  [Tipo: Todas ▼]          │
 │                                         │
 │  ┌────────────────────────────────────┐│
-│  │ Greenhouse Facility #1             ││
-│  │ Type: Greenhouse | License: LIC-.. ││
+│  │ Instalación Invernadero #1         ││
+│  │ Tipo: Greenhouse | Licencia: LIC-..││
 │  │ 📍 Bogotá, Cundinamarca            ││
-│  │ License expires: 2026-12-31 🟢     ││
-│  │                          [View >]  ││
+│  │ Licencia expira: 2026-12-31 🟢     ││
+│  │                          [Ver >]   ││
 │  └────────────────────────────────────┘│
 │                                         │
 │  ┌────────────────────────────────────┐│
-│  │ Indoor Facility A                  ││
-│  │ Type: Indoor | License: LIC-...    ││
+│  │ Instalación Interior A             ││
+│  │ Tipo: Indoor | Licencia: LIC-...   ││
 │  │ 📍 Medellín, Antioquia             ││
-│  │ License expires: 2025-03-15 🟡     ││
-│  │                          [View >]  ││
+│  │ Licencia expira: 2025-03-15 🟡     ││
+│  │                          [Ver >]   ││
 │  └────────────────────────────────────┘│
 │                                         │
-│  Page 1 of 1               [< 1 2 3 >] │
+│  Página 1 de 1              [< 1 2 3 >]│
 │                                         │
 └─────────────────────────────────────────┘
 ```
 
-**Elements:**
-- Page header with "Create New Facility" button
-- Search input
-- Dropdown: Facility type filter
-- Repeating Group: Facilities
-  - Source: API Call - list_facilities
-  - Item: Facility data type
-  - Layout: Full list (vertical)
-  - Number of rows: 10
+**Elementos:**
+- Encabezado de página con botón "Crear Nueva Instalación"
+- Input de búsqueda
+- Dropdown: Filtro de tipo de instalación
+- Repeating Group: Instalaciones
+  - Fuente: Llamada API - list_facilities
+  - Item: tipo de dato Facility
+  - Diseño: Lista completa (vertical)
+  - Número de filas: 10
 
-**Facility Card (inside repeating group):**
-- Text: Facility name (bold, large)
-- Text: Type and License number
-- Text: Location (with icon)
-- Text: License expiration with status badge
-  - Color logic:
-    - Green (🟢): > 60 days
-    - Yellow (🟡): 30-60 days
-    - Red (🔴): < 30 days
-- Button: "View" → go to facility-details with parameter
+**Tarjeta de Instalación (dentro del Repeating Group):**
+- Texto: Nombre de instalación (negrita, grande)
+- Texto: Tipo y número de licencia
+- Texto: Ubicación (con ícono)
+- Texto: Vencimiento de licencia con insignia de estado
+  - Lógica de color:
+    - Verde (🟢): > 60 días
+    - Amarillo (🟡): 30-60 días
+    - Rojo (🔴): < 30 días
+- Botón: "Ver" → ir a facility-details con parámetro
 
-**Pagination:**
-- Text: "Page X of Y"
-- Buttons: Previous / Next
-- Page numbers (1, 2, 3...)
+**Paginación:**
+- Texto: "Página X de Y"
+- Botones: Anterior / Siguiente
+- Números de página (1, 2, 3...)
 
-**Empty State (conditional):**
-Show when facilities list is empty:
+**Estado Vacío (condicional):**
+Mostrar cuando la lista de instalaciones está vacía:
 ```
 ┌────────────────────────────────┐
 │         📦                     │
-│   No facilities yet            │
+│   No hay instalaciones aún     │
 │                                │
-│   [Create Your First Facility] │
+│   [Crear Tu Primera Instalación]│
 └────────────────────────────────┘
 ```
 
 **Workflows:**
 
-**On Page Load:**
+**Al Cargar la Página:**
 ```
-1. Get session token
-2. Set state: current_page = 1
-3. API Call: list_facilities (page=1, limit=10)
-4. Set state: facilities_list = result
-5. Display facilities in repeating group
-```
-
-**When Search input changes:**
-```
-1. Wait 500ms (debounce)
-2. Filter facilities_list by search_query
-3. Refresh repeating group
+1. Obtener token de sesión
+2. Establecer estado: current_page = 1
+3. Llamada API: list_facilities (page=1, limit=10)
+4. Establecer estado: facilities_list = resultado
+5. Mostrar instalaciones en Repeating Group
 ```
 
-**When Type filter changes:**
+**Cuando cambia el input de Búsqueda:**
 ```
-1. Set state: filter_type = dropdown value
-2. API Call: list_facilities with filter
-3. Update facilities_list
-```
-
-**When "View" button is clicked:**
-```
-1. Go to facility-details
-2. Send parameter: facility_id = Current cell's Facility's id
+1. Esperar 500ms (debounce)
+2. Filtrar facilities_list por search_query
+3. Actualizar Repeating Group
 ```
 
-**When "Create New Facility" is clicked:**
+**Cuando cambia el filtro de Tipo:**
 ```
-1. Go to create-facility
-2. Set state: wizard_step = 1
+1. Establecer estado: filter_type = valor del dropdown
+2. Llamada API: list_facilities con filtro
+3. Actualizar facilities_list
 ```
 
-### 4. Create Facility Wizard (`create-facility`)
+**Cuando se hace clic en botón "Ver":**
+```
+1. Ir a facility-details
+2. Enviar parámetro: facility_id = id de Facility de la celda actual
+```
 
-**Layout (Multi-step form):**
+**Cuando se hace clic en "Crear Nueva Instalación":**
+```
+1. Ir a create-facility
+2. Establecer estado: wizard_step = 1
+```
+
+### 4. Asistente de Crear Instalación (`create-facility`)
+
+**Diseño (Formulario de múltiples pasos):**
 ```
 ┌─────────────────────────────────────────┐
-│ Header (Reusable)                       │
+│ Header (Reutilizable)                   │
 ├─────────────────────────────────────────┤
 │                                         │
-│  Create New Facility                    │
+│  Crear Nueva Instalación                │
 │                                         │
-│  Step 1 of 3: Basic Information ━━━━━━  │
+│  Paso 1 de 3: Información Básica ━━━━━━ │
 │  ●━━○━━○                                │
 │                                         │
 │  ┌────────────────────────────────────┐│
-│  │ Facility Name *                    ││
+│  │ Nombre de Instalación *            ││
 │  │ [________________]                 ││
 │  │                                    ││
-│  │ Facility Type *                    ││
+│  │ Tipo de Instalación *              ││
 │  │ [Greenhouse ▼]                     ││
 │  │                                    ││
-│  │ Description (optional)             ││
+│  │ Descripción (opcional)             ││
 │  │ [____________________________]     ││
 │  │ [____________________________]     ││
 │  │ [____________________________]     ││
 │  └────────────────────────────────────┘│
 │                                         │
-│            [Cancel]        [Next →]     │
+│            [Cancelar]      [Siguiente →]│
 │                                         │
 └─────────────────────────────────────────┘
 ```
 
-**Step 1: Basic Information**
+**Paso 1: Información Básica**
 
-Elements:
-- Progress indicator (step 1 of 3)
-- Input: Facility name (required)
-- Dropdown: Facility type (required)
-  - Options: greenhouse, indoor, outdoor, mixed
-- Textarea: Description (optional)
-- Button: Cancel
-- Button: Next
+Elementos:
+- Indicador de progreso (paso 1 de 3)
+- Input: Nombre de instalación (requerido)
+- Dropdown: Tipo de instalación (requerido)
+  - Opciones: greenhouse, indoor, outdoor, mixed
+- Textarea: Descripción (opcional)
+- Botón: Cancelar
+- Botón: Siguiente
 
-**Step 2: Location**
+**Paso 2: Ubicación**
 
-Elements:
-- Progress indicator (step 2 of 3)
-- Input: Address (required)
-- Input: City (required)
-- Dropdown: State/Department (required)
-- Input: Latitude (optional)
-- Input: Longitude (optional)
-- Input: Altitude (meters) (optional)
-- Input: Total area (m²) (required)
-- Input: Canopy area (m²) (optional)
-- Button: Back
-- Button: Next
+Elementos:
+- Indicador de progreso (paso 2 de 3)
+- Input: Dirección (requerido)
+- Input: Ciudad (requerido)
+- Dropdown: Estado/Departamento (requerido)
+- Input: Latitud (opcional)
+- Input: Longitud (opcional)
+- Input: Altitud (metros) (opcional)
+- Input: Área total (m²) (requerido)
+- Input: Área de canopia (m²) (opcional)
+- Botón: Atrás
+- Botón: Siguiente
 
-**Step 3: License Information**
+**Paso 3: Información de Licencia**
 
-Elements:
-- Progress indicator (step 3 of 3)
-- Input: License number (required)
-- Dropdown: License type (required)
-  - Options: cannabis_cultivation, processing, distribution, etc.
-- Dropdown: License authority (required)
-  - Options: INVIMA, ICA, Municipal, etc.
-- Date picker: Expiration date (required)
-- Button: Back
-- Button: Create Facility
+Elementos:
+- Indicador de progreso (paso 3 de 3)
+- Input: Número de licencia (requerido)
+- Dropdown: Tipo de licencia (requerido)
+  - Opciones: cannabis_cultivation, processing, distribution, etc.
+- Dropdown: Autoridad de licencia (requerido)
+  - Opciones: INVIMA, ICA, Municipal, etc.
+- Selector de fecha: Fecha de vencimiento (requerido)
+- Botón: Atrás
+- Botón: Crear Instalación
 
 **Workflows:**
 
-**On Page Load:**
+**Al Cargar la Página:**
 ```
-1. Get session token
-2. Set state: wizard_step = 1
-3. Clear draft_facility (reset form)
-```
-
-**When Next is clicked (Step 1):**
-```
-1. Validate: name and facility_type are not empty
-2. If valid:
-   - Save to state: draft_facility
-   - Set state: wizard_step = 2
-3. If invalid:
-   - Show error message
-   - Don't proceed
+1. Obtener token de sesión
+2. Establecer estado: wizard_step = 1
+3. Limpiar draft_facility (resetear formulario)
 ```
 
-**When Next is clicked (Step 2):**
+**Cuando se hace clic en Siguiente (Paso 1):**
 ```
-1. Validate: address, city, state, total_area are not empty
-2. If valid:
-   - Update state: draft_facility with location data
-   - Set state: wizard_step = 3
-3. If invalid:
-   - Show error message
-```
-
-**When Back is clicked:**
-```
-1. Set state: wizard_step = wizard_step - 1
-2. Show previous step
-3. Pre-fill form with draft_facility data
+1. Validar: name y facility_type no están vacíos
+2. Si es válido:
+   - Guardar en estado: draft_facility
+   - Establecer estado: wizard_step = 2
+3. Si no es válido:
+   - Mostrar mensaje de error
+   - No proceder
 ```
 
-**When Create Facility is clicked (Step 3):**
+**Cuando se hace clic en Siguiente (Paso 2):**
 ```
-1. Validate: license fields are not empty
-2. If valid:
-   - Update state: draft_facility with license data
-   - Show loading spinner
-   - API Call: create_facility with all draft_facility data
-   - If success:
-     - Show success message
-     - Go to facility-details with new facility_id
-   - If error:
-     - Show error message
-     - Stay on form
-3. If invalid:
-   - Show error message
+1. Validar: address, city, state, total_area no están vacíos
+2. Si es válido:
+   - Actualizar estado: draft_facility con datos de ubicación
+   - Establecer estado: wizard_step = 3
+3. Si no es válido:
+   - Mostrar mensaje de error
 ```
 
-**When Cancel is clicked:**
+**Cuando se hace clic en Atrás:**
 ```
-1. Show confirmation dialog: "Are you sure? Draft will be lost"
-2. If confirmed:
-   - Clear draft_facility
-   - Go to facilities-list
+1. Establecer estado: wizard_step = wizard_step - 1
+2. Mostrar paso anterior
+3. Pre-llenar formulario con datos de draft_facility
 ```
 
-### 5. Facility Details Page (`facility-details`)
+**Cuando se hace clic en Crear Instalación (Paso 3):**
+```
+1. Validar: campos de licencia no están vacíos
+2. Si es válido:
+   - Actualizar estado: draft_facility con datos de licencia
+   - Mostrar spinner de carga
+   - Llamada API: create_facility con todos los datos de draft_facility
+   - Si tiene éxito:
+     - Mostrar mensaje de éxito
+     - Ir a facility-details con nuevo facility_id
+   - Si hay error:
+     - Mostrar mensaje de error
+     - Permanecer en formulario
+3. Si no es válido:
+   - Mostrar mensaje de error
+```
 
-**Layout:**
+**Cuando se hace clic en Cancelar:**
+```
+1. Mostrar diálogo de confirmación: "¿Estás seguro? Se perderá el borrador"
+2. Si se confirma:
+   - Limpiar draft_facility
+   - Ir a facilities-list
+```
+
+### 5. Página de Detalles de Instalación (`facility-details`)
+
+**Diseño:**
 ```
 ┌─────────────────────────────────────────┐
-│ Header (Reusable)                       │
+│ Header (Reutilizable)                   │
 ├─────────────────────────────────────────┤
 │                                         │
-│  Greenhouse Facility #1      [Edit]    │
+│  Instalación Invernadero #1   [Editar] │
 │  📍 Bogotá, Cundinamarca               │
 │                                         │
-│  [Overview] [License] [Areas] [Team]   │
+│  [Resumen] [Licencia] [Áreas] [Equipo] │
 │  ─────────                              │
 │                                         │
 │  ┌────────────────────────────────────┐│
-│  │ Overview                           ││
+│  │ Resumen                            ││
 │  │                                    ││
-│  │ Type: Greenhouse                   ││
-│  │ Status: Active                     ││
-│  │ Total Area: 5,000 m²               ││
-│  │ Canopy Area: 3,500 m²              ││
+│  │ Tipo: Greenhouse                   ││
+│  │ Estado: Activo                     ││
+│  │ Área Total: 5,000 m²               ││
+│  │ Área de Canopia: 3,500 m²          ││
 │  │                                    ││
-│  │ Location:                          ││
+│  │ Ubicación:                         ││
 │  │ Km 5 Vía La Calera                 ││
 │  │ Bogotá, Cundinamarca               ││
 │  │ Colombia                           ││
 │  │                                    ││
-│  │ Coordinates: 4.7110, -74.0721      ││
-│  │ Altitude: 2,600 MSNM               ││
+│  │ Coordenadas: 4.7110, -74.0721      ││
+│  │ Altitud: 2,600 MSNM                ││
 │  └────────────────────────────────────┘│
 │                                         │
 └─────────────────────────────────────────┘
 ```
 
-**Elements:**
+**Elementos:**
 
-**Page Header:**
-- Facility name (dynamic from URL parameter)
-- Location subtitle
-- Edit button
+**Encabezado de Página:**
+- Nombre de instalación (dinámico desde parámetro URL)
+- Subtítulo de ubicación
+- Botón Editar
 
-**Tab Navigation:**
-- Tab 1: Overview (default)
-- Tab 2: License
-- Tab 3: Areas (future)
-- Tab 4: Team (future)
+**Navegación por Pestañas:**
+- Pestaña 1: Resumen (por defecto)
+- Pestaña 2: Licencia
+- Pestaña 3: Áreas (futuro)
+- Pestaña 4: Equipo (futuro)
 
-**Overview Tab:**
-- Group: Facility Info
-  - Type, Status, Areas
-- Group: Location
-  - Full address
-  - Coordinates
-  - Altitude
+**Pestaña Resumen:**
+- Grupo: Información de Instalación
+  - Tipo, Estado, Áreas
+- Grupo: Ubicación
+  - Dirección completa
+  - Coordenadas
+  - Altitud
 
-**License Tab:**
+**Pestaña Licencia:**
 ```
 ┌────────────────────────────────────┐
-│ License Information                │
+│ Información de Licencia            │
 │                                    │
-│ License Number: LIC-2025-001       │
-│ License Type: Cannabis Cultivation │
-│ Authority: INVIMA                  │
-│ Issued: 2025-01-01                 │
-│ Expires: 2026-12-31                │
+│ Número de Licencia: LIC-2025-001   │
+│ Tipo de Licencia: Cannabis Cultivation │
+│ Autoridad: INVIMA                  │
+│ Emitida: 2025-01-01                │
+│ Vence: 2026-12-31                  │
 │                                    │
-│ Status: Active 🟢                  │
-│ Days remaining: 450 days           │
+│ Estado: Activa 🟢                  │
+│ Días restantes: 450 días           │
 │                                    │
-│ [Renew License]                    │
+│ [Renovar Licencia]                 │
 └────────────────────────────────────┘
 ```
 
 **Workflows:**
 
-**On Page Load:**
+**Al Cargar la Página:**
 ```
-1. Get session token
-2. Get URL parameter: facility_id
-3. API Call: get_facility with facility_id
-4. Display facility data in page
-5. Calculate license expiration status
-6. Set badge color based on days remaining
-```
-
-**When Tab is clicked:**
-```
-1. Set state: active_tab = tab name
-2. Show corresponding content group
-3. Hide other groups
+1. Obtener token de sesión
+2. Obtener parámetro URL: facility_id
+3. Llamada API: get_facility con facility_id
+4. Mostrar datos de instalación en página
+5. Calcular estado de vencimiento de licencia
+6. Establecer color de insignia basado en días restantes
 ```
 
-**When Edit button is clicked:**
+**Cuando se hace clic en Pestaña:**
 ```
-1. Go to edit-facility page
-2. Send parameter: facility_id
+1. Establecer estado: active_tab = nombre de pestaña
+2. Mostrar grupo de contenido correspondiente
+3. Ocultar otros grupos
+```
+
+**Cuando se hace clic en botón Editar:**
+```
+1. Ir a página edit-facility
+2. Enviar parámetro: facility_id
 ```
 
 ---
 
 ## Workflows
 
-### Reusable Workflows
+### Workflows Reutilizables
 
-Create these as **Custom Events** to reuse across pages:
+Crear estos como **Custom Events** para reutilizar en todas las páginas:
 
-#### 1. Get Session Token
+#### 1. Obtener Token de Sesión
 **Custom Event:** `get_session_token`
 
 ```
-Step 1: Clerk plugin - Get session
-Step 2: Set state - session_token = Result's token
-Step 3: Set state - organization_id = Result's org_id
-Step 4: Set state - user_id = Result's user_id
+Paso 1: Plugin Clerk - Get session
+Paso 2: Establecer estado - session_token = token del Resultado
+Paso 3: Establecer estado - organization_id = org_id del Resultado
+Paso 4: Establecer estado - user_id = user_id del Resultado
 ```
 
-Use on every page's "Page is loaded" event.
+Usar en el evento "Page is loaded" de cada página.
 
-#### 2. Show Error Message
-**Custom Event:** `show_error` (parameter: error_message)
-
-```
-Step 1: Show alert: error_message
-Step 2: Log to console: error_message
-```
-
-#### 3. Show Success Message
-**Custom Event:** `show_success` (parameter: success_message)
+#### 2. Mostrar Mensaje de Error
+**Custom Event:** `show_error` (parámetro: error_message)
 
 ```
-Step 1: Show alert: success_message (green)
-Step 2: Auto-hide after 3 seconds
+Paso 1: Mostrar alerta: error_message
+Paso 2: Registrar en consola: error_message
+```
+
+#### 3. Mostrar Mensaje de Éxito
+**Custom Event:** `show_success` (parámetro: success_message)
+
+```
+Paso 1: Mostrar alerta: success_message (verde)
+Paso 2: Auto-ocultar después de 3 segundos
 ```
 
 ---
 
-## Testing
+## Pruebas
 
-### Testing Checklist
+### Lista de Verificación de Pruebas
 
-#### Authentication
-- [ ] Sign up new user
-- [ ] Verify email (if enabled)
-- [ ] Create organization
-- [ ] Sign in existing user
-- [ ] Organization selection works
-- [ ] Session token is retrieved on all pages
+#### Autenticación
+- [ ] Registrar nuevo usuario
+- [ ] Verificar correo (si está habilitado)
+- [ ] Crear organización
+- [ ] Iniciar sesión con usuario existente
+- [ ] Selección de organización funciona
+- [ ] Token de sesión se obtiene en todas las páginas
 
-#### Company Profile
-- [ ] View company data on dashboard
-- [ ] Navigate to company profile page
-- [ ] Edit company name
-- [ ] Save changes successfully
-- [ ] Cancel edit (revert changes)
-- [ ] Error handling for invalid data
+#### Perfil de Empresa
+- [ ] Ver datos de empresa en dashboard
+- [ ] Navegar a página de perfil de empresa
+- [ ] Editar nombre de empresa
+- [ ] Guardar cambios exitosamente
+- [ ] Cancelar edición (revertir cambios)
+- [ ] Manejo de errores para datos inválidos
 
-#### Facilities List
-- [ ] View empty state (first time)
-- [ ] Create first facility (via empty state)
-- [ ] View facilities list
-- [ ] Search facilities by name
-- [ ] Filter by facility type
-- [ ] Pagination works (if > 10 facilities)
-- [ ] Click "View" opens facility details
+#### Lista de Instalaciones
+- [ ] Ver estado vacío (primera vez)
+- [ ] Crear primera instalación (vía estado vacío)
+- [ ] Ver lista de instalaciones
+- [ ] Buscar instalaciones por nombre
+- [ ] Filtrar por tipo de instalación
+- [ ] Paginación funciona (si > 10 instalaciones)
+- [ ] Clic en "Ver" abre detalles de instalación
 
-#### Create Facility
-- [ ] Wizard step 1 validation
-- [ ] Navigate to step 2
-- [ ] Navigate back to step 1 (data preserved)
-- [ ] Wizard step 2 validation
-- [ ] Navigate to step 3
-- [ ] Cancel wizard (confirmation dialog)
-- [ ] Submit form (all steps)
-- [ ] Success redirect to facility details
-- [ ] Error handling for API failures
+#### Crear Instalación
+- [ ] Validación del paso 1 del asistente
+- [ ] Navegar al paso 2
+- [ ] Navegar de regreso al paso 1 (datos preservados)
+- [ ] Validación del paso 2 del asistente
+- [ ] Navegar al paso 3
+- [ ] Cancelar asistente (diálogo de confirmación)
+- [ ] Enviar formulario (todos los pasos)
+- [ ] Redirección exitosa a detalles de instalación
+- [ ] Manejo de errores para fallos de API
 
-#### Facility Details
-- [ ] View facility overview
-- [ ] View license information
-- [ ] License status badge color (green/yellow/red)
-- [ ] Switch between tabs
-- [ ] Edit button navigation
-- [ ] Data matches created facility
+#### Detalles de Instalación
+- [ ] Ver resumen de instalación
+- [ ] Ver información de licencia
+- [ ] Color de insignia de estado de licencia (verde/amarillo/rojo)
+- [ ] Cambiar entre pestañas
+- [ ] Navegación del botón Editar
+- [ ] Datos coinciden con instalación creada
 
-#### Multi-Tenancy
-- [ ] Create second organization
-- [ ] Switch organizations in Clerk
-- [ ] Verify facilities are isolated
-- [ ] No cross-tenant data leakage
+#### Multi-Tenencia
+- [ ] Crear segunda organización
+- [ ] Cambiar organizaciones en Clerk
+- [ ] Verificar que las instalaciones están aisladas
+- [ ] Sin filtración de datos entre tenants
 
 ---
 
-## Troubleshooting
+## Solución de Problemas
 
-### Common Issues
+### Problemas Comunes
 
-#### 1. "Authorization failed" error
+#### 1. Error "Authorization failed"
 
-**Problem:** API calls return 401 Unauthorized
+**Problema:** Las llamadas API devuelven 401 No Autorizado
 
-**Solution:**
-- Check session token is being passed correctly
-- Verify token is not expired (Clerk session duration)
-- Ensure Bearer prefix is included: `Bearer <token>`
-- Check Clerk plugin is configured correctly
+**Solución:**
+- Verificar que el token de sesión se está pasando correctamente
+- Verificar que el token no ha expirado (duración de sesión de Clerk)
+- Asegurar que se incluye el prefijo Bearer: `Bearer <token>`
+- Verificar que el plugin Clerk está configurado correctamente
 
-#### 2. "Company not found" error
+#### 2. Error "Company not found"
 
-**Problem:** GET /api/v1/companies returns empty
+**Problema:** GET /api/v1/companies devuelve vacío
 
-**Solution:**
-- Verify organization was created in Clerk
-- Check if company was created via POST /api/v1/companies
-- Ensure organization_id matches between Clerk and company record
+**Solución:**
+- Verificar que la organización fue creada en Clerk
+- Verificar si la empresa fue creada vía POST /api/v1/companies
+- Asegurar que el organization_id coincide entre Clerk y el registro de empresa
 
-#### 3. API calls not working (CORS error)
+#### 3. Llamadas API no funcionan (error CORS)
 
-**Problem:** Browser shows CORS policy error
+**Problema:** El navegador muestra error de política CORS
 
-**Solution:**
-- Add Bubble app URL to Next.js allowed origins
-- Update `next.config.ts`:
+**Solución:**
+- Agregar URL de app Bubble a orígenes permitidos de Next.js
+- Actualizar `next.config.ts`:
   ```typescript
   headers: [
     {
       key: 'Access-Control-Allow-Origin',
-      value: 'https://[your-app].bubbleapps.io'
+      value: 'https://[tu-app].bubbleapps.io'
     }
   ]
   ```
-- Restart Next.js server
+- Reiniciar servidor Next.js
 
-#### 4. Facilities list not showing
+#### 4. Lista de instalaciones no se muestra
 
-**Problem:** Repeating group is empty
+**Problema:** Repeating Group está vacío
 
-**Solution:**
-- Check API call is set to "Data" (not "Action")
-- Verify response structure matches data type
-- Initialize API call in API Connector
-- Check facilities exist for current company
+**Solución:**
+- Verificar que la llamada API está configurada como "Data" (no "Action")
+- Verificar que la estructura de respuesta coincide con el tipo de dato
+- Inicializar llamada API en API Connector
+- Verificar que existen instalaciones para la empresa actual
 
-#### 5. License expiration badge not showing colors
+#### 5. Insignia de vencimiento de licencia no muestra colores
 
-**Problem:** All badges show same color
+**Problema:** Todas las insignias muestran el mismo color
 
-**Solution:**
-- Verify date comparison logic in conditional:
+**Solución:**
+- Verificar la lógica de comparación de fechas en condicional:
   ```
-  When Current cell's Facility's license_expiration_date < Current date + days: 30
-  This element is visible: yes
-  Background color: Red
+  Cuando license_expiration_date de Facility de celda actual < Fecha actual + días: 30
+  Este elemento es visible: sí
+  Color de fondo: Rojo
   ```
 
-#### 6. Wizard not advancing to next step
+#### 6. Asistente no avanza al siguiente paso
 
-**Problem:** Next button does nothing
+**Problema:** Botón Siguiente no hace nada
 
-**Solution:**
-- Check validation workflow is not blocking
-- Ensure wizard_step state is being updated
-- Verify conditional visibility on step groups
-- Check for JavaScript errors in browser console
+**Solución:**
+- Verificar que el workflow de validación no está bloqueando
+- Asegurar que el estado wizard_step se está actualizando
+- Verificar visibilidad condicional en grupos de pasos
+- Verificar errores de JavaScript en consola del navegador
 
 ---
 
-## Best Practices
+## Mejores Prácticas
 
-### Performance
-- Use "Do when condition is true" instead of "Every X seconds"
-- Limit API calls on page load (combine when possible)
-- Cache company and user data in custom states
-- Use pagination for large lists (don't load 1000+ items)
+### Rendimiento
+- Usar "Do when condition is true" en lugar de "Every X seconds"
+- Limitar llamadas API al cargar página (combinar cuando sea posible)
+- Guardar en caché datos de empresa y usuario en estados personalizados
+- Usar paginación para listas grandes (no cargar más de 1000 elementos)
 
-### Security
-- Never expose API tokens in visible elements
-- Use private parameters for sensitive data
-- Validate all user inputs before API calls
-- Handle errors gracefully (don't show raw API errors)
+### Seguridad
+- Nunca exponer tokens de API en elementos visibles
+- Usar parámetros privados para datos sensibles
+- Validar todos los inputs de usuario antes de llamadas API
+- Manejar errores con gracia (no mostrar errores de API en crudo)
 
 ### UX
-- Show loading spinners during API calls
-- Provide success/error feedback for all actions
-- Use optimistic UI updates where possible
-- Implement proper empty states
-- Add confirmation dialogs for destructive actions
+- Mostrar spinners de carga durante llamadas API
+- Proporcionar retroalimentación de éxito/error para todas las acciones
+- Usar actualizaciones de UI optimistas cuando sea posible
+- Implementar estados vacíos apropiados
+- Agregar diálogos de confirmación para acciones destructivas
 
-### Maintenance
-- Document custom workflows
-- Use consistent naming conventions
-- Create reusable elements for common components
-- Test thoroughly before production deployment
-
----
-
-## Next Steps
-
-### After Module 1 is Complete
-
-1. **Module 2: Batch Management**
-   - Create batches
-   - QR code generation
-   - Batch tracking
-
-2. **Module 3: Activity Logging**
-   - Log activities
-   - Task assignment
-   - Mobile-friendly capture
-
-3. **Advanced Features**
-   - File uploads (logos, documents)
-   - Advanced area layouts
-   - Team management UI
-   - Analytics dashboard
+### Mantenimiento
+- Documentar workflows personalizados
+- Usar convenciones de nombres consistentes
+- Crear elementos reutilizables para componentes comunes
+- Probar exhaustivamente antes del despliegue a producción
 
 ---
 
-**Documentation Version:** 1.0
-**Last Updated:** 2025-10-10
-**Next Review:** After Module 1 implementation complete
+## Próximos Pasos
 
-**Need Help?**
-- Check [API-Bubble-Reference.md](API-Bubble-Reference.md) for endpoint details
-- See [Bubble-UI-Wireframes.md](Bubble-UI-Wireframes.md) for visual designs
-- Review [Module-1-Bubble-Quick-Start.md](Module-1-Bubble-Quick-Start.md) for checklist
+### Después de Completar el Módulo 1
+
+1. **Módulo 2: Gestión de Lotes**
+   - Crear lotes
+   - Generación de códigos QR
+   - Seguimiento de lotes
+
+2. **Módulo 3: Registro de Actividades**
+   - Registrar actividades
+   - Asignación de tareas
+   - Captura amigable para móviles
+
+3. **Características Avanzadas**
+   - Carga de archivos (logos, documentos)
+   - Diseños avanzados de áreas
+   - UI de gestión de equipos
+   - Panel de analíticas
+
+---
+
+**Versión de Documentación:** 1.0
+**Última Actualización:** 2025-10-10
+**Próxima Revisión:** Después de completar la implementación del Módulo 1
+
+**¿Necesitas Ayuda?**
+- Consulta [API-Bubble-Reference.md](API-Bubble-Reference.md) para detalles de endpoints
+- Ve [Bubble-UI-Wireframes.md](Bubble-UI-Wireframes.md) para diseños visuales
+- Revisa [Module-1-Bubble-Quick-Start.md](Module-1-Bubble-Quick-Start.md) para lista de verificación

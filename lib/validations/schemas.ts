@@ -1,6 +1,21 @@
 /**
  * Shared Validation Schemas
  * Zod schemas used across both REST API and Next.js frontend
+ *
+ * INTERNATIONALIZATION STRATEGY:
+ * - Database values: English (technical, API-compatible)
+ * - User display: Spanish (via messages/es.json)
+ * - Example: DB stores "indoor", user sees "Interior"
+ *
+ * All enum values below are kept in English for:
+ * 1. API compatibility
+ * 2. Database consistency
+ * 3. Developer experience
+ *
+ * Translations are centralized in messages/es.json:
+ * - facilityTypes.indoor → "Interior"
+ * - status.active → "Activo"
+ * - etc.
  */
 
 import { z } from 'zod'
@@ -52,6 +67,8 @@ export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>
 // Facility Schemas
 // ============================================================================
 
+// Technical values stored in DB (English) - User sees Spanish via i18n
+// indoor → "Interior", outdoor → "Exterior", greenhouse → "Invernadero", mixed → "Mixto"
 export const facilityTypes = [
   'indoor',
   'outdoor',

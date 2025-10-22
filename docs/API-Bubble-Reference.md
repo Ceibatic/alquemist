@@ -1,22 +1,22 @@
-# API Reference for Bubble Integration
+# Referencia de API para Integración con Bubble
 
-**Quick reference for configuring Alquemist API calls in Bubble's API Connector**
+**Referencia rápida para configurar llamadas a la API de Alquemist en el API Connector de Bubble**
 
-**Version:** 1.0
-**Base URL:** `https://your-domain.com/api/v1` or `http://localhost:3000/api/v1`
+**Versión:** 1.0
+**URL Base:** `https://your-domain.com/api/v1` o `http://localhost:3000/api/v1`
 
 ---
 
-## 🔐 Authentication
+## 🔐 Autenticación
 
-All endpoints (except health check) require Clerk authentication.
+Todos los endpoints (excepto el health check) requieren autenticación de Clerk.
 
-**Header Required:**
+**Header Requerido:**
 ```
 Authorization: Bearer <token>
 ```
 
-The `<token>` is obtained from Clerk plugin's "Get session" action and should be passed as a **private parameter** in Bubble.
+El `<token>` se obtiene de la acción "Get session" del plugin de Clerk y debe pasarse como **parámetro privado** en Bubble.
 
 ---
 
@@ -24,18 +24,18 @@ The `<token>` is obtained from Clerk plugin's "Get session" action and should be
 
 ### 1. Health Check
 
-**Purpose:** Test API connection
+**Propósito:** Probar conexión de API
 
-#### Bubble Configuration
+#### Configuración en Bubble
 - **Name:** `health_check`
 - **Use as:** Action
 - **Method:** GET
 - **URL:** `[BASE_URL]`
 
-#### Parameters
-None
+#### Parámetros
+Ninguno
 
-#### Response
+#### Respuesta
 ```json
 {
   "success": true,
@@ -48,24 +48,24 @@ None
 }
 ```
 
-#### Bubble Setup Steps
+#### Pasos de Configuración en Bubble
 1. API Connector → Add another call
 2. Name: `health_check`
 3. Use as: **Action**
 4. Method: **GET**
 5. URL: `https://your-domain.com/api/v1`
 6. Click **Initialize call**
-7. Verify response shows `"status": "operational"`
+7. Verificar que la respuesta muestre `"status": "operational"`
 
 ---
 
 ### 2. Get Company
 
-**Purpose:** Retrieve current user's company profile
+**Propósito:** Obtener el perfil de empresa del usuario actual
 
-#### Bubble Configuration
+#### Configuración en Bubble
 - **Name:** `get_company`
-- **Use as:** **Data** (for use in repeating groups/text elements)
+- **Use as:** **Data** (para usar en repeating groups/elementos de texto)
 - **Method:** GET
 - **URL:** `[BASE_URL]/companies`
 
@@ -74,30 +74,30 @@ None
 Authorization: Bearer <token>
 ```
 
-#### Parameters
-| Parameter | Type | Private | Required | Description |
+#### Parámetros
+| Parámetro | Tipo | Privado | Requerido | Descripción |
 |-----------|------|---------|----------|-------------|
-| `token` | text | ✅ Yes | ✅ Yes | Clerk session token |
+| `token` | text | ✅ Sí | ✅ Sí | Token de sesión de Clerk |
 
-#### Request URL in Bubble
+#### URL de Solicitud en Bubble
 ```
 https://your-domain.com/api/v1/companies
 ```
 
-#### Response
+#### Respuesta
 ```json
 {
   "success": true,
   "data": {
     "id": "jn7cx3afzv7zs555nrkp0pq9rx7s7c6d",
     "organization_id": "org_33saIMDJHDTLUJkAyxnxo5cYRSP",
-    "name": "Alquemist Test Company",
+    "name": "Empresa de Prueba Alquemist",
     "company_type": "Agriculture",
     "status": "active",
     "subscription_plan": "trial",
     "max_facilities": 1,
     "max_users": 3,
-    "legal_name": "Alquemist Test Company SAS",
+    "legal_name": "Empresa de Prueba Alquemist SAS",
     "tax_id": "900123456-7",
     "business_entity_type": "S.A.S",
     "country": "CO",
@@ -113,29 +113,29 @@ https://your-domain.com/api/v1/companies
 }
 ```
 
-#### Bubble Setup Steps
+#### Pasos de Configuración en Bubble
 1. API Connector → Add another call
 2. Name: `get_company`
-3. Use as: **Data** ← Important!
+3. Use as: **Data** ← ¡Importante!
 4. Method: **GET**
 5. URL: `https://your-domain.com/api/v1/companies`
-6. Add header:
+6. Agregar header:
    - Key: `Authorization`
-   - Value: `Bearer <token>` (make `<token>` a parameter)
-7. Add parameter:
+   - Value: `Bearer <token>` (hacer `<token>` un parámetro)
+7. Agregar parámetro:
    - Name: `token`
    - Type: text
-   - Private: ✅ Yes
-8. Click **Initialize call** with test token
-9. Bubble will capture the response structure
+   - Private: ✅ Sí
+8. Click **Initialize call** con token de prueba
+9. Bubble capturará la estructura de respuesta
 
-#### Usage in Bubble
-**In a text element:**
+#### Uso en Bubble
+**En un elemento de texto:**
 ```
 Get data from external API > Alquemist API - get_company
 ```
 
-**Dynamic expression:**
+**Expresión dinámica:**
 ```
 Get data from external API > Alquemist API - get_company's name
 Get data from external API > Alquemist API - get_company's tax_id
@@ -145,9 +145,9 @@ Get data from external API > Alquemist API - get_company's tax_id
 
 ### 3. Create Company
 
-**Purpose:** Create a new company profile
+**Propósito:** Crear un nuevo perfil de empresa
 
-#### Bubble Configuration
+#### Configuración en Bubble
 - **Name:** `create_company`
 - **Use as:** Action
 - **Method:** POST
@@ -159,28 +159,28 @@ Authorization: Bearer <token>
 Content-Type: application/json
 ```
 
-#### Parameters
-| Parameter | Type | Private | Required | Description |
+#### Parámetros
+| Parámetro | Tipo | Privado | Requerido | Descripción |
 |-----------|------|---------|----------|-------------|
-| `token` | text | ✅ Yes | ✅ Yes | Clerk session token |
-| `name` | text | ❌ No | ✅ Yes | Company name |
-| `company_type` | text | ❌ No | ✅ Yes | "Agriculture", "Processing", etc. |
-| `legal_name` | text | ❌ No | ❌ No | Legal business name |
-| `tax_id` | text | ❌ No | ❌ No | Tax ID (NIT in Colombia) |
+| `token` | text | ✅ Sí | ✅ Sí | Token de sesión de Clerk |
+| `name` | text | ❌ No | ✅ Sí | Nombre de la empresa |
+| `company_type` | text | ❌ No | ✅ Sí | "Agriculture", "Processing", etc. |
+| `legal_name` | text | ❌ No | ❌ No | Razón social de la empresa |
+| `tax_id` | text | ❌ No | ❌ No | NIT (en Colombia) |
 | `business_entity_type` | text | ❌ No | ❌ No | "S.A.S", "S.A.", "Ltda", "E.U.", etc. |
-| `country` | text | ❌ No | ❌ No | Country code (default: "CO") |
-| `locale` | text | ❌ No | ❌ No | Locale (default: "es") |
-| `currency` | text | ❌ No | ❌ No | Currency code (default: "COP") |
-| `timezone` | text | ❌ No | ❌ No | Timezone (default: "America/Bogota") |
-| `email` | text | ❌ No | ❌ No | Primary contact email |
-| `phone` | text | ❌ No | ❌ No | Primary contact phone |
+| `country` | text | ❌ No | ❌ No | Código de país (por defecto: "CO") |
+| `locale` | text | ❌ No | ❌ No | Idioma (por defecto: "es") |
+| `currency` | text | ❌ No | ❌ No | Código de moneda (por defecto: "COP") |
+| `timezone` | text | ❌ No | ❌ No | Zona horaria (por defecto: "America/Bogota") |
+| `email` | text | ❌ No | ❌ No | Email de contacto principal |
+| `phone` | text | ❌ No | ❌ No | Teléfono de contacto principal |
 
-#### Request Body (JSON)
+#### Cuerpo de Solicitud (JSON)
 ```json
 {
-  "name": "Alquemist Test Company",
+  "name": "Empresa de Prueba Alquemist",
   "company_type": "Agriculture",
-  "legal_name": "Alquemist Test Company SAS",
+  "legal_name": "Empresa de Prueba Alquemist SAS",
   "tax_id": "900123456-7",
   "business_entity_type": "S.A.S",
   "country": "CO",
@@ -192,14 +192,14 @@ Content-Type: application/json
 }
 ```
 
-#### Response
+#### Respuesta
 ```json
 {
   "success": true,
   "data": {
     "id": "jn7cx3afzv7zs555nrkp0pq9rx7s7c6d",
     "organization_id": "org_33saIMDJHDTLUJkAyxnxo5cYRSP",
-    "name": "Alquemist Test Company",
+    "name": "Empresa de Prueba Alquemist",
     "company_type": "Agriculture",
     "status": "active",
     "created_at": "2025-01-10T12:00:00Z"
@@ -210,15 +210,15 @@ Content-Type: application/json
 }
 ```
 
-#### Bubble Setup Steps
+#### Pasos de Configuración en Bubble
 1. API Connector → Add another call
 2. Name: `create_company`
 3. Use as: **Action**
 4. Method: **POST**
 5. URL: `https://your-domain.com/api/v1/companies`
-6. Add header:
+6. Agregar header:
    - Key: `Authorization`
-   - Value: `Bearer <token>` (parameter)
+   - Value: `Bearer <token>` (parámetro)
 7. Body type: **JSON**
 8. Body:
 ```json
@@ -236,54 +236,54 @@ Content-Type: application/json
   "primary_contact_phone": "<phone>"
 }
 ```
-9. Add all parameters as shown in table above
-10. Click **Initialize call** with test data
-11. Verify response returns company ID
+9. Agregar todos los parámetros como se muestra en la tabla anterior
+10. Click **Initialize call** con datos de prueba
+11. Verificar que la respuesta devuelva el ID de la empresa
 
-#### Usage in Bubble Workflow
+#### Uso en Workflow de Bubble
 ```
-Step 1: Plugin Action - Clerk: Get session
-Step 2: API Call - create_company
-  - token: Result of step 1's token
-  - name: Input Company Name's value
+Paso 1: Plugin Action - Clerk: Get session
+Paso 2: API Call - create_company
+  - token: Resultado del token del paso 1
+  - name: Valor de Input Company Name
   - company_type: "Agriculture"
-  - legal_name: Input Legal Name's value
-  - tax_id: Input Tax ID's value
-  - business_entity_type: Dropdown Business Type's value
+  - legal_name: Valor de Input Legal Name
+  - tax_id: Valor de Input Tax ID
+  - business_entity_type: Valor de Dropdown Business Type
   - country: "CO"
   - locale: "es"
   - currency: "COP"
   - timezone: "America/Bogota"
-  - email: Input Email's value
-  - phone: Input Phone's value
-Step 3: Show alert: "Company created successfully!"
-Step 4: Navigate to: dashboard
+  - email: Valor de Input Email
+  - phone: Valor de Input Phone
+Paso 3: Show alert: "¡Empresa creada exitosamente!"
+Paso 4: Navigate to: dashboard
 ```
 
 ---
 
 ### 4. Update Company
 
-**Purpose:** Update existing company profile
+**Propósito:** Actualizar perfil de empresa existente
 
-#### Bubble Configuration
+#### Configuración en Bubble
 - **Name:** `update_company`
 - **Use as:** Action
 - **Method:** PATCH
 - **URL:** `[BASE_URL]/companies`
 
-#### Configuration
-Same as **Create Company** but using **PATCH** method.
+#### Configuración
+Igual que **Create Company** pero usando el método **PATCH**.
 
-All fields are optional (only send fields you want to update).
+Todos los campos son opcionales (solo enviar los campos que se desean actualizar).
 
 ---
 
 ### 5. List Facilities
 
-**Purpose:** Get all facilities for current company
+**Propósito:** Obtener todas las instalaciones de la empresa actual
 
-#### Bubble Configuration
+#### Configuración en Bubble
 - **Name:** `list_facilities`
 - **Use as:** **Data**
 - **Method:** GET
@@ -294,20 +294,20 @@ All fields are optional (only send fields you want to update).
 Authorization: Bearer <token>
 ```
 
-#### Parameters
-| Parameter | Type | Private | Required | Default | Description |
-|-----------|------|---------|----------|---------|-------------|
-| `token` | text | ✅ Yes | ✅ Yes | - | Clerk session token |
-| `page` | number | ❌ No | ❌ No | 1 | Page number for pagination |
-| `limit` | number | ❌ No | ❌ No | 50 | Items per page |
-| `status` | text | ❌ No | ❌ No | - | Filter by status: "active", "inactive", "archived" |
+#### Parámetros
+| Parámetro | Tipo | Privado | Requerido | Por Defecto | Descripción |
+|-----------|------|---------|----------|-------------|-------------|
+| `token` | text | ✅ Sí | ✅ Sí | - | Token de sesión de Clerk |
+| `page` | number | ❌ No | ❌ No | 1 | Número de página para paginación |
+| `limit` | number | ❌ No | ❌ No | 50 | Elementos por página |
+| `status` | text | ❌ No | ❌ No | - | Filtrar por estado: "active", "inactive", "archived" |
 
-#### Request URL in Bubble
+#### URL de Solicitud en Bubble
 ```
 https://your-domain.com/api/v1/facilities?page=<page>&limit=<limit>&status=<status>
 ```
 
-#### Response
+#### Respuesta
 ```json
 {
   "success": true,
@@ -315,7 +315,7 @@ https://your-domain.com/api/v1/facilities?page=<page>&limit=<limit>&status=<stat
     {
       "id": "facility_id_123",
       "company_id": "company_id_456",
-      "name": "Greenhouse Facility #1",
+      "name": "Instalación Invernadero #1",
       "facility_type": "greenhouse",
       "license_number": "LIC-2025-001",
       "license_type": "cannabis_cultivation",
@@ -347,27 +347,27 @@ https://your-domain.com/api/v1/facilities?page=<page>&limit=<limit>&status=<stat
 }
 ```
 
-#### Bubble Setup Steps
+#### Pasos de Configuración en Bubble
 1. API Connector → Add another call
 2. Name: `list_facilities`
-3. Use as: **Data** ← Important!
+3. Use as: **Data** ← ¡Importante!
 4. Method: **GET**
 5. URL: `https://your-domain.com/api/v1/facilities?page=<page>&limit=<limit>`
-6. Add header: `Authorization: Bearer <token>` (parameter)
-7. Add parameters: `token`, `page`, `limit`, `status`
+6. Agregar header: `Authorization: Bearer <token>` (parámetro)
+7. Agregar parámetros: `token`, `page`, `limit`, `status`
 8. Click **Initialize call**
-9. Bubble will capture array structure
+9. Bubble capturará la estructura del array
 
-#### Usage in Bubble
-**In a Repeating Group:**
-- **Type of content:** Facility (create custom data type)
+#### Uso en Bubble
+**En un Repeating Group:**
+- **Type of content:** Facility (crear tipo de datos personalizado)
 - **Data source:** Get data from external API > Alquemist API - list_facilities
 - **Set parameters:**
-  - token: Get session token workflow result
-  - page: 1 (or custom state for pagination)
+  - token: Resultado del workflow de obtener token de sesión
+  - page: 1 (o estado personalizado para paginación)
   - limit: 10
 
-**Access fields in repeating group:**
+**Acceder a campos en repeating group:**
 ```
 Current cell's Facility's name
 Current cell's Facility's license_number
@@ -378,9 +378,9 @@ Current cell's Facility's license_expiration_date
 
 ### 6. Get Facility
 
-**Purpose:** Get single facility details
+**Propósito:** Obtener detalles de una instalación específica
 
-#### Bubble Configuration
+#### Configuración en Bubble
 - **Name:** `get_facility`
 - **Use as:** **Data**
 - **Method:** GET
@@ -391,45 +391,45 @@ Current cell's Facility's license_expiration_date
 Authorization: Bearer <token>
 ```
 
-#### Parameters
-| Parameter | Type | Private | Required | Description |
+#### Parámetros
+| Parámetro | Tipo | Privado | Requerido | Descripción |
 |-----------|------|---------|----------|-------------|
-| `token` | text | ✅ Yes | ✅ Yes | Clerk session token |
-| `facility_id` | text | ✅ Yes | ✅ Yes | Facility ID from URL parameter |
+| `token` | text | ✅ Sí | ✅ Sí | Token de sesión de Clerk |
+| `facility_id` | text | ✅ Sí | ✅ Sí | ID de la instalación desde parámetro de URL |
 
-#### Request URL in Bubble
+#### URL de Solicitud en Bubble
 ```
 https://your-domain.com/api/v1/facilities/<facility_id>
 ```
 
-#### Response
-Same as single facility object in list_facilities.
+#### Respuesta
+Igual que el objeto de instalación individual en list_facilities.
 
-#### Bubble Setup Steps
+#### Pasos de Configuración en Bubble
 1. API Connector → Add another call
 2. Name: `get_facility`
 3. Use as: **Data**
 4. Method: **GET**
 5. URL: `https://your-domain.com/api/v1/facilities/<facility_id>`
-6. Add header: `Authorization: Bearer <token>` (parameter)
-7. Add parameters: `token`, `facility_id` (both private)
-8. Initialize with test IDs
+6. Agregar header: `Authorization: Bearer <token>` (parámetro)
+7. Agregar parámetros: `token`, `facility_id` (ambos privados)
+8. Inicializar con IDs de prueba
 
-#### Usage in Bubble
-**On facility details page:**
+#### Uso en Bubble
+**En página de detalles de instalación:**
 ```
 Get data from external API > Alquemist API - get_facility
   - token: session_token
-  - facility_id: Get data from page URL (parameter)
+  - facility_id: Get data from page URL (parámetro)
 ```
 
 ---
 
 ### 7. Create Facility
 
-**Purpose:** Create a new facility
+**Propósito:** Crear una nueva instalación
 
-#### Bubble Configuration
+#### Configuración en Bubble
 - **Name:** `create_facility`
 - **Use as:** Action
 - **Method:** POST
@@ -441,30 +441,30 @@ Authorization: Bearer <token>
 Content-Type: application/json
 ```
 
-#### Parameters
-| Parameter | Type | Private | Required | Description |
+#### Parámetros
+| Parámetro | Tipo | Privado | Requerido | Descripción |
 |-----------|------|---------|----------|-------------|
-| `token` | text | ✅ Yes | ✅ Yes | Clerk session token |
-| `name` | text | ❌ No | ✅ Yes | Facility name |
-| `facility_type` | text | ❌ No | ✅ Yes | "greenhouse", "indoor", "outdoor", "mixed" |
-| `license_number` | text | ❌ No | ✅ Yes | License number |
-| `license_type` | text | ❌ No | ✅ Yes | License type |
-| `license_authority` | text | ❌ No | ✅ Yes | "INVIMA", "ICA", etc. |
-| `license_expiration_date` | text | ❌ No | ❌ No | ISO date: "2026-12-31" |
-| `address` | text | ❌ No | ✅ Yes | Street address |
-| `city` | text | ❌ No | ✅ Yes | City name |
-| `state` | text | ❌ No | ✅ Yes | State/Department |
-| `latitude` | number | ❌ No | ❌ No | Latitude coordinate |
-| `longitude` | number | ❌ No | ❌ No | Longitude coordinate |
-| `altitude` | number | ❌ No | ❌ No | Altitude in meters |
-| `total_area` | number | ❌ No | ✅ Yes | Total area in m² |
-| `canopy_area` | number | ❌ No | ❌ No | Canopy area in m² |
-| `status` | text | ❌ No | ❌ No | "active" (default) |
+| `token` | text | ✅ Sí | ✅ Sí | Token de sesión de Clerk |
+| `name` | text | ❌ No | ✅ Sí | Nombre de la instalación |
+| `facility_type` | text | ❌ No | ✅ Sí | "greenhouse", "indoor", "outdoor", "mixed" |
+| `license_number` | text | ❌ No | ✅ Sí | Número de licencia |
+| `license_type` | text | ❌ No | ✅ Sí | Tipo de licencia |
+| `license_authority` | text | ❌ No | ✅ Sí | "INVIMA", "ICA", etc. |
+| `license_expiration_date` | text | ❌ No | ❌ No | Fecha ISO: "2026-12-31" |
+| `address` | text | ❌ No | ✅ Sí | Dirección |
+| `city` | text | ❌ No | ✅ Sí | Ciudad |
+| `state` | text | ❌ No | ✅ Sí | Departamento |
+| `latitude` | number | ❌ No | ❌ No | Coordenada de latitud |
+| `longitude` | number | ❌ No | ❌ No | Coordenada de longitud |
+| `altitude` | number | ❌ No | ❌ No | Altitud en metros |
+| `total_area` | number | ❌ No | ✅ Sí | Área total en m² |
+| `canopy_area` | number | ❌ No | ❌ No | Área de cultivo en m² |
+| `status` | text | ❌ No | ❌ No | "active" (por defecto) |
 
-#### Request Body (JSON)
+#### Cuerpo de Solicitud (JSON)
 ```json
 {
-  "name": "Greenhouse Facility #1",
+  "name": "Instalación Invernadero #1",
   "facility_type": "greenhouse",
   "license_number": "LIC-2025-001",
   "license_type": "cannabis_cultivation",
@@ -482,13 +482,13 @@ Content-Type: application/json
 }
 ```
 
-#### Response
+#### Respuesta
 ```json
 {
   "success": true,
   "data": {
     "id": "new_facility_id",
-    "name": "Greenhouse Facility #1",
+    "name": "Instalación Invernadero #1",
     "license_number": "LIC-2025-001",
     "status": "active",
     "created_at": "2025-01-10T12:00:00Z"
@@ -499,69 +499,69 @@ Content-Type: application/json
 }
 ```
 
-#### Bubble Setup Steps
+#### Pasos de Configuración en Bubble
 1. API Connector → Add another call
 2. Name: `create_facility`
 3. Use as: **Action**
 4. Method: **POST**
 5. URL: `https://your-domain.com/api/v1/facilities`
-6. Add header: `Authorization: Bearer <token>` (parameter)
+6. Agregar header: `Authorization: Bearer <token>` (parámetro)
 7. Body type: **JSON**
-8. Body: (see JSON above with `<parameter>` placeholders)
-9. Add all parameters from table
-10. Initialize with test data
+8. Body: (ver JSON arriba con placeholders `<parámetro>`)
+9. Agregar todos los parámetros de la tabla
+10. Inicializar con datos de prueba
 
-#### Usage in Bubble Workflow
+#### Uso en Workflow de Bubble
 ```
-Step 1: Show loading spinner
-Step 2: API Call - create_facility
-  - token: session_token (from page state)
-  - name: Input Facility Name's value
-  - facility_type: Dropdown Type's value
-  - license_number: Input License's value
-  - license_type: Dropdown License Type's value
-  - license_authority: Dropdown Authority's value
-  - license_expiration_date: DatePicker's value (formatted as ISO)
-  - address: Input Address's value
-  - city: Input City's value
-  - state: Dropdown State's value
-  - latitude: Input Lat's value (if not empty)
-  - longitude: Input Lng's value (if not empty)
-  - altitude: Input Altitude's value (if not empty)
-  - total_area: Input Total Area's value
-  - canopy_area: Input Canopy's value (if not empty)
+Paso 1: Mostrar spinner de carga
+Paso 2: API Call - create_facility
+  - token: session_token (desde estado de página)
+  - name: Valor de Input Facility Name
+  - facility_type: Valor de Dropdown Type
+  - license_number: Valor de Input License
+  - license_type: Valor de Dropdown License Type
+  - license_authority: Valor de Dropdown Authority
+  - license_expiration_date: Valor de DatePicker (formateado como ISO)
+  - address: Valor de Input Address
+  - city: Valor de Input City
+  - state: Valor de Dropdown State
+  - latitude: Valor de Input Lat (si no está vacío)
+  - longitude: Valor de Input Lng (si no está vacío)
+  - altitude: Valor de Input Altitude (si no está vacío)
+  - total_area: Valor de Input Total Area
+  - canopy_area: Valor de Input Canopy (si no está vacío)
   - status: "active"
-Step 3: Hide loading spinner
-Step 4: Show alert: "Facility created successfully!"
-Step 5: Navigate to: facility-details
-  - Send parameter: facility_id = Result of step 2's id
+Paso 3: Ocultar spinner de carga
+Paso 4: Show alert: "¡Instalación creada exitosamente!"
+Paso 5: Navigate to: facility-details
+  - Send parameter: facility_id = Resultado del id del paso 2
 ```
 
 ---
 
 ### 8. Update Facility
 
-**Purpose:** Update existing facility
+**Propósito:** Actualizar instalación existente
 
-#### Bubble Configuration
+#### Configuración en Bubble
 - **Name:** `update_facility`
 - **Use as:** Action
 - **Method:** PATCH
 - **URL:** `[BASE_URL]/facilities/<facility_id>`
 
-#### Configuration
-Same as **Create Facility** but:
+#### Configuración
+Igual que **Create Facility** pero:
 - Method: **PATCH**
-- URL includes `<facility_id>` parameter
-- All body fields are optional
+- URL incluye parámetro `<facility_id>`
+- Todos los campos del cuerpo son opcionales
 
 ---
 
 ### 9. Delete Facility (Soft Delete)
 
-**Purpose:** Archive/deactivate a facility
+**Propósito:** Archivar/desactivar una instalación
 
-#### Bubble Configuration
+#### Configuración en Bubble
 - **Name:** `delete_facility`
 - **Use as:** Action
 - **Method:** DELETE
@@ -572,18 +572,18 @@ Same as **Create Facility** but:
 Authorization: Bearer <token>
 ```
 
-#### Parameters
-| Parameter | Type | Private | Required | Description |
+#### Parámetros
+| Parámetro | Tipo | Privado | Requerido | Descripción |
 |-----------|------|---------|----------|-------------|
-| `token` | text | ✅ Yes | ✅ Yes | Clerk session token |
-| `facility_id` | text | ✅ Yes | ✅ Yes | Facility ID to delete |
+| `token` | text | ✅ Sí | ✅ Sí | Token de sesión de Clerk |
+| `facility_id` | text | ✅ Sí | ✅ Sí | ID de la instalación a eliminar |
 
-#### Response
+#### Respuesta
 ```json
 {
   "success": true,
   "data": {
-    "message": "Facility archived successfully",
+    "message": "Instalación archivada exitosamente",
     "facility_id": "facility_id_123"
   }
 }
@@ -591,171 +591,171 @@ Authorization: Bearer <token>
 
 ---
 
-## 🔄 Response Handling
+## 🔄 Manejo de Respuestas
 
-### Success Response Pattern
-All successful responses follow this structure:
+### Patrón de Respuesta Exitosa
+Todas las respuestas exitosas siguen esta estructura:
 ```json
 {
   "success": true,
-  "data": { /* response data */ },
+  "data": { /* datos de respuesta */ },
   "meta": {
-    "timestamp": "ISO date string"
+    "timestamp": "cadena de fecha ISO"
   }
 }
 ```
 
-### Error Response Pattern
-All error responses follow this structure:
+### Patrón de Respuesta de Error
+Todas las respuestas de error siguen esta estructura:
 ```json
 {
   "success": false,
   "error": {
-    "code": "ERROR_CODE",
-    "message": "Human-readable error message",
-    "details": { /* optional */ }
+    "code": "CODIGO_ERROR",
+    "message": "Mensaje de error legible",
+    "details": { /* opcional */ }
   },
   "meta": {
-    "timestamp": "ISO date string"
+    "timestamp": "cadena de fecha ISO"
   }
 }
 ```
 
-### Handling Errors in Bubble
+### Manejo de Errores en Bubble
 
-**In workflows, add error handling:**
+**En workflows, agregar manejo de errores:**
 
 ```
-Step X: API Call - [any API call]
-  - Only when: [conditions]
+Paso X: API Call - [cualquier llamada API]
+  - Only when: [condiciones]
 
-Step X+1 (Run only when Step X failed):
-  - Show alert: Result of step X's error's message
-  - Log to console: Result of step X
+Paso X+1 (Ejecutar solo cuando Paso X falla):
+  - Show alert: Resultado del mensaje de error del paso X
+  - Log to console: Resultado del paso X
 ```
 
 ---
 
-## 📊 Common Error Codes
+## 📊 Códigos de Error Comunes
 
-| Code | HTTP Status | Meaning | Solution |
+| Código | Estado HTTP | Significado | Solución |
 |------|-------------|---------|----------|
-| `UNAUTHORIZED` | 401 | Invalid or missing auth token | Get fresh session token from Clerk |
-| `FORBIDDEN` | 403 | User lacks permission | Check user role and organization |
-| `NOT_FOUND` | 404 | Resource doesn't exist | Verify ID is correct |
-| `VALIDATION_ERROR` | 400 | Invalid input data | Check required fields and formats |
-| `COMPANY_NOT_FOUND` | 404 | No company for org | Create company first |
-| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests | Wait and retry |
-| `INTERNAL_ERROR` | 500 | Server error | Contact support |
+| `UNAUTHORIZED` | 401 | Token de autenticación inválido o ausente | Obtener token de sesión nuevo de Clerk |
+| `FORBIDDEN` | 403 | Usuario carece de permisos | Verificar rol de usuario y organización |
+| `NOT_FOUND` | 404 | El recurso no existe | Verificar que el ID sea correcto |
+| `VALIDATION_ERROR` | 400 | Datos de entrada inválidos | Verificar campos requeridos y formatos |
+| `COMPANY_NOT_FOUND` | 404 | No hay empresa para la org | Crear empresa primero |
+| `RATE_LIMIT_EXCEEDED` | 429 | Demasiadas solicitudes | Esperar y reintentar |
+| `INTERNAL_ERROR` | 500 | Error del servidor | Contactar soporte |
 
 ---
 
-## 🧪 Testing in Bubble
+## 🧪 Pruebas en Bubble
 
-### Test Sequence
+### Secuencia de Pruebas
 
 1. **Health Check**
    ```
    Workflow: When button is clicked
    Action: API Call - health_check
-   Show alert: Result of step 1's data's status
-   Expected: "operational"
+   Show alert: Resultado del status del data del paso 1
+   Esperado: "operational"
    ```
 
 2. **Get Company**
    ```
    Workflow: When page is loaded
-   Step 1: Clerk - Get session
-   Step 2: API Call - get_company (token = result of step 1)
-   Display: Result of step 2's data's name
-   Expected: Your company name
+   Paso 1: Clerk - Get session
+   Paso 2: API Call - get_company (token = resultado del paso 1)
+   Display: Resultado del name del data del paso 2
+   Esperado: Nombre de tu empresa
    ```
 
 3. **List Facilities**
    ```
-   Repeating Group data source:
+   Fuente de datos de Repeating Group:
    Get data from external API > list_facilities
-   Parameters: token (from session), page: 1, limit: 10
-   Expected: List of facilities (or empty if none)
+   Parámetros: token (de sesión), page: 1, limit: 10
+   Esperado: Lista de instalaciones (o vacío si no hay ninguna)
    ```
 
 4. **Create Facility**
    ```
    Workflow: When Create button is clicked
-   Action: API Call - create_facility (all parameters from form)
-   Show alert: "Success!"
-   Navigate to: facility-details (with result ID)
-   Expected: New facility created and displayed
+   Action: API Call - create_facility (todos los parámetros del formulario)
+   Show alert: "¡Éxito!"
+   Navigate to: facility-details (con ID del resultado)
+   Esperado: Nueva instalación creada y mostrada
    ```
 
 ---
 
-## 💡 Pro Tips
+## 💡 Consejos
 
-### 1. Reusable Session Token
-Create a **Custom State** on page level:
+### 1. Token de Sesión Reutilizable
+Crear un **Custom State** a nivel de página:
 - Name: `session_token`
 - Type: text
 
-Set it once on page load:
+Configurarlo una vez al cargar la página:
 ```
 When page is loaded:
-  Step 1: Clerk - Get session
-  Step 2: Set state: session_token = Result's token
+  Paso 1: Clerk - Get session
+  Paso 2: Set state: session_token = Token del resultado
 ```
 
-Use it in all API calls:
+Usarlo en todas las llamadas API:
 ```
 token = session_token
 ```
 
-### 2. Error Handling Template
-Create a **Custom Event** for consistent error handling:
+### 2. Plantilla de Manejo de Errores
+Crear un **Custom Event** para manejo consistente de errores:
 ```
 Custom Event: handle_api_error
-Parameters: error_message (text)
+Parámetros: error_message (text)
 
-Actions:
-  - Show alert: error_message (red color)
+Acciones:
+  - Show alert: error_message (color rojo)
   - Log to console: error_message
-  - (Optional) Send to analytics
+  - (Opcional) Enviar a analytics
 ```
 
-Use in workflows:
+Usar en workflows:
 ```
-Step X: API Call
-Step X+1 (Only when step X failed):
+Paso X: API Call
+Paso X+1 (Solo cuando paso X falla):
   Trigger event: handle_api_error
-  error_message: Result of step X's error's message
+  error_message: Resultado del mensaje de error del paso X
 ```
 
-### 3. Loading States
-Always show feedback during API calls:
+### 3. Estados de Carga
+Siempre mostrar retroalimentación durante llamadas API:
 ```
-Step 1: Set state: is_loading = yes (shows spinner)
-Step 2: API Call
-Step 3: Set state: is_loading = no (hides spinner)
-Step 4: (handle result)
+Paso 1: Set state: is_loading = yes (muestra spinner)
+Paso 2: API Call
+Paso 3: Set state: is_loading = no (oculta spinner)
+Paso 4: (manejar resultado)
 ```
 
-### 4. Data Caching
-Cache company data to avoid repeated calls:
+### 4. Caché de Datos
+Cachear datos de empresa para evitar llamadas repetidas:
 ```
-Only fetch company on first page load
-Store in Custom State: current_company
-Reuse across page without re-fetching
+Solo obtener empresa en primera carga de página
+Almacenar en Custom State: current_company
+Reutilizar a través de la página sin volver a obtener
 ```
 
 ---
 
-## 📚 Additional Resources
+## 📚 Recursos Adicionales
 
-- **Full Setup Guide:** [Module-1-Bubble-Guide.md](Module-1-Bubble-Guide.md)
-- **UI Wireframes:** [Bubble-UI-Wireframes.md](Bubble-UI-Wireframes.md)
-- **Quick Start:** [Module-1-Bubble-Quick-Start.md](Module-1-Bubble-Quick-Start.md)
+- **Guía de Configuración Completa:** [Module-1-Bubble-Guide.md](Module-1-Bubble-Guide.md)
+- **Wireframes de UI:** [Bubble-UI-Wireframes.md](Bubble-UI-Wireframes.md)
+- **Inicio Rápido:** [Module-1-Bubble-Quick-Start.md](Module-1-Bubble-Quick-Start.md)
 
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 2025-10-10
-**API Version:** v1
+**Versión del Documento:** 1.0
+**Última Actualización:** 2025-10-10
+**Versión de API:** v1
