@@ -37,62 +37,91 @@
 
 ### Overview
 
-Alquemist usa **Bubble como frontend principal** para toda la UI y orquestación:
+Alquemist usa **arquitectura simplificada** - Bubble conecta directamente a servicios cloud:
 
 ```
-┌─────────────────────┐
-│   Bubble App        │
-│  (UI Principal)     │
-└──────────┬──────────┘
-           │
-           ↓
-  ┌────────────────┐
-  │  REST API v1   │
-  │  /api/v1/*     │
-  └────────┬───────┘
-           │
-  ┌────────┴────────┐
-  │  Clerk Auth     │
-  │  (Manual impl.) │
-  └────────┬────────┘
-           │
-  ┌────────┴────────┐
-  │ Convex Database │
-  └─────────────────┘
+┌─────────────────────────┐
+│     Bubble App          │
+│   (UI Principal)        │
+└────────┬────────────────┘
+         │
+         ├─→ Clerk API (Auth)
+         │   • Sign up / Sign in
+         │   • JWT tokens
+         │   • User management
+         │
+         ├─→ Convex HTTP API (Database)
+         │   • Queries (GET data)
+         │   • Mutations (POST/PATCH/DELETE)
+         │   • Real-time subscriptions
+         │   • [Valida Clerk JWT]
+         │
+         └─→ GCP Cloud Functions (Opcional)
+             • Vision AI (pest detection)
+             • Document AI (form digitization)
+             • Features complejas
+             • [Solo cuando sea necesario]
+
+┌─────────────────────────┐
+│   Next.js API (Vercel)  │ ← Disponible pero NO usado inicialmente
+│   • Backend opcional    │   (Agregar solo si complejidad lo requiere)
+│   • /api/v1/*          │
+└─────────────────────────┘
 ```
 
-### API Implementation Files
+**Filosofía:** START SIMPLE → Escala cuando sea necesario
 
-**Backend API (Next.js):**
+### Backend Components
+
+**Convex (Database + Backend):**
+- `convex/schema.ts` - Database schema (26 tables)
+- `convex/companies.ts` - Company queries & mutations
+- `convex/facilities.ts` - Facilities queries & mutations
+- `convex/batches.ts` - Batch tracking
+- `convex/activities.ts` - Activity logging
+- `convex/compliance.ts` - Compliance events
+- `convex/inventory.ts` - Inventory management
+
+**Next.js API (Opcional - NO usado en Módulo 1):**
 - `lib/api/middleware.ts` - Auth & validation
 - `lib/api/errors.ts` - Error handling
-- `lib/api/response.ts` - Standard responses
 - `lib/validations/schemas.ts` - Shared Zod schemas
+- `app/api/v1/*` - REST endpoints (disponibles pero no usados)
 
-**API Endpoints:**
-- `app/api/v1/auth/*` - Authentication (manual Clerk integration)
-- `app/api/v1/companies/*` - Company management
-- `app/api/v1/facilities/*` - Facilities
-- `app/api/v1/batches/*` - Batch tracking
-- `app/api/v1/activities/*` - Activity logging
-- `app/api/v1/compliance/*` - Compliance events
-- `app/api/v1/inventory/*` - Inventory management
-
-**Configuration:**
-- `next.config.ts` - CORS headers for Bubble origin
-- `.env` - BUBBLE_APP_URL, ALLOWED_ORIGINS
+**GCP Cloud Functions (Futuro):**
+- Vision AI - Pest detection, quality checks
+- Document AI - Form digitization
+- Cloud Storage - Media files
+- (Se implementa cuando módulos específicos lo requieran)
 
 ### Implementation Strategy
 
-1. **Phase 1 (Actual):** API foundation built ✅
-2. **Phase 2 (En progreso):** Build frontend en Bubble
-   - Implementar módulos 1-17 en Bubble
-   - Cada módulo decide si requiere Next.js por complejidad técnica
-   - Prioridad: Bubble primero, Next.js solo si necesario
-3. **Phase 3 (Futuro):** Features complejas según necesidad
-   - AI/ML features (si Bubble no soporta)
-   - Analytics avanzados (si Bubble no soporta)
-   - Decisión caso por caso por módulo
+**START SIMPLE (Módulo 1-3):**
+```
+Bubble → Clerk API (auth)
+      → Convex HTTP API (CRUD)
+```
+- No usar Next.js API inicialmente
+- Validar Clerk JWT en Convex functions
+- CRUD directo con Convex HTTP API
+
+**ADD COMPLEXITY (Cuando sea necesario):**
+```
+Bubble → Next.js API (Vercel) → Convex
+```
+- Solo para business logic compleja
+- Multi-step operations
+- Transformaciones de data complejas
+- Rate limiting / caching
+
+**ADD GCP (Módulos con IA):**
+```
+Bubble → GCP Cloud Functions → Vision AI / Document AI
+                              → Convex (save results)
+```
+- Módulo 11: Quality Check Templates + AI
+- Módulo 13: AI Engine & Intelligent Services
+- Decisión por feature específico
 
 ### Development Workflow
 
@@ -102,36 +131,244 @@ Alquemist usa **Bubble como frontend principal** para toda la UI y orquestación
    - [API-Integration.md](docs/core/API-Integration.md) - Guía general de integración
    - [API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md) - Referencia técnica de endpoints
 
-2. **Autenticación Clerk:**
-   - ⚠️ NO existe plugin de Clerk para Bubble
-   - Implementar autenticación manualmente vía endpoints API
-   - Tokens JWT manejados por backend Next.js
-
-3. **Convex Database:**
+2. **Convex HTTP API (Direct Connection):**
    - ⚠️ NO existe plugin de Convex para Bubble
-   - Todo acceso a BD es vía REST API endpoints
+   - Conectar directamente a Convex HTTP API desde Bubble:
+     ```
+     Base URL: https://[your-deployment].convex.cloud
+     Endpoint pattern: /api/query/[functionName] (GET)
+                       /api/mutation/[functionName] (POST)
+     Headers:
+       - Authorization: Bearer [clerk-jwt-token]
+       - Content-Type: application/json
+     ```
+   - Ejemplo query: `GET /api/query/companies:get?args={"id":"company123"}`
+   - Ejemplo mutation: `POST /api/mutation/companies:create` con body JSON
 
-4. **API Connector:**
-   - Configurar todos los endpoints manualmente en Bubble
-   - Usar API Connector para llamadas HTTP a backend
+3. **Autenticación Clerk:**
+   - ⚠️ NO existe plugin de Clerk para Bubble
+   - Implementar autenticación manualmente:
+     ```
+     Clerk Frontend API: https://[your-frontend-api].clerk.accounts.dev
+
+     Sign In: POST /v1/client/sign_ins
+     Sign Up: POST /v1/client/sign_ups
+     Get Session: GET /v1/client/sessions/[session_id]
+     ```
+   - Obtener JWT token de Clerk session
+   - Pasar token en header `Authorization: Bearer [token]` a Convex
+   - Token se valida automáticamente en Convex functions
+
+4. **API Connector Setup en Bubble:**
+   - Configurar 2 API connectors principales:
+     - **Clerk API** - Autenticación (sign in, sign up, user management)
+     - **Convex API** - Database operations (queries + mutations)
+   - Para cada endpoint, configurar manualmente en Bubble API Connector
+   - Almacenar JWT token en Bubble's custom state
+   - Incluir token en todos los requests a Convex
 
 5. **Código e Implementación:**
    - Los archivos de documentación son **solo referencia técnica**
    - El **código real y llamados API específicos** se proporcionan durante la implementación de cada módulo
    - Cada módulo generará sus propios archivos de documentación en `docs/module-X/bubble/`
+   - Ejemplos de configuración de API Connector se proporcionan por módulo
 
 **UI Language (100% Español):**
 - Todos los textos visibles al usuario en español
 - Labels, botones, mensajes, placeholders → español
 - Valores técnicos en BD permanecen en inglés (indoor, active, etc.)
-- Traducciones desde `messages/es.json` aplicadas en backend
-- Responses de API retornan valores traducidos cuando aplique
+- Traducciones aplicadas en Convex functions (antes de retornar datos)
+- Mapping automático: DB "indoor" → Response "Interior"
+- Archivo de traducciones: `messages/es.json` (450+ traducciones)
 
 **For Next.js Development (Solo si es necesario):**
 - Se decide por módulo si complejidad técnica requiere Next.js
-- Usar Convex queries directamente (real-time)
-- O usar REST API para consistencia
+- Agregar capa intermedia: Bubble → Next.js API → Convex
+- Usar para: business logic compleja, multi-step operations, rate limiting
 - Server Components para SEO, Client Components para interactivity
+
+---
+
+## Authentication Strategy
+
+### Clerk JWT Validation in Convex
+
+**Architecture Flow:**
+```
+1. User logs in via Bubble → Clerk API
+2. Clerk returns JWT token
+3. Bubble stores token in custom state
+4. Bubble → Convex HTTP API (includes JWT in Authorization header)
+5. Convex validates JWT and extracts user/org info
+6. Query/Mutation executes with proper multi-tenant isolation
+```
+
+**Convex Function Example (with JWT validation):**
+
+```typescript
+// convex/companies.ts
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+import { getAuthUserId } from "./auth";
+
+// Query example - requires authentication
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    // Validate JWT and get user identity
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Extract organization ID from Clerk JWT
+    const organizationId = identity.orgId;
+    if (!organizationId) {
+      throw new Error("No organization found");
+    }
+
+    // Multi-tenant query - only return company for this org
+    return await ctx.db
+      .query("companies")
+      .filter((q) => q.eq(q.field("organization_id"), organizationId))
+      .collect();
+  },
+});
+
+// Mutation example - requires authentication
+export const create = mutation({
+  args: {
+    name: v.string(),
+    company_type: v.string(),
+    // ... other fields
+  },
+  handler: async (ctx, args) => {
+    // Validate JWT and get user identity
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const organizationId = identity.orgId;
+    if (!organizationId) {
+      throw new Error("No organization found");
+    }
+
+    // Create company with automatic org isolation
+    const companyId = await ctx.db.insert("companies", {
+      ...args,
+      organization_id: organizationId,
+      created_by: identity.subject, // User ID from Clerk
+      created_at: Date.now(),
+      updated_at: Date.now(),
+    });
+
+    return companyId;
+  },
+});
+```
+
+**Key Points:**
+- ✅ Convex validates Clerk JWT automatically via `ctx.auth.getUserIdentity()`
+- ✅ Multi-tenant isolation enforced by filtering on `organization_id`
+- ✅ No need for separate auth middleware
+- ✅ User info (userId, orgId) extracted from JWT claims
+- ✅ All protected functions start with identity check
+
+**Bubble Implementation:**
+1. Store JWT token after Clerk login: `Set state token = [Clerk response token]`
+2. Configure Convex API Connector with dynamic Authorization header:
+   ```
+   Header: Authorization
+   Value: Bearer <token> (dynamic from custom state)
+   ```
+3. All Convex API calls automatically include JWT
+4. Handle 401 errors → redirect to login
+
+---
+
+## GCP Cloud Functions Strategy
+
+### When to Use GCP
+
+**START SIMPLE - NO usar GCP inicialmente**
+
+GCP Cloud Functions son para casos específicos con IA/ML:
+
+**Use Cases for GCP:**
+- 🤖 **Vision AI**: Pest detection, quality inspections, plant health
+- 📄 **Document AI**: Form digitization, license scanning, label reading
+- 🧠 **Custom ML Models**: Yield prediction, disease classification
+- 📊 **Heavy Processing**: Large batch operations, complex calculations
+
+**Architecture with GCP:**
+```
+┌─────────────────────────┐
+│     Bubble App          │
+└────────┬────────────────┘
+         │
+         ├─→ GCP Cloud Function (HTTPS endpoint)
+         │   • Procesa imagen con Vision AI
+         │   • Extrae datos con Document AI
+         │   • Ejecuta modelo ML custom
+         │   │
+         │   └─→ Convex Mutation (guarda resultados)
+         │       • Autenticación: Service Account
+         │       • Inserta datos en BD
+         │
+         └─→ Convex (refresh data)
+             • Query para mostrar resultados
+```
+
+**Implementation Decision Per Module:**
+- **Módulo 1-10:** NO usar GCP (START SIMPLE)
+- **Módulo 11:** Quality Check Templates - evaluar si Vision AI agrega valor
+- **Módulo 13:** AI Engine - USAR GCP para features de IA
+- **Decision criteria:** ¿El feature REQUIERE IA/ML o es "nice-to-have"?
+
+**GCP Function Example:**
+```javascript
+// GCP Cloud Function - Pest Detection
+const { ConvexHttpClient } = require("convex/browser");
+const vision = require('@google-cloud/vision');
+
+exports.detectPests = async (req, res) => {
+  // 1. Validate request (API key, signature, etc.)
+  const { imageUrl, batchId } = req.body;
+
+  // 2. Process with Vision AI
+  const client = new vision.ImageAnnotatorClient();
+  const [result] = await client.objectLocalization(imageUrl);
+
+  // 3. Analyze results
+  const pests = result.localizedObjectAnnotations.filter(
+    obj => PEST_LABELS.includes(obj.name)
+  );
+
+  // 4. Save to Convex
+  const convex = new ConvexHttpClient(process.env.CONVEX_URL);
+  await convex.mutation("activities:createPestDetection", {
+    batch_id: batchId,
+    pests_detected: pests.length,
+    confidence: pests[0]?.score || 0,
+    image_url: imageUrl,
+  });
+
+  // 5. Return results
+  res.json({
+    success: true,
+    pests_found: pests.length,
+    details: pests
+  });
+};
+```
+
+**When NOT to use GCP:**
+- ❌ Simple CRUD operations → Use Convex directly
+- ❌ Business logic → Consider Next.js API first
+- ❌ Data transformations → Can do in Convex functions
+- ❌ User authentication → Clerk handles this
+- ❌ File uploads → Use Convex file storage or Cloudinary
 
 ---
 
@@ -621,10 +858,17 @@ npx convex dev
 ```
 
 **Access Application:**
-- Bubble App: https://[your-bubble-app].bubbleapps.io
-- Backend API (local): http://localhost:3000/api/v1
-- Convex Dashboard: https://dashboard.convex.dev
-- Clerk Dashboard: https://dashboard.clerk.com
+- **Bubble App:** https://[your-bubble-app].bubbleapps.io (Primary frontend)
+- **Convex HTTP API:** https://[your-deployment].convex.cloud/api
+  - Query endpoint: `/api/query/[functionName]`
+  - Mutation endpoint: `/api/mutation/[functionName]`
+- **Clerk API:** https://[your-frontend-api].clerk.accounts.dev
+  - Sign in: `/v1/client/sign_ins`
+  - Sign up: `/v1/client/sign_ups`
+- **Dashboards:**
+  - Convex Dashboard: https://dashboard.convex.dev
+  - Clerk Dashboard: https://dashboard.clerk.com
+- **Next.js (Opcional - solo desarrollo):** http://localhost:3000/api/v1
 
 ### CI/CD Pipeline
 
