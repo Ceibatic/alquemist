@@ -18,11 +18,11 @@
 - Deployment: Vercel + Convex Cloud
 - i18n: UI 100% español, datos técnicos en inglés (next-intl)
 
-**Dual-Frontend Architecture:**
-- **Bubble Frontend:** Rapid prototyping, 80% of standard UI
-- **Next.js Frontend:** Complex features, custom workflows
+**Frontend Architecture:**
+- **Bubble:** Frontend principal - 100% de la UI y orquestación
+- **Next.js:** Solo si complejidad técnica lo requiere (decisión por módulo)
 - **Shared Backend:** Single Convex database + REST API
-- **Gradual Migration:** Build in Bubble, migrate to Next.js as needed
+- **Strategy:** Bubble-first, resolver complejidades técnicas caso por caso
 
 **Core Requirements:**
 - Multi-tenant (company-based isolation)
@@ -33,46 +33,44 @@
 
 ---
 
-## Dual-Frontend Architecture
+## Frontend Architecture
 
 ### Overview
 
-Alquemist supports two parallel frontend options that share the same backend:
+Alquemist usa **Bubble como frontend principal** para toda la UI y orquestación:
 
 ```
-┌─────────────────┐      ┌─────────────────┐
-│  Bubble App     │      │  Next.js App    │
-│  (Rapid UI)     │      │  (Custom/Comp.) │
-└────────┬────────┘      └────────┬────────┘
-         │                        │
-         └────────┬───────────────┘
-                  ↓
-         ┌────────────────┐
-         │   REST API v1   │
-         │  /api/v1/*      │
-         └────────┬────────┘
-                  │
-         ┌────────┴────────┐
-         │  Clerk Auth     │
-         │  (JWT tokens)   │
-         └────────┬────────┘
-                  │
-         ┌────────┴────────┐
-         │ Convex Database │
-         │ (Single source) │
-         └─────────────────┘
+┌─────────────────────┐
+│   Bubble App        │
+│  (UI Principal)     │
+└──────────┬──────────┘
+           │
+           ↓
+  ┌────────────────┐
+  │  REST API v1   │
+  │  /api/v1/*     │
+  └────────┬───────┘
+           │
+  ┌────────┴────────┐
+  │  Clerk Auth     │
+  │  (Manual impl.) │
+  └────────┬────────┘
+           │
+  ┌────────┴────────┐
+  │ Convex Database │
+  └─────────────────┘
 ```
 
-### Implementation Files
+### API Implementation Files
 
-**API Layer:**
+**Backend API (Next.js):**
 - `lib/api/middleware.ts` - Auth & validation
 - `lib/api/errors.ts` - Error handling
 - `lib/api/response.ts` - Standard responses
 - `lib/validations/schemas.ts` - Shared Zod schemas
 
 **API Endpoints:**
-- `app/api/v1/auth/*` - Authentication
+- `app/api/v1/auth/*` - Authentication (manual Clerk integration)
 - `app/api/v1/companies/*` - Company management
 - `app/api/v1/facilities/*` - Facilities
 - `app/api/v1/batches/*` - Batch tracking
@@ -81,42 +79,67 @@ Alquemist supports two parallel frontend options that share the same backend:
 - `app/api/v1/inventory/*` - Inventory management
 
 **Configuration:**
-- `next.config.ts` - CORS headers, routing
+- `next.config.ts` - CORS headers for Bubble origin
 - `.env` - BUBBLE_APP_URL, ALLOWED_ORIGINS
 
-### Migration Strategy
+### Implementation Strategy
 
-1. **Phase 1 (Current):** API foundation built
-2. **Phase 2:** Build 80% of UI in Bubble (rapid prototyping)
-3. **Phase 3:** Build complex features in Next.js (AI, analytics)
-4. **Phase 4:** Gradually migrate Bubble pages to Next.js
+1. **Phase 1 (Actual):** API foundation built ✅
+2. **Phase 2 (En progreso):** Build frontend en Bubble
+   - Implementar módulos 1-17 en Bubble
+   - Cada módulo decide si requiere Next.js por complejidad técnica
+   - Prioridad: Bubble primero, Next.js solo si necesario
+3. **Phase 3 (Futuro):** Features complejas según necesidad
+   - AI/ML features (si Bubble no soporta)
+   - Analytics avanzados (si Bubble no soporta)
+   - Decisión caso por caso por módulo
 
 ### Development Workflow
 
-**For Bubble Development:**
-1. Use API documentation (see [API-Integration.md](docs/core/API-Integration.md) and [API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md))
-2. Configure Clerk authentication in Bubble (Clerk plugin)
-3. Call REST API endpoints from Bubble workflows
-4. Use Bubble's API Connector for all backend operations
-5. **NEW:** Complete Module 1 Bubble documentation available:
-   - [Module-1-Bubble-Guide.md](docs/module-1/bubble/Module-1-Bubble-Guide.md) - Full implementation guide (170+ pages)
-   - [API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md) - Complete API reference with Bubble config
-   - [Module-1-Bubble-Quick-Start.md](docs/module-1/bubble/Module-1-Bubble-Quick-Start.md) - 6-8h checklist
-   - [Bubble-UI-Wireframes.md](docs/module-1/bubble/Bubble-UI-Wireframes.md) - Visual page designs
+**For Bubble Development (Principal):**
 
-**For Next.js Development:**
-1. Use Convex queries directly (real-time)
-2. Or use REST API for consistency
-3. Server Components for SEO
-4. Client Components for interactivity
+1. **Use API documentation** (referencia técnica general):
+   - [API-Integration.md](docs/core/API-Integration.md) - Guía general de integración
+   - [API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md) - Referencia técnica de endpoints
+
+2. **Autenticación Clerk:**
+   - ⚠️ NO existe plugin de Clerk para Bubble
+   - Implementar autenticación manualmente vía endpoints API
+   - Tokens JWT manejados por backend Next.js
+
+3. **Convex Database:**
+   - ⚠️ NO existe plugin de Convex para Bubble
+   - Todo acceso a BD es vía REST API endpoints
+
+4. **API Connector:**
+   - Configurar todos los endpoints manualmente en Bubble
+   - Usar API Connector para llamadas HTTP a backend
+
+5. **Código e Implementación:**
+   - Los archivos de documentación son **solo referencia técnica**
+   - El **código real y llamados API específicos** se proporcionan durante la implementación de cada módulo
+   - Cada módulo generará sus propios archivos de documentación en `docs/module-X/bubble/`
+
+**UI Language (100% Español):**
+- Todos los textos visibles al usuario en español
+- Labels, botones, mensajes, placeholders → español
+- Valores técnicos en BD permanecen en inglés (indoor, active, etc.)
+- Traducciones desde `messages/es.json` aplicadas en backend
+- Responses de API retornan valores traducidos cuando aplique
+
+**For Next.js Development (Solo si es necesario):**
+- Se decide por módulo si complejidad técnica requiere Next.js
+- Usar Convex queries directamente (real-time)
+- O usar REST API para consistencia
+- Server Components para SEO, Client Components para interactivity
 
 ---
 
 ## Active Context
 
 **Current Phase**: API Foundation Complete
-**Active Module**: Dual-Frontend Foundation
-**Next Steps**: Connect Convex queries to API endpoints, implement Bubble integration
+**Active Module**: Ready to begin Module implementation
+**Strategy**: Bubble-first frontend, backend API ready
 
 **Context Files (Load on demand):**
 - [Product-Requirements.md](docs/core/Product-Requirements.md) - 17 modules, feature specs
@@ -598,8 +621,10 @@ npx convex dev
 ```
 
 **Access Application:**
-- Frontend: http://localhost:3000
+- Bubble App: https://[your-bubble-app].bubbleapps.io
+- Backend API (local): http://localhost:3000/api/v1
 - Convex Dashboard: https://dashboard.convex.dev
+- Clerk Dashboard: https://dashboard.clerk.com
 
 ### CI/CD Pipeline
 
@@ -682,128 +707,40 @@ npm run build
 - [docs/foundation/Browser-API-Testing.md](docs/foundation/Browser-API-Testing.md) - Complete testing guide
 - [docs/foundation/Authentication-Guide.md](docs/foundation/Authentication-Guide.md) - Auth troubleshooting
 
-### Module 1: Company & Facility Setup (PLANNING COMPLETE) 📋
+### Module Implementation
 
-**Status:** Planning phase complete, ready to implement
-**Planning Date:** 2025-10-10
-**Estimated Effort:** 12-14 hours (4 sprints)
+**Current Status:** Foundation complete, ready to implement modules
 
-**Planning Documents Created:**
-- [docs/module-1/Module-1-Planning.md](docs/module-1/Module-1-Planning.md) - Full planning with 15 user stories, technical architecture
-- [docs/module-1/Module-1-Quick-Start.md](docs/module-1/Module-1-Quick-Start.md) - TL;DR implementation guide
-- [docs/module-1/Module-1-Task-Board.md](docs/module-1/Module-1-Task-Board.md) - 47 tasks in Kanban format
+**When Implementing a Module:**
 
-**What We'll Build (MVP):**
-1. ✅ **Company Profile** - View and edit company information
-2. ✅ **Facilities List** - Browse with search, filter, pagination
-3. ✅ **Create Facility Wizard** - 3-step guided creation flow
-4. ✅ **Facility Details** - Tabbed view (Overview | License | Areas)
-5. ✅ **License Alerts** - Visual expiration indicators
+1. **Check module documentation:**
+   - Review `docs/module-X/README.md` for module overview
+   - Read `docs/module-X/Module-X-Planning.md` for requirements
 
-**Key Features:**
-- Multi-step facility creation wizard
-- Real-time updates via Convex
-- License expiration color coding (green/yellow/red)
-- Responsive design (mobile-first)
-- Multi-tenant isolation enforced
+2. **For Bubble implementation (Default):**
+   - Reference `docs/module-X/bubble/` for module-specific guides
+   - Use general API reference: [API-Integration.md](docs/core/API-Integration.md)
+   - Follow wireframes in `docs/module-X/bubble/Bubble-UI-Wireframes.md` if available
+   - Los archivos de documentación son **referencia técnica**
+   - El código real y llamados API se proporcionan durante implementación
 
-**Tech Stack for Module 1:**
-- UI Components: shadcn/ui (card, button, form, tabs, badge, dialog)
-- Forms: react-hook-form + Zod validation
-- State: Convex React hooks (useQuery, useMutation)
-- Notifications: Sonner (toast)
-- Styling: Tailwind CSS (Emerald theme)
+3. **Implementation approach:**
+   - **Default:** Build in Bubble
+   - **If technical complexity requires:** Discuss Next.js option
+   - Code and API calls provided during module implementation
+   - Cada módulo genera su documentación en `docs/module-X/bubble/`
 
-**Implementation Sprints:**
-- Sprint 1: Foundation & Company Profile (4-5h)
-- Sprint 2: Facilities List & Details (4-5h)
-- Sprint 3: Create Facility Wizard (3-4h)
-- Sprint 4: Testing & Polish (2-3h)
+**Available Modules:**
+- **Module 1:** Company & Facility Setup → [docs/module-1/](docs/module-1/)
+- **Module 2-17:** To be implemented
 
-**Deferred to Later Modules:**
-- Logo/document uploads
-- Advanced area layouts
-- Team member invitation UI
-- Batch and activity features
+**To Start a Module:**
+```bash
+@implement module-X  # e.g., @implement module-1
+```
 
-**Next Steps:**
-1. ✅ Review planning documents
-2. ✅ Approve approach
-3. [ ] Run: `npm install react-hook-form @hookform/resolvers zod sonner date-fns`
-4. [ ] Run: `npx shadcn@latest add card button input label form select tabs badge dialog alert`
-5. [ ] Start Sprint 1: `@implement module-1-sprint-1`
-
-**Current Status:** Foundation 100% complete, Module 1 fully planned, ready to implement
-
-**Git Status:**
-- Latest commit: `a23dba4` - Add comprehensive session summary
-- Branch: `main`
-- Status: ✅ All changes committed and pushed
-
-Use `@implement module-1-sprint-1` to begin Next.js implementation!
-
-### Module 1: Bubble Implementation Path 🟣
-
-**Status:** Complete documentation ready
-**Created:** 2025-10-10
-**Estimated Effort:** 6-8 hours implementation
-
-**Bubble Documentation Suite (4 guías completas en español):**
-
-1. **[Module-1-Bubble-Guide.md](docs/module-1/bubble/Module-1-Bubble-Guide.md)** (Guía completa)
-   - Guía completa de configuración (Clerk + API Connector)
-   - 5 páginas con diseños y elementos detallados
-   - Todos los workflows explicados paso a paso
-   - Tipos de datos y estados personalizados
-   - Sección de solución de problemas
-   - Mejores prácticas
-
-2. **[API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md)** (Referencia API)
-   - Los 9 endpoints API configurados para Bubble
-   - Headers, parámetros, estructura de body
-   - Ejemplos de manejo de respuestas
-   - Códigos de error y soluciones
-   - Secuencias de prueba
-   - Consejos para patrones reutilizables
-
-3. **[Module-1-Bubble-Quick-Start.md](docs/module-1/bubble/Module-1-Bubble-Quick-Start.md)** (Checklist)
-   - 4 fases con estimaciones de tiempo
-   - Checkboxes paso a paso
-   - Pruebas rápidas en cada fase
-   - Desglose de tiempo (6-8h total)
-   - Atajos para solución de problemas
-
-4. **[Bubble-UI-Wireframes.md](docs/module-1/bubble/Bubble-UI-Wireframes.md)** (Diseño visual)
-   - Wireframes ASCII para las 5 páginas
-   - Sistema de diseño (colores, tipografía, espaciado)
-   - Especificaciones de elementos
-   - Patrones responsive móviles
-   - Consejos de layout específicos de Bubble
-
-**Lo que puedes construir en Bubble:**
-- ✅ UI completa de gestión de Empresa e Instalaciones
-- ✅ Wizard multi-paso para crear instalaciones
-- ✅ Rastreo de licencias con alertas de vencimiento
-- ✅ Búsqueda, filtros y paginación
-- ✅ Operaciones CRUD completas vía REST API
-- ✅ Autenticación con Clerk integrada
-- ✅ Aislamiento multi-tenant aplicado
-
-**Implementation Time:**
-- Phase 1: Setup (1-1.5h) - Clerk + API Connector
-- Phase 2: Company Profile (2h) - View + Edit
-- Phase 3: Facilities (3-4h) - List + Details + Create
-- Phase 4: Testing (30min) - Full flow + multi-tenancy
-
-**Dual-Frontend Strategy:**
-- **Option A:** Build in Bubble first (faster prototyping)
-- **Option B:** Build in Next.js first (more features)
-- **Option C:** Build both in parallel (maximum coverage)
-
-**Ready to Start Bubble Implementation:**
-1. ✅ Review [Module-1-Bubble-Quick-Start.md](docs/module-1/bubble/Module-1-Bubble-Quick-Start.md)
-2. ✅ Follow Phase 1: Setup (1-1.5h)
-3. ✅ Reference [API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md) for API calls
-4. ✅ Use [Bubble-UI-Wireframes.md](docs/module-1/bubble/Bubble-UI-Wireframes.md) for UI design
-
-Use `@implement module-1-bubble` to get implementation support!
+This will:
+- Load module context from `docs/module-X/`
+- Provide implementation guidance for Bubble
+- Generate specific API calls and code for the module
+- Create or update module-specific documentation
