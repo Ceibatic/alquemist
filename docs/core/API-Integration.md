@@ -1,6 +1,6 @@
 # API Integration Guide
 
-**Alquemist REST API v1**
+**Alquemist Backend Integration**
 
 Complete reference for integrating Bubble or other frontends with the Alquemist backend.
 
@@ -10,17 +10,81 @@ Complete reference for integrating Bubble or other frontends with the Alquemist 
 
 1. [Overview](#overview)
 2. [Authentication](#authentication)
-3. [API Endpoints](#api-endpoints)
-4. [Error Handling](#error-handling)
-5. [Bubble Integration](#bubble-integration)
-6. [Code Examples](#code-examples)
+3. [Convex HTTP API](#convex-http-api) (Recommended)
+4. [Next.js REST API](#nextjs-rest-api) (Optional)
+5. [Error Handling](#error-handling)
+6. [Bubble Integration](#bubble-integration)
+7. [Code Examples](#code-examples)
 
 ---
 
 ## Overview
 
-### Base URL
+Alquemist provides **two integration options**:
 
+### Option 1: Direct Connection (Recommended - START SIMPLE)
+
+**Architecture:** Bubble → Clerk API + Convex HTTP API
+
+```
+┌─────────────────────────┐
+│     Frontend App        │
+│   (Bubble/Next.js)      │
+└────────┬────────────────┘
+         │
+         ├─→ Clerk API (Authentication)
+         │   https://[your-frontend-api].clerk.accounts.dev
+         │   • Sign in/Sign up
+         │   • JWT tokens
+         │
+         └─→ Convex HTTP API (Database)
+             https://[your-deployment].convex.cloud/api
+             • Queries: GET /api/query/[functionName]
+             • Mutations: POST /api/mutation/[functionName]
+             • JWT validation automatic
+```
+
+**Benefits:**
+- ✅ Faster (1 less network hop)
+- ✅ Cheaper (no Vercel costs)
+- ✅ Simpler (less code to maintain)
+- ✅ Real-time capable
+
+**Use for:** Modules 1-10, simple CRUD operations
+
+---
+
+### Option 2: Via Next.js API (Optional - ADD WHEN NEEDED)
+
+**Architecture:** Bubble → Next.js API → Convex
+
+```
+Development: http://localhost:3000/api/v1
+Production: https://your-domain.com/api/v1
+```
+
+**Use when you need:**
+- Complex business logic
+- Multi-step operations
+- Rate limiting
+- Custom caching
+
+---
+
+### Base URLs
+
+**Convex HTTP API:**
+```
+Development: https://[dev-deployment].convex.cloud/api
+Production: https://[prod-deployment].convex.cloud/api
+```
+
+**Clerk API:**
+```
+https://[your-frontend-api].clerk.accounts.dev
+```
+
+**Next.js API (Optional):**
 ```
 Development: http://localhost:3000/api/v1
 Production: https://your-domain.com/api/v1
@@ -77,65 +141,318 @@ All API responses follow a standard format:
 
 ## Authentication
 
-### Step 1: Authenticate User
+### Clerk JWT Authentication (Direct)
 
-Users authenticate through Clerk (handled by Next.js frontend or Bubble via Clerk widget).
+Alquemist uses **Clerk** for authentication with JWT tokens.
 
-### Step 2: Get API Token
+#### Step 1: Sign In via Clerk API
 
-Once authenticated, obtain an API token:
+⚠️ **Important:** No Clerk plugin exists for Bubble - implement manually.
 
-**Endpoint:** `POST /api/v1/auth/token`
+**Endpoint:** `POST https://[your-frontend-api].clerk.accounts.dev/v1/client/sign_ins`
 
-**Headers:**
-```
-Authorization: Bearer <clerk-session-token>
+**Request Body:**
+```json
+{
+  "identifier": "user@example.com",
+  "password": "password123"
+}
 ```
 
 **Response:**
 ```json
 {
-  "success": true,
-  "data": {
-    "token": "eyJhbGc...",
-    "userId": "user_xxx",
-    "organizationId": "org_xxx",
-    "sessionId": "sess_xxx",
-    "expiresIn": 3600,
-    "tokenType": "Bearer"
+  "client": {
+    "sessions": [{
+      "id": "sess_xxx",
+      "user": {
+        "id": "user_xxx",
+        "email_addresses": [...]
+      },
+      "last_active_token": {
+        "jwt": "eyJhbGc..." // ← This is your JWT token
+      }
+    }]
   }
 }
 ```
 
-### Step 3: Use Token in Requests
+#### Step 2: Extract JWT Token
 
-Include the token in all subsequent API requests:
-
-**Headers:**
+From the Clerk response, extract:
+```javascript
+const jwtToken = response.client.sessions[0].last_active_token.jwt
 ```
-Authorization: Bearer <token>
+
+**Token contains:**
+- User ID (`sub` claim)
+- Organization ID (`org_id` claim)
+- Expiration (`exp` claim)
+- Signature (validated by Convex)
+
+#### Step 3: Use JWT in API Requests
+
+**For Convex HTTP API:**
+```
+Headers:
+  Authorization: Bearer eyJhbGc...
+  Content-Type: application/json
+```
+
+**For Next.js API (if used):**
+```
+Headers:
+  Authorization: Bearer eyJhbGc...
+  Content-Type: application/json
+```
+
+#### Step 4: Token Validation
+
+**Convex validates automatically:**
+- JWT signature verified
+- Organization ID extracted
+- User identity available in `ctx.auth.getUserIdentity()`
+- Multi-tenant isolation enforced
+
+**No separate token verification endpoint needed** - Convex handles it transparently.
+
+---
+
+### Clerk API Endpoints
+
+**Sign In:**
+```
+POST https://[your-frontend-api].clerk.accounts.dev/v1/client/sign_ins
+```
+
+**Sign Up:**
+```
+POST https://[your-frontend-api].clerk.accounts.dev/v1/client/sign_ups
+```
+
+**Get Session:**
+```
+GET https://[your-frontend-api].clerk.accounts.dev/v1/client/sessions/[session_id]
+```
+
+**Create Organization:**
+```
+POST https://[your-frontend-api].clerk.accounts.dev/v1/organizations
+```
+
+For complete Clerk API reference, see: https://clerk.com/docs/reference/frontend-api
+
+---
+
+## Convex HTTP API
+
+⚠️ **Recommended Method - START SIMPLE**
+
+### Base URL
+
+```
+https://[your-deployment].convex.cloud/api
+```
+
+Find your deployment URL in `.env.local`:
+```bash
+NEXT_PUBLIC_CONVEX_URL=https://[your-deployment].convex.cloud
+```
+
+---
+
+### Endpoint Pattern
+
+**Queries (GET data):**
+```
+GET /api/query/[module]:[functionName]?args={"param":"value"}
+```
+
+**Mutations (POST/PATCH/DELETE data):**
+```
+POST /api/mutation/[module]:[functionName]
+Body: {"param": "value"}
+```
+
+---
+
+### Headers Required
+
+```
+Authorization: Bearer [clerk-jwt-token]
 Content-Type: application/json
 ```
 
-### Token Verification
+---
 
-**Endpoint:** `GET /api/v1/auth/token`
+### Example: List Companies
+
+**Endpoint:**
+```
+GET https://[deployment].convex.cloud/api/query/companies:list
+```
+
+**Headers:**
+```
+Authorization: Bearer eyJhbGc...
+Content-Type: application/json
+```
+
+**Response:**
+```json
+[
+  {
+    "id": "jn7cx3afzv7zs555nrkp0pq9rx7s7c6d",
+    "organization_id": "org_33saIMDJHDTLUJkAyxnxo5cYRSP",
+    "name": "Finca Los Andes",
+    "company_type": "agricultural",
+    "status": "active",
+    "created_at": 1704902400000
+  }
+]
+```
+
+---
+
+### Example: Get Company
+
+**Endpoint:**
+```
+GET https://[deployment].convex.cloud/api/query/companies:get?args={"id":"company123"}
+```
+
+**Query Parameters:**
+- `args` - JSON object with function arguments
 
 **Response:**
 ```json
 {
-  "success": true,
-  "data": {
-    "valid": true,
-    "userId": "user_xxx",
-    "organizationId": "org_xxx"
-  }
+  "id": "company123",
+  "name": "Finca Los Andes",
+  "status": "active"
 }
 ```
 
 ---
 
-## API Endpoints
+### Example: Create Facility
+
+**Endpoint:**
+```
+POST https://[deployment].convex.cloud/api/mutation/facilities:create
+```
+
+**Headers:**
+```
+Authorization: Bearer eyJhbGc...
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+  "name": "Cultivo Principal",
+  "license_number": "LIC-2024-001",
+  "license_type": "INVIMA",
+  "facility_type": "greenhouse",
+  "address": "Km 5 Vía Medellín",
+  "city": "Rionegro",
+  "administrative_division_1": "Antioquia",
+  "latitude": 6.1477,
+  "longitude": -75.3736,
+  "altitude_meters": 2125,
+  "total_area_m2": 5000,
+  "status": "active"
+}
+```
+
+**Response:**
+```json
+"jn7cx3afzv7zs555nrkp0pq9rx7s7c6d"
+```
+(Returns the new facility ID)
+
+---
+
+### Available Convex Functions
+
+See `convex/` directory for all available functions:
+
+**Companies:**
+- `companies:list` (query) - List all companies for current org
+- `companies:get` (query) - Get single company by ID
+- `companies:create` (mutation) - Create new company
+- `companies:update` (mutation) - Update company
+
+**Facilities:**
+- `facilities:list` (query) - List facilities
+- `facilities:get` (query) - Get facility by ID
+- `facilities:create` (mutation) - Create facility
+- `facilities:update` (mutation) - Update facility
+- `facilities:delete` (mutation) - Soft delete facility
+
+**Batches:**
+- `batches:list` (query) - List batches
+- `batches:get` (query) - Get batch by ID
+- `batches:create` (mutation) - Create batch
+- `batches:update` (mutation) - Update batch
+
+**Activities:**
+- `activities:list` (query) - List activities
+- `activities:create` (mutation) - Log new activity
+
+**Compliance:**
+- `compliance:list` (query) - List compliance events
+- `compliance:create` (mutation) - Create compliance event
+
+**Inventory:**
+- `inventory:list` (query) - List inventory items
+- `inventory:create` (mutation) - Create inventory item
+
+---
+
+### Error Responses
+
+Convex returns errors in this format:
+
+```json
+{
+  "error": {
+    "message": "Not authenticated",
+    "code": "Unauthenticated"
+  }
+}
+```
+
+**Common Error Codes:**
+- `Unauthenticated` - Invalid or missing JWT token
+- `NotFound` - Resource not found
+- `InvalidArgument` - Invalid function arguments
+- `PermissionDenied` - User lacks permissions
+
+---
+
+## Next.js REST API
+
+⚠️ **Optional - Only use when complexity requires it**
+
+### When to Use
+
+Use Next.js API layer when you need:
+- Complex business logic
+- Multi-step operations
+- Rate limiting
+- Custom caching
+- Data transformations
+
+### Base URL
+
+```
+Development: http://localhost:3000/api/v1
+Production: https://your-domain.com/api/v1
+```
+
+### API Endpoints
 
 ### Health Check
 
@@ -534,66 +851,198 @@ When validation fails, the response includes field-specific errors:
 
 ## Bubble Integration
 
+⚠️ **Important:** No Clerk or Convex plugins exist for Bubble - all integration is manual via API Connector.
+
 ### Setup Steps
 
-#### 1. Install Clerk Plugin in Bubble
+#### 1. Configure Clerk API Connector
 
-Add the Clerk plugin to your Bubble app for authentication.
+In Bubble, go to **Plugins → API Connector** and add:
 
-#### 2. Configure API Connector
+**Name:** Clerk Auth API
+**Authentication:** None (we'll add JWT per call)
 
-In Bubble, go to **Plugins → API Connector** and add a new API:
+**Add Call - Sign In:**
+- Name: `clerk_sign_in`
+- Use as: **Action**
+- Method: **POST**
+- URL: `https://[your-frontend-api].clerk.accounts.dev/v1/client/sign_ins`
+- Body type: **JSON**
+- Body:
+```json
+{
+  "identifier": "<email>",
+  "password": "<password>"
+}
+```
+- Parameters: `email` (text), `password` (text, private)
 
-**Name:** Alquemist API
+**Extract JWT Token:**
+After successful sign in, extract JWT from:
+```
+Result of Step 1's client's sessions:first item's last_active_token's jwt
+```
+
+Store in Custom State: `session_jwt` (type: text)
+
+---
+
+#### 2. Configure Convex API Connector
+
+**Name:** Convex Database API
 **Authentication:** Private key in header
 
 **Shared Headers:**
 ```
-Authorization: Bearer [api_token]
+Authorization: Bearer <jwt_token>
 Content-Type: application/json
 ```
 
-#### 3. Get API Token Workflow
+**Add Call - List Companies (Query Example):**
+- Name: `convex_list_companies`
+- Use as: **Data**
+- Method: **GET**
+- URL: `https://[deployment].convex.cloud/api/query/companies:list`
+- Headers: Authorization: Bearer `<jwt_token>` (make parameter)
+- Parameter: `jwt_token` (text, private)
 
-Create a workflow in Bubble to get the API token after user authentication:
+**Add Call - Create Facility (Mutation Example):**
+- Name: `convex_create_facility`
+- Use as: **Action**
+- Method: **POST**
+- URL: `https://[deployment].convex.cloud/api/mutation/facilities:create`
+- Headers: Authorization: Bearer `<jwt_token>` (parameter)
+- Body type: **JSON**
+- Body:
+```json
+{
+  "name": "<name>",
+  "facility_type": "<facility_type>",
+  "license_number": "<license_number>",
+  "address": "<address>",
+  "city": "<city>",
+  "administrative_division_1": "<state>",
+  "total_area_m2": <total_area>,
+  "status": "active"
+}
+```
+- Parameters: `jwt_token`, `name`, `facility_type`, etc.
 
-**Action:** Call API
-**Endpoint:** `POST /api/v1/auth/token`
-**Headers:** `Authorization: Bearer [Clerk session token]`
+---
 
-**Save Result:** Store `data.token` in Bubble's custom state or database.
+#### 3. Authentication Workflow
 
-#### 4. Create API Calls
+**Page Load Workflow:**
+```
+Step 1: Get jwt_token from Custom State: session_jwt
+Step 2 (Only when jwt_token is empty):
+  - Navigate to login page
 
-For each endpoint, create an API call in Bubble's API Connector:
+Step 3 (Only when jwt_token is not empty):
+  - Set page to ready
+```
 
-**Example - List Facilities:**
-- Type: GET
-- URL: `https://your-domain.com/api/v1/facilities?page=1&limit=50`
-- Headers: Use shared headers with saved token
-- Response: Parse JSON and use as data type
+**Login Button Workflow:**
+```
+Step 1: Show loading spinner
+Step 2: Clerk API - clerk_sign_in
+  - email: Input Email's value
+  - password: Input Password's value
+Step 3: Set state session_jwt = Result's client's sessions:first item's last_active_token's jwt
+Step 4: Navigate to dashboard
+Step 5 (Only when Step 2 failed):
+  - Show alert: "Login failed"
+  - Hide spinner
+```
 
-**Example - Create Batch:**
-- Type: POST
-- URL: `https://your-domain.com/api/v1/batches`
-- Body type: JSON
-- Body: Pass Bubble inputs as JSON
-- Headers: Use shared headers
+---
 
-#### 5. Handle Responses
+#### 4. Data Fetching Example
 
-Use Bubble's workflows to handle API responses:
+**Repeating Group - List Facilities:**
+- Type of content: Facility
+- Data source: Get data from external API
+  - API: Convex Database API - convex_list_facilities
+  - jwt_token: Custom State session_jwt
 
-**Success:** Display data or navigate to next page
-**Error:** Show error message from `error.message`
+**Text Element - Company Name:**
+- Data source: Get data from external API
+  - API: Convex Database API - convex_get_company
+  - jwt_token: Custom State session_jwt
+- Text: Result of Step 1's name
 
-### Bubble Workflow Example
+---
 
-**When Button "Create Facility" is clicked:**
-1. Call API - POST /api/v1/facilities
-2. Body: JSON object from input fields
-3. Result: Navigate to facility list page
-4. Error: Show alert with response.error.message
+#### 5. Create/Update Example
+
+**Create Facility Button Workflow:**
+```
+Step 1: Show loading spinner
+Step 2: Convex API - convex_create_facility
+  - jwt_token: session_jwt
+  - name: Input Facility Name's value
+  - facility_type: Dropdown Type's value
+  - license_number: Input License's value
+  - address: Input Address's value
+  - city: Input City's value
+  - state: Dropdown State's value
+  - total_area: Input Area's value:rounded to 0
+Step 3: Hide spinner
+Step 4: Show alert: "Facility created!"
+Step 5: Navigate to facilities page
+Step 6 (Only when Step 2 failed):
+  - Show alert: "Error creating facility"
+```
+
+---
+
+### Error Handling
+
+**Handle Convex Errors:**
+```
+Step X: API Call
+Step X+1 (Only when Step X failed):
+  - Show alert: Result of Step X's error's message
+  - Log to console: Result of Step X
+```
+
+**Handle 401 Unauthorized:**
+```
+Step X: API Call
+Step X+1 (Only when Step X's status code = 401):
+  - Clear state: session_jwt
+  - Navigate to: login page
+  - Show alert: "Session expired, please login again"
+```
+
+---
+
+### Best Practices
+
+1. **Store JWT in Custom State:**
+   - Create page-level custom state: `session_jwt` (text)
+   - Set on login, clear on logout
+   - Check on every protected page load
+
+2. **Reusable Workflows:**
+   - Create custom event: `handle_api_error`
+   - Pass error message as parameter
+   - Use consistently across all API calls
+
+3. **Loading States:**
+   - Show spinner before API calls
+   - Hide spinner after completion (success or error)
+   - Disable buttons during API calls
+
+4. **Security:**
+   - Mark JWT token parameter as "Private" in API Connector
+   - Never log JWT tokens to console
+   - Clear JWT on logout
+
+5. **Token Refresh:**
+   - Clerk JWTs expire after 1 hour
+   - Implement token refresh workflow
+   - Or re-authenticate user when 401 received
 
 ---
 

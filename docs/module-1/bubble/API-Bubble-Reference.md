@@ -1,226 +1,233 @@
 # Referencia de API para Integración con Bubble
 
-**Referencia rápida para configurar llamadas a la API de Alquemist en el API Connector de Bubble**
+**Referencia rápida para configurar llamadas a Convex HTTP API y Clerk API desde Bubble**
 
-**Versión:** 1.0
-**URL Base:** `https://your-domain.com/api/v1` o `http://localhost:3000/api/v1`
-
----
-
-## 🔐 Autenticación
-
-Todos los endpoints (excepto el health check) requieren autenticación de Clerk.
-
-**Header Requerido:**
-```
-Authorization: Bearer <token>
-```
-
-El `<token>` se obtiene de la acción "Get session" del plugin de Clerk y debe pasarse como **parámetro privado** en Bubble.
+**Versión:** 2.0 - Arquitectura Simplificada (Bubble → Convex + Clerk directo)
 
 ---
 
-## 📍 Endpoints
+## 📍 URLs Base
 
-### 1. Health Check
+⚠️ **Importante:** NO existen plugins de Clerk ni Convex para Bubble - toda la integración es manual.
 
-**Propósito:** Probar conexión de API
-
-#### Configuración en Bubble
-- **Name:** `health_check`
-- **Use as:** Action
-- **Method:** GET
-- **URL:** `[BASE_URL]`
-
-#### Parámetros
-Ninguno
-
-#### Respuesta
-```json
-{
-  "success": true,
-  "data": {
-    "status": "operational",
-    "version": "1.0.0",
-    "timestamp": "2025-01-10T12:00:00Z",
-    "endpoints": [...]
-  }
-}
+### Convex HTTP API (Base de datos)
+```
+https://[your-deployment].convex.cloud/api
 ```
 
-#### Pasos de Configuración en Bubble
-1. API Connector → Add another call
-2. Name: `health_check`
-3. Use as: **Action**
-4. Method: **GET**
-5. URL: `https://your-domain.com/api/v1`
-6. Click **Initialize call**
-7. Verificar que la respuesta muestre `"status": "operational"`
+Encontrar en `.env.local`:
+```
+NEXT_PUBLIC_CONVEX_URL=https://[your-deployment].convex.cloud
+```
+
+### Clerk API (Autenticación)
+```
+https://[your-frontend-api].clerk.accounts.dev
+```
+
+Encontrar en Clerk Dashboard → API Keys → Frontend API
 
 ---
 
-### 2. Get Company
+## 🔐 Autenticación con Clerk (Manual)
 
-**Propósito:** Obtener el perfil de empresa del usuario actual
+### Paso 1: Configurar Sign In en Bubble
 
-#### Configuración en Bubble
-- **Name:** `get_company`
-- **Use as:** **Data** (para usar en repeating groups/elementos de texto)
-- **Method:** GET
-- **URL:** `[BASE_URL]/companies`
+**Llamada de API:** `clerk_sign_in`
 
-#### Headers
-```
-Authorization: Bearer <token>
-```
-
-#### Parámetros
-| Parámetro | Tipo | Privado | Requerido | Descripción |
-|-----------|------|---------|----------|-------------|
-| `token` | text | ✅ Sí | ✅ Sí | Token de sesión de Clerk |
-
-#### URL de Solicitud en Bubble
-```
-https://your-domain.com/api/v1/companies
-```
-
-#### Respuesta
-```json
-{
-  "success": true,
-  "data": {
-    "id": "jn7cx3afzv7zs555nrkp0pq9rx7s7c6d",
-    "organization_id": "org_33saIMDJHDTLUJkAyxnxo5cYRSP",
-    "name": "Empresa de Prueba Alquemist",
-    "company_type": "Agriculture",
-    "status": "active",
-    "subscription_plan": "trial",
-    "max_facilities": 1,
-    "max_users": 3,
-    "legal_name": "Empresa de Prueba Alquemist SAS",
-    "tax_id": "900123456-7",
-    "business_entity_type": "S.A.S",
-    "country": "CO",
-    "default_locale": "es",
-    "default_currency": "COP",
-    "default_timezone": "America/Bogota",
-    "primary_contact_email": "contact@company.com",
-    "primary_contact_phone": "+57 300 123 4567"
-  },
-  "meta": {
-    "timestamp": "2025-01-10T12:00:00Z"
-  }
-}
-```
-
-#### Pasos de Configuración en Bubble
-1. API Connector → Add another call
-2. Name: `get_company`
-3. Use as: **Data** ← ¡Importante!
-4. Method: **GET**
-5. URL: `https://your-domain.com/api/v1/companies`
-6. Agregar header:
-   - Key: `Authorization`
-   - Value: `Bearer <token>` (hacer `<token>` un parámetro)
-7. Agregar parámetro:
-   - Name: `token`
-   - Type: text
-   - Private: ✅ Sí
-8. Click **Initialize call** con token de prueba
-9. Bubble capturará la estructura de respuesta
-
-#### Uso en Bubble
-**En un elemento de texto:**
-```
-Get data from external API > Alquemist API - get_company
-```
-
-**Expresión dinámica:**
-```
-Get data from external API > Alquemist API - get_company's name
-Get data from external API > Alquemist API - get_company's tax_id
-```
-
----
-
-### 3. Create Company
-
-**Propósito:** Crear un nuevo perfil de empresa
-
-#### Configuración en Bubble
-- **Name:** `create_company`
+- **Name:** `clerk_sign_in`
 - **Use as:** Action
 - **Method:** POST
-- **URL:** `[BASE_URL]/companies`
+- **URL:** `https://[your-frontend-api].clerk.accounts.dev/v1/client/sign_ins`
+- **Body type:** JSON
+
+**Body:**
+```json
+{
+  "identifier": "<email>",
+  "password": "<password>"
+}
+```
+
+**Parámetros:**
+- `email` (text, no privado)
+- `password` (text, **privado**)
+
+**Respuesta exitosa:**
+```json
+{
+  "client": {
+    "sessions": [{
+      "id": "sess_xxx",
+      "last_active_token": {
+        "jwt": "eyJhbGciOiJ..." ← ESTE ES TU JWT TOKEN
+      }
+    }]
+  }
+}
+```
+
+### Paso 2: Extraer y Guardar JWT Token
+
+En el workflow de login en Bubble:
+
+```
+Paso 1: API Call - clerk_sign_in
+  - email: Input Email's value
+  - password: Input Password's value
+
+Paso 2: Set state session_jwt =
+  Result of Step 1's client's sessions:first item's last_active_token's jwt
+
+Paso 3: Navigate to dashboard
+```
+
+**Custom State necesario:**
+- Name: `session_jwt`
+- Type: text
+- Scope: Page (o App si quieres compartir entre páginas)
+
+### Paso 3: Usar JWT en todas las llamadas a Convex
+
+Todas las llamadas a Convex HTTP API deben incluir:
+
+**Header:**
+```
+Authorization: Bearer <session_jwt>
+```
+
+Donde `<session_jwt>` es el Custom State que guardaste en Paso 2.
+
+---
+
+## 📍 Endpoints de Convex HTTP API
+
+### Patrón de Endpoints
+
+**Queries (GET - obtener datos):**
+```
+GET https://[deployment].convex.cloud/api/query/[module]:[function]
+```
+
+**Mutations (POST - crear/actualizar/eliminar):**
+```
+POST https://[deployment].convex.cloud/api/mutation/[module]:[function]
+```
+
+**Headers siempre requeridos:**
+```
+Authorization: Bearer <session_jwt>
+Content-Type: application/json
+```
+
+---
+
+### 1. List Companies (Query)
+
+**Propósito:** Obtener lista de empresas de la organización actual
+
+#### Configuración en Bubble
+- **Name:** `convex_list_companies`
+- **Use as:** **Data**
+- **Method:** GET
+- **URL:** `https://[deployment].convex.cloud/api/query/companies:list`
 
 #### Headers
 ```
-Authorization: Bearer <token>
+Authorization: Bearer <session_jwt>
 Content-Type: application/json
 ```
 
 #### Parámetros
 | Parámetro | Tipo | Privado | Requerido | Descripción |
 |-----------|------|---------|----------|-------------|
-| `token` | text | ✅ Sí | ✅ Sí | Token de sesión de Clerk |
-| `name` | text | ❌ No | ✅ Sí | Nombre de la empresa |
-| `company_type` | text | ❌ No | ✅ Sí | "Agriculture", "Processing", etc. |
-| `legal_name` | text | ❌ No | ❌ No | Razón social de la empresa |
-| `tax_id` | text | ❌ No | ❌ No | NIT (en Colombia) |
-| `business_entity_type` | text | ❌ No | ❌ No | "S.A.S", "S.A.", "Ltda", "E.U.", etc. |
-| `country` | text | ❌ No | ❌ No | Código de país (por defecto: "CO") |
-| `locale` | text | ❌ No | ❌ No | Idioma (por defecto: "es") |
-| `currency` | text | ❌ No | ❌ No | Código de moneda (por defecto: "COP") |
-| `timezone` | text | ❌ No | ❌ No | Zona horaria (por defecto: "America/Bogota") |
-| `email` | text | ❌ No | ❌ No | Email de contacto principal |
-| `phone` | text | ❌ No | ❌ No | Teléfono de contacto principal |
-
-#### Cuerpo de Solicitud (JSON)
-```json
-{
-  "name": "Empresa de Prueba Alquemist",
-  "company_type": "Agriculture",
-  "legal_name": "Empresa de Prueba Alquemist SAS",
-  "tax_id": "900123456-7",
-  "business_entity_type": "S.A.S",
-  "country": "CO",
-  "default_locale": "es",
-  "default_currency": "COP",
-  "default_timezone": "America/Bogota",
-  "primary_contact_email": "contact@company.com",
-  "primary_contact_phone": "+57 300 123 4567"
-}
-```
+| `session_jwt` | text | ✅ Sí | ✅ Sí | JWT token de Clerk |
 
 #### Respuesta
 ```json
-{
-  "success": true,
-  "data": {
-    "id": "jn7cx3afzv7zs555nrkp0pq9rx7s7c6d",
+[
+  {
+    "_id": "jn7cx3afzv7zs555nrkp0pq9rx7s7c6d",
+    "_creationTime": 1704902400000,
     "organization_id": "org_33saIMDJHDTLUJkAyxnxo5cYRSP",
     "name": "Empresa de Prueba Alquemist",
-    "company_type": "Agriculture",
+    "company_type": "agricultural",
     "status": "active",
-    "created_at": "2025-01-10T12:00:00Z"
-  },
-  "meta": {
-    "timestamp": "2025-01-10T12:00:00Z"
+    "legal_name": "Empresa de Prueba Alquemist SAS",
+    "tax_id": "900123456-7",
+    "business_entity_type": "S.A.S",
+    "country": "CO",
+    "default_locale": "es",
+    "default_currency": "COP",
+    "default_timezone": "America/Bogota"
   }
-}
+]
 ```
 
 #### Pasos de Configuración en Bubble
 1. API Connector → Add another call
-2. Name: `create_company`
-3. Use as: **Action**
-4. Method: **POST**
-5. URL: `https://your-domain.com/api/v1/companies`
-6. Agregar header:
+2. Name: `convex_list_companies`
+3. Use as: **Data**
+4. Method: **GET**
+5. URL: `https://[your-deployment].convex.cloud/api/query/companies:list`
+6. Headers:
    - Key: `Authorization`
-   - Value: `Bearer <token>` (parámetro)
-7. Body type: **JSON**
-8. Body:
+   - Value: `Bearer <session_jwt>` (hacer parámetro)
+   - Key: `Content-Type`
+   - Value: `application/json`
+7. Parámetro:
+   - Name: `session_jwt`
+   - Type: text
+   - Private: ✅ Sí
+8. Click **Initialize call** con JWT de prueba
+9. Bubble capturará la estructura del array
+
+#### Uso en Bubble
+**En Repeating Group:**
+```
+Data source: Get data from external API > convex_list_companies
+  - session_jwt: Custom State session_jwt
+```
+
+**Acceder a campos:**
+```
+Current cell's Company's name
+Current cell's Company's tax_id
+```
+
+---
+
+### 2. Create Company (Mutation)
+
+**Propósito:** Crear un nuevo perfil de empresa
+
+#### Configuración en Bubble
+- **Name:** `convex_create_company`
+- **Use as:** Action
+- **Method:** POST
+- **URL:** `https://[deployment].convex.cloud/api/mutation/companies:create`
+
+#### Headers
+```
+Authorization: Bearer <session_jwt>
+Content-Type: application/json
+```
+
+#### Parámetros
+| Parámetro | Tipo | Privado | Requerido | Descripción |
+|-----------|------|---------|----------|-------------|
+| `session_jwt` | text | ✅ Sí | ✅ Sí | JWT token de Clerk |
+| `name` | text | ❌ No | ✅ Sí | Nombre de la empresa |
+| `company_type` | text | ❌ No | ✅ Sí | "agricultural", "processing", etc. |
+| `legal_name` | text | ❌ No | ❌ No | Razón social de la empresa |
+| `tax_id` | text | ❌ No | ❌ No | NIT (en Colombia) |
+| `business_entity_type` | text | ❌ No | ❌ No | "S.A.S", "S.A.", "Ltda", "E.U.", etc. |
+| `country` | text | ❌ No | ❌ No | Código de país (defecto: "CO") |
+| `default_locale` | text | ❌ No | ❌ No | Idioma (defecto: "es") |
+| `default_currency` | text | ❌ No | ❌ No | Moneda (defecto: "COP") |
+| `default_timezone` | text | ❌ No | ❌ No | Zona horaria (defecto: "America/Bogota") |
+
+#### Cuerpo de Solicitud (JSON)
 ```json
 {
   "name": "<name>",
@@ -229,35 +236,55 @@ Content-Type: application/json
   "tax_id": "<tax_id>",
   "business_entity_type": "<business_entity_type>",
   "country": "<country>",
-  "default_locale": "<locale>",
-  "default_currency": "<currency>",
-  "default_timezone": "<timezone>",
-  "primary_contact_email": "<email>",
-  "primary_contact_phone": "<phone>"
+  "default_locale": "<default_locale>",
+  "default_currency": "<default_currency>",
+  "default_timezone": "<default_timezone>"
 }
 ```
-9. Agregar todos los parámetros como se muestra en la tabla anterior
+
+#### Respuesta
+```json
+"jn7cx3afzv7zs555nrkp0pq9rx7s7c6d"
+```
+(Retorna el ID de la nueva empresa creada)
+
+#### Pasos de Configuración en Bubble
+1. API Connector → Add another call
+2. Name: `convex_create_company`
+3. Use as: **Action**
+4. Method: **POST**
+5. URL: `https://[deployment].convex.cloud/api/mutation/companies:create`
+6. Headers:
+   - `Authorization: Bearer <session_jwt>` (parámetro)
+   - `Content-Type: application/json`
+7. Body type: **JSON**
+8. Body: (ver JSON arriba con placeholders)
+9. Agregar todos los parámetros de la tabla
 10. Click **Initialize call** con datos de prueba
-11. Verificar que la respuesta devuelva el ID de la empresa
 
 #### Uso en Workflow de Bubble
 ```
-Paso 1: Plugin Action - Clerk: Get session
-Paso 2: API Call - create_company
-  - token: Resultado del token del paso 1
-  - name: Valor de Input Company Name
-  - company_type: "Agriculture"
-  - legal_name: Valor de Input Legal Name
-  - tax_id: Valor de Input Tax ID
-  - business_entity_type: Valor de Dropdown Business Type
+Paso 1: Show loading spinner
+
+Paso 2: API Call - convex_create_company
+  - session_jwt: Custom State session_jwt
+  - name: Input Company Name's value
+  - company_type: "agricultural"
+  - legal_name: Input Legal Name's value
+  - tax_id: Input Tax ID's value
+  - business_entity_type: Dropdown Business Type's value
   - country: "CO"
-  - locale: "es"
-  - currency: "COP"
-  - timezone: "America/Bogota"
-  - email: Valor de Input Email
-  - phone: Valor de Input Phone
-Paso 3: Show alert: "¡Empresa creada exitosamente!"
-Paso 4: Navigate to: dashboard
+  - default_locale: "es"
+  - default_currency: "COP"
+  - default_timezone: "America/Bogota"
+
+Paso 3: Hide loading spinner
+Paso 4: Show alert: "¡Empresa creada exitosamente!"
+Paso 5: Navigate to: dashboard
+
+Paso 6 (Only when Step 2 failed):
+  - Hide spinner
+  - Show alert: Result of Step 2's error's message
 ```
 
 ---
@@ -279,33 +306,28 @@ Todos los campos son opcionales (solo enviar los campos que se desean actualizar
 
 ---
 
-### 5. List Facilities
+### 3. List Facilities (Query)
 
 **Propósito:** Obtener todas las instalaciones de la empresa actual
 
 #### Configuración en Bubble
-- **Name:** `list_facilities`
+- **Name:** `convex_list_facilities`
 - **Use as:** **Data**
 - **Method:** GET
-- **URL:** `[BASE_URL]/facilities?page=<page>&limit=<limit>`
+- **URL:** `https://[deployment].convex.cloud/api/query/facilities:list`
 
 #### Headers
 ```
-Authorization: Bearer <token>
+Authorization: Bearer <session_jwt>
+Content-Type: application/json
 ```
 
 #### Parámetros
-| Parámetro | Tipo | Privado | Requerido | Por Defecto | Descripción |
-|-----------|------|---------|----------|-------------|-------------|
-| `token` | text | ✅ Sí | ✅ Sí | - | Token de sesión de Clerk |
-| `page` | number | ❌ No | ❌ No | 1 | Número de página para paginación |
-| `limit` | number | ❌ No | ❌ No | 50 | Elementos por página |
-| `status` | text | ❌ No | ❌ No | - | Filtrar por estado: "active", "inactive", "archived" |
+| Parámetro | Tipo | Privado | Requerido | Descripción |
+|-----------|------|---------|----------|-------------|
+| `session_jwt` | text | ✅ Sí | ✅ Sí | JWT token de Clerk |
 
-#### URL de Solicitud en Bubble
-```
-https://your-domain.com/api/v1/facilities?page=<page>&limit=<limit>&status=<status>
-```
+**Nota:** Convex filtra automáticamente por organización usando el JWT token.
 
 #### Respuesta
 ```json
@@ -425,116 +447,102 @@ Get data from external API > Alquemist API - get_facility
 
 ---
 
-### 7. Create Facility
+### 4. Create Facility (Mutation)
 
 **Propósito:** Crear una nueva instalación
 
 #### Configuración en Bubble
-- **Name:** `create_facility`
+- **Name:** `convex_create_facility`
 - **Use as:** Action
 - **Method:** POST
-- **URL:** `[BASE_URL]/facilities`
+- **URL:** `https://[deployment].convex.cloud/api/mutation/facilities:create`
 
 #### Headers
 ```
-Authorization: Bearer <token>
+Authorization: Bearer <session_jwt>
 Content-Type: application/json
 ```
 
 #### Parámetros
 | Parámetro | Tipo | Privado | Requerido | Descripción |
 |-----------|------|---------|----------|-------------|
-| `token` | text | ✅ Sí | ✅ Sí | Token de sesión de Clerk |
+| `session_jwt` | text | ✅ Sí | ✅ Sí | JWT token de Clerk |
 | `name` | text | ❌ No | ✅ Sí | Nombre de la instalación |
 | `facility_type` | text | ❌ No | ✅ Sí | "greenhouse", "indoor", "outdoor", "mixed" |
 | `license_number` | text | ❌ No | ✅ Sí | Número de licencia |
 | `license_type` | text | ❌ No | ✅ Sí | Tipo de licencia |
 | `license_authority` | text | ❌ No | ✅ Sí | "INVIMA", "ICA", etc. |
-| `license_expiration_date` | text | ❌ No | ❌ No | Fecha ISO: "2026-12-31" |
 | `address` | text | ❌ No | ✅ Sí | Dirección |
 | `city` | text | ❌ No | ✅ Sí | Ciudad |
-| `state` | text | ❌ No | ✅ Sí | Departamento |
-| `latitude` | number | ❌ No | ❌ No | Coordenada de latitud |
-| `longitude` | number | ❌ No | ❌ No | Coordenada de longitud |
-| `altitude` | number | ❌ No | ❌ No | Altitud en metros |
-| `total_area` | number | ❌ No | ✅ Sí | Área total en m² |
-| `canopy_area` | number | ❌ No | ❌ No | Área de cultivo en m² |
+| `administrative_division_1` | text | ❌ No | ✅ Sí | Departamento |
+| `total_area_m2` | number | ❌ No | ✅ Sí | Área total en m² |
 | `status` | text | ❌ No | ❌ No | "active" (por defecto) |
+
+**Campos opcionales:**
+- `latitude`, `longitude`, `altitude_meters`
+- `canopy_area_m2`
+- `license_expiration_date` (ISO string)
 
 #### Cuerpo de Solicitud (JSON)
 ```json
 {
-  "name": "Instalación Invernadero #1",
-  "facility_type": "greenhouse",
-  "license_number": "LIC-2025-001",
-  "license_type": "cannabis_cultivation",
-  "license_authority": "INVIMA",
-  "license_expiration_date": "2026-12-31",
-  "address": "Km 5 Vía La Calera",
-  "city": "Bogotá",
-  "administrative_division_1": "Cundinamarca",
-  "latitude": 4.7110,
-  "longitude": -74.0721,
-  "altitude_meters": 2600,
-  "total_area_m2": 5000,
-  "canopy_area_m2": 3500,
+  "name": "<name>",
+  "facility_type": "<facility_type>",
+  "license_number": "<license_number>",
+  "license_type": "<license_type>",
+  "license_authority": "<license_authority>",
+  "address": "<address>",
+  "city": "<city>",
+  "administrative_division_1": "<administrative_division_1>",
+  "total_area_m2": <total_area_m2>,
   "status": "active"
 }
 ```
 
 #### Respuesta
 ```json
-{
-  "success": true,
-  "data": {
-    "id": "new_facility_id",
-    "name": "Instalación Invernadero #1",
-    "license_number": "LIC-2025-001",
-    "status": "active",
-    "created_at": "2025-01-10T12:00:00Z"
-  },
-  "meta": {
-    "timestamp": "2025-01-10T12:00:00Z"
-  }
-}
+"jn7cx3afzv7zs555nrkp0pq9rx7s7c6d"
 ```
+(Retorna el ID de la nueva instalación)
 
 #### Pasos de Configuración en Bubble
 1. API Connector → Add another call
-2. Name: `create_facility`
+2. Name: `convex_create_facility`
 3. Use as: **Action**
 4. Method: **POST**
-5. URL: `https://your-domain.com/api/v1/facilities`
-6. Agregar header: `Authorization: Bearer <token>` (parámetro)
+5. URL: `https://[deployment].convex.cloud/api/mutation/facilities:create`
+6. Headers:
+   - `Authorization: Bearer <session_jwt>` (parámetro)
+   - `Content-Type: application/json`
 7. Body type: **JSON**
-8. Body: (ver JSON arriba con placeholders `<parámetro>`)
+8. Body: (ver JSON arriba con placeholders)
 9. Agregar todos los parámetros de la tabla
-10. Inicializar con datos de prueba
+10. Click **Initialize call** con datos de prueba
 
 #### Uso en Workflow de Bubble
 ```
-Paso 1: Mostrar spinner de carga
-Paso 2: API Call - create_facility
-  - token: session_token (desde estado de página)
-  - name: Valor de Input Facility Name
-  - facility_type: Valor de Dropdown Type
-  - license_number: Valor de Input License
-  - license_type: Valor de Dropdown License Type
-  - license_authority: Valor de Dropdown Authority
-  - license_expiration_date: Valor de DatePicker (formateado como ISO)
-  - address: Valor de Input Address
-  - city: Valor de Input City
-  - state: Valor de Dropdown State
-  - latitude: Valor de Input Lat (si no está vacío)
-  - longitude: Valor de Input Lng (si no está vacío)
-  - altitude: Valor de Input Altitude (si no está vacío)
-  - total_area: Valor de Input Total Area
-  - canopy_area: Valor de Input Canopy (si no está vacío)
+Paso 1: Show loading spinner
+
+Paso 2: API Call - convex_create_facility
+  - session_jwt: Custom State session_jwt
+  - name: Input Facility Name's value
+  - facility_type: Dropdown Type's value
+  - license_number: Input License's value
+  - license_type: Dropdown License Type's value
+  - license_authority: Dropdown Authority's value
+  - address: Input Address's value
+  - city: Input City's value
+  - administrative_division_1: Dropdown State's value
+  - total_area_m2: Input Total Area's value:rounded to 0
   - status: "active"
-Paso 3: Ocultar spinner de carga
+
+Paso 3: Hide loading spinner
 Paso 4: Show alert: "¡Instalación creada exitosamente!"
-Paso 5: Navigate to: facility-details
-  - Send parameter: facility_id = Resultado del id del paso 2
+Paso 5: Navigate to: facilities page
+
+Paso 6 (Only when Step 2 failed):
+  - Hide spinner
+  - Show alert: Result of Step 2's error's message
 ```
 
 ---
@@ -692,21 +700,32 @@ Paso X+1 (Ejecutar solo cuando Paso X falla):
 
 ## 💡 Consejos
 
-### 1. Token de Sesión Reutilizable
-Crear un **Custom State** a nivel de página:
-- Name: `session_token`
+### 1. JWT Token Reutilizable
+Crear un **Custom State** a nivel de **app** (para compartir entre páginas):
+- Name: `session_jwt`
 - Type: text
+- Scope: **App** (no page)
 
-Configurarlo una vez al cargar la página:
+**Workflow de Login:**
+```
+When Login button is clicked:
+  Paso 1: API Call - clerk_sign_in
+    - email: Input Email's value
+    - password: Input Password's value
+  Paso 2: Set state session_jwt = Result's client's sessions:first item's last_active_token's jwt
+  Paso 3: Navigate to dashboard
+```
+
+**Workflow de Page Load (en páginas protegidas):**
 ```
 When page is loaded:
-  Paso 1: Clerk - Get session
-  Paso 2: Set state: session_token = Token del resultado
+  Paso 1 (Only when session_jwt is empty):
+    - Navigate to login page
 ```
 
-Usarlo en todas las llamadas API:
+**Usar en todas las llamadas a Convex:**
 ```
-token = session_token
+session_jwt = Custom State session_jwt (app-wide)
 ```
 
 ### 2. Plantilla de Manejo de Errores
@@ -748,14 +767,72 @@ Reutilizar a través de la página sin volver a obtener
 
 ---
 
+---
+
+## 📝 Notas Importantes
+
+### Arquitectura Simplificada
+
+Este documento refleja la **nueva arquitectura simplificada** de Alquemist:
+
+```
+Bubble → Clerk API (autenticación)
+      → Convex HTTP API (base de datos)
+```
+
+**Benefits:**
+- ✅ Más rápido (1 menos salto de red)
+- ✅ Más económico (sin costos de Vercel para CRUD)
+- ✅ Más simple (menos código que mantener)
+
+### ¿Cuándo usar Next.js API?
+
+La capa de Next.js API (`/api/v1/*`) está **disponible pero NO usada en Módulos 1-10**.
+
+**Usar Next.js API solo cuando:**
+- Business logic compleja multi-step
+- Rate limiting necesario
+- Caching custom requerido
+- Transformaciones de data complejas
+
+Para Módulo 1 (Company & Facility Setup), **usar siempre Convex directo**.
+
+### Multi-Tenant Isolation
+
+Convex aplica automáticamente aislamiento multi-tenant:
+- El JWT de Clerk contiene `organization_id`
+- Todas las queries filtran por `organization_id`
+- No es posible acceder datos de otras organizaciones
+- No necesitas pasar `organization_id` manualmente
+
+### Funciones Disponibles
+
+Ver código fuente en `convex/` para todas las funciones:
+- `convex/companies.ts` - Companies queries & mutations
+- `convex/facilities.ts` - Facilities queries & mutations
+- `convex/batches.ts` - Batches queries & mutations
+- `convex/activities.ts` - Activities queries & mutations
+
+Patrón de llamada:
+```
+GET  /api/query/[filename]:[functionName]
+POST /api/mutation/[filename]:[functionName]
+```
+
+---
+
 ## 📚 Recursos Adicionales
 
 - **Guía de Configuración Completa:** [Module-1-Bubble-Guide.md](Module-1-Bubble-Guide.md)
 - **Wireframes de UI:** [Bubble-UI-Wireframes.md](Bubble-UI-Wireframes.md)
 - **Inicio Rápido:** [Module-1-Bubble-Quick-Start.md](Module-1-Bubble-Quick-Start.md)
+- **Documentación de Clerk API:** https://clerk.com/docs/reference/frontend-api
+- **Documentación de Convex HTTP API:** https://docs.convex.dev/http-api
 
 ---
 
-**Versión del Documento:** 1.0
-**Última Actualización:** 2025-10-10
-**Versión de API:** v1
+**Versión del Documento:** 2.0 (Arquitectura Simplificada)
+**Última Actualización:** 2025-10-22
+**Arquitectura:** Bubble → Convex + Clerk directo
+**Convex Deployment:** Ver `NEXT_PUBLIC_CONVEX_URL` en `.env.local`
+**Clerk Frontend API:** Ver Clerk Dashboard → API Keys
