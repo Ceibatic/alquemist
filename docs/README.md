@@ -1,102 +1,184 @@
 # Alquemist Documentation
 
-**Version 1.0 - Core Reference Documents**
+**Version 1.0 - Documentación Organizada por Módulos**
 
 ---
 
-## Quick Start
+## 📁 Estructura de Documentación
 
-For a new greenfield implementation of Alquemist, start with these **3 core documents**:
+La documentación está organizada en carpetas por propósito y módulo:
 
-### 1. [Product-Requirements.md](Product-Requirements.md)
-**What to build** - Complete feature specifications
-
-- 17 modules across 3 phases
-- Regional requirements (default: Colombia)
-- User stories and success metrics
-- Module dependency map
-- Compliance cross-reference (configurable by region)
-
-**Size**: 27KB | **Read time**: 30 minutes
-
----
-
-### 2. [Technical-Specification.md](Technical-Specification.md)
-**How to build** - Architecture and implementation guide
-
-- Recommended tech stack (Next.js + Serverless)
-- System architecture patterns
-- Authentication & authorization
-- Key implementation patterns
-- Deployment strategy
-- Regional compliance implementation
-
-**Size**: 21KB | **Read time**: 20 minutes
-
----
-
-### 3. [Database-Schema.md](Database-Schema.md)
-**Data structure** - Complete database schema (technology-agnostic)
-
-- 26 tables organized in 8 functional groups
-- All fields with types and descriptions
-- Relationships and indexes
-- Regional fields documented (default: Colombia)
-- Batch-first tracking philosophy
-- Implementation notes
-
-**Size**: 54KB | **Read time**: 45 minutes
+```
+docs/
+├── README.md                 # Este archivo (índice general)
+├── Resumen-Ejecutivo.md     # Executive summary
+│
+├── core/                    # Documentos principales del proyecto
+│   ├── Product-Requirements.md
+│   ├── Technical-Specification.md
+│   ├── Database-Schema.md
+│   └── API-Integration.md
+│
+├── foundation/              # Configuración inicial y setup
+│   ├── Authentication-Guide.md
+│   ├── Browser-API-Testing.md
+│   ├── Clerk-Organization-Setup.md
+│   └── Implementation-Status.md
+│
+├── module-1/                # Módulo 1: Company & Facility Setup
+│   ├── README.md
+│   ├── Module-1-Planning.md
+│   ├── Module-1-Quick-Start.md
+│   ├── Module-1-Task-Board.md
+│   └── bubble/              # Implementación Bubble
+│       ├── Module-1-Bubble-Guide.md
+│       ├── API-Bubble-Reference.md
+│       ├── Module-1-Bubble-Quick-Start.md
+│       └── Bubble-UI-Wireframes.md
+│
+├── dev/                     # Frameworks y estándares
+│   ├── Agentic-Dev-Framework.md
+│   ├── Agentic-Dev-System-Simple.md
+│   └── Tech-Stack-Standard.md
+│
+└── sessions/                # Resúmenes de sesiones
+    └── Session-Summary-2025-10-10.md
+```
 
 ---
 
-## Document Philosophy
+## 🚀 Quick Start
 
-These v1.0 documents represent the **definitive, complete specification** for Alquemist:
+Para una nueva implementación de Alquemist, comienza con estos **documentos core**:
 
-- **Single source of truth** - No versioning needed, these are final
-- **Technology-agnostic** - Can implement with any modern stack
-- **Regional design** - Default configuration for Colombia, extensible to other regions
-- **Production-ready** - Complete enough to start building immediately
+### 1. [core/Product-Requirements.md](core/Product-Requirements.md)
+**Qué construir** - Especificaciones completas de features
 
----
+- 17 módulos en 3 fases
+- Requisitos regionales (default: Colombia)
+- Historias de usuario y métricas de éxito
+- Mapa de dependencias entre módulos
+- Referencia cruzada de cumplimiento normativo
 
-## Version History
-
-### Version 1.0 (January 2025)
-- Renamed and simplified from previous versioned documents
-- Product PRD: Consolidated from v4.1 (removed redundant context)
-- Technical Spec: Streamlined from v6.0 Engineering PRD (56% reduction), removed all "OR" alternatives
-- Database Schema: Created technology-agnostic version from v4.0 Prisma schema
-- Added CLAUDE.MD: Ultra-efficient context engineering agent (~1500 tokens)
-- Added Agentic-Dev-System-Simple.md: Simplified workflow guide (75% reduction vs complex version)
-- Archived all previous versioned documents
-
-### Previous Versions (Archived)
-Old versioned documents moved to `archive/` directory:
-- `Product PRD - Alquemist v4.1.md`
-- `Engineering PRD - Alquemist v6.0.md`
-- `Alquemist - Database Schema & Colombian Seeds v4.0.md`
+**Tamaño**: 27KB | **Tiempo de lectura**: 30 minutos
 
 ---
 
-## Quick Reference
+### 2. [core/Technical-Specification.md](core/Technical-Specification.md)
+**Cómo construir** - Arquitectura y guía de implementación
 
-### Core Features
-- **Multi-tenant**: Company-based isolation with RBAC
-- **Multi-crop**: Cannabis, Coffee, Cocoa, Flowers
-- **Batch-first tracking**: 50-1000 plants per batch (optional individual)
-- **Regional compliance**: Configurable by region (e.g., INVIMA, ICA, FNC in Colombia)
-- **AI-powered**: Pest detection, quality checks, form digitization
-- **Mobile-first**: PWA with offline capability, QR scanning
+- Stack tecnológico recomendado (Next.js + Serverless)
+- Patrones de arquitectura del sistema
+- Autenticación y autorización
+- Patrones clave de implementación
+- Estrategia de despliegue
+- Implementación de cumplimiento regional
 
-### Technology Stack (Final Decision)
+**Tamaño**: 21KB | **Tiempo de lectura**: 20 minutos
+
+---
+
+### 3. [core/Database-Schema.md](core/Database-Schema.md)
+**Estructura de datos** - Schema completo de base de datos (agnóstico de tecnología)
+
+- 26 tablas organizadas en 8 grupos funcionales
+- Todos los campos con tipos y descripciones
+- Relaciones e índices
+- Campos regionales documentados (default: Colombia)
+- Filosofía de rastreo batch-first
+- Notas de implementación
+
+**Tamaño**: 54KB | **Tiempo de lectura**: 45 minutos
+
+---
+
+### 4. [core/API-Integration.md](core/API-Integration.md)
+**Integración API** - Referencia REST API para frontends agnósticos
+
+- Endpoints REST API v1
+- Ejemplos de integración Bubble
+- Autenticación y headers
+- Manejo de errores
+- Ejemplos de requests/responses
+
+**Tamaño**: 14KB | **Tiempo de lectura**: 15 minutos
+
+---
+
+## 📦 Documentación por Módulo
+
+### Module 1: Company & Facility Setup
+📁 **[module-1/](module-1/)** - Documentación completa del Módulo 1
+
+**Documentos principales:**
+- [module-1/README.md](module-1/README.md) - Índice del módulo
+- [module-1/Module-1-Planning.md](module-1/Module-1-Planning.md) - Plan completo
+- [module-1/Module-1-Quick-Start.md](module-1/Module-1-Quick-Start.md) - Guía rápida Next.js
+
+**Implementación Bubble (100% español):**
+- [module-1/bubble/Module-1-Bubble-Guide.md](module-1/bubble/Module-1-Bubble-Guide.md) - Guía completa (170+ páginas)
+- [module-1/bubble/API-Bubble-Reference.md](module-1/bubble/API-Bubble-Reference.md) - Referencia API
+- [module-1/bubble/Module-1-Bubble-Quick-Start.md](module-1/bubble/Module-1-Bubble-Quick-Start.md) - Checklist 6-8h
+- [module-1/bubble/Bubble-UI-Wireframes.md](module-1/bubble/Bubble-UI-Wireframes.md) - Wireframes visuales
+
+---
+
+## 🏗️ Foundation Documentation
+
+Documentación de configuración inicial y setup:
+
+- [foundation/Authentication-Guide.md](foundation/Authentication-Guide.md) - Guía de autenticación y troubleshooting
+- [foundation/Browser-API-Testing.md](foundation/Browser-API-Testing.md) - Cómo probar API en el navegador
+- [foundation/Clerk-Organization-Setup.md](foundation/Clerk-Organization-Setup.md) - Configuración de organizaciones
+- [foundation/Implementation-Status.md](foundation/Implementation-Status.md) - Estado de implementación
+
+---
+
+## 🛠️ Development Standards
+
+Frameworks y estándares de desarrollo:
+
+- [dev/Agentic-Dev-Framework.md](dev/Agentic-Dev-Framework.md) - Framework completo de desarrollo agéntico
+- [dev/Agentic-Dev-System-Simple.md](dev/Agentic-Dev-System-Simple.md) - Sistema simplificado de desarrollo
+- [dev/Tech-Stack-Standard.md](dev/Tech-Stack-Standard.md) - Estándares del stack tecnológico
+
+---
+
+## 💡 Filosofía de Documentación
+
+Estos documentos v1.0 representan la **especificación definitiva y completa** para Alquemist:
+
+- **Single source of truth** - No se necesita versionado, son finales
+- **Agnóstico de tecnología** - Se puede implementar con cualquier stack moderno
+- **Diseño regional** - Configuración default para Colombia, extensible a otras regiones
+- **Production-ready** - Suficientemente completo para empezar a construir inmediatamente
+- **Organizado por módulos** - Cada módulo tiene su propia carpeta con documentación completa
+
+---
+
+## 🌍 Internacionalización
+
+**UI Language:** 100% español - todos los textos visibles al usuario
+**Database Values:** Inglés técnico (indoor, active, greenhouse) para compatibilidad API
+**User Display:** Traducciones automáticas desde `messages/es.json`
+**Example:** BD guarda "indoor", usuario ve "Interior"
+
+---
+
+## 🎯 Technology Stack
 
 **Complete Stack:**
-- Frontend: Next.js 14 + TypeScript + Tailwind CSS + shadcn/ui
+- Frontend: Dual-mode (Bubble + Next.js 14)
 - Database: Convex (serverless, real-time)
-- Auth: Clerk (Organizations, RBAC)
+- Auth: Clerk (Organizations = Companies)
+- API: RESTful API (v1) for frontend-agnostic access
 - Deployment: Vercel + Convex Cloud
-- Cost: Starts FREE, scales to $20-70/month
+- i18n: UI 100% español, datos técnicos en inglés
+
+**Dual-Frontend Architecture:**
+- **Bubble Frontend:** Rapid prototyping, 80% of standard UI
+- **Next.js Frontend:** Complex features, custom workflows
+- **Shared Backend:** Single Convex database + REST API
 
 **Regional Configuration (Colombia Default):**
 - Multilingual (default locale: "es")
@@ -107,9 +189,9 @@ Old versioned documents moved to `archive/` directory:
 
 ---
 
-## Development Workflow
+## 🔄 Development Workflow
 
-### Agentic Development System (Simplified)
+### Agentic Development System
 
 **Quick Start with CLAUDE.MD:**
 ```bash
@@ -125,20 +207,12 @@ Old versioned documents moved to `archive/` directory:
 3. **PR** - Claude generates comprehensive PR description (archives all decisions)
 
 **Key Documents:**
-- [CLAUDE.MD](CLAUDE.MD) - Context engineering agent with commands (~1500 tokens)
-- [Agentic-Dev-System-Simple.md](Agentic-Dev-System-Simple.md) - Complete workflow guide (~600 lines)
-
-**Benefits:**
-- 75% reduction in documentation overhead vs complex systems
-- PR-based archive (no separate planning docs)
-- On-demand context loading (only relevant sections)
-- Git history as living documentation
-
-See [Agentic-Dev-System-Simple.md](Agentic-Dev-System-Simple.md) for complete workflow details.
+- [CLAUDE.MD](../CLAUDE.MD) - Context engineering agent with commands (~1500 tokens)
+- [dev/Agentic-Dev-System-Simple.md](dev/Agentic-Dev-System-Simple.md) - Complete workflow guide
 
 ---
 
-### Implementation Order
+## 📝 Implementation Order
 
 **Phase 1: Onboarding (Modules 1-8)**
 1. Authentication & Account Creation
@@ -165,105 +239,100 @@ See [Agentic-Dev-System-Simple.md](Agentic-Dev-System-Simple.md) for complete wo
 
 ---
 
-## Document Maintenance
+## 📚 Finding Documentation
 
-### When to Update
+**¿Buscas información sobre...?**
 
-**Add new features:**
-1. Update Product-Requirements.md with new module
-2. Update Technical-Specification.md if new patterns needed
-3. Update Database-Schema.md if new tables/fields required
-
-**Change architecture:**
-1. Update Technical-Specification.md with rationale
-2. Update Database-Schema.md if data model changes
-3. Keep Product-Requirements.md unchanged (features don't change)
-
-**Update for regional regulations:**
-1. Update compliance requirements in Product-Requirements.md
-2. Update compliance implementation in Technical-Specification.md
-3. Update compliance fields in Database-Schema.md
-
-### Version Control
-
-These documents are version 1.0 and should remain stable. For significant changes:
-
-1. Create new dated versions (e.g., "Product-Requirements-2025-06.md")
-2. Move old version to `archive/`
-3. Update this README with change summary
+- **Features y requisitos:** → [core/Product-Requirements.md](core/Product-Requirements.md)
+- **Arquitectura técnica:** → [core/Technical-Specification.md](core/Technical-Specification.md)
+- **Estructura de base de datos:** → [core/Database-Schema.md](core/Database-Schema.md)
+- **API REST:** → [core/API-Integration.md](core/API-Integration.md)
+- **Módulo específico:** → [module-X/README.md](module-1/README.md)
+- **Guías Bubble:** → [module-X/bubble/](module-1/bubble/)
+- **Setup inicial:** → [foundation/](foundation/)
+- **Estándares de desarrollo:** → [dev/](dev/)
+- **Workflow de desarrollo:** → [CLAUDE.MD](../CLAUDE.MD)
 
 ---
 
-## Additional Documentation
+## 🆕 Creating New Module Documentation
 
-### Development System
-- **[CLAUDE.MD](CLAUDE.MD)** - Context engineering agent with @commands
-- **[Agentic-Dev-System-Simple.md](Agentic-Dev-System-Simple.md)** - Complete development workflow guide
+Cuando crees documentación para un nuevo módulo (e.g., Module 2):
 
-### Other Documentation
-(Note: These files may not exist yet in new project setup. They existed in the old backup.)
-- **IMPLEMENTATION_LOG.md** - Implementation progress tracking (if needed)
-- **PROJECT_STATE.md** - Current project state (if needed)
-
-### Archive Directory
-(Note: Archive directory exists in old backup at `/home/kris/ceibatic/products/alquemist-old-backup/docs/archive/`)
-
-`archive/` contains previous versions and deprecated documents:
-- Historical PRD versions (v4.0, v4.1, v5.0, v6.0)
-- Old agentic development system docs (complex 3000+ line version)
-- Migration guides
+1. Create folder: `docs/module-2/`
+2. Create `README.md` with module overview and links
+3. Add planning documents:
+   - `Module-2-Planning.md`
+   - `Module-2-Quick-Start.md`
+   - `Module-2-Task-Board.md`
+4. If dual-frontend, create `bubble/` subfolder:
+   - `Module-2-Bubble-Guide.md`
+   - `Module-2-Bubble-Quick-Start.md`
+   - (Reutiliza `API-Bubble-Reference.md` si no hay nuevos endpoints)
+5. Update this `README.md` with links to new module
+6. Update [CLAUDE.MD](../CLAUDE.MD) with new module references
 
 ---
 
-## Getting Help
+## 🎓 Getting Help
 
 ### Questions About Features
-→ See [Product-Requirements.md](Product-Requirements.md)
+→ See [core/Product-Requirements.md](core/Product-Requirements.md)
 
 ### Questions About Implementation
-→ See [Technical-Specification.md](Technical-Specification.md)
+→ See [core/Technical-Specification.md](core/Technical-Specification.md)
 
 ### Questions About Data Model
-→ See [Database-Schema.md](Database-Schema.md)
+→ See [core/Database-Schema.md](core/Database-Schema.md)
+
+### Questions About API
+→ See [core/API-Integration.md](core/API-Integration.md)
 
 ### Questions About Development Workflow
-→ See [CLAUDE.MD](CLAUDE.MD) for commands and [Agentic-Dev-System-Simple.md](Agentic-Dev-System-Simple.md) for complete workflow
+→ See [CLAUDE.MD](../CLAUDE.MD) for commands and [dev/Agentic-Dev-System-Simple.md](dev/Agentic-Dev-System-Simple.md) for complete workflow
 
 ### Questions About Regional Compliance
-All three documents have regional compliance sections:
+All three core documents have regional compliance sections:
 - Product Requirements: Compliance cross-reference (regional examples)
 - Technical Spec: Compliance implementation (configurable by region)
 - Database Schema: Regional fields (default: Colombia)
 
 ---
 
-## Next Steps
+## 🚀 Next Steps
 
 ### For New Project
 
 1. **Read core documents** (~90 minutes total)
-   - [Product-Requirements.md](Product-Requirements.md) - What to build
-   - [Technical-Specification.md](Technical-Specification.md) - How to build
-   - [Database-Schema.md](Database-Schema.md) - Data structure
+   - [core/Product-Requirements.md](core/Product-Requirements.md) - What to build
+   - [core/Technical-Specification.md](core/Technical-Specification.md) - How to build
+   - [core/Database-Schema.md](core/Database-Schema.md) - Data structure
 
 2. **Read development workflow** (~15 minutes)
-   - [CLAUDE.MD](CLAUDE.MD) - Quick command reference
-   - [Agentic-Dev-System-Simple.md](Agentic-Dev-System-Simple.md) - Complete workflow guide
+   - [CLAUDE.MD](../CLAUDE.MD) - Quick command reference
+   - [dev/Agentic-Dev-System-Simple.md](dev/Agentic-Dev-System-Simple.md) - Complete workflow guide
 
-3. **Initialize project** (Next.js 14 + Convex + Clerk)
-   ```bash
-   npx create-next-app@14 alquemist --typescript --tailwind --app
-   npm install convex @clerk/nextjs next-intl
-   ```
+3. **Choose frontend approach**
+   - **Option A:** Start with Bubble (faster prototyping, 6-8h for Module 1)
+   - **Option B:** Start with Next.js (more features, 12-14h for Module 1)
+   - **Option C:** Build both in parallel
 
-4. **Start development with CLAUDE.MD commands**
+4. **For Bubble:** Read [module-1/bubble/Module-1-Bubble-Quick-Start.md](module-1/bubble/Module-1-Bubble-Quick-Start.md)
+
+5. **For Next.js:** Use CLAUDE.MD commands
    ```bash
    @state current          # Check current state
-   @implement module-1     # Implement MODULE 1: Authentication & Company Setup
+   @implement module-1     # Implement MODULE 1
    @review                 # Review implementation
    @pr create module-1     # Create comprehensive PR
    ```
 
-5. **Continue with modules 2-17** following the same workflow
+6. **Continue with modules 2-17** following the same workflow
 
 **Ready to build Alquemist efficiently!** 🚀
+
+---
+
+**Version:** 1.0
+**Last Updated:** 2025-10-22
+**Documentation Organization:** By module and purpose

@@ -94,15 +94,15 @@ Alquemist supports two parallel frontend options that share the same backend:
 ### Development Workflow
 
 **For Bubble Development:**
-1. Use API documentation (see API-Integration.md and API-Bubble-Reference.md)
+1. Use API documentation (see [API-Integration.md](docs/core/API-Integration.md) and [API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md))
 2. Configure Clerk authentication in Bubble (Clerk plugin)
 3. Call REST API endpoints from Bubble workflows
 4. Use Bubble's API Connector for all backend operations
 5. **NEW:** Complete Module 1 Bubble documentation available:
-   - [Module-1-Bubble-Guide.md](docs/Module-1-Bubble-Guide.md) - Full implementation guide (170+ pages)
-   - [API-Bubble-Reference.md](docs/API-Bubble-Reference.md) - Complete API reference with Bubble config
-   - [Module-1-Bubble-Quick-Start.md](docs/Module-1-Bubble-Quick-Start.md) - 6-8h checklist
-   - [Bubble-UI-Wireframes.md](docs/Bubble-UI-Wireframes.md) - Visual page designs
+   - [Module-1-Bubble-Guide.md](docs/module-1/bubble/Module-1-Bubble-Guide.md) - Full implementation guide (170+ pages)
+   - [API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md) - Complete API reference with Bubble config
+   - [Module-1-Bubble-Quick-Start.md](docs/module-1/bubble/Module-1-Bubble-Quick-Start.md) - 6-8h checklist
+   - [Bubble-UI-Wireframes.md](docs/module-1/bubble/Bubble-UI-Wireframes.md) - Visual page designs
 
 **For Next.js Development:**
 1. Use Convex queries directly (real-time)
@@ -119,10 +119,10 @@ Alquemist supports two parallel frontend options that share the same backend:
 **Next Steps**: Connect Convex queries to API endpoints, implement Bubble integration
 
 **Context Files (Load on demand):**
-- [Product-Requirements.md](docs/Product-Requirements.md) - 17 modules, feature specs
-- [Technical-Specification.md](docs/Technical-Specification.md) - Architecture, patterns
-- [Database-Schema.md](docs/Database-Schema.md) - 26 tables, regional configuration
-- [API-Integration.md](docs/API-Integration.md) - REST API reference for Bubble integration
+- [Product-Requirements.md](docs/core/Product-Requirements.md) - 17 modules, feature specs
+- [Technical-Specification.md](docs/core/Technical-Specification.md) - Architecture, patterns
+- [Database-Schema.md](docs/core/Database-Schema.md) - 26 tables, regional configuration
+- [API-Integration.md](docs/core/API-Integration.md) - REST API reference for Bubble integration
 
 ---
 
@@ -310,6 +310,69 @@ MODULE 2 - Email Verification
 - PR descriptions capture full feature context
 - Git history is queryable archive
 - No need for separate "implementation logs"
+
+---
+
+## Documentation Organization
+
+**Folder Structure:**
+```
+docs/
+├── core/              # Documentos principales del proyecto
+│   ├── Product-Requirements.md
+│   ├── Technical-Specification.md
+│   ├── Database-Schema.md
+│   └── API-Integration.md
+│
+├── foundation/        # Configuración inicial y setup
+│   ├── Authentication-Guide.md
+│   ├── Browser-API-Testing.md
+│   ├── Clerk-Organization-Setup.md
+│   └── Implementation-Status.md
+│
+├── module-X/          # Documentación específica de cada módulo
+│   ├── README.md     # Índice del módulo
+│   ├── Module-X-Planning.md
+│   ├── Module-X-Quick-Start.md
+│   └── bubble/       # Guías de implementación en Bubble
+│       ├── Module-X-Bubble-Guide.md
+│       ├── API-Bubble-Reference.md
+│       └── Bubble-UI-Wireframes.md
+│
+├── dev/              # Frameworks y estándares de desarrollo
+│   ├── Agentic-Dev-Framework.md
+│   ├── Agentic-Dev-System-Simple.md
+│   └── Tech-Stack-Standard.md
+│
+└── sessions/         # Resúmenes de sesiones de trabajo
+    └── Session-Summary-YYYY-MM-DD.md
+```
+
+**Finding Documentation:**
+- **Product specs:** `docs/core/Product-Requirements.md`
+- **Tech architecture:** `docs/core/Technical-Specification.md`
+- **Database schema:** `docs/core/Database-Schema.md`
+- **API reference:** `docs/core/API-Integration.md`
+- **Module guides:** `docs/module-X/` (cada módulo tiene su carpeta)
+- **Bubble guides:** `docs/module-X/bubble/` (implementación Bubble específica)
+- **Foundation docs:** `docs/foundation/` (setup, auth, testing)
+- **Dev standards:** `docs/dev/` (frameworks, stack, guidelines)
+
+**Creating New Module Documentation:**
+1. Create folder: `docs/module-X/` (e.g., `docs/module-2/`)
+2. Create `README.md` with module overview and links
+3. Add planning documents (Planning, Task Board, etc.)
+4. Add implementation guides (Quick Start, etc.)
+5. If dual-frontend: Create `bubble/` subfolder with Bubble-specific docs
+6. Update references in this CLAUDE.MD file
+
+**Benefits of This Structure:**
+- ✅ Clear separation by concern (core, foundation, modules, dev)
+- ✅ Each module is self-contained with README
+- ✅ Easy to find documentation by category
+- ✅ Scalable for future modules (module-2, module-3, etc.)
+- ✅ Bubble documentation grouped per module
+- ✅ Development standards centralized in `dev/`
 
 ---
 
@@ -614,10 +677,10 @@ npm run build
 - ✅ All API endpoints operational with authentication
 
 **Documentation:**
-- [docs/Implementation-Status.md](docs/Implementation-Status.md) - Detailed status report
-- [docs/Clerk-Organization-Setup.md](docs/Clerk-Organization-Setup.md) - Organization setup guide
-- [docs/Browser-API-Testing.md](docs/Browser-API-Testing.md) - Complete testing guide
-- [docs/Authentication-Guide.md](docs/Authentication-Guide.md) - Auth troubleshooting
+- [docs/foundation/Implementation-Status.md](docs/foundation/Implementation-Status.md) - Detailed status report
+- [docs/foundation/Clerk-Organization-Setup.md](docs/foundation/Clerk-Organization-Setup.md) - Organization setup guide
+- [docs/foundation/Browser-API-Testing.md](docs/foundation/Browser-API-Testing.md) - Complete testing guide
+- [docs/foundation/Authentication-Guide.md](docs/foundation/Authentication-Guide.md) - Auth troubleshooting
 
 ### Module 1: Company & Facility Setup (PLANNING COMPLETE) 📋
 
@@ -626,9 +689,9 @@ npm run build
 **Estimated Effort:** 12-14 hours (4 sprints)
 
 **Planning Documents Created:**
-- [docs/Module-1-Planning.md](docs/Module-1-Planning.md) - Full planning with 15 user stories, technical architecture
-- [docs/Module-1-Quick-Start.md](docs/Module-1-Quick-Start.md) - TL;DR implementation guide
-- [docs/Module-1-Task-Board.md](docs/Module-1-Task-Board.md) - 47 tasks in Kanban format
+- [docs/module-1/Module-1-Planning.md](docs/module-1/Module-1-Planning.md) - Full planning with 15 user stories, technical architecture
+- [docs/module-1/Module-1-Quick-Start.md](docs/module-1/Module-1-Quick-Start.md) - TL;DR implementation guide
+- [docs/module-1/Module-1-Task-Board.md](docs/module-1/Module-1-Task-Board.md) - 47 tasks in Kanban format
 
 **What We'll Build (MVP):**
 1. ✅ **Company Profile** - View and edit company information
@@ -687,7 +750,7 @@ Use `@implement module-1-sprint-1` to begin Next.js implementation!
 
 **Bubble Documentation Suite (4 guías completas en español):**
 
-1. **[Module-1-Bubble-Guide.md](docs/Module-1-Bubble-Guide.md)** (Guía completa)
+1. **[Module-1-Bubble-Guide.md](docs/module-1/bubble/Module-1-Bubble-Guide.md)** (Guía completa)
    - Guía completa de configuración (Clerk + API Connector)
    - 5 páginas con diseños y elementos detallados
    - Todos los workflows explicados paso a paso
@@ -695,7 +758,7 @@ Use `@implement module-1-sprint-1` to begin Next.js implementation!
    - Sección de solución de problemas
    - Mejores prácticas
 
-2. **[API-Bubble-Reference.md](docs/API-Bubble-Reference.md)** (Referencia API)
+2. **[API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md)** (Referencia API)
    - Los 9 endpoints API configurados para Bubble
    - Headers, parámetros, estructura de body
    - Ejemplos de manejo de respuestas
@@ -703,14 +766,14 @@ Use `@implement module-1-sprint-1` to begin Next.js implementation!
    - Secuencias de prueba
    - Consejos para patrones reutilizables
 
-3. **[Module-1-Bubble-Quick-Start.md](docs/Module-1-Bubble-Quick-Start.md)** (Checklist)
+3. **[Module-1-Bubble-Quick-Start.md](docs/module-1/bubble/Module-1-Bubble-Quick-Start.md)** (Checklist)
    - 4 fases con estimaciones de tiempo
    - Checkboxes paso a paso
    - Pruebas rápidas en cada fase
    - Desglose de tiempo (6-8h total)
    - Atajos para solución de problemas
 
-4. **[Bubble-UI-Wireframes.md](docs/Bubble-UI-Wireframes.md)** (Diseño visual)
+4. **[Bubble-UI-Wireframes.md](docs/module-1/bubble/Bubble-UI-Wireframes.md)** (Diseño visual)
    - Wireframes ASCII para las 5 páginas
    - Sistema de diseño (colores, tipografía, espaciado)
    - Especificaciones de elementos
@@ -738,9 +801,9 @@ Use `@implement module-1-sprint-1` to begin Next.js implementation!
 - **Option C:** Build both in parallel (maximum coverage)
 
 **Ready to Start Bubble Implementation:**
-1. ✅ Review [Module-1-Bubble-Quick-Start.md](docs/Module-1-Bubble-Quick-Start.md)
+1. ✅ Review [Module-1-Bubble-Quick-Start.md](docs/module-1/bubble/Module-1-Bubble-Quick-Start.md)
 2. ✅ Follow Phase 1: Setup (1-1.5h)
-3. ✅ Reference [API-Bubble-Reference.md](docs/API-Bubble-Reference.md) for API calls
-4. ✅ Use [Bubble-UI-Wireframes.md](docs/Bubble-UI-Wireframes.md) for UI design
+3. ✅ Reference [API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md) for API calls
+4. ✅ Use [Bubble-UI-Wireframes.md](docs/module-1/bubble/Bubble-UI-Wireframes.md) for UI design
 
 Use `@implement module-1-bubble` to get implementation support!
