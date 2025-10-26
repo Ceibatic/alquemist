@@ -1,6 +1,22 @@
-# Module 1: Bubble Implementation Guide
+# Module 1: Two-Step Registration - Bubble Implementation Guide
 
-**Complete step-by-step guide for implementing user registration in Bubble**
+**Complete step-by-step guide for implementing the 2-step registration with email verification in Bubble**
+
+---
+
+## Overview
+
+The registration process now uses a **3-phase flow**:
+
+1. **Phase 1: Personal Information** - User creates account (email + password)
+2. **Phase 2: Email Verification** - User verifies email address
+3. **Phase 3: Company Information** - User creates company and completes onboarding
+
+This approach provides:
+- ✅ Better UX with shorter forms
+- ✅ Verified email addresses
+- ✅ Flexibility for users
+- ✅ Reduced form abandonment
 
 ---
 
@@ -11,9 +27,13 @@ Before starting:
 1. ✅ Convex database seeded with:
    - System roles (`seedRoles:seedSystemRoles`)
    - Geographic data (`seedGeographic:seedColombianGeography`)
-2. ✅ Convex deployment URL available
-3. ✅ Bubble account created
-4. ✅ Basic familiarity with Bubble editor
+2. ✅ Backend implementation complete:
+   - Email verification system
+   - Step 1 & Step 2 registration mutations
+   - HTTP endpoints configured
+3. ✅ Convex deployment URL available
+4. ✅ Bubble account created
+5. ✅ Basic familiarity with Bubble editor
 
 ---
 
@@ -34,7 +54,7 @@ Before starting:
 
 **API Name**: `Convex`
 
-**Authentication**: `None` (we'll handle this later when adding Clerk)
+**Authentication**: `None`
 
 **Shared Headers**:
 ```
@@ -45,21 +65,141 @@ Content-Type: application/json
 - Development: `https://[your-deployment].convex.site`
 - Production: `https://[your-deployment].convex.site`
 
-Replace `[your-deployment]` with your actual Convex deployment ID from the Convex dashboard.
+Replace `[your-deployment]` with your actual Convex deployment ID.
 
-**Important**: Use `.convex.site` (NOT `.convex.cloud`) for HTTP actions. The `.cloud` domain is for WebSocket connections only.
+**Important**: Use `.convex.site` (NOT `.convex.cloud`) for HTTP actions.
 
 ---
 
-## Part 2: Create API Calls
+## Part 2: Create API Calls (3 Total)
 
-### Step 2.1: Get Departments API Call
+### API Call 1: Register User Step 1
 
-In API Connector, add new call:
+**Name**: `Register User Step 1`
+**Use as**: `Action`
+**Method**: `POST`
+**URL**: `https://[your-deployment].convex.site/registration/register-step-1`
 
-**Call Name**: `Get Departments`
-**Use as**: `Data` (to fetch data)
-**Data type**: `JSON`
+**Body**:
+```json
+{
+  "email": "<email>",
+  "password": "<password>",
+  "firstName": "<firstName>",
+  "lastName": "<lastName>",
+  "phone": "<phone>"
+}
+```
+
+**Private Parameters**:
+- All parameters: **Uncheck** ☐ (all are dynamic)
+
+**Test Data**:
+```json
+{
+  "email": "test@example.com",
+  "password": "TestPass123",
+  "firstName": "Test",
+  "lastName": "User",
+  "phone": "3001234567"
+}
+```
+
+**Expected Response**:
+```json
+{
+  "success": true,
+  "userId": "n976j2dyzskxa97mjthe4endts7t6gvx",
+  "email": "test@example.com",
+  "token": "zrVnimDMsARC6OgfAElb6QH9DsA3hNUr",
+  "message": "Cuenta creada. Por favor verifica tu correo electrónico."
+}
+```
+
+---
+
+### API Call 2: Verify Email Token
+
+**Name**: `Verify Email Token`
+**Use as**: `Action`
+**Method**: `POST`
+**URL**: `https://[your-deployment].convex.site/registration/verify-email`
+
+**Body**:
+```json
+{
+  "token": "<token>"
+}
+```
+
+**Private Parameters**:
+- token: **Uncheck** ☐
+
+**Expected Response**:
+```json
+{
+  "success": true,
+  "userId": "n976j2dyzskxa97mjthe4endts7t6gvx",
+  "message": "¡Email verificado exitosamente!"
+}
+```
+
+---
+
+### API Call 3: Register Company Step 2
+
+**Name**: `Register Company Step 2`
+**Use as**: `Action`
+**Method**: `POST`
+**URL**: `https://[your-deployment].convex.site/registration/register-step-2`
+
+**Body**:
+```json
+{
+  "userId": "<userId>",
+  "companyName": "<companyName>",
+  "businessEntityType": "<businessEntityType>",
+  "companyType": "<companyType>",
+  "country": "CO",
+  "departmentCode": "<departmentCode>",
+  "municipalityCode": "<municipalityCode>"
+}
+```
+
+**Private Parameters**:
+- country: **Keep Private** ✓ (always "CO")
+- All others: **Uncheck** ☐
+
+**Test Data**:
+```json
+{
+  "userId": "n976j2dyzskxa97mjthe4endts7t6gvx",
+  "companyName": "Cultivos Mendez S.A.S",
+  "businessEntityType": "S.A.S",
+  "companyType": "cannabis",
+  "country": "CO",
+  "departmentCode": "05",
+  "municipalityCode": "05001"
+}
+```
+
+**Expected Response**:
+```json
+{
+  "success": true,
+  "userId": "n976j2dyzskxa97mjthe4endts7t6gvx",
+  "companyId": "jn7ea3r18m5ssd368qjve67ke97t6bpe",
+  "organizationId": "org_test_1761514959078_anx8cl",
+  "message": "¡Bienvenido! Tu empresa ha sido creada exitosamente. Acceso a plataforma."
+}
+```
+
+---
+
+### API Call 4: Get Departments (for Step 2)
+
+**Name**: `Get Departments`
+**Use as**: `Data`
 **Method**: `POST`
 **URL**: `https://[your-deployment].convex.site/geographic/departments`
 
@@ -70,33 +210,14 @@ In API Connector, add new call:
 }
 ```
 
-Click **Initialize call** to test.
+**Expected Response**: Array of departments
 
-**Expected Response**:
-```json
-[
-  {
-    "_id": "...",
-    "_creationTime": 1234567890,
-    "country_code": "CO",
-    "country_name": "Colombia",
-    "administrative_level": 1,
-    "division_1_code": "05",
-    "division_1_name": "Antioquia",
-    "timezone": "America/Bogota",
-    "is_active": true,
-    "created_at": 1234567890
-  }
-]
-```
+---
 
-After initialization, Bubble will parse the response structure. Verify it shows the fields above.
+### API Call 5: Get Municipalities (for Step 2)
 
-### Step 2.2: Get Municipalities API Call
-
-**Call Name**: `Get Municipalities`
+**Name**: `Get Municipalities`
 **Use as**: `Data`
-**Data type**: `JSON`
 **Method**: `POST`
 **URL**: `https://[your-deployment].convex.site/geographic/municipalities`
 
@@ -108,431 +229,298 @@ After initialization, Bubble will parse the response structure. Verify it shows 
 }
 ```
 
-**Configure the Dynamic Parameter:**
+**Private Parameters**:
+- departmentCode: **Uncheck** ☐
 
-After you enter the body, Bubble will automatically detect `<departmentCode>` and create a parameter in the **Parameters** section below.
+**Expected Response**: Array of municipalities
 
-1. Find the `departmentCode` parameter in the Parameters list
-2. **Uncheck the "Private" checkbox** for `departmentCode`
-   - This makes it **dynamic** (changeable from your Bubble workflow)
-   - It will NOT be hardcoded
-3. Click **Initialize call** with test value `"05"` for Antioquia
-   - This validates the API works
+---
 
-**After initialization**, when you use this API in your workflows, you'll be able to pass the department code dynamically from your dropdown.
+## Part 3: Build 3 Pages
 
-### Step 2.3: Check Email Availability API Call
+### Page 1: `/signup-step-1` - Personal Information
 
-**Call Name**: `Check Email`
-**Use as**: `Data`
-**Data type**: `JSON`
-**Method**: `POST`
-**URL**: `https://[your-deployment].convex.site/registration/check-email`
+**Page Elements**:
 
-**Body**:
-```json
-{
-  "email": "<email>"
-}
+| Element | Type | Name | Content/Placeholder |
+|---------|------|------|-------------------|
+| Title | Text | - | "Crear Cuenta" |
+| Subtitle | Text | - | "Paso 1/2 - Información Personal" |
+| Email | Input | `Input Email` | "Correo Electrónico" |
+| Password | Input | `Input Password` | "Contraseña (mín. 8)" |
+| First Name | Input | `Input First Name` | "Nombre" |
+| Last Name | Input | `Input Last Name` | "Apellido" |
+| Phone | Input | `Input Phone` | "Teléfono (opcional)" |
+| Submit | Button | `Button Register Step1` | "Crear Cuenta" |
+
+**Styling**:
+- Container: 400px white box, centered, 32px padding
+- Button: Full width, green (#10B981)
+- All text in Spanish
+
+---
+
+### Page 2: `/signup-verify-email` - Email Verification
+
+**Page Elements**:
+
+| Element | Type | Name | Content/Placeholder |
+|---------|------|------|-------------------|
+| Header | Text | - | "✉️ Verificación de Email" |
+| Message | Text | - | "Se envió un email de verificación a {email}" |
+| Email Display | Text | `Text Email Display` | Show: current_email |
+| Code Input | Input | `Input Verification Code` | "Pega el código (32 caracteres)" |
+| Verify Button | Button | `Button Verify Email` | "Verificar" |
+| Resend Link | Link | `Link Resend Email` | "¿No recibiste el email? Reenviar" |
+
+**Styling**:
+- Container: 500px white box, centered
+- Info message: Light blue background
+- Success state: Show green checkmark, auto-navigate after 2 seconds
+
+---
+
+### Page 3: `/signup-step-2` - Company Information
+
+**Page Elements**:
+
+| Element | Type | Name | Placeholder |
+|---------|------|------|-------------|
+| Title | Text | - | "Crear Empresa" |
+| Subtitle | Text | - | "Paso 2/2 - Información de Empresa" |
+| Company Name | Input | `Input Company Name` | "Nombre de la Empresa" |
+| Business Type | Dropdown | `Dropdown Business Type` | "Tipo de Empresa" |
+| Company Type | Dropdown | `Dropdown Company Type` | "Tipo de Cultivo" |
+| Department | Dropdown | `Dropdown Department` | "Departamento" |
+| Municipality | Dropdown | `Dropdown Municipality` | "Municipio" |
+| Submit | Button | `Button Create Company` | "Crear Empresa" |
+
+**Dropdown Configuration**:
+
+**Business Type** (Manual):
+- S.A.S
+- S.A.
+- Ltda
+- E.U.
+- Persona Natural
+
+**Company Type** (Manual):
+- cannabis → Display: Cannabis
+- coffee → Display: Café
+- cocoa → Display: Cacao
+- flowers → Display: Flores
+- mixed → Display: Mixto
+
+**Department** (Dynamic):
+- API: Get Departments
+- Option caption: `division_1_name`
+
+**Municipality** (Dynamic):
+- API: Get Municipalities
+- Parameter: `departmentCode` = Department's `division_1_code`
+- Option caption: `division_2_name`
+
+---
+
+## Part 4: Custom States
+
+Create these custom states to manage data between pages:
+
 ```
-
-**Configure the Dynamic Parameter:**
-1. Find the `email` parameter in the Parameters list
-2. **Uncheck the "Private" checkbox** for `email`
-   - This allows you to check different emails in your workflow
-3. Click **Initialize call** with test value `"test@example.com"`
-
-### Step 2.4: Register User API Call
-
-**Call Name**: `Register User`
-**Use as**: `Action` (modifies data)
-**Data type**: `JSON`
-**Method**: `POST`
-**URL**: `https://[your-deployment].convex.site/registration/register`
-
-**Body**:
-```json
-{
-  "email": "<email>",
-  "password": "<password>",
-  "firstName": "<firstName>",
-  "lastName": "<lastName>",
-  "phone": "<phone>",
-  "companyName": "<companyName>",
-  "businessEntityType": "<businessEntityType>",
-  "companyType": "<companyType>",
-  "country": "CO",
-  "departmentCode": "<departmentCode>",
-  "municipalityCode": "<municipalityCode>"
-}
-```
-
-**Configure the Dynamic Parameters:**
-
-Bubble will detect all `<parameters>` and create them automatically. You need to:
-
-1. **Uncheck "Private"** for these parameters (they'll be filled by form inputs):
-   - `email` - from Input Email field
-   - `password` - from Input Password field
-   - `firstName` - from Input First Name field
-   - `lastName` - from Input Last Name field
-   - `phone` - from Input Phone field (optional)
-   - `companyName` - from Input Company Name field
-   - `businessEntityType` - from Dropdown Business Type
-   - `companyType` - from Dropdown Company Type
-   - `departmentCode` - from Dropdown Department
-   - `municipalityCode` - from Dropdown Municipality
-
-2. **Keep "Private" CHECKED** for:
-   - `country` - this stays `"CO"` (not dynamic)
-
-**Initialize call** with test data to validate:
-```json
-{
-  "email": "test@example.com",
-  "password": "TestPass123",
-  "firstName": "Test",
-  "lastName": "User",
-  "phone": "3001234567",
-  "companyName": "Test Company",
-  "businessEntityType": "S.A.S",
-  "companyType": "cannabis",
-  "country": "CO",
-  "departmentCode": "05",
-  "municipalityCode": "05001"
-}
+current_user_id (Text) - Store userId from Step 1
+current_email (Text) - Store email from Step 1
+current_company_id (Text) - Store companyId from Step 2
+registration_token (Text) - Store verification token
 ```
 
 ---
 
-## Part 3: Build Registration Page
+## Part 5: Workflows
 
-### Step 3.1: Create New Page
+### Page: /signup-step-1
 
-1. Go to **Design** tab
-2. Create new page: `signup`
-3. Set page width: `1200px` (or responsive)
-4. Set background color: Light gray or white
+#### Workflow 1: Form Validation + Register User
+**Trigger**: Button Register Step1 → clicked
 
-### Step 3.2: Add Container Group
+**Validation**:
+```
+1. Email required and valid format
+2. Password ≥ 8 chars with letter + number
+3. First Name and Last Name required
 
-1. Add **Group** element
-2. Name: `Group Registration Container`
-3. Style:
-   - Width: `400px` (fixed) or `80%` (responsive, max-width 400px)
-   - Horizontal alignment: Center
-   - Background: White
-   - Border radius: `8px`
-   - Padding: `32px`
-   - Shadow: Yes (subtle)
+If validation fails:
+  → Show error message
+  → Stop workflow
+```
 
-### Step 3.3: Add Form Elements
-
-Inside the container group, add elements in this order:
-
-#### 3.3.1 Header Text
-- **Element**: Text
-- **Content**: `"Crear Cuenta"`
-- **Style**: Heading 1, Bold, 28px
-- **Margin bottom**: 8px
-
-#### 3.3.2 Subheader Text
-- **Element**: Text
-- **Content**: `"Completa el formulario para comenzar"`
-- **Style**: Paragraph, 14px, Gray
-- **Margin bottom**: 24px
-
-#### 3.3.3 Personal Information Section
-
-**Section Label**:
-- **Text**: `"Información Personal"`
-- **Style**: Bold, 16px
-- **Margin bottom**: 12px
-
-**First Name Input**:
-- **Element**: Input
-- **Name**: `Input First Name`
-- **Placeholder**: `"Nombre"`
-- **Type**: Text
-- **Margin bottom**: 12px
-
-**Last Name Input**:
-- **Element**: Input
-- **Name**: `Input Last Name`
-- **Placeholder**: `"Apellido"`
-- **Type**: Text
-- **Margin bottom**: 12px
-
-**Email Input**:
-- **Element**: Input
-- **Name**: `Input Email`
-- **Placeholder**: `"Correo Electrónico"`
-- **Type**: Email
-- **Margin bottom**: 12px
-
-**Password Input**:
-- **Element**: Input
-- **Name**: `Input Password`
-- **Placeholder**: `"Contraseña (mín. 8 caracteres)"`
-- **Type**: Password
-- **Margin bottom**: 12px
-
-**Phone Input** (Optional):
-- **Element**: Input
-- **Name**: `Input Phone`
-- **Placeholder**: `"Teléfono (opcional)"`
-- **Type**: Text
-- **Margin bottom**: 24px
-
-#### 3.3.4 Company Information Section
-
-**Section Label**:
-- **Text**: `"Información de la Empresa"`
-- **Style**: Bold, 16px
-- **Margin bottom**: 12px
-
-**Company Name Input**:
-- **Element**: Input
-- **Name**: `Input Company Name`
-- **Placeholder**: `"Nombre de la Empresa"`
-- **Type**: Text
-- **Margin bottom**: 12px
-
-**Business Entity Type Dropdown**:
-- **Element**: Dropdown
-- **Name**: `Dropdown Business Type`
-- **Choices**: Manual entry
-  - `S.A.S`
-  - `S.A.`
-  - `Ltda`
-  - `E.U.`
-  - `Persona Natural`
-- **Default**: `S.A.S`
-- **Placeholder**: `"Tipo de Empresa"`
-- **Margin bottom**: 12px
-
-**Company Type Dropdown**:
-- **Element**: Dropdown
-- **Name**: `Dropdown Company Type`
-- **Choices**: Manual entry
-  - `cannabis` - Display: `Cannabis`
-  - `coffee` - Display: `Café`
-  - `cocoa` - Display: `Cacao`
-  - `flowers` - Display: `Flores`
-  - `mixed` - Display: `Mixto`
-- **Placeholder**: `"Tipo de Cultivo"`
-- **Margin bottom**: 24px
-
-#### 3.3.5 Location Section
-
-**Section Label**:
-- **Text**: `"Ubicación"`
-- **Style**: Bold, 16px
-- **Margin bottom**: 12px
-
-**Department Dropdown**:
-- **Element**: Dropdown
-- **Name**: `Dropdown Department`
-- **Choices style**: Dynamic choices
-- **Type of choices**: Convex Get Departments
-- **Option caption**: `division_1_name` (this is what users see)
-- **Placeholder**: `"Departamento"`
-- **Margin bottom**: 12px
-
-To configure:
-1. Click on dropdown
-2. In property editor, set **Choices style** to "Dynamic"
-3. Click **Get data from an external API**
-4. Select: `Convex - Get Departments`
-5. Set **Option caption** to `division_1_name`
-6. The dropdown will now display department names
-
-**Municipality Dropdown**:
-- **Element**: Dropdown
-- **Name**: `Dropdown Municipality`
-- **Choices style**: Dynamic choices
-- **Type of choices**: Convex Get Municipalities
-  - Set `departmentCode` parameter to: `Dropdown Department's value's division_1_code`
-- **Option caption**: `division_2_name`
-- **Placeholder**: `"Municipio"`
-- **This element is visible**: `Dropdown Department is not empty`
-- **Margin bottom**: 24px
-
-#### 3.3.6 Submit Button
-
-- **Element**: Button
-- **Name**: `Button Register`
-- **Label**: `"Registrar"`
-- **Style**: Primary button, full width
-- **Background**: Green (`#10B981` or similar)
-- **Padding**: `12px`
-- **Margin bottom**: 16px
-
-#### 3.3.7 Login Link
-
-- **Element**: Text
-- **Content**: `"¿Ya tienes cuenta? "`
-- **Link**: Add "Iniciar sesión" text with link to `/login` page
-- **Alignment**: Center
-- **Style**: 14px
+**Success Flow**:
+```
+1. Call: Register User Step 1
+2. If success:
+   - Save userId → current_user_id
+   - Save email → current_email
+   - Save token → registration_token (for testing)
+   - Show success message
+   - Navigate to /signup-verify-email
+3. If error:
+   - Show error message from API
+```
 
 ---
 
-## Part 4: Add Workflows
+### Page: /signup-verify-email
 
-### Step 4.1: Form Validation Workflow
+#### Workflow 1: Verify Email
+**Trigger**: Button Verify Email → clicked
 
-Create workflow on **Button Register** → `When clicked`
+**Process**:
+```
+1. Get token from Input Verification Code
+2. Call: Verify Email Token
+3. If success:
+   - Show "✓ Email verificado"
+   - Wait 2 seconds
+   - Navigate to /signup-step-2
+4. If error:
+   - Show error message
+```
 
-**Actions**:
+#### Workflow 2: Resend Email
+**Trigger**: Link Resend Email → clicked
 
-1. **Action**: Show message (if validation fails)
-   - **Condition**: `Input Email is empty` OR `Input Password is empty` OR ... (check all required fields)
-   - **Message**: `"Por favor completa todos los campos requeridos"`
-   - **Style**: Error (red)
-
-2. **Action**: Show message (password too short)
-   - **Condition**: `Input Password:count characters < 8`
-   - **Message**: `"La contraseña debe tener al menos 8 caracteres"`
-   - **Style**: Error
-
-3. **Action**: Show message (invalid email)
-   - **Condition**: `Input Email is invalid email`
-   - **Message**: `"Formato de correo electrónico inválido"`
-   - **Style**: Error
-
-Add a terminating condition after each validation that stops the workflow if validation fails.
-
-### Step 4.2: Registration Workflow
-
-Continue the workflow (after validation passes):
-
-**Action 1**: Call Convex Register API
-- **API**: Convex - Register User
-- **Parameters**:
-  - `email`: `Input Email's value`
-  - `password`: `Input Password's value`
-  - `firstName`: `Input First Name's value`
-  - `lastName`: `Input Last Name's value`
-  - `phone`: `Input Phone's value` (can be empty)
-  - `companyName`: `Input Company Name's value`
-  - `businessEntityType`: `Dropdown Business Type's value`
-  - `companyType`: `Dropdown Company Type's value`
-  - `departmentCode`: `Dropdown Department's value's division_1_code`
-  - `municipalityCode`: `Dropdown Municipality's value's division_2_code`
-
-**Action 2**: Show success message
-- **Condition**: `Result of step 1's success is "yes"`
-- **Message**: `Result of step 1's message`
-- **Style**: Success (green)
-
-**Action 3**: Navigate to email verification page
-- **Condition**: `Result of step 1's success is "yes"`
-- **Destination**: `/email-verification` (Module 2)
-- **Send more parameters**:
-  - `email`: `Input Email's value`
-
-**Action 4**: Show error message (if registration fails)
-- **Condition**: `Result of step 1's success is not "yes"`
-- **Message**: `Result of step 1's error`
-- **Style**: Error (red)
+**Process**:
+```
+1. Call: Resend Verification Email (from Module 2)
+2. If success:
+   - Show "Email reenviado"
+3. If error:
+   - Show error (rate limit message if applicable)
+```
 
 ---
 
-## Part 5: Add Real-time Email Validation
+### Page: /signup-step-2
 
-Create workflow on **Input Email** → `Every time the input is changed`
+#### Workflow 1: Department Selection
+**Trigger**: Dropdown Department → value changed
 
-**Condition**: `Input Email is not empty` AND `Input Email is a valid email`
+**Action**:
+```
+1. Reset Municipality dropdown
+2. Load municipalities (triggered automatically by dependency)
+```
 
-**Action 1**: Call Check Email API (after 500ms delay)
-- **API**: Convex - Check Email
-- **Parameters**:
-  - `email`: `Input Email's value`
+#### Workflow 2: Form Validation + Create Company
+**Trigger**: Button Create Company → clicked
 
-**Action 2**: Show validation icon/text
-- Add a small text element next to email input
-- **Condition**: `Result of step 1's available is "no"`
-- **Text**: `"❌ Este correo ya está registrado"`
-- **Color**: Red
+**Validation**:
+```
+1. Company Name required
+2. Business Type selected
+3. Company Type selected
+4. Department selected
+5. Municipality selected
 
-- **Condition**: `Result of step 1's available is "yes"`
-- **Text**: `"✓ Correo disponible"`
-- **Color**: Green
+If validation fails:
+  → Show error message
+  → Stop workflow
+```
+
+**Success Flow**:
+```
+1. Call: Register Company Step 2
+   - userId: current_user_id
+   - companyName: Input Company Name value
+   - businessEntityType: Dropdown Business Type value
+   - companyType: Dropdown Company Type value
+   - country: "CO"
+   - departmentCode: Dropdown Department value's division_1_code
+   - municipalityCode: Dropdown Municipality value's division_2_code
+
+2. If success:
+   - Show success message
+   - Save companyId → current_company_id
+   - Wait 2 seconds
+   - Navigate to /dashboard
+3. If error:
+   - Show error message
+```
 
 ---
 
 ## Part 6: Styling & Responsiveness
 
-### Desktop View (Width > 768px)
-- Container: `400px` fixed width, centered
-- Inputs: Full width with consistent `12px` margin bottom
-- Font sizes: 14px for inputs, 16px for labels
-
-### Mobile View (Width ≤ 768px)
-- Container: `90%` width, `16px` padding
-- Inputs: Full width
-- Font sizes: 14px for inputs, 14px for labels
-- Reduce heading size to 24px
-
 ### Color Palette
-- **Primary**: `#10B981` (Green for cannabis/agriculture theme)
+- **Primary**: `#10B981` (Green)
 - **Background**: `#F9FAFB` (Light gray)
 - **Text**: `#111827` (Dark gray/black)
-- **Input Border**: `#D1D5DB` (Medium gray)
 - **Error**: `#EF4444` (Red)
 - **Success**: `#10B981` (Green)
+
+### Desktop View (Width > 768px)
+- Container: 400-500px fixed width, centered
+- Full width inputs with 12px margin
+
+### Mobile View (Width ≤ 768px)
+- Container: 90% width with padding
+- Full width inputs
+- Reduce heading to 24px
 
 ---
 
 ## Part 7: Testing Checklist
 
-### Functional Testing
-- [ ] Department dropdown loads Colombian departments
-- [ ] Municipality dropdown loads municipalities for selected department
-- [ ] Municipality dropdown clears when department changes
-- [ ] Email validation shows available/unavailable status
-- [ ] Password validation rejects <8 characters
-- [ ] Registration succeeds with valid data
-- [ ] Registration fails with duplicate email
-- [ ] Success message displays on successful registration
-- [ ] Error message displays on failed registration
-- [ ] Redirect to email verification page works
+### Step 1 Testing
+- [ ] Email validation shows error for invalid format
+- [ ] Password validation shows error for <8 chars
+- [ ] All required fields validation works
+- [ ] Submit with valid data creates user
+- [ ] Response contains userId and token
+- [ ] Auto-navigate to verification page
+- [ ] User data saved in custom state
 
-### UI Testing
-- [ ] Form is centered on page
-- [ ] All inputs have correct placeholders in Spanish
-- [ ] Dropdowns display correct options
-- [ ] Button is full width and green
-- [ ] Responsive layout works on mobile (test with width < 768px)
-- [ ] All text is in Spanish
+### Step 2: Email Verification Testing
+- [ ] Page displays correct email
+- [ ] Paste token and verify works
+- [ ] Success message shows
+- [ ] Auto-navigate to Step 3 after 2 seconds
+- [ ] Resend email works
+- [ ] Rate limiting enforced (show error after 5 resends)
 
-### Edge Case Testing
-- [ ] Submit with empty fields shows error
-- [ ] Submit with invalid email format shows error
-- [ ] Submit with password < 8 chars shows error
-- [ ] Submit with unavailable email shows error from backend
-- [ ] Change department clears municipality selection
+### Step 3: Company Creation Testing
+- [ ] Department dropdown populated
+- [ ] Department change filters municipalities
+- [ ] All fields required validation works
+- [ ] Submit creates company
+- [ ] User linked to company
+- [ ] Navigate to dashboard
+- [ ] Email verification enforced (can't skip)
+
+### Error Cases
+- [ ] Duplicate email rejected in Step 1
+- [ ] Invalid token in Step 2 shows error
+- [ ] Expired token in Step 2 shows error
+- [ ] Invalid location in Step 3 shows error
 
 ---
 
 ## Part 8: Go Live
 
 ### Pre-launch Checklist
-- [ ] All API calls are configured correctly
-- [ ] Convex deployment URL is correct (production, not dev)
-- [ ] Database is seeded with roles and geographic data
-- [ ] All workflows are tested
+- [ ] All 5 API calls configured correctly
+- [ ] Convex deployment URL is production
+- [ ] Database seeded (roles + geographic)
+- [ ] All workflows tested
 - [ ] Mobile responsiveness verified
-- [ ] Spanish translations verified
-- [ ] Privacy policy and terms links added (if required)
+- [ ] All text in Spanish
+- [ ] Custom states working correctly
 
 ### Launch Steps
-1. Set signup page as public (not login-required)
-2. Update index page to redirect to `/signup` if not logged in
-3. Test full registration flow one final time
-4. Monitor Convex logs for errors
-5. Set up error tracking (optional - Bubble analytics)
+1. Set pages as public (not login-required)
+2. Update index to redirect to `/signup-step-1` if not logged in
+3. Test full flow end-to-end
+4. Monitor Convex logs
+5. Set up error tracking (optional)
 
 ---
 
@@ -540,38 +528,76 @@ Create workflow on **Input Email** → `Every time the input is changed`
 
 ### Problem: Departments dropdown is empty
 **Solution**:
-- Verify Convex API call is configured correctly
+- Verify Get Departments API call initialized
 - Check Convex deployment URL
-- Run `seedGeographic:seedColombianGeography` mutation
-- Check API Connector initialization - re-initialize if needed
+- Run `seedGeographic:seedColombianGeography`
+- Re-initialize API call if needed
 
 ### Problem: "Email already registered" error on new email
 **Solution**:
-- Check database - email might exist from previous test
 - Delete test users from Convex dashboard
 - Ensure email is lowercase in database
 
 ### Problem: Registration fails with "Role not found"
 **Solution**:
-- Run `seedRoles:seedSystemRoles` mutation in Convex
-- Verify `COMPANY_OWNER` role exists in database
+- Run `seedRoles:seedSystemRoles`
+- Verify COMPANY_OWNER role exists
 
-### Problem: Municipality dropdown doesn't filter by department
+### Problem: Municipality dropdown doesn't filter
 **Solution**:
-- Check `departmentCode` parameter is set to `Dropdown Department's value's division_1_code`
-- Verify dropdown is using correct API call
-- Check if parent-child relationship in database is correct
+- Check departmentCode parameter set correctly
+- Verify Get Municipalities dependency on Department dropdown
+
+### Problem: Email verification token invalid
+**Solution**:
+- Token expires in 24 hours - user must resend
+- Can only use token once - already verified email
+- Copy token exactly (32 characters)
 
 ---
 
-## Next Module
+## Important Notes
 
-After completing Module 1, implement:
+### Email Verification
+- Token valid for 24 hours
+- Token can only be used once
+- Rate limiting: Max 5 resends, 5-min delay between
+- Required before Step 2 (backend enforces)
 
-**Module 2: Email Verification**
-- Send verification email
-- Create email verification page
-- Verify token and activate account
+### User Experience
+- Clear progress indicators (Paso 1/2, Paso 2/2)
+- Success messages encouraging next step
+- Error messages specific and actionable
+- Auto-navigation after verification
+
+### Data Flow
+- Step 1 → Custom states (userId, email, token)
+- Step 2 → Custom state (companyId)
+- Step 3 → Dashboard (user now fully registered)
+
+---
+
+## Related Documentation
+
+- [TWO-STEP-REGISTRATION-GUIDE.md](TWO-STEP-REGISTRATION-GUIDE.md) - Quick reference
+- [Module 1 README](../README.md) - Overview and database schema
+- [QUICK-REFERENCE.md](QUICK-REFERENCE.md) - Parameter explanation
+
+---
+
+## Next Steps
+
+After completing Module 1:
+
+**Module 2: Email Service Integration**
+- Configure email provider (SendGrid, Resend, etc.)
+- Implement actual email sending
+- Handle email bounces/failures
+
+**Module 3: Subscription & Payments**
+- Payment integration
+- Plan selection
+- Billing management
 
 ---
 
@@ -579,4 +605,10 @@ After completing Module 1, implement:
 
 - **Bubble Manual**: [https://manual.bubble.io](https://manual.bubble.io)
 - **Convex Docs**: [https://docs.convex.dev](https://docs.convex.dev)
-- **API Integration**: [../../core/API-Integration.md](../../core/API-Integration.md)
+- **Alquemist Docs**: [../../README.md](../../README.md)
+
+---
+
+**Status**: ✅ Backend complete and tested
+**Ready**: ✅ For Bubble implementation
+**Estimated Time**: 2.5-3 hours to build all 3 pages + workflows
