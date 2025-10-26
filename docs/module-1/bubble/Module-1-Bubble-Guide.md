@@ -108,9 +108,18 @@ After initialization, Bubble will parse the response structure. Verify it shows 
 }
 ```
 
-Mark `<departmentCode>` as **private** (uncheck "private" in the parameter list to make it dynamic).
+**Configure the Dynamic Parameter:**
 
-Click **Initialize call** with a test value like `"05"` for Antioquia.
+After you enter the body, Bubble will automatically detect `<departmentCode>` and create a parameter in the **Parameters** section below.
+
+1. Find the `departmentCode` parameter in the Parameters list
+2. **Uncheck the "Private" checkbox** for `departmentCode`
+   - This makes it **dynamic** (changeable from your Bubble workflow)
+   - It will NOT be hardcoded
+3. Click **Initialize call** with test value `"05"` for Antioquia
+   - This validates the API works
+
+**After initialization**, when you use this API in your workflows, you'll be able to pass the department code dynamically from your dropdown.
 
 ### Step 2.3: Check Email Availability API Call
 
@@ -127,7 +136,11 @@ Click **Initialize call** with a test value like `"05"` for Antioquia.
 }
 ```
 
-Mark `<email>` as private/dynamic.
+**Configure the Dynamic Parameter:**
+1. Find the `email` parameter in the Parameters list
+2. **Uncheck the "Private" checkbox** for `email`
+   - This allows you to check different emails in your workflow
+3. Click **Initialize call** with test value `"test@example.com"`
 
 ### Step 2.4: Register User API Call
 
@@ -154,9 +167,26 @@ Mark `<email>` as private/dynamic.
 }
 ```
 
-Mark all `<parameters>` as private/dynamic except `"country": "CO"` (leave as static for now).
+**Configure the Dynamic Parameters:**
 
-Click **Initialize call** with test data:
+Bubble will detect all `<parameters>` and create them automatically. You need to:
+
+1. **Uncheck "Private"** for these parameters (they'll be filled by form inputs):
+   - `email` - from Input Email field
+   - `password` - from Input Password field
+   - `firstName` - from Input First Name field
+   - `lastName` - from Input Last Name field
+   - `phone` - from Input Phone field (optional)
+   - `companyName` - from Input Company Name field
+   - `businessEntityType` - from Dropdown Business Type
+   - `companyType` - from Dropdown Company Type
+   - `departmentCode` - from Dropdown Department
+   - `municipalityCode` - from Dropdown Municipality
+
+2. **Keep "Private" CHECKED** for:
+   - `country` - this stays `"CO"` (not dynamic)
+
+**Initialize call** with test data to validate:
 ```json
 {
   "email": "test@example.com",
