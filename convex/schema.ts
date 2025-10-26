@@ -125,6 +125,36 @@ export default defineSchema({
     .index("by_role", ["role_id"])
     .index("by_status", ["status"]),
 
+  geographic_locations: defineTable({
+    // Regional Hierarchical Structure
+    country_code: v.string(), // ISO 3166-1 alpha-2 (e.g., "CO")
+    country_name: v.string(),
+    administrative_level: v.number(), // 1 = Department/State, 2 = Municipality/City
+
+    // Division 1 (Department/State)
+    division_1_code: v.optional(v.string()), // DANE code for Colombia
+    division_1_name: v.optional(v.string()),
+
+    // Division 2 (Municipality/City)
+    division_2_code: v.optional(v.string()), // DANE code for Colombia
+    division_2_name: v.optional(v.string()),
+    parent_division_1_code: v.optional(v.string()), // Links to parent department
+
+    // Geographic Data
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    timezone: v.optional(v.string()), // IANA timezone (e.g., "America/Bogota")
+
+    // Metadata
+    is_active: v.boolean(), // Default: true
+    created_at: v.number(),
+  })
+    .index("by_country", ["country_code"])
+    .index("by_division_1", ["country_code", "division_1_code"])
+    .index("by_division_2", ["country_code", "division_2_code"])
+    .index("by_parent", ["parent_division_1_code"])
+    .index("by_is_active", ["is_active"]),
+
   // ============================================================================
   // CROP CONFIGURATION TABLES (2)
   // ============================================================================
