@@ -42,10 +42,12 @@ Content-Type: application/json
 ```
 
 **Server URLs**:
-- Development: `https://[your-deployment].convex.cloud`
-- Production: `https://[your-deployment].convex.cloud`
+- Development: `https://[your-deployment].convex.site`
+- Production: `https://[your-deployment].convex.site`
 
 Replace `[your-deployment]` with your actual Convex deployment ID from the Convex dashboard.
+
+**Important**: Use `.convex.site` (NOT `.convex.cloud`) for HTTP actions. The `.cloud` domain is for WebSocket connections only.
 
 ---
 
@@ -59,7 +61,7 @@ In API Connector, add new call:
 **Use as**: `Data` (to fetch data)
 **Data type**: `JSON`
 **Method**: `POST`
-**URL**: `https://[your-deployment].convex.cloud/api/query/geographic:getDepartments`
+**URL**: `https://[your-deployment].convex.site/geographic/departments`
 
 **Body**:
 ```json
@@ -96,7 +98,7 @@ After initialization, Bubble will parse the response structure. Verify it shows 
 **Use as**: `Data`
 **Data type**: `JSON`
 **Method**: `POST`
-**URL**: `https://[your-deployment].convex.cloud/api/query/geographic:getMunicipalities`
+**URL**: `https://[your-deployment].convex.site/geographic/municipalities`
 
 **Body**:
 ```json
@@ -116,7 +118,7 @@ Click **Initialize call** with a test value like `"05"` for Antioquia.
 **Use as**: `Data`
 **Data type**: `JSON`
 **Method**: `POST`
-**URL**: `https://[your-deployment].convex.cloud/api/query/registration:checkEmailAvailability`
+**URL**: `https://[your-deployment].convex.site/registration/check-email`
 
 **Body**:
 ```json
@@ -133,7 +135,7 @@ Mark `<email>` as private/dynamic.
 **Use as**: `Action` (modifies data)
 **Data type**: `JSON`
 **Method**: `POST`
-**URL**: `https://[your-deployment].convex.cloud/api/mutation/registration:register`
+**URL**: `https://[your-deployment].convex.site/registration/register`
 
 **Body**:
 ```json

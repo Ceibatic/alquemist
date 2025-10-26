@@ -131,19 +131,57 @@ Bubble → GCP Cloud Functions → Vision AI / Document AI
    - [API-Integration.md](docs/core/API-Integration.md) - Guía general de integración
    - [API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md) - Referencia técnica de endpoints
 
-2. **Convex HTTP API (Direct Connection):**
+2. **Convex HTTP Actions (Required for Bubble):**
    - ⚠️ NO existe plugin de Convex para Bubble
-   - Conectar directamente a Convex HTTP API desde Bubble:
+   - Bubble requiere HTTP Actions (NO puede usar Convex SDK)
+   - **Configuración correcta:**
      ```
-     Base URL: https://[your-deployment].convex.cloud
-     Endpoint pattern: /api/query/[functionName] (GET)
-                       /api/mutation/[functionName] (POST)
+     Base URL: https://[your-deployment].convex.site
+     Método: POST para todos los endpoints
      Headers:
-       - Authorization: Bearer [clerk-jwt-token]
        - Content-Type: application/json
+       - Authorization: Bearer [clerk-jwt-token] (cuando se agregue auth)
      ```
-   - Ejemplo query: `GET /api/query/companies:get?args={"id":"company123"}`
-   - Ejemplo mutation: `POST /api/mutation/companies:create` con body JSON
+   - ⚠️ **IMPORTANTE:** Usar `.convex.site` NO `.convex.cloud`
+     - `.convex.cloud` = WebSocket SDK (NO funciona con Bubble)
+     - `.convex.site` = HTTP Actions (SÍ funciona con Bubble)
+
+   - **Implementación:**
+     - Crear `convex/http.ts` con `httpRouter()` y `httpAction()`
+     - Definir rutas custom (ej: `/geographic/departments`, `/registration/register`)
+     - Los HTTP Actions llaman internamente a queries/mutations de Convex
+
+   - **Ejemplo de HTTP Action:**
+     ```typescript
+     // convex/http.ts
+     import { httpRouter } from "convex/server";
+     import { httpAction } from "./_generated/server";
+     import { api } from "./_generated/api";
+
+     const http = httpRouter();
+
+     http.route({
+       path: "/geographic/departments",
+       method: "POST",
+       handler: httpAction(async (ctx, request) => {
+         const { countryCode } = await request.json();
+         const departments = await ctx.runQuery(api.geographic.getDepartments, {
+           countryCode,
+         });
+         return new Response(JSON.stringify(departments), {
+           status: 200,
+           headers: { "Content-Type": "application/json" },
+         });
+       }),
+     });
+
+     export default http;
+     ```
+
+   - **Llamadas desde Bubble:**
+     - Endpoint: `POST https://[deployment].convex.site/geographic/departments`
+     - Body: `{"countryCode": "CO"}`
+     - Response: Array de departments
 
 3. **Autenticación Clerk:**
    - ⚠️ NO existe plugin de Clerk para Bubble

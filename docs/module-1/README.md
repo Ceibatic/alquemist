@@ -115,9 +115,13 @@ See [bubble/Module-1-Bubble-Guide.md](bubble/Module-1-Bubble-Guide.md) for detai
 
 ## API Endpoints
 
+**Base URL**: `https://[your-deployment].convex.site`
+
+**Important**: Use `.convex.site` for HTTP actions (Bubble integration), NOT `.convex.cloud`
+
 ### Registration
 
-**Endpoint**: `POST /api/mutation/registration:register`
+**Endpoint**: `POST /registration/register`
 
 **Request Body**:
 ```json
@@ -156,7 +160,14 @@ See [bubble/Module-1-Bubble-Guide.md](bubble/Module-1-Bubble-Guide.md) for detai
 
 ### Check Email Availability
 
-**Endpoint**: `GET /api/query/registration:checkEmailAvailability?args={"email":"..."}`
+**Endpoint**: `POST /registration/check-email`
+
+**Request Body**:
+```json
+{
+  "email": "juan@example.com"
+}
+```
 
 **Response**:
 ```json
@@ -168,7 +179,14 @@ See [bubble/Module-1-Bubble-Guide.md](bubble/Module-1-Bubble-Guide.md) for detai
 
 ### Get Departments
 
-**Endpoint**: `GET /api/query/geographic:getDepartments?args={"countryCode":"CO"}`
+**Endpoint**: `POST /geographic/departments`
+
+**Request Body**:
+```json
+{
+  "countryCode": "CO"
+}
+```
 
 **Response**:
 ```json
@@ -184,7 +202,15 @@ See [bubble/Module-1-Bubble-Guide.md](bubble/Module-1-Bubble-Guide.md) for detai
 
 ### Get Municipalities
 
-**Endpoint**: `GET /api/query/geographic:getMunicipalities?args={"countryCode":"CO","departmentCode":"05"}`
+**Endpoint**: `POST /geographic/municipalities`
+
+**Request Body**:
+```json
+{
+  "countryCode": "CO",
+  "departmentCode": "05"
+}
+```
 
 **Response**:
 ```json
