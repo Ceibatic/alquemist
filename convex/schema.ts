@@ -85,10 +85,11 @@ export default defineSchema({
 
   users: defineTable({
     // Company & Authentication
-    company_id: v.id("companies"),
+    company_id: v.optional(v.id("companies")), // Optional during step 1
     email: v.string(),
     password_hash: v.string(),
     email_verified: v.boolean(), // Default: false
+    email_verified_at: v.optional(v.number()), // Timestamp when verified
 
     // Personal Information
     first_name: v.optional(v.string()),
@@ -124,6 +125,23 @@ export default defineSchema({
     .index("by_company", ["company_id"])
     .index("by_role", ["role_id"])
     .index("by_status", ["status"]),
+
+  emailVerificationTokens: defineTable({
+    // Email Verification Token Management
+    user_id: v.id("users"),
+    email: v.string(),
+    token: v.string(), // Random token sent in email link
+    expires_at: v.number(), // 24 hours from creation
+    verified_at: v.optional(v.number()), // When token was used
+    used: v.boolean(), // Default: false - prevent reuse
+
+    // Metadata
+    created_at: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_email", ["email"])
+    .index("by_user", ["user_id"])
+    .index("by_expires", ["expires_at"]),
 
   geographic_locations: defineTable({
     // Regional Hierarchical Structure

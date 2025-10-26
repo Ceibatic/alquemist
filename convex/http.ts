@@ -154,26 +154,146 @@ http.route({
 });
 
 /**
- * POST /registration/register
- * Register new user with company creation
+ * POST /registration/register-step-1
+ * Step 1: Create user account only (no company yet)
  *
  * Body: {
- *   email, password, firstName, lastName, phone,
- *   companyName, businessEntityType, companyType,
+ *   email, password, firstName, lastName, phone (optional)
+ * }
+ * Response: { success, userId, token, message }
+ */
+http.route({
+  path: "/registration/register-step-1",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const body = await request.json();
+
+    // Validate required fields
+    const requiredFields = ["email", "password", "firstName", "lastName"];
+    const missingFields = requiredFields.filter(field => !body[field]);
+
+    if (missingFields.length > 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Campos requeridos faltantes: ${missingFields.join(", ")}`
+        }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+
+    try {
+      const result = await ctx.runMutation(api.registration.registerUserStep1, body);
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: error.message
+        }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /registration/verify-email
+ * Verify email token and mark email as verified
+ *
+ * Body: { token }
+ * Response: { success, message, userId }
+ */
+http.route({
+  path: "/registration/verify-email",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const { token } = await request.json();
+
+    if (!token) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Token es requerido"
+        }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+
+    try {
+      const result = await ctx.runMutation(api.emailVerification.verifyEmailToken, {
+        token,
+      });
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: error.message
+        }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /registration/register-step-2
+ * Step 2: Create company and complete registration
+ *
+ * Body: {
+ *   userId, companyName, businessEntityType, companyType,
  *   country, departmentCode, municipalityCode
  * }
  * Response: { success, userId, companyId, organizationId, message }
  */
 http.route({
-  path: "/registration/register",
+  path: "/registration/register-step-2",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const body = await request.json();
 
     // Validate required fields
     const requiredFields = [
-      "email", "password", "firstName", "lastName",
-      "companyName", "businessEntityType", "companyType",
+      "userId", "companyName", "businessEntityType", "companyType",
       "country", "departmentCode", "municipalityCode"
     ];
 
@@ -196,7 +316,7 @@ http.route({
     }
 
     try {
-      const result = await ctx.runMutation(api.registration.register, body);
+      const result = await ctx.runMutation(api.registration.registerCompanyStep2, body);
 
       return new Response(JSON.stringify(result), {
         status: 200,

@@ -1,6 +1,7 @@
 /**
- * Module 1: User Registration & Company Creation
- * Combined registration flow - creates company and owner user in one transaction
+ * Module 1: Two-Step Registration
+ * Step 1: Create user + send verification email
+ * Step 2: Verify email + create company
  */
 
 import { v } from "convex/values";
@@ -11,34 +12,27 @@ import {
   validatePassword,
   formatColombianPhone,
 } from "./auth";
+import { api } from "./_generated/api";
+
+// ============================================================================
+// STEP 1: USER REGISTRATION (Without Company)
+// ============================================================================
 
 /**
- * Register new user with company creation
- * Module 1 implementation - simplified onboarding flow
+ * Step 1: Register user only (no company yet)
+ * - Create user record
+ * - Send verification email
+ * - Return userId for next step
  */
-export const register = mutation({
+export const registerUserStep1 = mutation({
   args: {
-    // User Information
     email: v.string(),
     password: v.string(),
     firstName: v.string(),
     lastName: v.string(),
     phone: v.optional(v.string()),
-
-    // Company Information
-    companyName: v.string(),
-    businessEntityType: v.string(), // S.A.S, S.A., Ltda, E.U., Persona Natural
-    companyType: v.string(), // cannabis/coffee/cocoa/flowers/mixed
-
-    // Regional Information
-    country: v.string(), // Default: "CO"
-    departmentCode: v.string(), // DANE division_1_code
-    municipalityCode: v.string(), // DANE division_2_code
-
-    // Organization ID (from Clerk - will be generated manually for now)
-    organizationId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     const now = Date.now();
 
     // 1. Validation
@@ -61,19 +55,108 @@ export const register = mutation({
       throw new Error("El correo electrónico ya está registrado");
     }
 
-    // 2. Get geographic location data for validation
-    const department = await ctx.db
-      .query("geographic_locations")
-      .withIndex("by_division_1", (q) =>
-        q.eq("country_code", args.country).eq("division_1_code", args.departmentCode)
-      )
-      .filter((q) => q.eq(q.field("administrative_level"), 1))
+    // 2. Get default role (USER role - not COMPANY_OWNER yet)
+    const userRole = await ctx.db
+      .query("roles")
+      .withIndex("by_name", (q) => q.eq("name", "COMPANY_OWNER"))
       .first();
 
-    if (!department) {
-      throw new Error("Departamento no encontrado");
+    if (!userRole) {
+      throw new Error("Role COMPANY_OWNER no encontrado. Ejecute seedRoles primero.");
     }
 
+    // 3. Hash password
+    const passwordHash = await hashPassword(args.password);
+
+    // 4. Create user WITHOUT company
+    const userId = await ctx.db.insert("users", {
+      company_id: undefined, // No company yet - will be set in step 2
+      email: args.email.toLowerCase(),
+      password_hash: passwordHash,
+      email_verified: false,
+      email_verified_at: undefined,
+
+      first_name: args.firstName,
+      last_name: args.lastName,
+      phone: args.phone ? formatColombianPhone(args.phone) : undefined,
+
+      role_id: userRole._id,
+      additional_role_ids: [],
+      accessible_facility_ids: [],
+      accessible_area_ids: [],
+
+      locale: "es",
+      timezone: "America/Bogota", // Default - will be updated with company in step 2
+
+      mfa_enabled: false,
+      failed_login_attempts: 0,
+
+      status: "active",
+      created_at: now,
+      updated_at: now,
+    });
+
+    // 5. Send verification email
+    const emailResult: any = await ctx.runMutation(
+      api.emailVerification.sendVerificationEmail,
+      {
+        userId,
+        email: args.email.toLowerCase(),
+      }
+    );
+
+    return {
+      success: true,
+      userId,
+      email: args.email.toLowerCase(),
+      message: "Cuenta creada. Por favor verifica tu correo electrónico.",
+      verificationSent: emailResult.success,
+      // For testing: include token
+      token: emailResult.token,
+    };
+  },
+});
+
+// ============================================================================
+// STEP 2: COMPANY CREATION (After Email Verification)
+// ============================================================================
+
+/**
+ * Step 2: Create company and assign user as COMPANY_OWNER
+ * - Verify user exists and email is verified
+ * - Create company
+ * - Assign user to company with COMPANY_OWNER role
+ * - Set company timezone from municipality
+ */
+export const registerCompanyStep2 = mutation({
+  args: {
+    userId: v.id("users"),
+    companyName: v.string(),
+    businessEntityType: v.string(), // S.A.S, S.A., Ltda, E.U., Persona Natural
+    companyType: v.string(), // cannabis/coffee/cocoa/flowers/mixed
+    country: v.string(), // Default: "CO"
+    departmentCode: v.string(), // DANE division_1_code
+    municipalityCode: v.string(), // DANE division_2_code
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // 1. Get user and verify email is verified
+    const user = await ctx.db.get(args.userId);
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    if (!user.email_verified) {
+      throw new Error("Debes verificar tu email antes de continuar");
+    }
+
+    if (user.company_id) {
+      throw new Error("Este usuario ya tiene una empresa asociada");
+    }
+
+    // 2. Validate geographic location
     const municipality = await ctx.db
       .query("geographic_locations")
       .withIndex("by_division_2", (q) =>
@@ -86,28 +169,26 @@ export const register = mutation({
       throw new Error("Municipio no encontrado");
     }
 
-    // 3. Get COMPANY_OWNER role
-    const ownerRole = await ctx.db
-      .query("roles")
-      .withIndex("by_name", (q) => q.eq("name", "COMPANY_OWNER"))
+    const department = await ctx.db
+      .query("geographic_locations")
+      .withIndex("by_division_1", (q) =>
+        q.eq("country_code", args.country).eq("division_1_code", args.departmentCode)
+      )
+      .filter((q) => q.eq(q.field("administrative_level"), 1))
       .first();
 
-    if (!ownerRole) {
-      throw new Error(
-        "Role COMPANY_OWNER no encontrado. Ejecute seedRoles primero."
-      );
+    if (!department) {
+      throw new Error("Departamento no encontrado");
     }
 
-    // 4. Hash password
-    const passwordHash = await hashPassword(args.password);
+    // 3. Generate organization ID (for Clerk later)
+    const organizationId = `org_test_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(7)}`;
 
-    // 5. Generate organization ID if not provided (for testing)
-    const orgId =
-      args.organizationId || `org_test_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-
-    // 6. Create Company
+    // 4. Create company
     const companyId = await ctx.db.insert("companies", {
-      organization_id: orgId,
+      organization_id: organizationId,
       name: args.companyName,
       company_type: args.companyType,
       business_entity_type: args.businessEntityType,
@@ -117,7 +198,7 @@ export const register = mutation({
       regional_administrative_code: args.municipalityCode,
       city: municipality.division_2_name,
 
-      // Localization defaults
+      // Localization - get from municipality
       default_locale: "es",
       default_currency: "COP",
       default_timezone: municipality.timezone || "America/Bogota",
@@ -135,45 +216,30 @@ export const register = mutation({
       updated_at: now,
     });
 
-    // 7. Create Owner User
-    const userId = await ctx.db.insert("users", {
+    // 5. Update user with company reference and timezone
+    await ctx.db.patch(args.userId, {
       company_id: companyId,
-      email: args.email.toLowerCase(),
-      password_hash: passwordHash,
-      email_verified: false, // Will be verified in Module 2
-
-      first_name: args.firstName,
-      last_name: args.lastName,
-      phone: args.phone ? formatColombianPhone(args.phone) : undefined,
-
-      role_id: ownerRole._id,
-      additional_role_ids: [],
-      accessible_facility_ids: [],
-      accessible_area_ids: [],
-
-      locale: "es",
       timezone: municipality.timezone || "America/Bogota",
-
-      mfa_enabled: false,
-      failed_login_attempts: 0,
-
-      status: "active",
-      created_at: now,
       updated_at: now,
     });
 
     return {
       success: true,
-      userId,
+      userId: args.userId,
       companyId,
-      organizationId: orgId,
-      message: "Registro exitoso. Por favor verifica tu correo electrónico.",
+      organizationId,
+      message:
+        "¡Bienvenido! Tu empresa ha sido creada exitosamente. Acceso a plataforma.",
     };
   },
 });
 
+// ============================================================================
+// UTILITY QUERIES
+// ============================================================================
+
 /**
- * Check if email is available
+ * Check email availability
  */
 export const checkEmailAvailability = query({
   args: {
@@ -193,7 +259,33 @@ export const checkEmailAvailability = query({
 });
 
 /**
- * Simple login (for testing - Clerk will handle this in production)
+ * Get user info by ID (for checking verification status)
+ */
+export const getUserInfo = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    return {
+      userId: user._id,
+      email: user.email,
+      emailVerified: user.email_verified,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      hasCompany: !!user.company_id,
+      companyId: user.company_id,
+    };
+  },
+});
+
+/**
+ * Simple login (for testing - Clerk will replace in production)
  */
 export const login = mutation({
   args: {
@@ -209,6 +301,16 @@ export const login = mutation({
 
     if (!user) {
       throw new Error("Correo electrónico o contraseña incorrectos");
+    }
+
+    // Check if email verified
+    if (!user.email_verified) {
+      throw new Error("Debes verificar tu email antes de iniciar sesión");
+    }
+
+    // Check if has company
+    if (!user.company_id) {
+      throw new Error("Completa el paso 2 de registro para acceder");
     }
 
     // Verify password
