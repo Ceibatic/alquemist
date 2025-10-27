@@ -8,6 +8,17 @@
 
 ---
 
+## 📖 Documentation
+
+**Two core resources are available:**
+
+1. **[bubble/Module-1-Bubble-Guide.md](./bubble/Module-1-Bubble-Guide.md)** - Complete technical guide for Bubble developers (1248 lines, all workflows and API reference)
+2. **[PROJECT-STATUS.md](./PROJECT-STATUS.md)** - This document (complete project status and verification)
+
+👉 **Bubble developers**: Start with [Module-1-Bubble-Guide.md](./bubble/Module-1-Bubble-Guide.md) for implementation instructions.
+
+---
+
 ## Executive Summary
 
 The complete backend for Module 1 & 2 (Registration + Email Verification + Auto-Login) is **fully implemented, deployed, and verified**.
