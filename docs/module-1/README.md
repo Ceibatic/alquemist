@@ -8,10 +8,18 @@
 
 ## 📚 START HERE: Implementation Guides
 
+### 👉 For Bubble Developers (Start Here!)
+**[BUBBLE-DEVELOPER-GUIDE.md](./BUBBLE-DEVELOPER-GUIDE.md)** - Everything you need to build the Bubble frontend (3-4 hours)
+- Setup instructions
+- API reference
+- Step-by-step implementation plan
+- Common issues & solutions
+- Testing checklist
+
 ### For Quick Overview (5 minutes)
 👉 **[IMPLEMENTATION-ROADMAP.md](./IMPLEMENTATION-ROADMAP.md)** - Master guide with timeline and overview
 
-### For Step-by-Step Implementation (2-3 hours)
+### For Detailed Implementation (2-3 hours)
 1. **[bubble/IMPLEMENTATION-CHECKLIST-STEP-1.md](./bubble/IMPLEMENTATION-CHECKLIST-STEP-1.md)** - Build signup page (15 min)
 2. **[bubble/IMPLEMENTATION-CHECKLIST-STEP-2.md](./bubble/IMPLEMENTATION-CHECKLIST-STEP-2.md)** - Build email verification page (15 min)
 3. **[bubble/IMPLEMENTATION-CHECKLIST-STEP-3.md](./bubble/IMPLEMENTATION-CHECKLIST-STEP-3.md)** - Build company registration page (20 min)
@@ -19,8 +27,10 @@
 
 ### For Complete Technical Reference
 - **[QUICK-START.md](./QUICK-START.md)** - 5-minute technical overview
-- **[bubble/Module-1-Bubble-Guide.md](./bubble/Module-1-Bubble-Guide.md)** - Full technical documentation
+- **[bubble/Module-1-Bubble-Guide.md](./bubble/Module-1-Bubble-Guide.md)** - Full technical documentation with exact Bubble steps
 - **[IMPLEMENTATION-SUMMARY.md](./IMPLEMENTATION-SUMMARY.md)** - Architecture details
+- **[IMPLEMENTATION-STATUS.md](./IMPLEMENTATION-STATUS.md)** - Backend verification checklist
+- **[BUBBLE-IMPLEMENTATION-QUICK-GUIDE.md](./BUBBLE-IMPLEMENTATION-QUICK-GUIDE.md)** - 3-4 hour quick reference
 
 ---
 
