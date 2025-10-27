@@ -1,14 +1,37 @@
-# Module 1: Authentication & Account Creation
+# Module 1 & 2: Authentication + Email Verification + Auto-Login
 
-**Status**: ✅ Ready for Implementation
+**Status**: ✅ Backend Complete | 🔧 Bubble Ready | 📋 Complete Checklists Created
 **Priority**: P0 (Critical Path)
-**Implementation**: Bubble Frontend + Convex Backend
+**Implementation**: Bubble Frontend + Convex Backend + Email Service + Clerk Integration
+
+---
+
+## 📚 START HERE: Implementation Guides
+
+### For Quick Overview (5 minutes)
+👉 **[IMPLEMENTATION-ROADMAP.md](./IMPLEMENTATION-ROADMAP.md)** - Master guide with timeline and overview
+
+### For Step-by-Step Implementation (2-3 hours)
+1. **[bubble/IMPLEMENTATION-CHECKLIST-STEP-1.md](./bubble/IMPLEMENTATION-CHECKLIST-STEP-1.md)** - Build signup page (15 min)
+2. **[bubble/IMPLEMENTATION-CHECKLIST-STEP-2.md](./bubble/IMPLEMENTATION-CHECKLIST-STEP-2.md)** - Build email verification page (15 min)
+3. **[bubble/IMPLEMENTATION-CHECKLIST-STEP-3.md](./bubble/IMPLEMENTATION-CHECKLIST-STEP-3.md)** - Build company registration page (20 min)
+4. **[bubble/ENVIRONMENT-SETUP-AND-TESTING.md](./bubble/ENVIRONMENT-SETUP-AND-TESTING.md)** - Setup environment + testing (30 min)
+
+### For Complete Technical Reference
+- **[QUICK-START.md](./QUICK-START.md)** - 5-minute technical overview
+- **[bubble/Module-1-Bubble-Guide.md](./bubble/Module-1-Bubble-Guide.md)** - Full technical documentation
+- **[IMPLEMENTATION-SUMMARY.md](./IMPLEMENTATION-SUMMARY.md)** - Architecture details
 
 ---
 
 ## Overview
 
-Module 1 implements user registration with company creation in a simplified, single-step flow. Users provide minimal information to get started quickly, with the option to complete their profile later.
+Module 1 & 2 implements a **complete 3-step registration system** with **email verification** and **auto-login**:
+
+1. **Step 1**: User creates account (email, password, personal info)
+2. **Step 2**: User verifies email address (via token)
+3. **Step 3**: User creates company and completes onboarding
+4. **Auto-Login**: System auto-creates Clerk user and establishes session
 
 ### Key Features
 

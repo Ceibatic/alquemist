@@ -404,6 +404,101 @@ http.route({
 });
 
 // ============================================================================
+// AUTO-LOGIN AFTER SIGNUP (Module 1 + Module 2 Complete)
+// ============================================================================
+
+/**
+ * POST /registration/auto-login
+ * Auto-login user after signup complete
+ * Creates Clerk user and returns session info
+ *
+ * Body: {
+ *   userId,
+ *   email,
+ *   password,
+ *   firstName,
+ *   lastName,
+ *   companyName
+ * }
+ *
+ * Response: {
+ *   success: true,
+ *   userId,
+ *   clerkUserId,
+ *   sessionId,
+ *   companyId,
+ *   redirectUrl: "/dashboard"
+ * }
+ */
+http.route({
+  path: "/registration/auto-login",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      // Validate required fields
+      if (
+        !body.userId ||
+        !body.email ||
+        !body.password ||
+        !body.firstName ||
+        !body.lastName ||
+        !body.companyName
+      ) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Campos requeridos faltantes",
+          }),
+          {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+            },
+          }
+        );
+      }
+
+      // Call auto-login mutation
+      const result = await ctx.runMutation(api.registration.autoLoginWithClerk, {
+        userId: body.userId,
+        email: body.email,
+        password: body.password,
+        firstName: body.firstName,
+        lastName: body.lastName,
+        companyName: body.companyName,
+      });
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: errorMessage,
+        }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+// ============================================================================
 // HEALTH CHECK
 // ============================================================================
 

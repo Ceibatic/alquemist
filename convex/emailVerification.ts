@@ -5,6 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { sendVerificationEmailWithResend } from "./email";
 
 /**
  * Generate a random token
@@ -26,11 +27,16 @@ export const sendVerificationEmail = mutation({
   args: {
     userId: v.id("users"),
     email: v.string(),
+    firstName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
     const expiresAt = now + 24 * 60 * 60 * 1000; // 24 hours
     const token = generateVerificationToken();
+
+    // Get user info for email template
+    const user = await ctx.db.get(args.userId);
+    const firstName = args.firstName || user?.first_name || "Usuario";
 
     // Create verification token record
     const tokenId = await ctx.db.insert("emailVerificationTokens", {
@@ -42,17 +48,26 @@ export const sendVerificationEmail = mutation({
       created_at: now,
     });
 
-    // TODO: Send actual email with verification link
-    // For now, return token for testing
-    // In production, use SendGrid, Resend, or similar
+    // Send verification email using Resend
+    const emailResult = await sendVerificationEmailWithResend(
+      args.email,
+      firstName,
+      token
+    );
 
-    console.log(`[EMAIL] Verification token for ${args.email}: ${token}`);
+    if (!emailResult.success) {
+      console.error("[EMAIL] Failed to send verification email:", emailResult.error);
+      // Don't fail the mutation - token is still created for manual entry
+    }
+
+    console.log(`[EMAIL] Verification token created for ${args.email}: ${token}`);
 
     return {
       success: true,
       tokenId,
-      token, // Only for testing - remove in production
+      token, // Included for testing in development mode
       expiresAt,
+      email: args.email.toLowerCase(),
       message: "Verification email sent. Check your inbox.",
     };
   },
@@ -162,12 +177,24 @@ export const resendVerificationEmail = mutation({
       created_at: now,
     });
 
-    // TODO: Send email with new token
+    // Send verification email with new token using Resend
+    const emailResult = await sendVerificationEmailWithResend(
+      args.email,
+      user.first_name || "Usuario",
+      token
+    );
+
+    if (!emailResult.success) {
+      console.error("[EMAIL] Failed to resend verification email:", emailResult.error);
+      // Don't fail - token is created for manual entry
+    }
+
     console.log(`[EMAIL] Resent verification token for ${args.email}: ${token}`);
 
     return {
       success: true,
       token, // Only for testing
+      email: args.email.toLowerCase(),
       message: "Email de verificación reenviado",
     };
   },

@@ -13,6 +13,8 @@ import {
   formatColombianPhone,
 } from "./auth";
 import { api } from "./_generated/api";
+import { createClerkUser } from "./clerk";
+import { sendWelcomeEmail } from "./email";
 
 // ============================================================================
 // STEP 1: USER REGISTRATION (Without Company)
@@ -366,6 +368,98 @@ export const login = mutation({
         name: company.name,
         subscriptionPlan: company.subscription_plan,
       },
+    };
+  },
+});
+
+// ============================================================================
+// CLERK AUTO-LOGIN
+// ============================================================================
+
+/**
+ * Auto-login after signup complete
+ * Creates Clerk user and session, then returns session info
+ * Called after registerCompanyStep2 completes
+ */
+export const autoLoginWithClerk = mutation({
+  args: {
+    userId: v.id("users"),
+    email: v.string(),
+    password: v.string(),
+    firstName: v.string(),
+    lastName: v.string(),
+    companyName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // 1. Verify user exists and company is created
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    if (!user.company_id) {
+      throw new Error("Empresa no creada. Completa todos los pasos primero.");
+    }
+
+    if (!user.email_verified) {
+      throw new Error("Email no verificado");
+    }
+
+    // 2. Create user in Clerk
+    const clerkResult = await createClerkUser(
+      args.email,
+      args.firstName,
+      args.lastName,
+      args.password
+    );
+
+    if (!clerkResult.success) {
+      console.error("[REGISTRATION] Clerk creation failed:", clerkResult.error);
+      // Don't fail completely - user exists in Convex and can login manually
+      // Return success anyway since signup is complete
+      return {
+        success: true,
+        userId: user._id,
+        companyId: user.company_id,
+        clerkWarning: "Usuario creado pero falló la sincronización con Clerk. Puedes inicia sesión manualmente.",
+        redirectUrl: "/sign-in",
+      };
+    }
+
+    // 3. Update user with Clerk ID
+    await ctx.db.patch(user._id, {
+      clerk_id: clerkResult.userId,
+      last_login: now,
+      updated_at: now,
+    });
+
+    // 4. Send welcome email
+    const welcomeResult = await sendWelcomeEmail(
+      args.email,
+      args.firstName,
+      args.companyName
+    );
+
+    if (!welcomeResult.success) {
+      console.warn("[REGISTRATION] Welcome email failed:", welcomeResult.error);
+      // Don't fail - email is optional
+    }
+
+    console.log(
+      `[REGISTRATION] Auto-login successful for user ${user._id}, Clerk ID: ${clerkResult.userId}`
+    );
+
+    return {
+      success: true,
+      userId: user._id,
+      clerkUserId: clerkResult.userId,
+      sessionId: clerkResult.sessionId,
+      companyId: user.company_id,
+      email: args.email,
+      message: "¡Bienvenido a Alquemist!",
+      redirectUrl: "/dashboard",
     };
   },
 });
