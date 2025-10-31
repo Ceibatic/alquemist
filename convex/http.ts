@@ -527,4 +527,94 @@ http.route({
   }),
 });
 
+// ============================================================================
+// CLEANUP ENDPOINT (Development Only)
+// ============================================================================
+
+/**
+ * POST /cleanup/delete-user
+ * Delete a user and all related data by email
+ * WARNING: Use only for development/testing
+ *
+ * Body: { "email": "user@example.com" }
+ */
+http.route({
+  path: "/cleanup/delete-user",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const email = body.email?.toLowerCase();
+
+      if (!email) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Email is required" }),
+          {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+            },
+          }
+        );
+      }
+
+      // Find user
+      const user = await ctx.runQuery(api.registration.getUserInfo, { email });
+
+      if (!user) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: `User with email ${email} not found`,
+          }),
+          {
+            status: 404,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+            },
+          }
+        );
+      }
+
+      // Delete email verification tokens
+      await ctx.runMutation(api.emailVerification.cleanupExpiredTokens);
+
+      // Note: Full user deletion requires additional implementation
+      // For now, return user info for manual deletion
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Found user ${email}. Please use Convex dashboard to delete manually.`,
+          userId: user._id,
+          email: user.email,
+          companyId: user.company_id,
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: error.message || "Unknown error",
+        }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
 export default http;
