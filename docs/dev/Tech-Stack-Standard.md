@@ -3,13 +3,16 @@
 **Ceibatic Standard Technology Stack**
 **Version**: 1.0
 **Date**: January 2025
-**Based on**: Alquemist Platform Implementation
+
+> **Note**: This is a living document and standardized template. When starting a new project, copy this document and adapt it to your specific domain requirements. Update version numbers and dates to track your project-specific changes.
 
 ---
 
 ## Philosophy
 
-This document defines the **recommended technology stack** for Ceibatic development projects. It represents battle-tested choices that optimize for:
+This document defines the **recommended technology stack** for Ceibatic development projects. Use this as a **template** for new projects, adapting it to your specific domain requirements while maintaining the core architectural principles.
+
+This stack represents battle-tested choices that optimize for:
 
 - **Developer Velocity** - Fast iteration with minimal boilerplate
 - **Type Safety** - End-to-end TypeScript for fewer bugs
@@ -23,6 +26,13 @@ This document defines the **recommended technology stack** for Ceibatic developm
 - Reference for technology decisions
 - Onboarding guide for development team
 - Standard for consistency across projects
+
+**How to Adapt:**
+1. Replace placeholder domain models (resources, companies) with your specific entities
+2. Adjust API endpoints to match your domain operations
+3. Customize UI pages in Bubble to match your workflows
+4. Add domain-specific validations and business rules
+5. Configure regional settings (currency, timezone, locale) for your target market
 
 ---
 
@@ -137,7 +147,7 @@ Development Tools:
 - ✓ Rapid prototyping
 
 **Next.js (Advanced Features):**
-- ✓ AI-powered features (pest detection, form digitization)
+- ✓ AI-powered features (ML models, intelligent automation)
 - ✓ Complex visualizations
 - ✓ Real-time collaboration
 - ✓ Advanced analytics
@@ -186,7 +196,7 @@ Bubble → REST API (/api/v1/*) → Convex Database
 
 2. **Configure API Connector:**
    ```
-   Name: Alquemist API
+   Name: Your App API
    Base URL: https://your-domain.com/api/v1
    Authentication: Bearer Token
 
@@ -196,32 +206,32 @@ Bubble → REST API (/api/v1/*) → Convex Database
    ```
 
 3. **Create API Calls:**
-   - GET /companies - List companies
-   - POST /facilities - Create facility
-   - GET /batches - List batches
-   - POST /activities - Log activity
-   - (All endpoints from REST API)
+   - GET /resources - List resources
+   - POST /resources - Create resource
+   - PUT /resources/:id - Update resource
+   - DELETE /resources/:id - Delete resource
+   - (Define endpoints based on your domain model)
 
 4. **Build UI Pages:**
    - Dashboard (overview metrics)
-   - Facilities list & forms
-   - Batch tracking
-   - Activity logging
-   - Inventory management
-   - Compliance tracking
+   - Resource list & forms
+   - Data entry pages
+   - Analytics & reporting
+   - Settings & configuration
+   - User management
 
 **Bubble Workflow Example:**
 ```
-When Button "Create Facility" is clicked:
-  → Step 1: Make API call POST /facilities
+When Button "Create Resource" is clicked:
+  → Step 1: Make API call POST /resources
     Body: {
-      name: Input Facility Name's value,
-      facilityType: Dropdown Type's value,
+      name: Input Resource Name's value,
+      type: Dropdown Type's value,
       companyId: Current User's Company ID
     }
-  → Step 2: Show alert "Facility created"
-  → Step 3: Navigate to Facilities page
-  → Step 4: Refresh Repeating Group (facilities list)
+  → Step 2: Show alert "Resource created"
+  → Step 3: Navigate to Resources page
+  → Step 4: Refresh Repeating Group (resources list)
 ```
 
 **Advantages:**
@@ -508,12 +518,16 @@ export default function RegistrationForm() {
 **Key Concepts:**
 
 1. **Schema Definition:**
+
+Define your domain model tables. The example below shows a typical multi-tenant schema - adapt the table names and fields to your specific domain:
+
 ```typescript
 // convex/schema.ts
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 
 export default defineSchema({
+  // Core user table (required for multi-tenancy)
   users: defineTable({
     email: v.string(),
     name: v.string(),
@@ -527,13 +541,18 @@ export default defineSchema({
     .index('by_company', ['companyId'])
     .index('by_clerk_id', ['clerkId']),
 
+  // Company table (required for multi-tenancy)
   companies: defineTable({
     name: v.string(),
     taxId: v.string(),
     businessEntityType: v.string(),
-    // ... other fields
+    createdAt: v.number(),
+    updatedAt: v.number(),
   })
     .index('by_tax_id', ['taxId']),
+
+  // Add your domain-specific tables here
+  // Example: resources, projects, tasks, etc.
 })
 ```
 
@@ -1362,5 +1381,45 @@ timezone: 'America/Mexico_City' // Mexico
 - **Bubble-only approach:** $54-149/month (backend + Bubble hosting)
 - **Next.js-only approach:** $45-219/month (backend + Vercel)
 - **Dual approach (recommended):** $54-338/month (best of both worlds)
+
+---
+
+## Customizing for Your Domain
+
+When starting a new project with this stack:
+
+### 1. Define Your Domain Model
+- Identify core entities (e.g., Projects, Tasks, Orders, Patients, Properties)
+- Map relationships between entities
+- Determine which fields are required vs. optional
+- Design your Convex schema based on these entities
+
+### 2. Design Your API
+- Create RESTful endpoints for each entity
+- Follow the pattern: GET /entities, POST /entities, PUT /entities/:id, DELETE /entities/:id
+- Add custom endpoints for complex operations
+- Document your API using the response format pattern
+
+### 3. Build Your Bubble UI
+- Create pages for each major entity
+- Design forms for create/edit operations
+- Build list views with repeating groups
+- Implement workflows for business logic
+- Connect to your API endpoints
+
+### 4. Add Next.js Features (As Needed)
+- Identify features that require custom code
+- Build complex visualizations or analytics
+- Implement AI/ML features
+- Create real-time collaboration features
+- Deploy incrementally alongside Bubble
+
+### 5. Configure for Your Region
+- Set default locale and supported languages
+- Configure currency formatting
+- Set timezone defaults
+- Adjust CDN regions if needed
+
+---
 
 **Ready to build with this stack!** 🚀

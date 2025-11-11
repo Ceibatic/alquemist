@@ -49,31 +49,154 @@ New user creates account with email/password and specifies business entity type 
 │   CREATE COMPANY        │
 ├─────────────────────────┤
 │ Company Name: [______] │
-│ Tax ID:       [______] │
-│ Municipality: [v Drop] │ ← Auto-filtered by region
+│ Entity Type:  [v Drop] │ ← S.A.S, S.A., Ltda, E.U., Persona Natural
+│ Company Type: [v Drop] │ ← cannabis/coffee/cocoa/flowers/mixed
+│ Department:   [v Drop] │ ← Colombian Department
+│ Municipality: [v Drop] │ ← Auto-filtered by department
 │                         │
 │ [Info tooltip about]    │
-│ [tax ID requirements]   │
+│ [entity type & licenses]│
 │                         │
 │       [Create Company]  │
 └─────────────────────────┘
 ```
 
+### Geographic Data Flow
+- **Step 1**: Load departments → `geographic.getDepartments`
+- **Step 2**: User selects department → Load municipalities for that department
+- **Step 3**: Load municipalities → `geographic.getMunicipalities`
+- **Step 4**: User selects municipality → Create company with location data
+
+### HTTP Endpoints (for Geographic Data)
+
+**Get Departments:**
+```
+POST https://[your-deployment].convex.site/geographic/departments
+Body: { "countryCode": "CO" }
+Response: [
+  {
+    "division_1_code": "05",
+    "division_1_name": "Antioquia",
+    "timezone": "America/Bogota"
+  },
+  {
+    "division_1_code": "11",
+    "division_1_name": "Bogotá D.C.",
+    "timezone": "America/Bogota"
+  },
+  ...
+]
+```
+
+**Get Municipalities (filtered by department):**
+```
+POST https://[your-deployment].convex.site/geographic/municipalities
+Body: {
+  "countryCode": "CO",
+  "departmentCode": "05"
+}
+Response: [
+  {
+    "division_2_code": "05001",
+    "division_2_name": "Medellín",
+    "parent_division_1_code": "05",
+    "timezone": "America/Bogota"
+  },
+  {
+    "division_2_code": "05002",
+    "division_2_name": "Abejorral",
+    "parent_division_1_code": "05"
+  },
+  ...
+]
+```
+
+**Create Company (Step 2):**
+```
+POST https://[your-deployment].convex.site/registration/register-step-2
+Body: {
+  "userId": "j97abc...",
+  "companyName": "Cultivos San José S.A.S",
+  "businessEntityType": "S.A.S",
+  "companyType": "cannabis",
+  "country": "CO",
+  "departmentCode": "05",
+  "municipalityCode": "05001"
+}
+Response: {
+  "success": true,
+  "userId": "j97abc...",
+  "companyId": "k12def...",
+  "organizationId": "org_test_1234567890_xyz",
+  "message": "¡Bienvenido! Tu empresa ha sido creada exitosamente."
+}
+```
+
+### Convex Functions
+- **Query**: `geographic.getDepartments`
+- **Query**: `geographic.getMunicipalities`
+- **Mutation**: `registration.registerCompanyStep2`
+
+### Database Tables (Step 2)
+- **Read**:
+  - `geographic_locations` → Get departments (administrative_level = 1)
+  - `geographic_locations` → Get municipalities (administrative_level = 2, filtered by parent)
+  - `users` → Verify email_verified = true
+- **Write**:
+  - `companies` → Create company with subscription_plan = "trial", max_facilities = 1, max_users = 3
+  - `users` → Update with company_id and timezone from municipality
+
 ### Key Data Flow
-- **Inputs**: Email, password, region, business entity type
-- **Outputs**: User record created, initial company record created, email verification token sent
-- **Validates**: Email format, password strength, region/entity combination
+- **Inputs**: Email, password, firstName, lastName, phone (optional)
+- **Outputs**: User record created (without company yet), email verification token sent
+- **Validates**: Email format, password strength (min 8 chars, 1 uppercase, 1 number, 1 special)
 
 ### Database Tables
-- **Write**: users, companies, emailVerificationTokens
-- **Read**: geographic_locations (for region/municipality lookup)
+- **Write**:
+  - `users` → Creates new user (company_id = undefined, email_verified = false)
+  - `emailVerificationTokens` → Creates 24h verification token
+- **Read**:
+  - `roles` → Get COMPANY_OWNER role ID
+
+### HTTP Endpoints (for Bubble)
+
+**Check Email Availability:**
+```
+POST https://[your-deployment].convex.site/registration/check-email
+Body: { "email": "user@example.com" }
+Response: { "available": true, "email": "user@example.com" }
+```
+
+**Register User (Step 1):**
+```
+POST https://[your-deployment].convex.site/registration/register-step-1
+Body: {
+  "email": "user@example.com",
+  "password": "SecurePass123!",
+  "firstName": "Juan",
+  "lastName": "Pérez",
+  "phone": "3001234567"  // optional
+}
+Response: {
+  "success": true,
+  "userId": "j97abc...",
+  "email": "user@example.com",
+  "message": "Cuenta creada. Por favor verifica tu correo electrónico.",
+  "token": "xyz123..." // for testing only
+}
+```
+
+### Convex Functions
+- **Mutation**: `registration.registerUserStep1`
+- **Query**: `registration.checkEmailAvailability`
 
 ### Notes
-- 🔴 **Required**: These are the only fields needed for MVP signup
+- 🔴 **Required**: Email, password, firstName, lastName
+- 🟡 **Optional**: Phone number
 - Form auto-focuses on email field
-- Email verification triggers immediately after signup
-- Back button allowed on Step 1 to fix errors
+- Email verification triggers immediately after signup via Resend API
 - Password requirements shown in real-time
+- User can't proceed until email is verified
 
 ---
 
@@ -118,22 +241,66 @@ Confirm email ownership before proceeding. User clicks link or enters code. Syst
 ```
 
 ### Key Data Flow
-- **Inputs**: Verification token (from email link) OR 6-digit code
-- **Outputs**: emailVerificationTokens.verified = true, user.email_verified = true
+- **Inputs**: Verification token (from email link or manual entry)
+- **Outputs**: Token marked as used, user.email_verified = true
 - **Validates**: Token not expired (24h), not already used, matches user email
 
 ### Database Tables
-- **Read**: users, emailVerificationTokens
-- **Write**: emailVerificationTokens, users
-- **Related**: companies (auto-created during signup)
+- **Read**:
+  - `emailVerificationTokens` → Find token by token string
+  - `users` → Get user info
+- **Write**:
+  - `emailVerificationTokens` → Set used = true, verified_at = timestamp
+  - `users` → Set email_verified = true, email_verified_at = timestamp
+
+### HTTP Endpoints (for Bubble)
+
+**Verify Email Token:**
+```
+POST https://[your-deployment].convex.site/registration/verify-email
+Body: { "token": "abc123xyz456..." }
+Response: {
+  "success": true,
+  "message": "¡Email verificado exitosamente!",
+  "userId": "j97abc..."
+}
+```
+
+**Resend Verification Email:**
+```
+POST https://[your-deployment].convex.site/registration/resend-verification
+Body: { "email": "user@example.com" }
+Response: {
+  "success": true,
+  "message": "Email de verificación reenviado",
+  "token": "xyz123..." // for testing only
+}
+```
+
+**Check Verification Status:**
+```
+POST https://[your-deployment].convex.site/registration/check-verification-status
+Body: { "email": "user@example.com" }
+Response: {
+  "exists": true,
+  "verified": true,
+  "userId": "j97abc...",
+  "message": "Email verificado"
+}
+```
+
+### Convex Functions
+- **Mutation**: `emailVerification.verifyEmailToken`
+- **Mutation**: `emailVerification.resendVerificationEmail`
+- **Query**: `emailVerification.checkEmailVerificationStatus`
 
 ### Notes
-- 🔴 **Required**: Must verify before accessing dashboard
+- 🔴 **Required**: Must verify before creating company (Step 2)
 - Token expires in 24h (non-negotiable for security)
-- Resend sends new token, invalidates old one
+- Resend rate limited: max 5 times, 5 minutes between each
 - Direct email link auto-fills verification (no code entry needed)
-- If user loses email, resend available immediately
-- 🟡 **Important**: Show remaining time on code
+- Email sent via Resend API with professional template
+- 🟡 **Important**: Show remaining time on token expiry
 
 ---
 
@@ -208,13 +375,50 @@ User selects subscription tier and provides payment method. Determines feature a
 - **Validates**: Plan selection valid, payment method accepted, billing address
 
 ### Database Tables
-- **Write**: companies (subscription_plan, max_facilities, max_users, subscription_tier)
-- **Related**: payment_events (future: audit trail)
+- **Write**:
+  - `companies` → Update subscription_plan, max_facilities, max_users, subscription_tier
+- **Related**:
+  - `payment_events` (future: audit trail)
+
+### HTTP Endpoints (for Bubble)
+
+⚠️ **STATUS**: Not yet implemented in Convex backend
+**Future Implementation Required:**
+
+```
+POST https://[your-deployment].convex.site/subscription/select-plan
+Body: {
+  "companyId": "k12def...",
+  "plan": "starter",
+  "billingCycle": "monthly",
+  "paymentMethod": { ... }
+}
+Response: {
+  "success": true,
+  "subscription": { ... },
+  "message": "Suscripción activada"
+}
+```
+
+### Convex Functions
+⚠️ **TO BE CREATED**:
+- `subscription.selectPlan` (mutation)
+- `subscription.processPayment` (mutation)
+- `subscription.getAvailablePlans` (query)
+
+### Temporary Workaround
+For MVP, `companies` table already has default subscription:
+- `subscription_plan`: "trial" (set during company creation)
+- `max_facilities`: 1
+- `max_users`: 3
+- Valid for 30 days
+
+Users can skip Module 3 and continue with trial subscription.
 
 ### Notes
 - 🔴 **Required**: User must select a plan (even if Trial)
 - 🟡 **Important**: Trial users skip payment, auto-upgrade prompt at day 25
-- Payment processing via Stripe (backend handles, UI just shows form)
+- Payment processing via Stripe (backend integration needed)
 - Pro tip on limits: "You can always upgrade or add facilities later"
 - 🟢 **Nice-to-have**: Save payment method for future facilities
 - Show facility/user count limits based on selected plan
@@ -288,16 +492,61 @@ User provides company legal details, tax info, and uploads business licenses/per
 - **Validates**: Phone format, email format, file types (PDF/JPG), file size < 10MB
 
 ### Database Tables
-- **Write**: companies, media_files
-- **Read**: users (current user)
+- **Write**:
+  - `companies` → Update legal_name, primary_contact_phone, primary_contact_email
+  - `media_files` → Store uploaded documents
+- **Read**:
+  - `companies` → Get current company data
+  - `users` → Get current user
+
+### HTTP Endpoints (for Bubble)
+
+⚠️ **STATUS**: Partially implemented in Convex backend
+**Implementation Needed:**
+
+```
+POST https://[your-deployment].convex.site/company/update-profile
+Body: {
+  "companyId": "k12def...",
+  "legalName": "Cultivos San José S.A.S",
+  "primaryContactPhone": "+573001234567",
+  "primaryContactEmail": "contacto@cultsanjose.com"
+}
+Response: {
+  "success": true,
+  "message": "Perfil de empresa actualizado"
+}
+```
+
+```
+POST https://[your-deployment].convex.site/company/upload-document
+Body: {
+  "companyId": "k12def...",
+  "documentType": "business_license",
+  "file": [base64 or file URL],
+  "filename": "license.pdf"
+}
+Response: {
+  "success": true,
+  "fileId": "m45xyz...",
+  "url": "https://storage.../license.pdf"
+}
+```
+
+### Convex Functions
+⚠️ **TO BE CREATED**:
+- `company.updateProfile` (mutation)
+- `company.uploadDocument` (mutation)
+- `company.getProfile` (query)
 
 ### Notes
-- 🔴 **Required**: Company name, tax ID (pre-filled)
+- 🔴 **Required**: Company name (already set in Step 2)
 - 🟡 **Important**: Phone and email recommended but not required
 - 🟢 **Nice-to-have**: Document uploads (can be done later)
 - Both pages have "Skip for now" button (can edit later from settings)
-- Files stored in media_files table with document_type = 'license'
+- Files stored in `media_files` table with category = 'license'
 - Show upload progress indicator
+- For MVP: Skip document uploads, just update contact info
 
 ---
 
@@ -389,16 +638,70 @@ User creates the first licensed cultivation facility. This is where crops will b
 - **Validates**: License number format, area numeric, crops selected, location valid
 
 ### Database Tables
-- **Write**: facilities
-- **Read**: users, companies, geographic_locations
-- **Related**: areas (will be created next)
+- **Write**:
+  - `facilities` → Create facility record linked to company
+- **Read**:
+  - `companies` → Verify company exists and check max_facilities limit
+  - `geographic_locations` → Validate department/municipality
+  - `crop_types` → Get available crop types
+
+### HTTP Endpoints (for Bubble)
+
+⚠️ **STATUS**: Not yet implemented in Convex backend
+**Implementation Needed:**
+
+```
+POST https://[your-deployment].convex.site/facilities/create
+Body: {
+  "companyId": "k12def...",
+  "name": "North Farm",
+  "licenseNumber": "LC-12345-2025",
+  "licenseType": "commercial_growing",
+  "primaryCropTypeIds": ["crop123", "crop456"],
+  "address": "Finca La Esperanza, Km 15 Vía El Carmen",
+  "municipalityCode": "05001",
+  "departmentCode": "05",
+  "latitude": 6.244747,
+  "longitude": -75.581211,
+  "totalAreaM2": 5000,
+  "climateZone": "tropical"
+}
+Response: {
+  "success": true,
+  "facilityId": "f78ghi...",
+  "message": "Instalación creada exitosamente"
+}
+```
+
+```
+GET https://[your-deployment].convex.site/facilities/get-by-company
+Body: { "companyId": "k12def..." }
+Response: {
+  "facilities": [
+    {
+      "id": "f78ghi...",
+      "name": "North Farm",
+      "licenseNumber": "LC-12345-2025",
+      ...
+    }
+  ]
+}
+```
+
+### Convex Functions
+⚠️ **TO BE CREATED**:
+- `facilities.create` (mutation)
+- `facilities.update` (mutation)
+- `facilities.getByCompany` (query)
+- `facilities.checkLicenseAvailability` (query)
 
 ### Notes
 - 🔴 **Required**: Facility name, license number, primary crops
 - 🟡 **Important**: GPS coordinates useful but can auto-detect from address
 - 🟢 **Nice-to-have**: Map picker for location
-- User can create multiple facilities (up to subscription limit)
+- User can create multiple facilities (up to subscription limit in companies.max_facilities)
 - Climate zone helps with template recommendations later
+- License number must be unique across system
 
 ---
 
@@ -443,9 +746,39 @@ User confirms which crops will be grown. This unlocks crop-specific setup templa
 - **Validates**: At least one crop selected, crop exists in system
 
 ### Database Tables
-- **Read**: crop_types, facilities
-- **Write**: facilities
-- **Related**: cultivars (next module will reference)
+- **Read**:
+  - `crop_types` → Get available crop types (Cannabis, Coffee, Cocoa, Flowers)
+  - `facilities` → Get current facility
+- **Write**:
+  - `facilities` → Update primary_crop_type_ids array
+
+### HTTP Endpoints (for Bubble)
+
+⚠️ **STATUS**: Not yet implemented
+```
+GET https://[your-deployment].convex.site/crops/get-types
+Response: {
+  "cropTypes": [
+    { "id": "crop123", "name": "Cannabis", "display_name_es": "Cannabis" },
+    { "id": "crop456", "name": "Coffee", "display_name_es": "Café" },
+    ...
+  ]
+}
+```
+
+```
+POST https://[your-deployment].convex.site/facilities/update-crops
+Body: {
+  "facilityId": "f78ghi...",
+  "cropTypeIds": ["crop123", "crop456"]
+}
+Response: { "success": true }
+```
+
+### Convex Functions
+⚠️ **TO BE CREATED**:
+- `crops.getCropTypes` (query)
+- `facilities.updateCrops` (mutation)
 
 ### Notes
 - 🔴 **Required**: At least one crop must be selected
@@ -524,9 +857,51 @@ User defines cultivation zones (propagation, vegetative, flowering, drying) with
 - **Optional**: Sample production data generated for demo/testing
 
 ### Database Tables
-- **Write**: areas, (optional: production_orders, batches, activities)
-- **Read**: facilities, crop_types
-- **Related**: production_templates (used if loading template)
+- **Write**:
+  - `areas` → Create area records linked to facility
+  - (optional) `production_orders`, `batches`, `activities` → If generating sample data
+- **Read**:
+  - `facilities` → Get current facility
+  - `crop_types` → Get compatible crops for area
+
+### HTTP Endpoints (for Bubble)
+
+⚠️ **STATUS**: Not yet implemented
+```
+POST https://[your-deployment].convex.site/areas/create
+Body: {
+  "facilityId": "f78ghi...",
+  "name": "Propagation Room",
+  "areaType": "propagation",
+  "compatibleCropTypeIds": ["crop123"],
+  "totalAreaM2": 50,
+  "capacity": 500,
+  "climateControlled": true,
+  "environmentalSpecs": { "temp": "20-25", "humidity": "60-70" }
+}
+Response: { "success": true, "areaId": "a99jkl..." }
+```
+
+```
+POST https://[your-deployment].convex.site/areas/generate-sample-data
+Body: {
+  "facilityId": "f78ghi...",
+  "batchCount": 3,
+  "batchSize": 200
+}
+Response: {
+  "success": true,
+  "batchesCreated": 3,
+  "activitiesCreated": 45
+}
+```
+
+### Convex Functions
+⚠️ **TO BE CREATED**:
+- `areas.create` (mutation)
+- `areas.createMultiple` (mutation)
+- `areas.generateSampleData` (mutation)
+- `areas.getByFacility` (query)
 
 ### Notes
 - 🔴 **Required**: At least one area must be defined
@@ -605,16 +980,168 @@ User selects crop varieties (cultivars) and input suppliers. Suppliers provide s
 - **Validates**: Cultivar exists, supplier name non-empty, tax ID format
 
 ### Database Tables
-- **Write**: cultivars (link facility), suppliers, supplier_products
-- **Read**: crop_types, facilities
-- **Related**: products (inventory items from suppliers)
+- **Write**:
+  - `cultivars` → Link cultivars to facility
+  - `suppliers` → Create supplier records
+  - `supplier_products` → Link products to suppliers (future)
+- **Read**:
+  - `crop_types` → Get crop types for cultivar filtering
+  - `cultivars` → Get available cultivars for selected crops
+  - `facilities` → Get current facility
+
+### HTTP Endpoints (for Bubble)
+
+⚠️ **STATUS**: Not yet implemented
+```
+GET https://[your-deployment].convex.site/cultivars/get-by-crop
+Body: { "cropTypeId": "crop123" }
+Response: {
+  "cultivars": [
+    {
+      "id": "cult789",
+      "name": "Cherry AK",
+      "varietyType": "Indica",
+      "floweringWeeks": 8,
+      "yieldLevel": "medium-high"
+    },
+    ...
+  ]
+}
+```
+
+```
+POST https://[your-deployment].convex.site/facilities/link-cultivars
+Body: {
+  "facilityId": "f78ghi...",
+  "cultivarIds": ["cult789", "cult456"]
+}
+Response: { "success": true }
+```
+
+```
+POST https://[your-deployment].convex.site/suppliers/create
+Body: {
+  "companyId": "k12def...",
+  "name": "FarmChem Inc",
+  "taxId": "900123456-7",
+  "productCategories": ["nutrients", "pesticides"],
+  "contactName": "Juan Pérez",
+  "contactEmail": "ventas@farmchem.com",
+  "contactPhone": "+573001234567"
+}
+Response: {
+  "success": true,
+  "supplierId": "s55mno..."
+}
+```
+
+### Convex Functions
+⚠️ **TO BE CREATED**:
+- `cultivars.getByCrop` (query)
+- `facilities.linkCultivars` (mutation)
+- `suppliers.create` (mutation)
+- `suppliers.getByCompany` (query)
 
 ### Notes
 - 🔴 **Required**: At least one cultivar selected
 - 🟡 **Important**: Suppliers (can add later, but useful for quick setup)
 - 🟢 **Nice-to-have**: Product pricing from suppliers
-- Supplier info used later for purchase orders (Module 9)
+- Supplier info used later for purchase orders (Phase 2, Module 9)
 - Can add/edit suppliers anytime from settings
+
+---
+
+## IMPLEMENTATION STATUS OVERVIEW
+
+### ✅ Fully Implemented (Ready for Bubble Integration)
+
+**MODULE 1: Authentication & Account Creation**
+- ✅ User registration (Step 1)
+- ✅ Email verification
+- ✅ Company creation (Step 2)
+- ✅ Geographic data (departments & municipalities)
+- **HTTP Endpoints**: `/registration/*` and `/geographic/*`
+- **Convex Files**: [convex/registration.ts](../../convex/registration.ts), [convex/emailVerification.ts](../../convex/emailVerification.ts), [convex/geographic.ts](../../convex/geographic.ts)
+
+**MODULE 2: Email Verification**
+- ✅ Token generation and email sending (via Resend API)
+- ✅ Token verification
+- ✅ Resend functionality with rate limiting
+- **HTTP Endpoints**: `/registration/verify-email`, `/registration/resend-verification`
+
+### ⚠️ Partially Implemented (Database Schema Ready, API Needed)
+
+**MODULE 4: Company Profile Completion**
+- ✅ Database schema: `companies` table has all fields
+- ⚠️ Missing: HTTP endpoints for updating company profile
+- ⚠️ Missing: Document upload functionality
+- **Workaround**: Skip for MVP, company data set in Step 2
+
+### ❌ Not Yet Implemented (Schema Ready, Full Implementation Needed)
+
+**MODULE 3: Subscription & Payments**
+- ✅ Database schema: `companies` table has subscription fields
+- ❌ No payment processing integration
+- ❌ No plan selection endpoints
+- **Workaround**: Default trial subscription (30 days, 1 facility, 3 users) auto-assigned
+
+**MODULE 5: Facility Creation**
+- ✅ Database schema: `facilities` table ready
+- ❌ Missing: CRUD endpoints for facilities
+- ❌ Missing: License validation
+- **Priority**: HIGH - needed for Phase 2
+
+**MODULE 6: Crop Type Selection**
+- ✅ Database schema: `crop_types`, `cultivars` tables ready
+- ❌ Missing: Query endpoints for crop types
+- ❌ Missing: Facility crop linking
+- **Priority**: HIGH - needed for Phase 2
+
+**MODULE 7: Area Setup**
+- ✅ Database schema: `areas` table ready
+- ❌ Missing: CRUD endpoints for areas
+- ❌ Missing: Sample data generation
+- **Priority**: HIGH - needed for Phase 2
+
+**MODULE 8: Cultivars & Suppliers**
+- ✅ Database schema: `cultivars`, `suppliers` tables ready
+- ❌ Missing: Query and mutation endpoints
+- **Priority**: MEDIUM - can add suppliers later
+
+---
+
+## BUBBLE INTEGRATION QUICK START
+
+### Base URL
+```
+https://[your-convex-deployment].convex.site
+```
+
+### Available Endpoints (Module 1-2 Only)
+
+| Endpoint | Method | Purpose | Status |
+|----------|--------|---------|--------|
+| `/registration/check-email` | POST | Check email availability | ✅ Ready |
+| `/registration/register-step-1` | POST | Create user account | ✅ Ready |
+| `/registration/verify-email` | POST | Verify email token | ✅ Ready |
+| `/registration/register-step-2` | POST | Create company | ✅ Ready |
+| `/geographic/departments` | POST | Get departments | ✅ Ready |
+| `/geographic/municipalities` | POST | Get municipalities | ✅ Ready |
+| `/registration/login` | POST | Simple login | ✅ Ready |
+
+### For MVP: Minimum Viable Onboarding Flow
+
+**Recommended MVP Flow (Modules 1-2 Only):**
+1. User registers (Module 1, Step 1)
+2. User verifies email (Module 2)
+3. User creates company with location (Module 1, Step 2)
+4. ✅ **User can access dashboard** (with trial subscription)
+5. Skip Modules 3-8 for now (implement in Phase 1.5)
+
+**Database State After MVP Flow:**
+- ✅ User created and verified
+- ✅ Company created with trial subscription
+- ✅ Ready to manually create facilities in dashboard (once Module 5 implemented)
 
 ---
 

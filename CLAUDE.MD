@@ -613,64 +613,108 @@ MODULE 2 - Email Verification
 
 ## Documentation Organization
 
+**NEW STRUCTURE (2025-11-06)** - Optimized for Bubble Development
+
 **Folder Structure:**
 ```
 docs/
-├── core/              # Documentos principales del proyecto
+├── database/          # Single source of truth for schema
+│   └── SCHEMA.md     # All tables, fields, relationships
+│
+├── ui/
+│   ├── bubble/       # UI requirements (Bubble-focused)
+│   │   ├── PHASE-1-ONBOARDING.md    # Wireframes + DB context only
+│   │   ├── PHASE-2-OPERATIONS.md    # Wireframes + DB context only
+│   │   └── PHASE-3-ADVANCED.md      # Wireframes + DB context only
+│   │
+│   └── archive/      # Archived old documentation
+│       └── PHASE-X-*.md (timestamped archives)
+│
+├── api/              # API endpoint specifications
+│   ├── PHASE-1-ENDPOINTS.md         # Auth, company, geographic
+│   ├── PHASE-2-ENDPOINTS.md         # Inventory, templates, orders
+│   └── PHASE-3-ENDPOINTS.md         # Compliance, analytics, integrations
+│
+├── core/             # Legacy documentation (being phased out)
 │   ├── Product-Requirements.md
 │   ├── Technical-Specification.md
-│   ├── Database-Schema.md
 │   └── API-Integration.md
 │
-├── foundation/        # Configuración inicial y setup
+├── foundation/       # Setup and configuration
 │   ├── Authentication-Guide.md
 │   ├── Browser-API-Testing.md
-│   ├── Clerk-Organization-Setup.md
 │   └── Implementation-Status.md
 │
-├── module-X/          # Documentación específica de cada módulo
-│   ├── README.md     # Índice del módulo
-│   ├── Module-X-Planning.md
-│   ├── Module-X-Quick-Start.md
-│   └── bubble/       # Guías de implementación en Bubble
-│       ├── Module-X-Bubble-Guide.md
-│       ├── API-Bubble-Reference.md
-│       └── Bubble-UI-Wireframes.md
-│
-├── dev/              # Frameworks y estándares de desarrollo
-│   ├── Agentic-Dev-Framework.md
-│   ├── Agentic-Dev-System-Simple.md
+├── dev/              # Development standards
 │   └── Tech-Stack-Standard.md
 │
-└── sessions/         # Resúmenes de sesiones de trabajo
-    └── Session-Summary-YYYY-MM-DD.md
+└── sessions/         # Session summaries
+    └── Session-Summary-*.md
 ```
 
-**Finding Documentation:**
-- **Product specs:** `docs/core/Product-Requirements.md`
-- **Tech architecture:** `docs/core/Technical-Specification.md`
-- **Database schema:** `docs/core/Database-Schema.md`
-- **API reference:** `docs/core/API-Integration.md`
-- **Module guides:** `docs/module-X/` (cada módulo tiene su carpeta)
-- **Bubble guides:** `docs/module-X/bubble/` (implementación Bubble específica)
-- **Foundation docs:** `docs/foundation/` (setup, auth, testing)
-- **Dev standards:** `docs/dev/` (frameworks, stack, guidelines)
+**Key Documentation Files:**
 
-**Creating New Module Documentation:**
-1. Create folder: `docs/module-X/` (e.g., `docs/module-2/`)
-2. Create `README.md` with module overview and links
-3. Add planning documents (Planning, Task Board, etc.)
-4. Add implementation guides (Quick Start, etc.)
-5. If dual-frontend: Create `bubble/` subfolder with Bubble-specific docs
-6. Update references in this CLAUDE.MD file
+1. **Database Schema (Single Source of Truth):**
+   - [docs/database/SCHEMA.md](docs/database/SCHEMA.md) - All tables, fields, relationships
 
-**Benefits of This Structure:**
-- ✅ Clear separation by concern (core, foundation, modules, dev)
-- ✅ Each module is self-contained with README
-- ✅ Easy to find documentation by category
-- ✅ Scalable for future modules (module-2, module-3, etc.)
-- ✅ Bubble documentation grouped per module
-- ✅ Development standards centralized in `dev/`
+2. **UI Requirements (Bubble-Focused):**
+   - [docs/ui/bubble/PHASE-1-ONBOARDING.md](docs/ui/bubble/PHASE-1-ONBOARDING.md) - Pages, wireframes, workflows
+   - [docs/ui/bubble/PHASE-2-OPERATIONS.md](docs/ui/bubble/PHASE-2-OPERATIONS.md) - Operations UI
+   - [docs/ui/bubble/PHASE-3-ADVANCED.md](docs/ui/bubble/PHASE-3-ADVANCED.md) - Advanced UI
+
+3. **API Endpoint Specifications:**
+   - [docs/api/PHASE-1-ENDPOINTS.md](docs/api/PHASE-1-ENDPOINTS.md) - Auth & company endpoints
+   - [docs/api/PHASE-2-ENDPOINTS.md](docs/api/PHASE-2-ENDPOINTS.md) - Operations endpoints
+   - [docs/api/PHASE-3-ENDPOINTS.md](docs/api/PHASE-3-ENDPOINTS.md) - Advanced endpoints
+
+**Documentation Philosophy:**
+
+**SEPARATION OF CONCERNS:**
+- 🎨 **UI Docs** → Bubble pages, wireframes, visual elements, workflows
+  - NO API calls, NO code snippets
+  - Simple DB context: "Stores X in Y table"
+  - ASCII wireframes for visual reference
+  - Focus: What user sees and does
+
+- 🔌 **API Docs** → HTTP endpoints, request/response, triggered by which Bubble element
+  - Method, URL, body, response
+  - Which Bubble button/workflow triggers it
+  - Database operations described
+  - Focus: Backend integration
+
+- 🗄️ **Database Schema** → Single source of truth
+  - All tables, fields, types
+  - Relationships clearly defined
+  - Referenced by both UI and API docs
+  - Focus: Data structure
+
+**Benefits:**
+- ✅ Easy iteration: Change UI without touching API docs
+- ✅ Bubble-friendly: UI docs speak Bubble's language
+- ✅ Backend-agnostic: API docs work for any implementation
+- ✅ Single source: Database schema eliminates duplication
+- ✅ Context optimization: Load only what you need
+- ✅ Clear separation: UI designers vs. backend developers
+
+**How to Use:**
+
+1. **Building Bubble Pages:**
+   - Read UI doc for phase (e.g., PHASE-1-ONBOARDING.md)
+   - Follow wireframes and workflows
+   - Check "Database Context" for simple field mapping
+   - Reference SCHEMA.md for table details if needed
+
+2. **Implementing API Endpoints:**
+   - Read API doc for phase (e.g., PHASE-1-ENDPOINTS.md)
+   - Implement Convex functions as specified
+   - Test with curl/Postman
+   - Update implementation status in doc
+
+3. **Understanding Data Flow:**
+   - Start with SCHEMA.md to see all tables
+   - UI docs tell you "what to store/query"
+   - API docs tell you "how to store/query"
+   - Database schema tells you "where and what format"
 
 ---
 
