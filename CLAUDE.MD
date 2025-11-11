@@ -127,7 +127,13 @@ Bubble → GCP Cloud Functions → Vision AI / Document AI
 
 **For Bubble Development (Principal):**
 
-1. **Use API documentation** (referencia técnica general):
+1. **Follow Bubble Implementation Guidelines:**
+   - [BUBBLE-IMPLEMENTATION-GUIDE.md](docs/BUBBLE-IMPLEMENTATION-GUIDE.md) - **Core guidelines for all Bubble implementations**
+   - Read this FIRST before creating any Bubble documentation
+   - Contains patterns, best practices, and what NOT to do
+   - Ensures consistent, clear, non-redundant guides
+
+2. **Use API documentation** (referencia técnica general):
    - [API-Integration.md](docs/core/API-Integration.md) - Guía general de integración
    - [API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md) - Referencia técnica de endpoints
 
@@ -210,6 +216,24 @@ Bubble → GCP Cloud Functions → Vision AI / Document AI
    - El **código real y llamados API específicos** se proporcionan durante la implementación de cada módulo
    - Cada módulo generará sus propios archivos de documentación en `docs/module-X/bubble/`
    - Ejemplos de configuración de API Connector se proporcionan por módulo
+
+6. **Bubble Documentation Standards:**
+   - **MUST READ FIRST:** [BUBBLE-IMPLEMENTATION-GUIDE.md](docs/BUBBLE-IMPLEMENTATION-GUIDE.md)
+   - **Key Principles:**
+     - ✅ Test backend APIs before documenting
+     - ✅ Use URL parameters, NOT custom states (unless justified)
+     - ✅ Show exact Bubble syntax (e.g., `dropdown_name's value`)
+     - ✅ Document real API responses (copy actual JSON)
+     - ✅ Keep workflows minimal - let Bubble's built-in features work
+     - ❌ Don't assume functionality that doesn't exist
+     - ❌ Don't create custom states for every piece of data
+     - ❌ Don't add workflows for automatic Bubble features
+     - ❌ Don't use vague instructions
+   - **Before Writing Any Bubble Guide:**
+     1. Read BUBBLE-IMPLEMENTATION-GUIDE.md
+     2. Test all API endpoints with curl
+     3. Follow the documented patterns
+     4. Use the provided checklist
 
 **UI Language (100% Español):**
 - Todos los textos visibles al usuario en español
@@ -446,7 +470,8 @@ Load feature context and implement functionality.
 3. Apply patterns from Technical-Specification.md
 4. Implement feature with regional requirements (default: Colombia)
 5. For frontend features, decide: Bubble or Next.js implementation
-6. Update Active Context with progress
+6. **For Bubble guides:** Follow [BUBBLE-IMPLEMENTATION-GUIDE.md](docs/BUBBLE-IMPLEMENTATION-GUIDE.md)
+7. Update Active Context with progress
 
 **Example:**
 ```

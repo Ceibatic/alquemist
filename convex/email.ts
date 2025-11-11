@@ -3,8 +3,6 @@
  * Handles all email communications
  */
 
-import { api } from "./_generated/api";
-
 /**
  * Email template for verification
  */
@@ -138,12 +136,12 @@ export async function sendVerificationEmailWithResend(
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: "noreply@alquemist.com",
+        from: "noreply@ceibatic.com",
         to: email,
         subject: "🌱 Verifica tu email - Alquemist",
         html,
         text,
-        reply_to: "support@alquemist.com",
+        reply_to: "support@ceibatic.com",
       }),
     });
 
@@ -232,11 +230,11 @@ export async function sendWelcomeEmail(
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: "noreply@alquemist.com",
+        from: "noreply@ceibatic.com",
         to: email,
         subject: `¡Bienvenido a Alquemist, ${firstName}!`,
         html,
-        reply_to: "support@alquemist.com",
+        reply_to: "support@ceibatic.com",
       }),
     });
 
