@@ -461,14 +461,128 @@ http.route({
         );
       }
 
-      // Call auto-login mutation
-      const result = await ctx.runMutation(api.registration.autoLoginWithClerk, {
-        userId: body.userId,
-        email: body.email,
-        password: body.password,
-        firstName: body.firstName,
-        lastName: body.lastName,
-        companyName: body.companyName,
+      // DEPRECATED: This Clerk-specific endpoint is no longer supported
+      // Use the standard register + login flow instead
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "This endpoint is deprecated. Please use /api/v1/auth/register-step1 and /api/v1/auth/login instead.",
+        }),
+        {
+          status: 410, // Gone
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: errorMessage,
+        }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+// ============================================================================
+// MODULE 3: FACILITY ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /facilities/create
+ * Create a new facility
+ */
+http.route({
+  path: "/facilities/create",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.facilities.create, body);
+
+      return new Response(JSON.stringify({ success: true, facilityId: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /facilities/get-by-company
+ * Get facilities for a company
+ */
+http.route({
+  path: "/facilities/get-by-company",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runQuery(api.facilities.list, body);
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /facilities/check-license
+ * Check if license number is available
+ */
+http.route({
+  path: "/facilities/check-license",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const { licenseNumber } = await request.json();
+
+      const result = await ctx.runQuery(api.facilities.checkLicenseAvailability, {
+        licenseNumber,
       });
 
       return new Response(JSON.stringify(result), {
@@ -478,14 +592,581 @@ http.route({
           "Access-Control-Allow-Origin": "*",
         },
       });
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Error desconocido";
+    } catch (error: any) {
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: errorMessage,
-        }),
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /facilities/update
+ * Update facility
+ */
+http.route({
+  path: "/facilities/update",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.facilities.update, body);
+
+      return new Response(JSON.stringify({ success: true, facilityId: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /facilities/delete
+ * Delete (soft delete) facility
+ */
+http.route({
+  path: "/facilities/delete",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.facilities.remove, body);
+
+      return new Response(JSON.stringify({ success: true, facilityId: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /facilities/link-cultivars
+ * Link cultivars to a facility
+ */
+http.route({
+  path: "/facilities/link-cultivars",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.facilities.linkCultivars, body);
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+// ============================================================================
+// MODULE 4: AREA ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /areas/create
+ * Create a new area
+ */
+http.route({
+  path: "/areas/create",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.areas.create, body);
+
+      return new Response(JSON.stringify({ success: true, areaId: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /areas/get-by-facility
+ * Get areas for a facility
+ */
+http.route({
+  path: "/areas/get-by-facility",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runQuery(api.areas.getByFacility, body);
+
+      return new Response(JSON.stringify({ areas: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /areas/update
+ * Update area
+ */
+http.route({
+  path: "/areas/update",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.areas.update, body);
+
+      return new Response(JSON.stringify({ success: true, areaId: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /areas/delete
+ * Delete (soft delete) area
+ */
+http.route({
+  path: "/areas/delete",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.areas.remove, body);
+
+      return new Response(JSON.stringify({ success: true, areaId: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+// ============================================================================
+// MODULE 5: CROP & CULTIVAR ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /crops/get-types
+ * Get all crop types
+ */
+http.route({
+  path: "/crops/get-types",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runQuery(api.crops.getCropTypes, body || {});
+
+      return new Response(JSON.stringify({ cropTypes: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /cultivars/get-by-crop
+ * Get cultivars for a crop type
+ */
+http.route({
+  path: "/cultivars/get-by-crop",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runQuery(api.cultivars.getByCrop, body);
+
+      return new Response(JSON.stringify({ cultivars: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /cultivars/create
+ * Create custom cultivar
+ */
+http.route({
+  path: "/cultivars/create",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.cultivars.create, body);
+
+      return new Response(JSON.stringify({ success: true, cultivarId: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+// ============================================================================
+// MODULE 6: SUPPLIER ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /suppliers/create
+ * Create a new supplier
+ */
+http.route({
+  path: "/suppliers/create",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.suppliers.create, body);
+
+      return new Response(JSON.stringify({ success: true, supplierId: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /suppliers/get-by-company
+ * Get suppliers for a company
+ */
+http.route({
+  path: "/suppliers/get-by-company",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runQuery(api.suppliers.getByCompany, body);
+
+      return new Response(JSON.stringify({ suppliers: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /suppliers/update
+ * Update supplier
+ */
+http.route({
+  path: "/suppliers/update",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.suppliers.update, body);
+
+      return new Response(JSON.stringify({ success: true, supplierId: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /suppliers/delete
+ * Delete (soft delete) supplier
+ */
+http.route({
+  path: "/suppliers/delete",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.suppliers.remove, body);
+
+      return new Response(JSON.stringify({ success: true, supplierId: result }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+// ============================================================================
+// DATABASE SEEDING (DEVELOPMENT/ADMIN)
+// ============================================================================
+
+/**
+ * POST /seed/roles
+ * Seed system roles
+ */
+http.route({
+  path: "/seed/roles",
+  method: "POST",
+  handler: httpAction(async (ctx) => {
+    try {
+      const result = await ctx.runMutation(api.seed.seedRoles, {});
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /seed/crop-types
+ * Seed crop types
+ */
+http.route({
+  path: "/seed/crop-types",
+  method: "POST",
+  handler: httpAction(async (ctx) => {
+    try {
+      const result = await ctx.runMutation(api.seed.seedCropTypes, {});
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
         {
           status: 400,
           headers: {
@@ -559,10 +1240,10 @@ http.route({
         );
       }
 
-      // Find user
-      const user = await ctx.runQuery(api.registration.getUserInfo, { email });
+      // Find user by email
+      const userDoc = await ctx.runQuery(api.registration.getUserByEmail, { email });
 
-      if (!user) {
+      if (!userDoc) {
         return new Response(
           JSON.stringify({
             success: false,
@@ -578,6 +1259,9 @@ http.route({
         );
       }
 
+      // Get full user info
+      const user = await ctx.runQuery(api.registration.getUserInfo, { userId: userDoc._id });
+
       // Delete email verification tokens
       await ctx.runMutation(api.emailVerification.cleanupExpiredTokens);
 
@@ -587,9 +1271,9 @@ http.route({
         JSON.stringify({
           success: true,
           message: `Found user ${email}. Please use Convex dashboard to delete manually.`,
-          userId: user._id,
+          userId: user.userId,
           email: user.email,
-          companyId: user.company_id,
+          companyId: user.companyId,
         }),
         {
           status: 200,

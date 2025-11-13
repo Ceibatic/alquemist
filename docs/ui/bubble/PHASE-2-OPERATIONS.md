@@ -16,6 +16,24 @@ Phase 2 is the operational hub for daily farming activities. Users create produc
 
 ---
 
+## Internationalization (i18n)
+
+**Languages Supported**: Spanish (default), English
+
+All UI texts in this document must be implemented using the i18n system. See [../../i18n/STRATEGY.md](../../i18n/STRATEGY.md) for complete implementation strategy.
+
+**Implementation Approach**:
+- All UI texts stored in Bubble Option Set `UI_Texts` with both Spanish and English translations
+- Enum values (activity types, status, etc.) stored in dedicated Option Sets
+- Backend sends technical codes only, frontend handles translation
+- Language switcher available in all pages
+
+**Translation Tables**: Each module below includes translation tables following the same format as Phase 1.
+
+For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n/BUBBLE-IMPLEMENTATION.md).
+
+---
+
 ## MODULE 9: Inventory Management
 
 ### Page 1: Inventory Dashboard
@@ -58,6 +76,20 @@ Phase 2 is the operational hub for daily farming activities. Users create produc
 - **Reads from**: `products` table
   - Gets: product names and details
 
+**UI Translations**:
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Page Header | INVENTARIO | INVENTORY | inventory_header |
+| Critical Items Section | ⚠ ARTÍCULOS CRÍTICOS: | ⚠ CRITICAL ITEMS: | inventory_critical_section |
+| Low Stock Section | 🟡 STOCK BAJO: | 🟡 LOW STOCK: | inventory_low_stock_section |
+| In Stock Section | ✓ EN STOCK: | ✓ IN STOCK: | inventory_in_stock_section |
+| Left Text | restantes | left | inventory_left_text |
+| Reorder Point Label | Punto de reorden: | Reorder point: | inventory_reorder_point_label |
+| Reorder Now Button | Reordenar Ahora | Reorder Now | inventory_reorder_now_btn |
+| View Full Inventory Button | Ver Inventario Completo | View Full Inventory | inventory_view_full_btn |
+| Add Item Button | + Agregar Artículo | + Add Item | inventory_add_item_btn |
+
 ---
 
 ### Page 2: Inventory List (Full)
@@ -90,6 +122,24 @@ Phase 2 is the operational hub for daily farming activities. Users create produc
 **Database Context**:
 - **Reads from**: `inventory_items` table joined with `products`
   - Gets: all inventory for selected facility
+
+**UI Translations**:
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Page Header | TODO EL INVENTARIO | ALL INVENTORY | inventory_all_header |
+| Search Placeholder | Buscar | Search | inventory_search_placeholder |
+| Filter Label | Filtrar: | Filter: | inventory_filter_label |
+| Sort Label | Ordenar: | Sort: | inventory_sort_label |
+| All Filter Option | Todos | All | inventory_filter_all |
+| Item Column | Artículo | Item | inventory_column_item |
+| Qty Column | Cant. | Qty | inventory_column_qty |
+| Unit Column | Unidad | Unit | inventory_column_unit |
+| Reorder Column | Reorden | Reorder | inventory_column_reorder |
+| Add Item Button | + Agregar Artículo | + Add Item | inventory_add_item_btn_2 |
+| Consume Button | Consumir | Consume | inventory_consume_btn |
+| Transfer Button | Transferir | Transfer | inventory_transfer_btn |
+| RO Button | RO | RO | inventory_ro_btn |
 
 ---
 
@@ -137,6 +187,35 @@ Phase 2 is the operational hub for daily farming activities. Users create produc
 - **Reads from**: `batches` table → get active batches for dropdown
 - **Updates**: `inventory_items` table → decrease quantity_available
 - **Writes to**: `activities` table → log consumption event with materials_consumed array
+
+**UI Translations (Popup)**:
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Popup Header | REGISTRAR CONSUMO | LOG CONSUMPTION | inventory_consume_popup_header |
+| Item Label | Artículo: | Item: | inventory_consume_item_label |
+| Current Stock Label | Stock Actual: | Current Stock: | inventory_consume_current_stock_label |
+| Batch Label | Lote Aplicado a: | Batch Applied To: | inventory_consume_batch_label |
+| Quantity Label | Cantidad Consumida: | Quantity Consumed: | inventory_consume_quantity_label |
+| Activity Type Label | Tipo de Actividad: | Activity Type: | inventory_consume_activity_type_label |
+| Notes Label | Notas: | Notes: | inventory_consume_notes_label |
+| Cancel Button | Cancelar | Cancel | inventory_consume_cancel_btn |
+| Log Button | Registrar Consumo | Log Consumption | inventory_consume_log_btn |
+| Success Message | Transferencia completada | Transfer completed | inventory_consume_success |
+
+**Enum Translations (Activity Types)**:
+
+| value | display_es | display_en |
+|-------|------------|------------|
+| watering | Riego | Watering |
+| feeding | Alimentación | Feeding |
+| pruning | Poda | Pruning |
+| inspection | Inspección | Inspection |
+| treatment | Tratamiento | Treatment |
+| harvest | Cosecha | Harvest |
+| movement | Movimiento | Movement |
+| quality_check | Control de Calidad | Quality Check |
+| other | Otro | Other |
 
 ---
 
@@ -736,6 +815,182 @@ QC Templates → Run check (select batch)
             → Upload photo (optional AI analysis)
             → Submit → Create pest record if FAIL
 ```
+
+---
+
+## Consolidated Translation Tables
+
+### Module 10: Production Templates
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Templates Header | PLANTILLAS DE PRODUCCIÓN | PRODUCTION TEMPLATES | templates_header |
+| New Template Button | + Nueva Plantilla | + New Template | templates_new_btn |
+| Crop Label | Cultivo: | Crop: | templates_crop_label |
+| Duration Label | Duración: | Duration: | templates_duration_label |
+| Phases Label | Fases: | Phases: | templates_phases_label |
+| Weeks | semanas | weeks | templates_weeks_unit |
+| Edit Button | Editar | Edit | templates_edit_btn |
+| Clone Button | Clonar | Clone | templates_clone_btn |
+| Use Button | Usar | Use | templates_use_btn |
+| Template Name Label | Nombre de la Plantilla: | Template Name: | templates_name_label |
+| Crop Type Label | Tipo de Cultivo: | Crop Type: | templates_crop_type_label |
+| Default Batch Size Label | Tamaño de Lote Predeterminado: | Default Batch Size: | templates_batch_size_label |
+| Plants | plantas | plants | templates_plants_unit |
+| Estimated Duration Label | Duración Estimada: | Estimated Duration: | templates_duration_label_2 |
+| Environmental Targets | Objetivos Ambientales: | Environmental Targets: | templates_environmental_label |
+| Temp Label | Temp: | Temp: | templates_temp_label |
+| Humidity Label | Humedad: | Humidity: | templates_humidity_label |
+| Phases Section | FASES: | PHASES: | templates_phases_section |
+| Add Phase Button | + Agregar Fase | + Add Phase | templates_add_phase_btn |
+| Delete Button | Eliminar | Delete | templates_delete_btn |
+| Save Template Button | Guardar Plantilla | Save Template | templates_save_btn |
+| Success Message | Plantilla creada exitosamente | Template created successfully | templates_create_success |
+| Clone Success | Plantilla clonada exitosamente | Template cloned successfully | templates_clone_success |
+
+### Module 11: Quality Check Templates
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| QC Header | CONTROLES DE CALIDAD | QUALITY CHECKS | qc_header |
+| New QC Template Button | + Nueva Plantilla de QC | + New QC Template | qc_new_template_btn |
+| Type Label | Tipo: | Type: | qc_type_label |
+| Phases Label | Fases: | Phases: | qc_phases_label |
+| Run Button | Ejecutar | Run | qc_run_btn |
+| Duplicate Button | Duplicar | Duplicate | qc_duplicate_btn |
+| Inspection Header | INSPECCIÓN DIARIA DE PLANTAS | DAILY PLANT INSPECTION | qc_inspection_header |
+| Batch Label | Lote: | Batch: | qc_batch_label |
+| Date Label | Fecha: | Date: | qc_date_label |
+| Inspector Label | Inspector: | Inspector: | qc_inspector_label |
+| Criteria Label | CRITERIOS: | CRITERIA: | qc_criteria_label |
+| Status Label | Estado: | Status: | qc_status_label |
+| Pass Option | Aprobar | Pass | qc_pass |
+| Fail Option | Reprobar | Fail | qc_fail |
+| Notes Label | Notas: | Notes: | qc_notes_label |
+| Photo Label | Foto: | Photo: | qc_photo_label |
+| Take Photo Button | 📷 Tomar Foto | 📷 Take Photo | qc_take_photo_btn |
+| AI Check Button | 🤖 Verificar con IA | 🤖 AI Check Image | qc_ai_check_btn |
+| AI Result Label | Resultado IA: | AI Result: | qc_ai_result_label |
+| No Pests Detected | No se detectaron plagas | No pests detected | qc_no_pests |
+| Overall Result Label | Resultado General: | Overall Result: | qc_overall_result_label |
+| Save Draft Button | Guardar Borrador | Save Draft | qc_save_draft_btn |
+| Submit Check Button | Enviar Control | Submit Check | qc_submit_btn |
+| Success Message | Plantilla de QC creada | QC template created | qc_template_created |
+
+### Module 12: Production Orders & Operations
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Orders Header | ÓRDENES DE PRODUCCIÓN | PRODUCTION ORDERS | orders_header |
+| Active Batches Section | LOTES ACTIVOS: | ACTIVE BATCHES: | orders_active_section |
+| Status Label | Estado: | Status: | orders_status_label |
+| Started Label | Iniciado: | Started: | orders_started_label |
+| Completed Section | COMPLETADOS: | COMPLETED: | orders_completed_section |
+| New Order Button | + Nueva Orden | + New Order | orders_new_btn |
+| View Button | Ver | View | orders_view_btn |
+| Log Activity Button | Registrar Actividad | Log Activity | orders_log_activity_btn |
+| View Archive Button | Ver Archivo | View Archive | orders_view_archive_btn |
+| Success Message | Orden de producción creada exitosamente | Production order created successfully | orders_create_success |
+| New Order Header | NUEVA ORDEN DE PRODUCCIÓN | NEW PRODUCTION ORDER | orders_new_header |
+| Select Template Label | Seleccionar Plantilla: | Select Template: | orders_select_template_label |
+| Facility Label | Instalación: | Facility: | orders_facility_label |
+| Starting Area Label | Área Inicial: | Starting Area: | orders_starting_area_label |
+| Cultivar Label | Cultivar: | Cultivar: | orders_cultivar_label |
+| Batch Size Label | Tamaño del Lote: | Batch Size: | orders_batch_size_label |
+| Recommended Text | (Recomendado: [X]) | (Recommended: [X]) | orders_recommended_text |
+| Start Date Label | Fecha de Inicio: | Start Date: | orders_start_date_label |
+| Create Order Button | Crear Orden | Create Order | orders_create_btn |
+| Order Detail Header | ORDEN: | ORDER: | orders_detail_header |
+| Est. Harvest Label | Cosecha Est.: | Est. Harvest: | orders_est_harvest_label |
+| Days Remaining | Días Restantes: | Days Remaining: | orders_days_remaining_label |
+| Progress Label | PROGRESO: | PROGRESS: | orders_progress_label |
+| Now Label | Ahora | Now | orders_now_label |
+| Today Label | Hoy: | Today: | orders_today_label |
+| Due Now | vence ahora | due now | orders_due_now |
+| Upcoming Activities | ACTIVIDADES PRÓXIMAS: | UPCOMING ACTIVITIES: | orders_upcoming_activities |
+| Materials Used | MATERIALES USADOS: | MATERIALS USED: | orders_materials_used |
+| Log Now Button | Registrar Ahora | Log Now | orders_log_now_btn |
+| Skip Button | Omitir | Skip | orders_skip_btn |
+| Snooze Button | Posponer | Snooze | orders_snooze_btn |
+| Complete Phase Button | Completar Fase | Complete Phase | orders_complete_phase_btn |
+| Harvest Button | Cosechar | Harvest | orders_harvest_btn |
+| Log Activity Header | REGISTRAR ACTIVIDAD | LOG ACTIVITY | orders_log_activity_header |
+| Activity Label | Actividad: | Activity: | orders_activity_label |
+| Phase Label | Fase: | Phase: | orders_phase_label |
+| Completed By Label | Completado Por: | Completed By: | orders_completed_by_label |
+| Date Time Label | Fecha y Hora: | Date & Time: | orders_date_time_label |
+| Materials Used Label | Materiales Usados: | Materials Used: | orders_materials_used_label |
+| Add Material Button | + Agregar Material | + Add Material | orders_add_material_btn |
+| Observations Label | Observaciones: | Observations: | orders_observations_label |
+| Photos Label | Fotos (opcional): | Photos (optional): | orders_photos_label |
+| Upload Button | 📷 Subir | 📷 Upload | orders_upload_btn |
+| Drag Drop Text | Arrastrar y Soltar | Drag & Drop | orders_drag_drop_text |
+| Log Activity Button | Registrar Actividad | Log Activity | orders_log_activity_btn |
+| Activity Success | Actividad registrada exitosamente | Activity logged successfully | orders_activity_success |
+
+### Module 13: AI Engine & Insights
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Insights Header | INFORMACIÓN INTELIGENTE | INTELLIGENT INSIGHTS | ai_insights_header |
+| This Week | Esta Semana | This Week | ai_this_week |
+| Key Recommendations | 🎯 RECOMENDACIONES CLAVE: | 🎯 KEY RECOMMENDATIONS: | ai_key_recommendations |
+| Batch Label | LOTE-[número]: | BATCH-[number]: | ai_batch_label |
+| Ready to Move | Listo para mover a Floración en [X] días | Ready to move to Flowering in [X] days | ai_ready_to_move |
+| Confidence Label | Confianza: | Confidence: | ai_confidence_label |
+| Low Nutrient Alert | ALERTA DE NUTRIENTE BAJO: | LOW NUTRIENT ALERT: | ai_low_nutrient |
+| Will Run Out | Se agotará en [X] días al consumo actual | Will run out in [X] days at current consumption rate | ai_will_run_out |
+| Yield Forecast | PRONÓSTICO DE RENDIMIENTO: | YIELD FORECAST: | ai_yield_forecast |
+| On Track | en camino a [X] kg | on track for [X] kg | ai_on_track |
+| View Details Button | Ver Detalles | View Details | ai_view_details_btn |
+| Auto Button | Auto | Auto | ai_auto_btn |
+| Reorder Button | Reordenar | Reorder | ai_reorder_btn |
+| Adjust Button | Ajustar | Adjust | ai_adjust_btn |
+| View All Button | Ver Todo | View All Insights | ai_view_all_btn |
+
+### Additional Enum Translations
+
+**Batch Status:**
+
+| value | display_es | display_en |
+|-------|------------|------------|
+| active | Activo | Active |
+| harvested | Cosechado | Harvested |
+| disposed | Desechado | Disposed |
+| lost | Perdido | Lost |
+
+**Production Order Status:**
+
+| value | display_es | display_en |
+|-------|------------|------------|
+| draft | Borrador | Draft |
+| approved | Aprobado | Approved |
+| en_proceso | En Proceso | In Progress |
+| completado | Completado | Completed |
+| cancelled | Cancelado | Cancelled |
+
+**Scheduled Activity Status:**
+
+| value | display_es | display_en |
+|-------|------------|------------|
+| pending | Pendiente | Pending |
+| in_progress | En Progreso | In Progress |
+| completed | Completado | Completed |
+| skipped | Omitido | Skipped |
+| overdue | Vencido | Overdue |
+
+**Quantity Units:**
+
+| value | display_es | display_en |
+|-------|------------|------------|
+| plants | plantas | plants |
+| seedlings | plántulas | seedlings |
+| clones | clones | clones |
+| units | unidades | units |
+| kg | kg | kg |
+| g | g | g |
+| L | L | L |
+| mL | mL | mL |
 
 ---
 

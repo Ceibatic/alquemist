@@ -1,6 +1,6 @@
 # PHASE 2: API ENDPOINTS
 
-**Base URL**: `https://[your-deployment].convex.site`
+**Base URL**: `https://handsome-jay-388.convex.site`
 
 **Database Schema**: See [../database/SCHEMA.md](../database/SCHEMA.md)
 **UI Requirements**: See [../ui/bubble/PHASE-2-OPERATIONS.md](../ui/bubble/PHASE-2-OPERATIONS.md)
@@ -1004,6 +1004,37 @@
 1. Complete Phase 1 Modules 3-6 first
 2. Then implement Phase 2 in this order:
    - Inventory → Templates → Orders → QC → AI
+
+---
+
+## INTERNATIONALIZATION (i18n) STRATEGY
+
+**Backend Approach**: The API is **language-agnostic** and always sends technical codes, not translated messages.
+
+See [PHASE-1-ENDPOINTS.md](./PHASE-1-ENDPOINTS.md#internationalization-i18n-strategy) for complete i18n strategy and error code translations.
+
+### Additional Error Codes for Phase 2
+
+| code | message_es | message_en |
+|------|------------|------------|
+| INVENTORY_ITEM_NOT_FOUND | Artículo de inventario no encontrado | Inventory item not found |
+| INSUFFICIENT_STOCK | Stock insuficiente | Insufficient stock |
+| TEMPLATE_NOT_FOUND | Plantilla no encontrada | Template not found |
+| BATCH_NOT_FOUND | Lote no encontrado | Batch not found |
+| INVALID_BATCH_SIZE | Tamaño de lote inválido | Invalid batch size |
+| INVALID_QUANTITY | Cantidad inválida | Invalid quantity |
+| INVALID_PHASE | Fase inválida | Invalid phase |
+| ACTIVITY_NOT_FOUND | Actividad no encontrada | Activity not found |
+| MATERIAL_NOT_FOUND | Material no encontrado | Material not found |
+| QC_TEMPLATE_NOT_FOUND | Plantilla de QC no encontrada | QC template not found |
+| PHASE_NOT_COMPLETE | Fase no completada | Phase not complete |
+| BATCH_ALREADY_HARVESTED | Lote ya cosechado | Batch already harvested |
+| ORDER_NOT_FOUND | Orden no encontrada | Order not found |
+| INVALID_CULTIVAR | Cultivar inválido | Invalid cultivar |
+| AREA_NOT_AVAILABLE | Área no disponible | Area not available |
+| AREA_AT_CAPACITY | Área en capacidad máxima | Area at capacity |
+
+For implementation details, see [../i18n/STRATEGY.md](../i18n/STRATEGY.md) and [../i18n/BUBBLE-IMPLEMENTATION.md](../i18n/BUBBLE-IMPLEMENTATION.md).
 
 ---
 

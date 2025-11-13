@@ -13,8 +13,8 @@ export default defineSchema({
   // ============================================================================
 
   companies: defineTable({
-    // Clerk Integration
-    organization_id: v.string(), // Clerk organization ID (unique)
+    // DEPRECATED: Clerk organization ID (kept for backward compatibility)
+    organization_id: v.optional(v.string()),
 
     // Basic Information
     name: v.string(),
@@ -61,7 +61,6 @@ export default defineSchema({
     created_at: v.number(),
     updated_at: v.number(),
   })
-    .index("by_organization_id", ["organization_id"])
     .index("by_tax_id", ["tax_id"])
     .index("by_status", ["status"])
     .index("by_created_at", ["created_at"]),
@@ -108,6 +107,7 @@ export default defineSchema({
     // Preferences
     locale: v.string(), // Default: "es"
     timezone: v.string(), // Default: "America/Bogota"
+    preferred_language: v.optional(v.string()), // "es" | "en" - for Bubble UI language preference
 
     // Security
     mfa_enabled: v.boolean(), // Default: false
@@ -142,6 +142,29 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_user", ["user_id"])
     .index("by_expires", ["expires_at"]),
+
+  sessions: defineTable({
+    // Session Token Management (for Bubble.io API authentication)
+    user_id: v.id("users"),
+    token: v.string(), // Random session token (30-day validity)
+    expires_at: v.number(), // 30 days from creation
+    last_used_at: v.optional(v.number()), // Track last activity
+
+    // Device/Client Information (optional)
+    user_agent: v.optional(v.string()),
+    ip_address: v.optional(v.string()),
+
+    // Status
+    is_active: v.boolean(), // Default: true
+    revoked_at: v.optional(v.number()), // When session was manually invalidated
+
+    // Metadata
+    created_at: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_user", ["user_id"])
+    .index("by_expires", ["expires_at"])
+    .index("by_is_active", ["is_active"]),
 
   geographic_locations: defineTable({
     // Regional Hierarchical Structure

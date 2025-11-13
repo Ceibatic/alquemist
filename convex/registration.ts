@@ -11,10 +11,10 @@ import {
   validateEmail,
   validatePassword,
   formatColombianPhone,
+  generateSessionToken,
+  getSessionExpiration,
 } from "./auth";
 import { api } from "./_generated/api";
-import { createClerkUser } from "./clerk";
-import { sendWelcomeEmail } from "./email";
 
 // ============================================================================
 // STEP 1: USER REGISTRATION (Without Company)
@@ -89,6 +89,7 @@ export const registerUserStep1 = mutation({
 
       locale: "es",
       timezone: "America/Bogota", // Default - will be updated with company in step 2
+      preferred_language: "es", // Default language for Bubble UI
 
       mfa_enabled: false,
       failed_login_attempts: 0,
@@ -98,7 +99,19 @@ export const registerUserStep1 = mutation({
       updated_at: now,
     });
 
-    // 5. Send verification email
+    // 5. Generate session token (30-day validity)
+    const sessionToken = generateSessionToken();
+    const sessionExpiration = getSessionExpiration(30);
+
+    await ctx.db.insert("sessions", {
+      user_id: userId,
+      token: sessionToken,
+      expires_at: sessionExpiration,
+      is_active: true,
+      created_at: now,
+    });
+
+    // 6. Send verification email
     const emailResult: any = await ctx.runMutation(
       api.emailVerification.sendVerificationEmail,
       {
@@ -110,11 +123,12 @@ export const registerUserStep1 = mutation({
     return {
       success: true,
       userId,
+      token: sessionToken, // Session token for API authentication
       email: args.email.toLowerCase(),
       message: "Cuenta creada. Por favor verifica tu correo electrónico.",
       verificationSent: emailResult.success,
-      // For testing: include token
-      token: emailResult.token,
+      // For testing: include verification token
+      verificationToken: emailResult.token,
     };
   },
 });
@@ -183,14 +197,8 @@ export const registerCompanyStep2 = mutation({
       throw new Error("Departamento no encontrado");
     }
 
-    // 3. Generate organization ID (for Clerk later)
-    const organizationId = `org_test_${Date.now()}_${Math.random()
-      .toString(36)
-      .substring(7)}`;
-
-    // 4. Create company
+    // 3. Create company
     const companyId = await ctx.db.insert("companies", {
-      organization_id: organizationId,
       name: args.companyName,
       company_type: args.companyType,
       business_entity_type: args.businessEntityType,
@@ -229,7 +237,6 @@ export const registerCompanyStep2 = mutation({
       success: true,
       userId: args.userId,
       companyId,
-      organizationId,
       message:
         "¡Bienvenido! Tu empresa ha sido creada exitosamente. Acceso a plataforma.",
     };
@@ -287,7 +294,26 @@ export const getUserInfo = query({
 });
 
 /**
- * Simple login (for testing - Clerk will replace in production)
+ * Get user by email
+ * Helper function for cleanup and lookup operations
+ */
+export const getUserByEmail = query({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
+      .first();
+
+    return user;
+  },
+});
+
+/**
+ * User login with email and password
+ * Returns session token for API authentication
  */
 export const login = mutation({
   args: {
@@ -346,6 +372,18 @@ export const login = mutation({
       throw new Error("La cuenta de la empresa está inactiva");
     }
 
+    // Generate session token (30-day validity)
+    const sessionToken = generateSessionToken();
+    const sessionExpiration = getSessionExpiration(30);
+
+    await ctx.db.insert("sessions", {
+      user_id: user._id,
+      token: sessionToken,
+      expires_at: sessionExpiration,
+      is_active: true,
+      created_at: Date.now(),
+    });
+
     // Update last login
     await ctx.db.patch(user._id, {
       last_login: Date.now(),
@@ -355,14 +393,15 @@ export const login = mutation({
 
     return {
       success: true,
+      token: sessionToken, // Session token for API authentication
       userId: user._id,
       companyId: company._id,
-      organizationId: company.organization_id,
       user: {
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
         locale: user.locale,
+        preferredLanguage: user.preferred_language || "es",
       },
       company: {
         name: company.name,
@@ -373,93 +412,134 @@ export const login = mutation({
 });
 
 // ============================================================================
-// CLERK AUTO-LOGIN
+// SESSION MANAGEMENT
 // ============================================================================
 
 /**
- * Auto-login after signup complete
- * Creates Clerk user and session, then returns session info
- * Called after registerCompanyStep2 completes
+ * Validate session token and return user info
+ * Used by Bubble.io to authenticate API calls
  */
-export const autoLoginWithClerk = mutation({
+export const validateToken = query({
   args: {
-    userId: v.id("users"),
-    email: v.string(),
-    password: v.string(),
-    firstName: v.string(),
-    lastName: v.string(),
-    companyName: v.string(),
+    token: v.string(),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
 
-    // 1. Verify user exists and company is created
-    const user = await ctx.db.get(args.userId);
-    if (!user) {
-      throw new Error("Usuario no encontrado");
-    }
+    // Find session by token
+    const session = await ctx.db
+      .query("sessions")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .first();
 
-    if (!user.company_id) {
-      throw new Error("Empresa no creada. Completa todos los pasos primero.");
-    }
-
-    if (!user.email_verified) {
-      throw new Error("Email no verificado");
-    }
-
-    // 2. Create user in Clerk
-    const clerkResult = await createClerkUser(
-      args.email,
-      args.firstName,
-      args.lastName,
-      args.password
-    );
-
-    if (!clerkResult.success) {
-      console.error("[REGISTRATION] Clerk creation failed:", clerkResult.error);
-      // Don't fail completely - user exists in Convex and can login manually
-      // Return success anyway since signup is complete
+    if (!session) {
       return {
-        success: true,
-        userId: user._id,
-        companyId: user.company_id,
-        clerkWarning: "Usuario creado pero falló la sincronización con Clerk. Puedes inicia sesión manualmente.",
-        redirectUrl: "/sign-in",
+        valid: false,
+        error: "Token inválido",
       };
     }
 
-    // 3. Update user with Clerk ID
-    await ctx.db.patch(user._id, {
-      clerk_id: clerkResult.userId,
-      last_login: now,
-      updated_at: now,
-    });
-
-    // 4. Send welcome email
-    const welcomeResult = await sendWelcomeEmail(
-      args.email,
-      args.firstName,
-      args.companyName
-    );
-
-    if (!welcomeResult.success) {
-      console.warn("[REGISTRATION] Welcome email failed:", welcomeResult.error);
-      // Don't fail - email is optional
+    // Check if token is active
+    if (!session.is_active) {
+      return {
+        valid: false,
+        error: "Sesión inactiva",
+      };
     }
 
-    console.log(
-      `[REGISTRATION] Auto-login successful for user ${user._id}, Clerk ID: ${clerkResult.userId}`
-    );
+    // Check if token is expired
+    if (session.expires_at < now) {
+      // Note: Expired session cleanup should be done via a separate mutation
+      return {
+        valid: false,
+        error: "Token expirado",
+      };
+    }
+
+    // Get user info
+    const user = await ctx.db.get(session.user_id);
+
+    if (!user) {
+      return {
+        valid: false,
+        error: "Usuario no encontrado",
+      };
+    }
+
+    // Check user status
+    if (user.status !== "active") {
+      return {
+        valid: false,
+        error: "Usuario inactivo",
+      };
+    }
+
+    // Note: last_used_at timestamp update should be done via a separate mutation
+    // to keep this function as a read-only query
+
+    // Get company info if user has one
+    let company = null;
+    if (user.company_id) {
+      company = await ctx.db.get(user.company_id);
+    }
 
     return {
-      success: true,
+      valid: true,
       userId: user._id,
-      clerkUserId: clerkResult.userId,
-      sessionId: clerkResult.sessionId,
       companyId: user.company_id,
-      email: args.email,
-      message: "¡Bienvenido a Alquemist!",
-      redirectUrl: "/dashboard",
+      user: {
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        locale: user.locale,
+        preferredLanguage: user.preferred_language || "es",
+        roleId: user.role_id,
+      },
+      company: company
+        ? {
+            id: company._id,
+            name: company.name,
+            status: company.status,
+            subscriptionPlan: company.subscription_plan,
+          }
+        : null,
     };
   },
 });
+
+/**
+ * Logout - invalidate session token
+ */
+export const logout = mutation({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Find session by token
+    const session = await ctx.db
+      .query("sessions")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .first();
+
+    if (!session) {
+      return {
+        success: false,
+        error: "Token no encontrado",
+      };
+    }
+
+    // Deactivate session
+    await ctx.db.patch(session._id, {
+      is_active: false,
+      revoked_at: now,
+    });
+
+    return {
+      success: true,
+      message: "Sesión cerrada exitosamente",
+    };
+  },
+});
+

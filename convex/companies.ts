@@ -7,23 +7,24 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 /**
- * Get company by organization ID (from Clerk)
+ * DEPRECATED: Get company by organization ID (from Clerk)
+ * This function is no longer needed after switching to custom auth
  */
-export const getByOrganizationId = query({
-  args: {
-    organizationId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const company = await ctx.db
-      .query("companies")
-      .withIndex("by_organization_id", (q) =>
-        q.eq("organization_id", args.organizationId)
-      )
-      .first();
-
-    return company;
-  },
-});
+// export const getByOrganizationId = query({
+//   args: {
+//     organizationId: v.string(),
+//   },
+//   handler: async (ctx, args) => {
+//     const company = await ctx.db
+//       .query("companies")
+//       .withIndex("by_organization_id", (q) =>
+//         q.eq("organization_id", args.organizationId)
+//       )
+//       .first();
+//
+//     return company;
+//   },
+// });
 
 /**
  * List all companies (admin only)
@@ -56,9 +57,6 @@ export const list = query({
  */
 export const create = mutation({
   args: {
-    // Clerk organization ID
-    organization_id: v.string(),
-
     // Required fields
     name: v.string(),
     company_type: v.string(),
@@ -94,9 +92,6 @@ export const create = mutation({
     const now = Date.now();
 
     const companyId = await ctx.db.insert("companies", {
-      // Clerk integration
-      organization_id: args.organization_id,
-
       // Required fields
       name: args.name,
       company_type: args.company_type,

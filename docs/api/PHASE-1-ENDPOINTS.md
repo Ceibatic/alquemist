@@ -1,6 +1,6 @@
 # PHASE 1: API ENDPOINTS
 
-**Base URL**: `https://[your-deployment].convex.site`
+**Base URL**: `https://handsome-jay-388.convex.site`
 
 **Database Schema**: See [../database/SCHEMA.md](../database/SCHEMA.md)
 **UI Requirements**: See [../ui/bubble/PHASE-1-ONBOARDING.md](../ui/bubble/PHASE-1-ONBOARDING.md)
@@ -63,9 +63,10 @@
 {
   "success": true,
   "userId": "j97abc...",
+  "token": "a2g3YnI1M2RuazR5bWplNms...",
   "email": "user@example.com",
   "message": "Cuenta creada. Por favor verifica tu correo electrónico.",
-  "token": "xyz123..."
+  "verificationSent": true
 }
 ```
 
@@ -73,13 +74,16 @@
 
 **Database Operations**:
 - **Writes**: `users` table → create new user (email_verified=false)
-- **Writes**: `emailVerificationTokens` table → create 24h token
+- **Writes**: `sessions` table → create 30-day session token
+- **Writes**: `emailVerificationTokens` table → create 24h verification token
 - **Reads**: `roles` table → get COMPANY_OWNER role ID
 
 **Validation**:
 - Email format valid
-- Password strength: min 8 chars, 1 uppercase, 1 number, 1 special char
+- Password strength: min 8 chars, letters + numbers
 - Email not already registered
+
+**Important**: The `token` field is a **session token** (30-day validity) for API authentication. Save this to Bubble User data type.
 
 ---
 
@@ -298,8 +302,7 @@
   "success": true,
   "userId": "j97abc...",
   "companyId": "k12def...",
-  "organizationId": "org_test_1234567890_xyz",
-  "message": "¡Bienvenido! Tu empresa ha sido creada exitosamente."
+  "message": "¡Bienvenido! Tu empresa ha sido creada exitosamente. Acceso a plataforma."
 }
 ```
 
@@ -307,10 +310,12 @@
 
 **Database Operations**:
 - **Reads**: `users` table → verify email_verified=true
+- **Reads**: `geographic_locations` table → validate municipality and department
 - **Writes**: `companies` table → create company with:
   - name, business_entity_type, company_type
-  - country, department_code, municipality_code
+  - country, department/municipality codes and names
   - subscription_plan="trial", max_facilities=1, max_users=3
+  - timezone from municipality
 - **Updates**: `users` table → set company_id, timezone from municipality
 
 ---
@@ -335,15 +340,20 @@
 ```json
 {
   "success": true,
+  "token": "a2g3YnI1M2RuazR5bWplNms...",
+  "userId": "j97abc...",
+  "companyId": "k12def...",
   "user": {
-    "id": "j97abc...",
     "email": "user@example.com",
     "firstName": "Juan",
     "lastName": "Pérez",
-    "companyId": "k12def...",
-    "roleId": "role123..."
+    "locale": "es",
+    "preferredLanguage": "es"
   },
-  "message": "Login exitoso"
+  "company": {
+    "name": "Cultivos San José S.A.S",
+    "subscriptionPlan": "trial"
+  }
 }
 ```
 
@@ -351,7 +361,132 @@
 
 **Database Operations**:
 - **Reads**: `users` table → find by email, verify password_hash
-- **Validation**: Check email_verified=true
+- **Reads**: `companies` table → get company info
+- **Writes**: `sessions` table → create new 30-day session token
+- **Updates**: `users` table → update last_login, reset failed_login_attempts
+
+**Validation**:
+- Email exists
+- Password correct (hash comparison)
+- Email verified (email_verified=true)
+- Company exists (company_id not null)
+- Company status is "active"
+
+**Important**: The `token` field is a **session token** (30-day validity) for API authentication. Save this to Bubble User data type. A new token is generated on each login, invalidating the previous session.
+
+---
+
+### Validate Session Token
+
+**Status**: ✅ Ready
+
+**Endpoint**: `GET /registration/validate-token`
+
+**Triggered by**: Bubble protected page load, or before any authenticated API call
+
+**Headers**:
+```
+Authorization: Bearer a2g3YnI1M2RuazR5bWplNms...
+```
+
+**Query Parameters**:
+```json
+{
+  "token": "a2g3YnI1M2RuazR5bWplNms..."
+}
+```
+
+**Response (Valid)**:
+```json
+{
+  "valid": true,
+  "userId": "j97abc...",
+  "companyId": "k12def...",
+  "user": {
+    "email": "user@example.com",
+    "firstName": "Juan",
+    "lastName": "Pérez",
+    "locale": "es",
+    "preferredLanguage": "es",
+    "roleId": "role123..."
+  },
+  "company": {
+    "id": "k12def...",
+    "name": "Cultivos San José S.A.S",
+    "status": "active",
+    "subscriptionPlan": "trial"
+  }
+}
+```
+
+**Response (Invalid)**:
+```json
+{
+  "valid": false,
+  "error": "Token expirado"
+}
+```
+
+**Convex Function**: `registration.validateToken`
+
+**Database Operations**:
+- **Reads**: `sessions` table → find token, check is_active and expires_at
+- **Reads**: `users` table → get user info, check status
+- **Reads**: `companies` table → get company info
+- **Updates**: `sessions` table → update last_used_at timestamp
+
+**Validation**:
+- Token exists in database
+- Token is_active = true
+- Token not expired (<30 days old)
+- User status = "active"
+
+**Bubble Usage**: Call this on every protected page load. If `valid: false`, log user out and redirect to login page.
+
+---
+
+### Logout
+
+**Status**: ✅ Ready
+
+**Endpoint**: `POST /registration/logout`
+
+**Triggered by**: Bubble logout button
+
+**Request**:
+```json
+{
+  "token": "a2g3YnI1M2RuazR5bWplNms..."
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Sesión cerrada exitosamente"
+}
+```
+
+**Response (Error)**:
+```json
+{
+  "success": false,
+  "error": "Token no encontrado"
+}
+```
+
+**Convex Function**: `registration.logout`
+
+**Database Operations**:
+- **Reads**: `sessions` table → find token
+- **Updates**: `sessions` table → set is_active=false, revoked_at=now
+
+**Bubble Usage**:
+1. Call this endpoint with user's session token
+2. Clear User data type `session_token` field
+3. "Log the user out" action
+4. Navigate to login page
 
 ---
 
@@ -937,6 +1072,76 @@ Authorization: Bearer [user-token-or-session]
 1. Store user session after successful login
 2. Include session token in subsequent API calls
 3. Handle token expiration and refresh
+
+---
+
+## INTERNATIONALIZATION (i18n) STRATEGY
+
+**Backend Approach**: The API is **language-agnostic** and always sends technical codes, not translated messages.
+
+### Principles
+
+1. **Technical Codes Only**: API responses contain only technical values (e.g., `"commercial_growing"`, `"active"`, `"S.A.S"`), never display strings
+2. **Error Codes**: All error messages use standardized error codes that can be translated by the frontend
+3. **Frontend Translation**: Bubble.io handles all translation using Option Sets and Custom States
+4. **No Accept-Language Header**: API does not accept or process language headers
+
+### Error Code Translations
+
+The frontend should maintain an `Error_Codes` Option Set with these translations:
+
+| code | message_es | message_en |
+|------|------------|------------|
+| INVALID_INPUT | Entrada inválida | Invalid input |
+| VALIDATION_FAILED | Validación fallida | Validation failed |
+| NOT_FOUND | Recurso no encontrado | Resource not found |
+| ALREADY_EXISTS | Ya existe | Already exists |
+| UNAUTHORIZED | No autorizado | Unauthorized |
+| FORBIDDEN | Prohibido | Forbidden |
+| RATE_LIMIT_EXCEEDED | Límite de solicitudes excedido | Rate limit exceeded |
+| SERVER_ERROR | Error del servidor | Server error |
+| TOKEN_EXPIRED | Token expirado | Token expired |
+| TOKEN_INVALID | Token inválido | Token invalid |
+| EMAIL_NOT_VERIFIED | Email no verificado | Email not verified |
+| COMPANY_NOT_FOUND | Empresa no encontrada | Company not found |
+| FACILITY_NOT_FOUND | Instalación no encontrada | Facility not found |
+| FACILITY_LIMIT_EXCEEDED | Límite de instalaciones excedido | Facility limit exceeded |
+| INVALID_MUNICIPALITY | Municipio inválido | Invalid municipality |
+| DUPLICATE_LICENSE | Número de licencia duplicado | Duplicate license number |
+
+### Field-Specific Validation Messages
+
+For field-specific errors, the API returns:
+
+```json
+{
+  "success": false,
+  "code": "VALIDATION_FAILED",
+  "errors": [
+    {"field": "email", "code": "INVALID_EMAIL"},
+    {"field": "password", "code": "PASSWORD_TOO_WEAK"}
+  ]
+}
+```
+
+Frontend translation Option Set `Validation_Error_Codes`:
+
+| code | message_es | message_en |
+|------|------------|------------|
+| REQUIRED_FIELD | Campo requerido | Required field |
+| INVALID_EMAIL | Email inválido | Invalid email |
+| PASSWORD_TOO_WEAK | Contraseña muy débil | Password too weak |
+| PASSWORD_MISMATCH | Las contraseñas no coinciden | Passwords don't match |
+| PHONE_INVALID | Teléfono inválido | Invalid phone |
+| TAX_ID_INVALID | NIT inválido | Invalid tax ID |
+| LICENSE_NUMBER_INVALID | Número de licencia inválido | Invalid license number |
+| AREA_TOO_LARGE | Área demasiado grande | Area too large |
+| CAPACITY_INVALID | Capacidad inválida | Invalid capacity |
+| DATE_INVALID | Fecha inválida | Invalid date |
+| DATE_IN_PAST | Fecha en el pasado | Date in past |
+| QUANTITY_NEGATIVE | Cantidad negativa | Negative quantity |
+
+For implementation details, see [../i18n/STRATEGY.md](../i18n/STRATEGY.md) and [../i18n/BUBBLE-IMPLEMENTATION.md](../i18n/BUBBLE-IMPLEMENTATION.md).
 
 ---
 

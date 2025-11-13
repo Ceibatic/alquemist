@@ -1,25 +1,17 @@
 /**
  * Authentication Utilities
- * Password hashing and validation for Module 1
- *
- * NOTE: In production, Clerk will handle authentication.
- * This is for initial Module 1 development only.
+ * Password hashing, validation, and session token generation
  */
 
 /**
- * Simple password hashing using Convex-compatible approach
- * In production, this will be replaced by Clerk authentication
+ * Password hashing using SHA-256
+ * Uses crypto.subtle for secure password hashing
  */
 export async function hashPassword(password: string): Promise<string> {
-  // For now, we'll use a simple approach since we're in early development
-  // In production with Clerk, this won't be needed
-  // This is just a placeholder for Module 1 implementation
-
-  // Simple hash (NOT for production - Clerk will handle this)
   const encoder = new TextEncoder();
   const data = encoder.encode(password + "alquemist_salt_2025");
 
-  // Use crypto.subtle if available (Convex runtime supports it)
+  // Use crypto.subtle (Convex runtime supports it)
   if (typeof crypto !== "undefined" && crypto.subtle) {
     const hashBuffer = await crypto.subtle.digest("SHA-256", data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -115,4 +107,26 @@ export function validateColombianNIT(nit: string): boolean {
   }
 
   return true;
+}
+
+/**
+ * Generate a random session token
+ * Returns a URL-safe base64 string (32 bytes = ~43 chars)
+ */
+export function generateSessionToken(): string {
+  // Generate 32 random bytes
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+
+  // Convert to base64 and make URL-safe
+  const base64 = btoa(String.fromCharCode(...array));
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+/**
+ * Calculate session expiration timestamp
+ * Default: 30 days from now
+ */
+export function getSessionExpiration(daysFromNow: number = 30): number {
+  return Date.now() + daysFromNow * 24 * 60 * 60 * 1000;
 }

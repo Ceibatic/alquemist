@@ -1,6 +1,6 @@
 # PHASE 3: API ENDPOINTS
 
-**Base URL**: `https://[your-deployment].convex.site`
+**Base URL**: `https://handsome-jay-388.convex.site`
 
 **Database Schema**: See [../database/SCHEMA.md](../database/SCHEMA.md)
 **UI Requirements**: See [../ui/bubble/PHASE-3-ADVANCED.md](../ui/bubble/PHASE-3-ADVANCED.md)
@@ -801,6 +801,36 @@
 1. Complete Phase 1 fully
 2. Complete Phase 2 fully
 3. Then implement Phase 3 modules
+
+---
+
+## INTERNATIONALIZATION (i18n) STRATEGY
+
+**Backend Approach**: The API is **language-agnostic** and always sends technical codes, not translated messages.
+
+See [PHASE-1-ENDPOINTS.md](./PHASE-1-ENDPOINTS.md#internationalization-i18n-strategy) for complete i18n strategy and error code translations.
+
+### Additional Error Codes for Phase 3
+
+| code | message_es | message_en |
+|------|------------|------------|
+| COMPLIANCE_EVENT_NOT_FOUND | Evento de cumplimiento no encontrado | Compliance event not found |
+| CERTIFICATE_NOT_FOUND | Certificado no encontrado | Certificate not found |
+| CERTIFICATE_EXPIRED | Certificado expirado | Certificate expired |
+| REPORT_GENERATION_FAILED | Generación de reporte fallida | Report generation failed |
+| INVALID_REPORT_TYPE | Tipo de reporte inválido | Invalid report type |
+| INVALID_DATE_RANGE | Rango de fechas inválido | Invalid date range |
+| INTEGRATION_NOT_FOUND | Integración no encontrada | Integration not found |
+| INTEGRATION_CONNECTION_FAILED | Conexión de integración fallida | Integration connection failed |
+| INVALID_API_KEY | Clave API inválida | Invalid API key |
+| WEBHOOK_FAILED | Webhook fallido | Webhook failed |
+| SYNC_IN_PROGRESS | Sincronización en progreso | Sync in progress |
+| DATA_EXPORT_FAILED | Exportación de datos fallida | Data export failed |
+| INVALID_FORMAT | Formato inválido | Invalid format |
+| FILE_TOO_LARGE | Archivo demasiado grande | File too large |
+| UNSUPPORTED_FILE_TYPE | Tipo de archivo no soportado | Unsupported file type |
+
+For implementation details, see [../i18n/STRATEGY.md](../i18n/STRATEGY.md) and [../i18n/BUBBLE-IMPLEMENTATION.md](../i18n/BUBBLE-IMPLEMENTATION.md).
 
 ---
 

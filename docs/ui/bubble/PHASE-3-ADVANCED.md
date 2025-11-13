@@ -16,6 +16,24 @@ Phase 3 adds reporting, compliance, analytics, and ecosystem integration. Transf
 
 ---
 
+## Internationalization (i18n)
+
+**Languages Supported**: Spanish (default), English
+
+All UI texts in this document must be implemented using the i18n system. See [../../i18n/STRATEGY.md](../../i18n/STRATEGY.md) for complete implementation strategy.
+
+**Implementation Approach**:
+- All UI texts stored in Bubble Option Set `UI_Texts` with both Spanish and English translations
+- Enum values stored in dedicated Option Sets
+- Backend sends technical codes only, frontend handles translation
+- Language switcher available in all pages
+
+**Translation Tables**: Consolidated translation tables are provided at the end of this document.
+
+For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n/BUBBLE-IMPLEMENTATION.md).
+
+---
+
 ## MODULE 14: Compliance & Reporting
 
 ### Page 1: Compliance Dashboard
@@ -497,6 +515,210 @@ Integrations → Add integration
             → Enable auto-sync
             → Monitor sync logs
 ```
+
+---
+
+## Consolidated Translation Tables
+
+### Module 14: Compliance & Reporting
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Compliance Header | CUMPLIMIENTO | COMPLIANCE | compliance_header |
+| Required Items Section | ARTÍCULOS REQUERIDOS: | REQUIRED ITEMS: | compliance_required_items |
+| Due Label | Vencimiento: | Due: | compliance_due_label |
+| Days | días | days | compliance_days |
+| Generate Button | Generar | Generate | compliance_generate_btn |
+| View Template Button | Ver Plantilla | View Template | compliance_view_template_btn |
+| Schedule Button | Programar | Schedule | compliance_schedule_btn |
+| Certificates Section | CERTIFICADOS: | CERTIFICATES: | compliance_certificates |
+| Status Label | Estado: | Status: | compliance_status_label |
+| Valid Status | ✓ Válido | ✓ Valid | compliance_valid |
+| Expiring Status | ⚠ Por Vencer ([X]d) | ⚠ Expiring ([X]d) | compliance_expiring |
+| View Button | Ver | View | compliance_view_btn |
+| Renew Button | Renovar | Renew | compliance_renew_btn |
+| Past Reports Section | REPORTES PASADOS: | PAST REPORTS: | compliance_past_reports |
+| Download Button | [DL] | [DL] | compliance_download_btn |
+| Generate Report Button | Generar Reporte | Generate Report | compliance_generate_report_btn |
+| Export Button | Exportar | Export | compliance_export_btn |
+| Report Popup Header | REPORTE DE CUMPLIMIENTO | COMPLIANCE REPORT | compliance_report_popup_header |
+| Report Type Label | Tipo de Reporte: | Report Type: | compliance_report_type_label |
+| Period Label | Período: | Period: | compliance_period_label |
+| From Label | Desde: | From: | compliance_from_label |
+| To Label | Hasta: | To: | compliance_to_label |
+| Include Label | Incluir: | Include: | compliance_include_label |
+| Stock Levels Checkbox | Niveles de stock al inicio | Stock levels at start | compliance_stock_levels |
+| Purchases Checkbox | Compras (por proveedor) | Purchases (by supplier) | compliance_purchases |
+| Consumption Logs Checkbox | Registros de consumo | Consumption logs | compliance_consumption_logs |
+| Batch Tracking Checkbox | Seguimiento de lotes | Batch tracking | compliance_batch_tracking |
+| Waste Records Checkbox | Registros de desecho/disposición | Waste/disposal records | compliance_waste_records |
+| Format Label | Formato: | Format: | compliance_format_label |
+| PDF Option | PDF (oficial) | PDF (official) | compliance_pdf |
+| Excel Option | Excel (editable) | Excel (editable) | compliance_excel |
+| JSON Option | JSON (importación de sistema) | JSON (system import) | compliance_json |
+| Success Message | Reporte generado exitosamente | Report generated successfully | compliance_report_success |
+
+### Module 15: Analytics & Business Intelligence
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Analytics Header | ANALÍTICA | ANALYTICS | analytics_header |
+| Key Metrics Section | MÉTRICAS CLAVE: | KEY METRICS: | analytics_key_metrics |
+| Batches Label | Lotes | Batches | analytics_batches |
+| Active | activos | active | analytics_active |
+| Harvest Label | Cosecha | Harvest | analytics_harvest |
+| Completed | completados | completed | analytics_completed |
+| Yield Label | Rendimiento | Yield | analytics_yield |
+| Avg Label | Prom: | Avg: | analytics_avg_label |
+| Vs Label | vs [month] | vs [month] | analytics_vs_label |
+| Cost Per Kg | Costo por kg: | Cost per kg: | analytics_cost_per_kg |
+| Target | objetivo | target | analytics_target |
+| Better Than Target | Mejor que objetivo | Better than target | analytics_better_than_target |
+| Yield Trends Section | TENDENCIAS DE RENDIMIENTO: | YIELD TRENDS: | analytics_yield_trends |
+| Consumption Section | CONSUMO: | CONSUMPTION: | analytics_consumption |
+| Time to Harvest Section | TIEMPO A COSECHA: | TIME-TO-HARVEST: | analytics_time_to_harvest |
+| View Details Button | Ver Detalles | View Details | analytics_view_details_btn |
+| Yield Analysis Header | ANÁLISIS DE RENDIMIENTO | YIELD ANALYSIS | analytics_yield_analysis_header |
+| Last 6 Months | Últimos 6 meses | Last 6 months | analytics_last_6_months |
+| Time Period Label | Período de Tiempo: | Time Period: | analytics_time_period_label |
+| Harvest Data Section | DATOS DE COSECHA: | HARVEST DATA: | analytics_harvest_data |
+| Average Label | Promedio: | Average: | analytics_average_label |
+| Factors Label | FACTORES: | FACTORS: | analytics_factors_label |
+| Nutrient Timing | Momento de nutrientes (positivo) | Nutrient timing (positive) | analytics_nutrient_timing |
+| Light Cycle Opt | Optimización del ciclo de luz | Light cycle optimization | analytics_light_cycle |
+| Humidity Control | Control de humedad (débil) | Humidity control (weak) | analytics_humidity_control |
+| Cultivar Comparison | COMPARACIÓN DE CULTIVARES: | CULTIVAR COMPARISON: | analytics_cultivar_comparison |
+| Download Report Button | Descargar Reporte | Download Report | analytics_download_report_btn |
+| Compare Button | Comparar | Compare | analytics_compare_btn |
+
+### Module 16: Mobile Experience
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Mobile Dashboard Header | ALQUEMIST (Móvil) | ALQUEMIST (Mobile) | mobile_dashboard_header |
+| Status Label | Estado: | Status: | mobile_status_label |
+| Active | activos | active | mobile_active |
+| Alerts | alertas | alerts | mobile_alerts |
+| Today's Tasks | TAREAS DE HOY: | TODAY'S TASKS: | mobile_todays_tasks |
+| Log Now Button | Registrar Ahora | Log Now | mobile_log_now_btn |
+| QC Check Button | Control QC | QC Check | mobile_qc_check_btn |
+| Acknowledge Button | Confirmar | Acknowledge | mobile_acknowledge_btn |
+| Menu Button | [≡] Menú | [≡] Menu | mobile_menu_btn |
+| More Button | [⊕] Más | [⊕] More | mobile_more_btn |
+| Log Activity Header (Mobile) | REGISTRAR ACTIVIDAD (Móvil) | LOG ACTIVITY (Mobile) | mobile_log_activity_header |
+| Batch Label | Lote: | Batch: | mobile_batch_label |
+| Activity Label | Actividad: | Activity: | mobile_activity_label |
+| Time Label | Hora: | Time: | mobile_time_label |
+| Now Button | ⏱ Ahora | ⏱ Now | mobile_now_btn |
+| Materials Label | Materiales: | Materials: | mobile_materials_label |
+| Photo Label | Foto: | Photo: | mobile_photo_label |
+| Optional Text | (opcional) | (optional) | mobile_optional |
+| Camera Button | 📷 Cámara | 📷 Camera | mobile_camera_btn |
+| Offline Mode Text | (Modo offline: Se sincronizará cuando esté en línea) | (Offline mode: Will sync when online) | mobile_offline_mode |
+| Log Button | Registrar | Log | mobile_log_btn |
+
+### Module 17: Integrations & APIs
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Integrations Header | INTEGRACIONES | INTEGRATIONS | integrations_header |
+| Connected Section | CONECTADO: | CONNECTED: | integrations_connected |
+| Status Label | Estado: | Status: | integrations_status_label |
+| Active Status | Activo | Active | integrations_active |
+| Syncing Label | Sincronizando: | Syncing: | integrations_syncing_label |
+| Paused Status | Pausado | Paused | integrations_paused |
+| Time Ago | (hace [X]) | ([X] ago) | integrations_time_ago |
+| Live Status | (en vivo) | (live) | integrations_live |
+| Add Integration Button | + Agregar Integración | + Add Integration | integrations_add_btn |
+| Configure Button | Configurar | Configure | integrations_configure_btn |
+| Disconnect Button | Desconectar | Disconnect | integrations_disconnect_btn |
+| Retry Button | Reintentar | Retry | integrations_retry_btn |
+| Settings Button | Configuración | Settings | integrations_settings_btn |
+| API Keys Button | Claves API | API Keys | integrations_api_keys_btn |
+| Logs Button | Registros | Logs | integrations_logs_btn |
+| Docs Button | Docs | Docs | integrations_docs_btn |
+| Configure Popup Header | CONECTAR: [integration name] | CONNECT: [integration name] | integrations_configure_header |
+| Supplier Label | Proveedor: | Supplier: | integrations_supplier_label |
+| API Key Label | Clave API: | API Key: | integrations_api_key_label |
+| Data to Sync Label | Datos a Sincronizar: | Data to Sync: | integrations_data_to_sync_label |
+| Product Catalog Checkbox | Catálogo de Productos | Product Catalog | integrations_product_catalog |
+| Purchase Orders Checkbox | Órdenes de Compra | Purchase Orders | integrations_purchase_orders |
+| Invoice Status Checkbox | Estado de Facturas | Invoice Status | integrations_invoice_status |
+| Sync Frequency Label | Frecuencia de Sincronización: | Sync Frequency: | integrations_sync_frequency_label |
+| At Label | a las | at | integrations_at_label |
+| Webhooks Label | Webhooks: | Webhooks: | integrations_webhooks_label |
+| New Orders Checkbox | Nuevas Órdenes | New Orders | integrations_new_orders |
+| Shipment Updates Checkbox | Actualizaciones de Envío | Shipment Updates | integrations_shipment_updates |
+| Regenerate Button | Regenerar | Regenerate | integrations_regenerate_btn |
+| Test Connection Button | Probar Conexión | Test Connection | integrations_test_connection_btn |
+| Save Button | Guardar | Save | integrations_save_btn |
+
+### Additional Enum Translations
+
+**Compliance Event Types:**
+
+| value | display_es | display_en |
+|-------|------------|------------|
+| inspection | Inspección | Inspection |
+| permit | Permiso | Permit |
+| report | Reporte | Report |
+| audit | Auditoría | Audit |
+| violation | Violación | Violation |
+
+**Compliance Event Category:**
+
+| value | display_es | display_en |
+|-------|------------|------------|
+| ica | ICA | ICA |
+| invima | INVIMA | INVIMA |
+| environmental | Ambiental | Environmental |
+| tax | Impuestos | Tax |
+| other | Otro | Other |
+
+**Compliance Status:**
+
+| value | display_es | display_en |
+|-------|------------|------------|
+| pending | Pendiente | Pending |
+| in_progress | En Progreso | In Progress |
+| completed | Completado | Completed |
+| overdue | Vencido | Overdue |
+
+**Compliance Severity:**
+
+| value | display_es | display_en |
+|-------|------------|------------|
+| low | Bajo | Low |
+| medium | Medio | Medium |
+| high | Alto | High |
+| critical | Crítico | Critical |
+
+**Certificate Status:**
+
+| value | display_es | display_en |
+|-------|------------|------------|
+| valid | Válido | Valid |
+| expiring_soon | Por Vencer | Expiring Soon |
+| expired | Expirado | Expired |
+| revoked | Revocado | Revoked |
+
+**Integration Status:**
+
+| value | display_es | display_en |
+|-------|------------|------------|
+| active | Activo | Active |
+| paused | Pausado | Paused |
+| error | Error | Error |
+| disconnected | Desconectado | Disconnected |
+
+**Sync Frequency:**
+
+| value | display_es | display_en |
+|-------|------------|------------|
+| realtime | Tiempo Real | Realtime |
+| hourly | Cada Hora | Hourly |
+| daily | Diario | Daily |
+| weekly | Semanal | Weekly |
 
 ---
 
