@@ -10,19 +10,29 @@
 
 **Alquemist** - Multi-region agricultural management SaaS platform for Cannabis, Coffee, Cocoa, and Flowers.
 
-**Tech Stack (Final):**
-- Frontend: Dual-mode (Bubble + Next.js 14)
-- Database: Convex (serverless, real-time)
-- Auth: Clerk (Organizations = Companies)
-- API: RESTful API (v1) for frontend-agnostic access
-- Deployment: Vercel + Convex Cloud
-- i18n: UI 100% español, datos técnicos en inglés (next-intl)
+**Tech Stack (Current):**
+- Frontend: Bubble.io (Primary - 100% UI implementation)
+- Backend: Convex HTTP Actions (serverless, real-time)
+- Auth: Custom session tokens (30-day validity, stored in sessions table)
+- Email: Resend (verification, password reset, notifications)
+- API: RESTful HTTP API (v1) at https://handsome-jay-388.convex.site
+- Deployment: Bubble + Convex Cloud (auto-deploy via GitHub Actions)
+- i18n: Bilingual ES/EN via Bubble Option Sets (frontend-only translation)
+
+**Available But Not Used (Future-Ready):**
+- Next.js 14 (code exists, configured with next-intl, ready if needed)
+- messages/es.json (450+ Spanish translations for Next.js future use)
 
 **Frontend Architecture:**
-- **Bubble:** Frontend principal - 100% de la UI y orquestación
-- **Next.js:** Solo si complejidad técnica lo requiere (decisión por módulo)
-- **Shared Backend:** Single Convex database + REST API
-- **Strategy:** Bubble-first, resolver complejidades técnicas caso por caso
+- **Bubble.io:** Primary and ONLY frontend in use - 100% de la UI y orquestación
+  - Connects directly to Convex HTTP Actions
+  - Custom session token authentication
+  - Bilingual UI via Option Sets (ES/EN)
+- **Next.js:** Available but NOT currently used
+  - Code exists in repo (configured with next-intl)
+  - Ready for future if complexity requires
+  - Would connect via same Convex backend
+- **Strategy:** Bubble-only for now, Next.js available if needed later
 
 **Core Requirements:**
 - Multi-tenant (company-based isolation)
@@ -37,91 +47,137 @@
 
 ### Overview
 
-Alquemist usa **arquitectura simplificada** - Bubble conecta directamente a servicios cloud:
+Alquemist usa **arquitectura simplificada** - Bubble conecta directamente a Convex:
 
 ```
-┌─────────────────────────┐
-│     Bubble App          │
-│   (UI Principal)        │
-└────────┬────────────────┘
+┌─────────────────────────────────────────┐
+│          BUBBLE.IO APP                  │
+│      (Primary & Only Frontend)          │
+│                                         │
+│  • No-code UI builder                   │
+│  • Custom session token auth            │
+│  • Bilingual via Option Sets (ES/EN)   │
+│  • Workflows + API Connector            │
+└────────┬────────────────────────────────┘
          │
-         ├─→ Clerk API (Auth)
-         │   • Sign up / Sign in
-         │   • JWT tokens
-         │   • User management
+         │ HTTPS (Authorization: Bearer {token})
          │
-         ├─→ Convex HTTP API (Database)
-         │   • Queries (GET data)
-         │   • Mutations (POST/PATCH/DELETE)
-         │   • Real-time subscriptions
-         │   • [Valida Clerk JWT]
+         ▼
+┌─────────────────────────────────────────┐
+│      CONVEX HTTP ACTIONS                │
+│   https://handsome-jay-388.convex.site  │
+│                                         │
+│  • POST /api/v1/auth/*                  │
+│  • POST /api/v1/companies/*             │
+│  • POST /api/v1/facilities/*            │
+│  • POST /api/v1/batches/*               │
+│  • Validates session tokens             │
+│  • Multi-tenant isolation (company_id)  │
+└────────┬────────────────────────────────┘
          │
-         └─→ GCP Cloud Functions (Opcional)
-             • Vision AI (pest detection)
-             • Document AI (form digitization)
-             • Features complejas
-             • [Solo cuando sea necesario]
+         ▼
+┌─────────────────────────────────────────┐
+│       CONVEX DATABASE                   │
+│  (26 tables, serverless, real-time)     │
+│                                         │
+│  • users, sessions, companies           │
+│  • facilities, batches, activities      │
+│  • compliance, inventory, reports       │
+└─────────────────────────────────────────┘
 
-┌─────────────────────────┐
-│   Next.js API (Vercel)  │ ← Disponible pero NO usado inicialmente
-│   • Backend opcional    │   (Agregar solo si complejidad lo requiere)
-│   • /api/v1/*          │
-└─────────────────────────┘
+┌─────────────────────────────────────────┐
+│           RESEND EMAIL                  │
+│     (Email delivery service)            │
+│                                         │
+│  • Email verification                   │
+│  • Password reset                       │
+│  • Activity notifications               │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│   NEXT.JS 14 (Available, Not Used)      │
+│   • Code exists in repo                 │
+│   • Configured with next-intl           │
+│   • messages/es.json ready (450+ keys)  │
+│   • Ready for future if needed          │
+└─────────────────────────────────────────┘
 ```
 
-**Filosofía:** START SIMPLE → Escala cuando sea necesario
+**Filosofía:** START SIMPLE → Solo Bubble + Convex + Resend
 
 ### Backend Components
 
-**Convex (Database + Backend):**
-- `convex/schema.ts` - Database schema (26 tables)
-- `convex/companies.ts` - Company queries & mutations
-- `convex/facilities.ts` - Facilities queries & mutations
-- `convex/batches.ts` - Batch tracking
-- `convex/activities.ts` - Activity logging
-- `convex/compliance.ts` - Compliance events
-- `convex/inventory.ts` - Inventory management
+**Convex HTTP Actions (Primary Backend):**
+- **Deployment URL:** https://handsome-jay-388.convex.site
+- **Schema:** `convex/schema.ts` - 26 tables with multi-tenant architecture
+- **HTTP Router:** `convex/http.ts` - RESTful endpoints via httpAction()
+- **Core Modules:**
+  - `convex/auth.ts` - Custom session token authentication
+  - `convex/users.ts` - User management
+  - `convex/companies.ts` - Company CRUD with company_id isolation
+  - `convex/facilities.ts` - Facility management
+  - `convex/batches.ts` - Batch tracking
+  - `convex/activities.ts` - Activity logging
+  - `convex/compliance.ts` - Compliance events
+  - `convex/inventory.ts` - Inventory management
+  - `convex/geographic.ts` - Countries, departments, cities
 
-**Next.js API (Opcional - NO usado en Módulo 1):**
-- `lib/api/middleware.ts` - Auth & validation
-- `lib/api/errors.ts` - Error handling
-- `lib/validations/schemas.ts` - Shared Zod schemas
-- `app/api/v1/*` - REST endpoints (disponibles pero no usados)
+**Email Service (Resend):**
+- Email verification (sign-up flow)
+- Password reset
+- Activity notifications
+- Configured in Convex environment variables
 
-**GCP Cloud Functions (Futuro):**
-- Vision AI - Pest detection, quality checks
-- Document AI - Form digitization
-- Cloud Storage - Media files
-- (Se implementa cuando módulos específicos lo requieran)
+**Next.js (Available But Not Used):**
+- Code exists in `/app`, `/lib`, `/components`
+- `lib/validations/schemas.ts` - Shared Zod schemas (can be used by Convex)
+- `messages/es.json` - 450+ Spanish translations
+- Ready for future if needed, no deployment currently
 
 ### Implementation Strategy
 
-**START SIMPLE (Módulo 1-3):**
+**CURRENT IMPLEMENTATION (Simple & Direct):**
 ```
-Bubble → Clerk API (auth)
-      → Convex HTTP API (CRUD)
+Bubble.io → Convex HTTP Actions (https://handsome-jay-388.convex.site)
+         │
+         └→ Resend (email service)
 ```
-- No usar Next.js API inicialmente
-- Validar Clerk JWT en Convex functions
-- CRUD directo con Convex HTTP API
 
-**ADD COMPLEXITY (Cuando sea necesario):**
+**Architecture Details:**
+- **Authentication:** Custom session tokens (30-day validity)
+  - Registration: POST /api/v1/auth/register-step1 (creates user + sends verification email)
+  - Verification: POST /api/v1/auth/verify-email (validates token)
+  - Login: POST /api/v1/auth/login (returns session token)
+  - All requests: Authorization: Bearer {session_token}
+
+- **Data Operations:** Direct Convex HTTP Actions
+  - All endpoints use POST method
+  - Request body contains operation parameters
+  - Multi-tenant isolation via company_id in session
+  - Example: POST /api/v1/companies/create
+
+- **Email:** Resend integration in Convex
+  - Email verification on registration
+  - Password reset emails
+  - Activity notifications
+
+**FUTURE OPTIONS (If Needed):**
+
+**Option 1: Add Next.js Layer (for complex business logic):**
 ```
 Bubble → Next.js API (Vercel) → Convex
 ```
-- Solo para business logic compleja
-- Multi-step operations
-- Transformaciones de data complejas
-- Rate limiting / caching
+- Use when: Multi-step workflows, complex transformations, rate limiting
+- Next.js code already exists and is configured
+- Decision made per feature/module
 
-**ADD GCP (Módulos con IA):**
+**Option 2: Add AI Features (future modules):**
 ```
-Bubble → GCP Cloud Functions → Vision AI / Document AI
-                              → Convex (save results)
+Bubble → Convex → External AI APIs
 ```
-- Módulo 11: Quality Check Templates + AI
-- Módulo 13: AI Engine & Intelligent Services
-- Decisión por feature específico
+- Potential modules: Quality Check Templates (AI vision), Intelligent Services
+- Decision based on actual module requirements
+- AI integration would be done via Convex actions calling external services
 
 ### Development Workflow
 
@@ -235,13 +291,20 @@ Bubble → GCP Cloud Functions → Vision AI / Document AI
      3. Follow the documented patterns
      4. Use the provided checklist
 
-**UI Language (100% Español):**
-- Todos los textos visibles al usuario en español
-- Labels, botones, mensajes, placeholders → español
-- Valores técnicos en BD permanecen en inglés (indoor, active, etc.)
-- Traducciones aplicadas en Convex functions (antes de retornar datos)
-- Mapping automático: DB "indoor" → Response "Interior"
-- Archivo de traducciones: `messages/es.json` (450+ traducciones)
+**UI Language Strategy (Bilingual ES/EN):**
+- **Current Implementation:** Bubble Option Sets for frontend-only translation
+  - Backend sends technical codes: "indoor", "active", "greenhouse"
+  - Bubble translates via Option Sets: "indoor" → "Interior" (ES) / "Indoor" (EN)
+  - Custom State: `current_language` (es | en)
+  - UI_Texts Option Set: key, text_es, text_en attributes
+  - Enum Option Sets: value, display_es, display_en
+  - Language switcher component in Bubble header
+  - User preference stored in `users.preferred_language`
+- **Future Ready:** Next.js with next-intl
+  - `messages/es.json` - 450+ Spanish translations ready
+  - `i18n.ts` - Configured for Spanish (Colombia)
+  - Available if Next.js deployment is needed
+- **See:** [docs/i18n/STRATEGY.md](docs/i18n/STRATEGY.md) for complete details
 
 **For Next.js Development (Solo si es necesario):**
 - Se decide por módulo si complejidad técnica requiere Next.js
@@ -253,184 +316,138 @@ Bubble → GCP Cloud Functions → Vision AI / Document AI
 
 ## Authentication Strategy
 
-### Clerk JWT Validation in Convex
+### Custom Session Token Authentication
 
 **Architecture Flow:**
 ```
-1. User logs in via Bubble → Clerk API
-2. Clerk returns JWT token
-3. Bubble stores token in custom state
-4. Bubble → Convex HTTP API (includes JWT in Authorization header)
-5. Convex validates JWT and extracts user/org info
-6. Query/Mutation executes with proper multi-tenant isolation
+1. User signs up → POST /api/v1/auth/register-step1
+   - Creates user in database
+   - Generates email verification token (6 chars, 24h expiry)
+   - Sends verification email via Resend
+
+2. User verifies email → POST /api/v1/auth/verify-email
+   - Validates verification token
+   - Marks user as email_verified: true
+   - Can now complete company setup
+
+3. User completes company setup → POST /api/v1/auth/register-step2
+   - Creates company record
+   - Links user to company (company_id)
+
+4. User logs in → POST /api/v1/auth/login
+   - Validates email + password (bcrypt)
+   - Creates session token (URL-safe base64, 32 bytes)
+   - Stores in sessions table (30-day expiry)
+   - Returns: { session_token, user_id, company_id, email }
+
+5. All subsequent requests → Authorization: Bearer {session_token}
+   - Convex validates token from sessions table
+   - Checks expiry (last_activity_at + 30 days)
+   - Extracts company_id for multi-tenant isolation
+   - Updates last_activity_at
 ```
 
-**Convex Function Example (with JWT validation):**
+**Session Token Structure:**
+- Format: URL-safe base64 encoded random bytes
+- Length: 32 bytes → 43 character string
+- Validity: 30 days from last activity
+- Storage: `sessions` table with user_id, company_id, expiry
+- Example: `7xK9mP2wQvLnR8zY4hTcF6jG1sN5bV3xD8eM0oU4iA`
+
+**Convex Auth Helper (`convex/auth.ts`):**
 
 ```typescript
-// convex/companies.ts
 import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
-import { getAuthUserId } from "./auth";
 
-// Query example - requires authentication
-export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    // Validate JWT and get user identity
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+// Helper to get authenticated user from session token
+export async function getAuthenticatedUser(ctx: any, authHeader?: string) {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    throw new Error("Missing or invalid Authorization header");
+  }
 
-    // Extract organization ID from Clerk JWT
-    const organizationId = identity.orgId;
-    if (!organizationId) {
-      throw new Error("No organization found");
-    }
+  const token = authHeader.substring(7); // Remove "Bearer "
 
-    // Multi-tenant query - only return company for this org
-    return await ctx.db
-      .query("companies")
-      .filter((q) => q.eq(q.field("organization_id"), organizationId))
-      .collect();
-  },
-});
+  // Look up session
+  const session = await ctx.db
+    .query("sessions")
+    .withIndex("by_token", (q: any) => q.eq("token", token))
+    .first();
 
-// Mutation example - requires authentication
-export const create = mutation({
-  args: {
-    name: v.string(),
-    company_type: v.string(),
-    // ... other fields
-  },
-  handler: async (ctx, args) => {
-    // Validate JWT and get user identity
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+  if (!session) {
+    throw new Error("Invalid or expired session");
+  }
 
-    const organizationId = identity.orgId;
-    if (!organizationId) {
-      throw new Error("No organization found");
-    }
+  // Check expiry (30 days from last activity)
+  const now = Date.now();
+  const expiryTime = session.last_activity_at + (30 * 24 * 60 * 60 * 1000);
 
-    // Create company with automatic org isolation
-    const companyId = await ctx.db.insert("companies", {
-      ...args,
-      organization_id: organizationId,
-      created_by: identity.subject, // User ID from Clerk
-      created_at: Date.now(),
-      updated_at: Date.now(),
+  if (now > expiryTime) {
+    throw new Error("Session expired");
+  }
+
+  // Update last activity
+  await ctx.db.patch(session._id, { last_activity_at: now });
+
+  // Return user and company info
+  return {
+    user_id: session.user_id,
+    company_id: session.company_id,
+    session_id: session._id
+  };
+}
+```
+
+**Protected Endpoint Example:**
+
+```typescript
+// convex/http.ts
+import { httpAction } from "./_generated/server";
+import { api } from "./_generated/api";
+import { getAuthenticatedUser } from "./auth";
+
+// Protected endpoint - requires valid session token
+http.route({
+  path: "/api/v1/companies/get",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    // 1. Authenticate
+    const authHeader = request.headers.get("Authorization");
+    const { user_id, company_id } = await getAuthenticatedUser(ctx, authHeader);
+
+    // 2. Execute query with company isolation
+    const company = await ctx.runQuery(api.companies.get, { company_id });
+
+    // 3. Return response
+    return new Response(JSON.stringify(company), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
     });
-
-    return companyId;
-  },
+  })
 });
 ```
 
-**Key Points:**
-- ✅ Convex validates Clerk JWT automatically via `ctx.auth.getUserIdentity()`
-- ✅ Multi-tenant isolation enforced by filtering on `organization_id`
-- ✅ No need for separate auth middleware
-- ✅ User info (userId, orgId) extracted from JWT claims
-- ✅ All protected functions start with identity check
+**Key Features:**
+- ✅ Custom session tokens (no third-party auth service)
+- ✅ 30-day expiry with activity-based renewal
+- ✅ Multi-tenant isolation via company_id in session
+- ✅ Stored in Convex database (sessions table)
+- ✅ Password hashing with bcrypt
+- ✅ Email verification via Resend
+- ✅ Token refresh on each request (updates last_activity_at)
 
 **Bubble Implementation:**
-1. Store JWT token after Clerk login: `Set state token = [Clerk response token]`
-2. Configure Convex API Connector with dynamic Authorization header:
-   ```
-   Header: Authorization
-   Value: Bearer <token> (dynamic from custom state)
-   ```
-3. All Convex API calls automatically include JWT
-4. Handle 401 errors → redirect to login
+1. **Sign Up:** Call POST /api/v1/auth/register-step1
+   - Display "Check your email" message
+2. **Verify Email:** Call POST /api/v1/auth/verify-email with token from email
+3. **Complete Setup:** Call POST /api/v1/auth/register-step2 with company details
+4. **Login:** Call POST /api/v1/auth/login
+   - Store `session_token` in Bubble custom state
+5. **All API Calls:** Include Authorization header
+   - Header: `Authorization`
+   - Value: `Bearer <session_token>` (from custom state)
+6. **Handle 401:** Redirect to login page, clear session token
 
----
-
-## GCP Cloud Functions Strategy
-
-### When to Use GCP
-
-**START SIMPLE - NO usar GCP inicialmente**
-
-GCP Cloud Functions son para casos específicos con IA/ML:
-
-**Use Cases for GCP:**
-- 🤖 **Vision AI**: Pest detection, quality inspections, plant health
-- 📄 **Document AI**: Form digitization, license scanning, label reading
-- 🧠 **Custom ML Models**: Yield prediction, disease classification
-- 📊 **Heavy Processing**: Large batch operations, complex calculations
-
-**Architecture with GCP:**
-```
-┌─────────────────────────┐
-│     Bubble App          │
-└────────┬────────────────┘
-         │
-         ├─→ GCP Cloud Function (HTTPS endpoint)
-         │   • Procesa imagen con Vision AI
-         │   • Extrae datos con Document AI
-         │   • Ejecuta modelo ML custom
-         │   │
-         │   └─→ Convex Mutation (guarda resultados)
-         │       • Autenticación: Service Account
-         │       • Inserta datos en BD
-         │
-         └─→ Convex (refresh data)
-             • Query para mostrar resultados
-```
-
-**Implementation Decision Per Module:**
-- **Módulo 1-10:** NO usar GCP (START SIMPLE)
-- **Módulo 11:** Quality Check Templates - evaluar si Vision AI agrega valor
-- **Módulo 13:** AI Engine - USAR GCP para features de IA
-- **Decision criteria:** ¿El feature REQUIERE IA/ML o es "nice-to-have"?
-
-**GCP Function Example:**
-```javascript
-// GCP Cloud Function - Pest Detection
-const { ConvexHttpClient } = require("convex/browser");
-const vision = require('@google-cloud/vision');
-
-exports.detectPests = async (req, res) => {
-  // 1. Validate request (API key, signature, etc.)
-  const { imageUrl, batchId } = req.body;
-
-  // 2. Process with Vision AI
-  const client = new vision.ImageAnnotatorClient();
-  const [result] = await client.objectLocalization(imageUrl);
-
-  // 3. Analyze results
-  const pests = result.localizedObjectAnnotations.filter(
-    obj => PEST_LABELS.includes(obj.name)
-  );
-
-  // 4. Save to Convex
-  const convex = new ConvexHttpClient(process.env.CONVEX_URL);
-  await convex.mutation("activities:createPestDetection", {
-    batch_id: batchId,
-    pests_detected: pests.length,
-    confidence: pests[0]?.score || 0,
-    image_url: imageUrl,
-  });
-
-  // 5. Return results
-  res.json({
-    success: true,
-    pests_found: pests.length,
-    details: pests
-  });
-};
-```
-
-**When NOT to use GCP:**
-- ❌ Simple CRUD operations → Use Convex directly
-- ❌ Business logic → Consider Next.js API first
-- ❌ Data transformations → Can do in Convex functions
-- ❌ User authentication → Clerk handles this
-- ❌ File uploads → Use Convex file storage or Cloudinary
+**See:** [docs/core/API-Integration.md](docs/core/API-Integration.md) for complete API documentation
 
 ---
 
@@ -441,10 +458,12 @@ exports.detectPests = async (req, res) => {
 **Strategy**: Bubble-first frontend, backend API ready
 
 **Context Files (Load on demand):**
-- [Product-Requirements.md](docs/core/Product-Requirements.md) - 17 modules, feature specs
-- [Technical-Specification.md](docs/core/Technical-Specification.md) - Architecture, patterns
-- [Database-Schema.md](docs/core/Database-Schema.md) - 26 tables, regional configuration
-- [API-Integration.md](docs/core/API-Integration.md) - REST API reference for Bubble integration
+- [Database SCHEMA.md](docs/database/SCHEMA.md) - Single source of truth for all 26 tables
+- [API Integration](docs/core/API-Integration.md) - REST API reference for Bubble
+- [i18n Strategy](docs/i18n/STRATEGY.md) - Bilingual implementation (Bubble Option Sets)
+- [Phase Documentation](docs/ui/bubble/) - UI requirements per phase (PHASE-1, PHASE-2, PHASE-3)
+- [API Endpoints](docs/api/) - Complete endpoint specs (PHASE-1, PHASE-2, PHASE-3)
+- [Implementation Status](docs/foundation/Implementation-Status.md) - Current progress
 
 ---
 
@@ -922,91 +941,115 @@ npx convex dev
 - Generates `.env.local` with `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL`
 - Press `Ctrl+C` after setup completes
 
-**3. Set Up Clerk**
-- Visit [clerk.com](https://clerk.com) and create account
-- Create new application named "Alquemist"
-- **Enable Organizations**: Settings → Organizations → Enable
-- Configure auth methods: Email/Password + Google OAuth
-- Copy API keys to `.env.local`:
+**3. Set Up Resend (Email Service)**
+- Visit [resend.com](https://resend.com) and create account
+- Create API key
+- Add to Convex environment variables:
   ```bash
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-  CLERK_SECRET_KEY=sk_test_...
-  CLERK_FRONTEND_API_URL=https://....clerk.accounts.dev
+  npx convex env set RESEND_API_KEY re_...
   ```
+- Configure sender email in Resend dashboard
 
-**4. Install shadcn/ui Components (Optional)**
+**4. Deploy Convex Schema and Functions**
 ```bash
-npx shadcn@latest add button card input label form
+# Deploy to production (auto-deploys via GitHub Actions)
+npx convex deploy
 ```
+- Deployment URL: https://handsome-jay-388.convex.site
+- All HTTP endpoints available at /api/v1/*
 
 ### Environment Variables
 
-Required variables in `.env.local`:
+**Convex Environment Variables (via `npx convex env`):**
+```bash
+# Set in Convex dashboard or via CLI
+npx convex env set RESEND_API_KEY re_your_api_key_here
+
+# Auto-generated by Convex
+CONVEX_DEPLOYMENT=prod:handsome-jay-388
+CONVEX_URL=https://handsome-jay-388.convex.site
+```
+
+**Local Development (`.env.local`):**
 ```bash
 # Convex (auto-generated by `npx convex dev`)
 CONVEX_DEPLOYMENT=dev:your-deployment
 NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
 
-# Clerk (from clerk.com dashboard)
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-CLERK_FRONTEND_API_URL=https://....clerk.accounts.dev
+# Note: Next.js not currently used, but env file maintained for future
 ```
+
+**Bubble Configuration:**
+- **Convex API Base URL:** https://handsome-jay-388.convex.site
+- **Session Token:** Stored in Bubble custom state after login
+- **Authorization Header:** Added dynamically to all API calls
 
 ### Development Workflow
 
-**Start Development Servers:**
+**For Backend Development:**
+```bash
+# Watch and sync Convex schema/functions
+npx convex dev
+```
+
+**For Next.js Development (if needed in future):**
 ```bash
 # Terminal 1: Next.js dev server
 npm run dev
 
-# Terminal 2: Convex dev server (watches schema changes)
+# Terminal 2: Convex dev server
 npx convex dev
 ```
 
 **Access Application:**
-- **Bubble App:** https://[your-bubble-app].bubbleapps.io (Primary frontend)
-- **Convex HTTP API:** https://[your-deployment].convex.cloud/api
-  - Query endpoint: `/api/query/[functionName]`
-  - Mutation endpoint: `/api/mutation/[functionName]`
-- **Clerk API:** https://[your-frontend-api].clerk.accounts.dev
-  - Sign in: `/v1/client/sign_ins`
-  - Sign up: `/v1/client/sign_ups`
+- **Bubble App:** https://[your-bubble-app].bubbleapps.io (Primary and ONLY frontend)
+- **Convex HTTP API:** https://handsome-jay-388.convex.site
+  - All endpoints: POST /api/v1/*
+  - Auth: POST /api/v1/auth/login, register-step1, verify-email, etc.
+  - Companies: POST /api/v1/companies/create, get, update
+  - Facilities: POST /api/v1/facilities/create, list, update
+  - Geographic: POST /api/v1/geographic/departments, cities
 - **Dashboards:**
   - Convex Dashboard: https://dashboard.convex.dev
-  - Clerk Dashboard: https://dashboard.clerk.com
-- **Next.js (Opcional - solo desarrollo):** http://localhost:3000/api/v1
+  - Resend Dashboard: https://resend.com/emails
+- **Next.js (Available but NOT used):** http://localhost:3000 (if run locally)
 
 ### CI/CD Pipeline
 
 **Automatic Deployments:**
-- **PR Preview**: Every PR triggers Vercel preview deployment
-- **Production**: Push to `main` auto-deploys to production
-- **Convex**: Schema deployed automatically via GitHub Actions
+- **Convex Production**: Push to `main` auto-deploys via GitHub Actions
+- **Deployment URL**: https://handsome-jay-388.convex.site
+- **No Vercel deployment** (Next.js not used currently)
 
 **Workflows:**
-- `.github/workflows/ci.yml` - Lint, type-check, build verification
-- `.github/workflows/deploy.yml` - Production deployment
+- `.github/workflows/convex-deploy.yml` - Convex schema and function deployment
+- Triggered on push to `main` branch
 
 **Required GitHub Secrets:**
 ```
-VERCEL_TOKEN
-CONVEX_DEPLOY_KEY
-CLERK_SECRET_KEY (production)
+CONVEX_DEPLOY_KEY  # From Convex dashboard
 ```
 
-### Deployment (Vercel + Convex)
+### Deployment
 
-**Vercel Setup:**
-1. Connect GitHub repo to [vercel.com](https://vercel.com)
-2. Add environment variables (Convex + Clerk keys)
-3. Deploy: Automatic on `git push origin main`
+**Bubble Deployment:**
+- Bubble app deployed via Bubble.io platform
+- Configure API Connector to point to: https://handsome-jay-388.convex.site
+- No git-based deployment (Bubble handles this internally)
 
 **Convex Production Deployment:**
 ```bash
-# Deploy schema to production
-npx convex deploy --prod
+# Manual deployment (or via GitHub Actions)
+npx convex deploy
+
+# Set production environment variables
+npx convex env set RESEND_API_KEY re_your_prod_key --prod
 ```
+
+**Future: Vercel Deployment (if Next.js is used):**
+1. Connect GitHub repo to [vercel.com](https://vercel.com)
+2. Add environment variables (Convex URL)
+3. Deploy: Automatic on `git push origin main`
 
 ### Testing
 
@@ -1029,34 +1072,47 @@ npm run build
 
 ## Implementation Status
 
-### Foundation Phase ✅ (100% COMPLETE)
+### Phase 1: Backend Foundation ✅ (100% COMPLETE)
 
-**Completed (2025-10-10):**
-1. ✅ Project structure initialized (Next.js 15 + Convex + Clerk)
-2. ✅ Database schema deployed (26 tables, 97 indexes)
-3. ✅ Convex backend modules (6 core modules: companies, facilities, batches, activities, compliance, inventory)
-4. ✅ REST API integration (7 operational endpoints)
-5. ✅ Seed data system (5 roles, 4 crop types)
-6. ✅ API test scripts and documentation
-7. ✅ Multi-tenant architecture enforced and tested
-8. ✅ Type safety end-to-end
-9. ✅ **Clerk Organizations enabled and configured**
-10. ✅ **Organization creation UI implemented**
-11. ✅ **End-to-end testing completed successfully**
-12. ✅ **Test data created: Company + Facility**
+**Completed (November 2025):**
+1. ✅ Convex database schema deployed (26 tables, multi-tenant architecture)
+2. ✅ Custom authentication system (session tokens, bcrypt passwords)
+3. ✅ Resend email integration (verification, password reset)
+4. ✅ HTTP Actions API (RESTful endpoints at https://handsome-jay-388.convex.site)
+5. ✅ Core backend modules:
+   - ✅ auth.ts - Custom session token authentication
+   - ✅ users.ts - User management
+   - ✅ companies.ts - Company CRUD with isolation
+   - ✅ facilities.ts - Facility management
+   - ✅ batches.ts - Batch tracking
+   - ✅ geographic.ts - Countries, departments, cities
+6. ✅ Multi-tenant isolation via company_id
+7. ✅ API documentation (PHASE-1, PHASE-2, PHASE-3 endpoints)
+8. ✅ Database schema documentation
+9. ✅ i18n strategy documented (Bubble Option Sets)
+10. ✅ Deployment pipeline (GitHub Actions → Convex)
 
-**Test Results:**
-- ✅ Organization: `org_33saIMDJHDTLUJkAyxnxo5cYRSP`
-- ✅ Company: `jn7cx3afzv7zs555nrkp0pq9rx7s7c6d` (Alquemist Test Company)
-- ✅ Facility: Created (Greenhouse Facility #1, License: LIC-2025-001)
-- ✅ Multi-tenant isolation verified
-- ✅ All API endpoints operational with authentication
+**Current Stack:**
+- ✅ Frontend: Bubble.io (primary and only UI)
+- ✅ Backend: Convex HTTP Actions
+- ✅ Auth: Custom session tokens (30-day validity)
+- ✅ Email: Resend
+- ✅ Database: Convex (26 tables)
+- ✅ i18n: Bubble Option Sets (ES/EN)
+- ✅ Deployment: https://handsome-jay-388.convex.site
+
+**Next.js Status:**
+- Code exists and is configured (Next.js 14 + next-intl)
+- messages/es.json ready (450+ translations)
+- Available for future use if needed
+- NOT currently deployed or used
 
 **Documentation:**
-- [docs/foundation/Implementation-Status.md](docs/foundation/Implementation-Status.md) - Detailed status report
-- [docs/foundation/Clerk-Organization-Setup.md](docs/foundation/Clerk-Organization-Setup.md) - Organization setup guide
-- [docs/foundation/Browser-API-Testing.md](docs/foundation/Browser-API-Testing.md) - Complete testing guide
-- [docs/foundation/Authentication-Guide.md](docs/foundation/Authentication-Guide.md) - Auth troubleshooting
+- [docs/database/SCHEMA.md](docs/database/SCHEMA.md) - Complete database schema
+- [docs/api/PHASE-1-ENDPOINTS.md](docs/api/PHASE-1-ENDPOINTS.md) - Phase 1 API endpoints
+- [docs/i18n/STRATEGY.md](docs/i18n/STRATEGY.md) - Bilingual implementation
+- [docs/core/API-Integration.md](docs/core/API-Integration.md) - Integration guide
+
 
 ### Module Implementation
 
@@ -1082,8 +1138,7 @@ npm run build
    - Cada módulo genera su documentación en `docs/module-X/bubble/`
 
 **Available Modules:**
-- **Module 1:** Company & Facility Setup → [docs/module-1/](docs/module-1/)
-- **Module 2-17:** To be implemented
+
 
 **To Start a Module:**
 ```bash
