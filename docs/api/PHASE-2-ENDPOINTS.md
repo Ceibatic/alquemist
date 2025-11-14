@@ -9,6 +9,37 @@
 
 ---
 
+## Authentication
+
+**All Phase 2 endpoints require authentication** using custom session tokens.
+
+### Required Headers
+
+```
+Authorization: Bearer {session_token}
+Content-Type: application/json
+```
+
+### Authentication Flow
+
+Phase 2 endpoints use the same authentication system as Phase 1:
+
+1. User logs in via `/api/v1/auth/login` → receives `session_token`
+2. Token stored in Bubble User data type field: `session_token`
+3. All API requests include token in `Authorization` header
+4. Token valid for 30 days (renewed on each request)
+5. Multi-tenant isolation via `company_id` extracted from token
+
+**See**: [PHASE-1-ENDPOINTS.md](./PHASE-1-ENDPOINTS.md#authentication) for complete auth documentation.
+
+### Error Handling
+
+- **401 Unauthorized**: Invalid or expired session token → redirect to login
+- **403 Forbidden**: Valid token but insufficient permissions
+- **422 Validation Error**: Invalid request parameters
+
+---
+
 ## MODULE 9: Inventory Management
 
 ### Get Inventory by Facility
@@ -17,12 +48,20 @@
 
 **Triggered by**: Bubble inventory dashboard page load
 
+**Headers**:
+```
+Authorization: Bearer {session_token}
+Content-Type: application/json
+```
+
 **Request**:
 ```json
 {
   "facilityId": "f78ghi..."
 }
 ```
+
+**Note**: `facilityId` is optional - if not provided, company_id from session token determines scope.
 
 **Response**:
 ```json
@@ -59,6 +98,12 @@
 
 **Triggered by**: Bubble "Save" button in add item popup
 
+**Headers**:
+```
+Authorization: Bearer {session_token}
+Content-Type: application/json
+```
+
 **Request**:
 ```json
 {
@@ -73,6 +118,8 @@
   "expirationDate": 1735689600000
 }
 ```
+
+**Note**: `company_id` automatically extracted from session token for multi-tenant isolation.
 
 **Response**:
 ```json
@@ -165,12 +212,20 @@
 
 **Triggered by**: Bubble templates list page load
 
+**Headers**:
+```
+Authorization: Bearer {session_token}
+Content-Type: application/json
+```
+
 **Request**:
 ```json
 {
   "companyId": "k12def..."
 }
 ```
+
+**Note**: `companyId` parameter is optional - defaults to company from session token.
 
 **Response**:
 ```json
@@ -608,6 +663,12 @@
 
 **Triggered by**: Bubble "Create Order" button
 
+**Headers**:
+```
+Authorization: Bearer {session_token}
+Content-Type: application/json
+```
+
 **Request**:
 ```json
 {
@@ -621,6 +682,8 @@
   "notes": "Premium batch for Q1 2025"
 }
 ```
+
+**Note**: All created resources automatically associated with `company_id` from session token.
 
 **Response**:
 ```json
