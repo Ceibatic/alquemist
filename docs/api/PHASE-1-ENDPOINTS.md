@@ -44,45 +44,23 @@ When configuring each call:
 
 ### Check Email Availability
 
-**Status**: ✅ Ready
-
 **Endpoint**: `POST /registration/check-email`
-
-**Triggered by**: Bubble signup form (on email input blur/change)
-
-**Request**:
-```json
-{
-  "email": "user@example.com"
-}
-```
-
-**Response**:
-```json
-{
-  "available": true,
-  "email": "user@example.com"
-}
-```
-
+**Status**: ✅ Ready
 **Convex Function**: `registration.checkEmailAvailability`
 
-**Database Operations**:
-- **Reads**: `users` table → check if email exists
+#### Bubble API Connector Configuration
 
-#### Bubble API Setup
+**Name**: `checkEmailAvailability`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/registration/check-email`
 
-**Call Type**: Action (modifies nothing, but used in workflow)
+**Headers**:
+```
+Content-Type: application/json
+```
 
-**API Connector Configuration**:
-- **Name**: `checkEmailAvailability`
-- **Use as**: Action
-- **Method**: POST
-- **URL**: `https://handsome-jay-388.convex.site/registration/check-email`
-- **Headers**:
-  - `Content-Type`: `application/json`
-- **Body Type**: JSON
-- **Body**:
+**Body**:
 ```json
 {
   "email": "<email>"
@@ -90,83 +68,57 @@ When configuring each call:
 ```
 
 **Parameters**:
-| Parameter | Type | Private | Taken from | Example |
-|-----------|------|---------|------------|---------|
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
 | email | text | No | Body | user@example.com |
 
-**Response Fields to Initialize**:
-- `available` (boolean)
-- `email` (text)
+**Complete Response** (inicializar TODOS estos campos en Bubble):
+```json
+{
+  "available": true,
+  "email": "user@example.com",
+  "error": "Email format invalid",
+  "code": "INVALID_EMAIL"
+}
+```
 
-**Bubble Usage**:
-1. **Trigger**: Input "email"'s value is changed → This input's value is not empty
-2. **Workflow Action**: Plugins → Alquemist Backend - checkEmailAvailability
+**Response Fields**:
+- `available` (boolean) - true si el email está disponible, false si ya existe
+- `email` (text) - Email verificado
+- `error` (text) - Mensaje de error si ocurre
+- `code` (text) - Código de error técnico
+
+#### Bubble Workflow
+
+1. **Trigger**: Input "email"'s value is changed → value is not empty
+2. **Step 1**: Plugins → checkEmailAvailability
    - email = `Input email's value`
-3. **Conditional Actions**:
-   - If `Result of Step 1's available is "false"`: Show alert "Este email ya está registrado"
-   - If `Result of Step 1's available is "true"`: Enable "Create Account" button
+3. **Step 2** (Only when `available is "false"`): Show alert "Este email ya está registrado"
+4. **Step 3** (Only when `available is "true"`): Enable "Create Account" button
 
 ---
 
 ### Register User (Step 1)
 
-**Status**: ✅ Ready
-
 **Endpoint**: `POST /registration/register-step-1`
-
-**Triggered by**: Bubble "Create Account" button
-
-**Request**:
-```json
-{
-  "email": "user@example.com",
-  "password": "SecurePass123!",
-  "firstName": "Juan",
-  "lastName": "Pérez",
-  "phone": "3001234567"
-}
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "userId": "j97abc...",
-  "token": "a2g3YnI1M2RuazR5bWplNms...",
-  "email": "user@example.com",
-  "message": "Cuenta creada. Por favor verifica tu correo electrónico.",
-  "verificationSent": true
-}
-```
-
+**Status**: ✅ Ready
 **Convex Function**: `registration.registerUserStep1`
 
-**Database Operations**:
-- **Writes**: `users` table → create new user (email_verified=false)
-- **Writes**: `sessions` table → create 30-day session token
-- **Writes**: `emailVerificationTokens` table → create 24h verification token
-- **Reads**: `roles` table → get COMPANY_OWNER role ID
+**Important**: El campo `token` es un session token de 30 días. Guardarlo en el User de Bubble.
 
-**Validation**:
-- Email format valid
-- Password strength: min 8 chars, letters + numbers
-- Email not already registered
+#### Bubble API Connector Configuration
 
-**Important**: The `token` field is a **session token** (30-day validity) for API authentication. Save this to Bubble User data type.
+**Name**: `registerUserStep1`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/registration/register-step-1`
 
-#### Bubble API Setup
+**Headers**:
+```
+Content-Type: application/json
+```
 
-**Call Type**: Action
-
-**API Connector Configuration**:
-- **Name**: `registerUserStep1`
-- **Use as**: Action
-- **Method**: POST
-- **URL**: `https://handsome-jay-388.convex.site/registration/register-step-1`
-- **Headers**:
-  - `Content-Type`: `application/json`
-- **Body Type**: JSON
-- **Body**:
+**Body**:
 ```json
 {
   "email": "<email>",
@@ -178,96 +130,78 @@ When configuring each call:
 ```
 
 **Parameters**:
-| Parameter | Type | Private | Taken from | Example |
-|-----------|------|---------|------------|---------|
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
 | email | text | No | Body | user@example.com |
 | password | text | Yes | Body | SecurePass123! |
 | firstName | text | No | Body | Juan |
 | lastName | text | No | Body | Pérez |
 | phone | text | No | Body | 3001234567 |
 
-**Response Fields to Initialize**:
-- `success` (boolean)
-- `userId` (text)
-- `token` (text)
-- `email` (text)
-- `message` (text)
-- `verificationSent` (boolean)
+**Complete Response** (inicializar TODOS estos campos en Bubble):
+```json
+{
+  "success": true,
+  "userId": "j97abc...",
+  "token": "a2g3YnI1M2RuazR5bWplNms...",
+  "email": "user@example.com",
+  "message": "Cuenta creada. Por favor verifica tu correo electrónico.",
+  "verificationSent": true,
+  "error": "Email already exists",
+  "code": "EMAIL_EXISTS"
+}
+```
 
-**Bubble Usage**:
+**Response Fields**:
+- `success` (boolean) - true si la cuenta se creó exitosamente
+- `userId` (text) - ID del usuario en el backend
+- `token` (text) - Session token (30 días) para autenticación
+- `email` (text) - Email del usuario
+- `message` (text) - Mensaje descriptivo del resultado
+- `verificationSent` (boolean) - true si se envió email de verificación
+- `error` (text) - Mensaje de error si success=false
+- `code` (text) - Código técnico del error
+
+#### Bubble Workflow
+
 1. **Trigger**: Button "Create Account" is clicked
-2. **Workflow Actions**:
-   - **Step 1**: Plugins → Alquemist Backend - registerUserStep1
-     - email = `Input email's value`
-     - password = `Input password's value`
-     - firstName = `Input firstName's value`
-     - lastName = `Input lastName's value`
-     - phone = `Input phone's value`
-   - **Step 2** (Only when Step 1's success = true): Sign the user up
-     - Email = `Result of Step 1's email`
-     - Password = `Input password's value` (use same password from input)
-   - **Step 3**: Make changes to Current User
-     - `session_token` = `Result of Step 1's token`
-     - `backend_user_id` = `Result of Step 1's userId`
-     - `email_verified` = no
-   - **Step 4**: Navigate to "email-verification" page
-
-**Error Handling**:
-- Show `Result of Step 1's message` if `success` is false
-- Common errors: "Email already exists", "Password too weak"
+2. **Step 1**: Plugins → registerUserStep1
+   - email = `Input email's value`
+   - password = `Input password's value`
+   - firstName = `Input firstName's value`
+   - lastName = `Input lastName's value`
+   - phone = `Input phone's value`
+3. **Step 2** (Only when `success = true`): Sign the user up
+   - Email = `Result of Step 1's email`
+   - Password = `Input password's value`
+4. **Step 3**: Make changes to Current User
+   - `session_token` = `Result of Step 1's token`
+   - `backend_user_id` = `Result of Step 1's userId`
+   - `email_verified` = no
+5. **Step 4**: Navigate to "email-verification" page
+6. **Step 5** (Only when `success = false`): Show alert with `Result of Step 1's error`
 
 ---
 
 ### Verify Email Token
 
-**Status**: ✅ Ready
-
 **Endpoint**: `POST /registration/verify-email`
-
-**Triggered by**: Bubble "Verify" button OR email link click
-
-**Request**:
-```json
-{
-  "token": "abc123xyz456..."
-}
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "¡Email verificado exitosamente!",
-  "userId": "j97abc..."
-}
-```
-
+**Status**: ✅ Ready
 **Convex Function**: `emailVerification.verifyEmailToken`
 
-**Database Operations**:
-- **Reads**: `emailVerificationTokens` table → find token
-- **Reads**: `users` table → get user info
-- **Updates**: `emailVerificationTokens` table → set used=true
-- **Updates**: `users` table → set email_verified=true
+#### Bubble API Connector Configuration
 
-**Validation**:
-- Token exists and matches
-- Token not expired (24h limit)
-- Token not already used
+**Name**: `verifyEmailToken`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/registration/verify-email`
 
-#### Bubble API Setup
+**Headers**:
+```
+Content-Type: application/json
+```
 
-**Call Type**: Action
-
-**API Connector Configuration**:
-- **Name**: `verifyEmailToken`
-- **Use as**: Action
-- **Method**: POST
-- **URL**: `https://handsome-jay-388.convex.site/registration/verify-email`
-- **Headers**:
-  - `Content-Type`: `application/json`
-- **Body Type**: JSON
-- **Body**:
+**Body**:
 ```json
 {
   "token": "<token>"
@@ -275,87 +209,68 @@ When configuring each call:
 ```
 
 **Parameters**:
-| Parameter | Type | Private | Taken from | Example |
-|-----------|------|---------|------------|---------|
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
 | token | text | Yes | Body | abc123xyz456... |
 
-**Response Fields to Initialize**:
-- `success` (boolean)
-- `message` (text)
-- `userId` (text)
+**Complete Response** (inicializar TODOS estos campos en Bubble):
+```json
+{
+  "success": true,
+  "message": "¡Email verificado exitosamente!",
+  "userId": "j97abc...",
+  "error": "Token expired",
+  "code": "TOKEN_EXPIRED"
+}
+```
 
-**Bubble Usage - Option 1: Manual Button**:
+**Response Fields**:
+- `success` (boolean) - true si el token es válido y se verificó el email
+- `message` (text) - Mensaje descriptivo del resultado
+- `userId` (text) - ID del usuario verificado
+- `error` (text) - Mensaje de error si success=false
+- `code` (text) - Código técnico del error (TOKEN_EXPIRED, TOKEN_INVALID, etc.)
+
+#### Bubble Workflow
+
+**Opción 1 - Manual con botón**:
 1. **Trigger**: Button "Verify Email" is clicked
-2. **Workflow Actions**:
-   - **Step 1**: Plugins → Alquemist Backend - verifyEmailToken
-     - token = `Input verification_code's value`
-   - **Step 2** (Only when Step 1's success = true): Make changes to Current User
-     - `email_verified` = yes
-   - **Step 3**: Navigate to "company-setup" page
+2. **Step 1**: Plugins → verifyEmailToken
+   - token = `Input verification_code's value`
+3. **Step 2** (Only when `success = true`): Make changes to Current User → `email_verified` = yes
+4. **Step 3**: Navigate to "company-setup" page
+5. **Step 4** (Only when `success = false`): Show alert with `Result of Step 1's error`
 
-**Bubble Usage - Option 2: Email Link** (URL parameter):
-1. **Page Load Workflow**: When "email-verification" page is loaded AND Get token from page URL is not empty
-2. **Workflow Actions**:
-   - **Step 1**: Plugins → Alquemist Backend - verifyEmailToken
-     - token = `Get token from page URL`
-   - **Step 2** (Only when Step 1's success = true): Make changes to Current User
-     - `email_verified` = yes
-   - **Step 3**: Show success message, navigate after 2 seconds
-
-**Error Handling**:
-- Show alert with `Result of Step 1's message`
-- Common errors: "Token expired", "Token invalid", "Token already used"
+**Opción 2 - Desde link en email**:
+1. **Trigger**: Page "email-verification" is loaded AND Get token from URL is not empty
+2. **Step 1**: Plugins → verifyEmailToken
+   - token = `Get token from page URL`
+3. **Step 2** (Only when `success = true`): Make changes to Current User → `email_verified` = yes
+4. **Step 3**: Navigate to "company-setup" page
 
 ---
 
 ### Resend Verification Email
 
-**Status**: ✅ Ready
-
 **Endpoint**: `POST /registration/resend-verification`
-
-**Triggered by**: Bubble "Resend Email" button
-
-**Request**:
-```json
-{
-  "email": "user@example.com"
-}
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Email de verificación reenviado",
-  "token": "xyz123..."
-}
-```
-
+**Status**: ✅ Ready
 **Convex Function**: `emailVerification.resendVerificationEmail`
 
-**Database Operations**:
-- **Reads**: `users` table → find user by email
-- **Writes**: `emailVerificationTokens` table → create new token
-- **External**: Resend API → send email
+**Rate Limiting**: Max 5 resends, 5 minutos entre cada reenvío
 
-**Rate Limiting**:
-- Max 5 resends
-- 5 minutes between each resend
+#### Bubble API Connector Configuration
 
-#### Bubble API Setup
+**Name**: `resendVerificationEmail`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/registration/resend-verification`
 
-**Call Type**: Action
+**Headers**:
+```
+Content-Type: application/json
+```
 
-**API Connector Configuration**:
-- **Name**: `resendVerificationEmail`
-- **Use as**: Action
-- **Method**: POST
-- **URL**: `https://handsome-jay-388.convex.site/registration/resend-verification`
-- **Headers**:
-  - `Content-Type`: `application/json`
-- **Body Type**: JSON
-- **Body**:
+**Body**:
 ```json
 {
   "email": "<email>"
@@ -363,51 +278,71 @@ When configuring each call:
 ```
 
 **Parameters**:
-| Parameter | Type | Private | Taken from | Example |
-|-----------|------|---------|------------|---------|
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
 | email | text | No | Body | user@example.com |
 
-**Response Fields to Initialize**:
-- `success` (boolean)
-- `message` (text)
-- `token` (text)
+**Complete Response** (inicializar TODOS estos campos en Bubble):
+```json
+{
+  "success": true,
+  "message": "Email de verificación reenviado",
+  "token": "xyz123...",
+  "error": "Rate limit exceeded",
+  "code": "RATE_LIMIT_EXCEEDED"
+}
+```
 
-**Bubble Usage**:
+**Response Fields**:
+- `success` (boolean) - true si se envió el email correctamente
+- `message` (text) - Mensaje descriptivo del resultado
+- `token` (text) - Nuevo token de verificación generado
+- `error` (text) - Mensaje de error si success=false
+- `code` (text) - Código técnico del error
+
+#### Bubble Workflow
+
 1. **Trigger**: Button "Resend Verification Email" is clicked
-2. **Workflow Actions**:
-   - **Step 1**: Plugins → Alquemist Backend - resendVerificationEmail
-     - email = `Current User's email`
-   - **Step 2** (Only when Step 1's success = true): Show alert "Email reenviado. Revisa tu bandeja de entrada."
-   - **Step 2 Alternative** (When Step 1's success = false): Show alert with `Result of Step 1's message`
-
-**Rate Limiting UI**:
-- Disable button for 5 minutes after successful resend
-- Use Custom State "last_resend_time" to track
-- Show countdown: "Reenviar disponible en X minutos"
-
-**Error Handling**:
-- "Rate limit exceeded": Show time remaining
-- "User not found": Redirect to signup
-- "Email already verified": Navigate to company setup
+2. **Step 1**: Plugins → resendVerificationEmail
+   - email = `Current User's email`
+3. **Step 2** (Only when `success = true`): Show alert "Email reenviado. Revisa tu bandeja."
+4. **Step 3** (Only when `success = true`): Disable button for 5 minutes (Custom State)
+5. **Step 4** (Only when `success = false`): Show alert with `Result of Step 1's error`
 
 ---
 
 ### Check Verification Status
 
-**Status**: ✅ Ready
-
 **Endpoint**: `POST /registration/check-verification-status`
+**Status**: ✅ Ready
+**Convex Function**: `emailVerification.checkEmailVerificationStatus`
 
-**Triggered by**: Bubble page load (verification page polling)
+#### Bubble API Connector Configuration
 
-**Request**:
+**Name**: `checkVerificationStatus`
+**Use as**: Data
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/registration/check-verification-status`
+**Data Type**: Single object (Return list = No)
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
 ```json
 {
-  "email": "user@example.com"
+  "email": "<email>"
 }
 ```
 
-**Response**:
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| email | text | No | Body | user@example.com |
+
+**Complete Response** (inicializar TODOS estos campos en Bubble):
 ```json
 {
   "exists": true,
@@ -417,65 +352,21 @@ When configuring each call:
 }
 ```
 
-**Convex Function**: `emailVerification.checkEmailVerificationStatus`
+**Response Fields**:
+- `exists` (boolean) - true si el usuario existe en la base de datos
+- `verified` (boolean) - true si el email está verificado
+- `userId` (text) - ID del usuario
+- `message` (text) - Mensaje descriptivo del estado
 
-**Database Operations**:
-- **Reads**: `users` table → check email_verified status
+#### Bubble Workflow - Polling Pattern
 
-#### Bubble API Setup
-
-**Call Type**: Data (for polling/checking status)
-
-**API Connector Configuration**:
-- **Name**: `checkVerificationStatus`
-- **Use as**: Data
-- **Method**: POST
-- **URL**: `https://handsome-jay-388.convex.site/registration/check-verification-status`
-- **Headers**:
-  - `Content-Type`: `application/json`
-- **Body Type**: JSON
-- **Body**:
-```json
-{
-  "email": "<email>"
-}
-```
-- **Data Type**: Return list = No (single object)
-
-**Parameters**:
-| Parameter | Type | Private | Taken from | Example |
-|-----------|------|---------|------------|---------|
-| email | text | No | Body | user@example.com |
-
-**Response Fields to Initialize**:
-- `exists` (boolean)
-- `verified` (boolean)
-- `userId` (text)
-- `message` (text)
-
-**Bubble Usage - Polling Pattern**:
-1. **Add Repeating Element** on "email-verification" page
-   - Type: Custom
-   - Data Source: Get data from external API → checkVerificationStatus
-     - email = `Current User's email`
+1. **Add Repeating Group** en página "email-verification"
+   - Data source: Get data from API → checkVerificationStatus
+   - email = `Current User's email`
    - Refresh interval: Every 5 seconds
-2. **Conditional Workflow**: When RepeatingGroup's checkVerificationStatus's verified is "yes"
-   - **Step 1**: Cancel current workflow
-   - **Step 2**: Make changes to Current User
-     - `email_verified` = yes
-   - **Step 3**: Navigate to "company-setup" page
-
-**Alternative - Manual Check Button**:
-1. **Trigger**: Button "Check Status" is clicked
-2. **Workflow Actions**:
-   - **Step 1**: Display data (Get data from external API)
-     - API: checkVerificationStatus
-     - email = `Current User's email`
-   - **Step 2** (Only when Step 1's verified = true): Navigate to "company-setup"
-
-**Error Handling**:
-- If `exists` is false: User doesn't exist, redirect to signup
-- Show `message` field to inform user of status
+2. **Conditional Workflow**: When verified = yes
+   - Make changes to Current User → `email_verified` = yes
+   - Navigate to "company-setup"
 
 ---
 
@@ -483,103 +374,94 @@ When configuring each call:
 
 ### Get Departments
 
-**Status**: ✅ Ready
-
 **Endpoint**: `POST /geographic/departments`
+**Status**: ✅ Ready
+**Convex Function**: `geographic.getDepartments`
 
-**Triggered by**: Bubble company setup page load
+#### Bubble API Connector Configuration
 
-**Request**:
+**Name**: `getDepartments`
+**Use as**: Data
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/geographic/departments`
+**Data Type**: List of objects (Return list = Yes)
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
 ```json
 {
-  "countryCode": "CO"
+  "countryCode": "<countryCode>"
 }
 ```
 
-**Response**:
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| countryCode | text | No | Body | CO |
+
+**Complete Response** (array - inicializar estos campos en Bubble):
 ```json
 [
   {
     "division_1_code": "05",
     "division_1_name": "Antioquia",
     "timezone": "America/Bogota"
-  },
-  {
-    "division_1_code": "11",
-    "division_1_name": "Bogotá D.C.",
-    "timezone": "America/Bogota"
   }
 ]
 ```
 
-**Convex Function**: `geographic.getDepartments`
+**Response Fields**:
+- `division_1_code` (text) - Código del departamento
+- `division_1_name` (text) - Nombre del departamento
+- `timezone` (text) - Zona horaria
 
-**Database Operations**:
-- **Reads**: `geographic_locations` table → where administrative_level=1
+#### Bubble Dropdown Setup
 
-#### Bubble API Setup
-
-**Call Type**: Data (returns list for dropdown)
-
-**API Connector Configuration**:
-- **Name**: `getDepartments`
-- **Use as**: Data
-- **Method**: POST
-- **URL**: `https://handsome-jay-388.convex.site/geographic/departments`
-- **Headers**:
-  - `Content-Type`: `application/json`
-- **Body Type**: JSON
-- **Body**:
-```json
-{
-  "countryCode": "<countryCode>"
-}
-```
-- **Data Type**: Return list = Yes (array of departments)
-
-**Parameters**:
-| Parameter | Type | Private | Taken from | Example |
-|-----------|------|---------|------------|---------|
-| countryCode | text | No | Body | CO |
-
-**Response Fields to Initialize**:
-- `division_1_code` (text)
-- `division_1_name` (text)
-- `timezone` (text)
-
-**Bubble Usage**:
 1. **Dropdown "Departamento"**:
-   - Type: Dynamic choices
-   - Choices Source: Get data from external API → getDepartments
-     - countryCode = "CO" (hardcoded for now)
+   - Choices source: Get data from API → getDepartments (countryCode = "CO")
    - Option caption: `This Department's division_1_name`
    - Option value: `This Department's division_1_code`
-2. **Display**: Show department names in dropdown
-3. **On Selection**: Trigger getMunicipalities call with selected department code
-
-**Caching**:
-- Since departments rarely change, consider loading once on page load
-- Store in Custom State if needed for offline access
 
 ---
 
 ### Get Municipalities
 
-**Status**: ✅ Ready
-
 **Endpoint**: `POST /geographic/municipalities`
+**Status**: ✅ Ready
+**Convex Function**: `geographic.getMunicipalities`
 
-**Triggered by**: Bubble department dropdown selection
+#### Bubble API Connector Configuration
 
-**Request**:
+**Name**: `getMunicipalities`
+**Use as**: Data
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/geographic/municipalities`
+**Data Type**: List of objects (Return list = Yes)
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
 ```json
 {
-  "countryCode": "CO",
-  "departmentCode": "05"
+  "countryCode": "<countryCode>",
+  "departmentCode": "<departmentCode>"
 }
 ```
 
-**Response**:
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| countryCode | text | No | Body | CO |
+| departmentCode | text | No | Body | 05 |
+
+**Complete Response** (array - inicializar estos campos en Bubble):
 ```json
 [
   {
@@ -587,128 +469,49 @@ When configuring each call:
     "division_2_name": "Medellín",
     "parent_division_1_code": "05",
     "timezone": "America/Bogota"
-  },
-  {
-    "division_2_code": "05002",
-    "division_2_name": "Abejorral",
-    "parent_division_1_code": "05"
   }
 ]
 ```
 
-**Convex Function**: `geographic.getMunicipalities`
+**Response Fields**:
+- `division_2_code` (text) - Código del municipio
+- `division_2_name` (text) - Nombre del municipio
+- `parent_division_1_code` (text) - Código del departamento padre
+- `timezone` (text) - Zona horaria
 
-**Database Operations**:
-- **Reads**: `geographic_locations` table → where administrative_level=2 AND parent_division_1_code=departmentCode
+#### Bubble Dropdown Setup
 
-#### Bubble API Setup
-
-**Call Type**: Data (returns list for dropdown)
-
-**API Connector Configuration**:
-- **Name**: `getMunicipalities`
-- **Use as**: Data
-- **Method**: POST
-- **URL**: `https://handsome-jay-388.convex.site/geographic/municipalities`
-- **Headers**:
-  - `Content-Type`: `application/json`
-- **Body Type**: JSON
-- **Body**:
-```json
-{
-  "countryCode": "<countryCode>",
-  "departmentCode": "<departmentCode>"
-}
-```
-- **Data Type**: Return list = Yes (array of municipalities)
-
-**Parameters**:
-| Parameter | Type | Private | Taken from | Example |
-|-----------|------|---------|------------|---------|
-| countryCode | text | No | Body | CO |
-| departmentCode | text | No | Body | 05 |
-
-**Response Fields to Initialize**:
-- `division_2_code` (text)
-- `division_2_name` (text)
-- `parent_division_1_code` (text)
-- `timezone` (text)
-
-**Bubble Usage**:
 1. **Dropdown "Municipio"**:
-   - Type: Dynamic choices
-   - Choices Source: Get data from external API → getMunicipalities
+   - Choices source: Get data from API → getMunicipalities
      - countryCode = "CO"
      - departmentCode = `Dropdown Departamento's value`
    - Option caption: `This Municipality's division_2_name`
    - Option value: `This Municipality's division_2_code`
-2. **Conditional Display**: Only show when department is selected
-3. **Reset on Department Change**: Clear municipality selection when department changes
-
-**Workflow - Department Changed**:
-1. **Trigger**: Dropdown "Departamento"'s value is changed
-2. **Actions**:
-   - **Step 1**: Reset input → Dropdown "Municipio"
-   - **Step 2**: Dropdown "Municipio" loads new data automatically (dynamic source refreshes)
+2. **Auto-reset**: Clear when department changes
 
 ---
 
 ### Create Company (Step 2)
 
-**Status**: ✅ Ready
-
 **Endpoint**: `POST /registration/register-step-2`
-
-**Triggered by**: Bubble "Create Company" button
-
-**Request**:
-```json
-{
-  "userId": "j97abc...",
-  "companyName": "Cultivos San José S.A.S",
-  "businessEntityType": "S.A.S",
-  "companyType": "cannabis",
-  "country": "CO",
-  "departmentCode": "05",
-  "municipalityCode": "05001"
-}
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "userId": "j97abc...",
-  "companyId": "k12def...",
-  "message": "¡Bienvenido! Tu empresa ha sido creada exitosamente. Acceso a plataforma."
-}
-```
-
+**Status**: ✅ Ready
 **Convex Function**: `registration.registerCompanyStep2`
 
-**Database Operations**:
-- **Reads**: `users` table → verify email_verified=true
-- **Reads**: `geographic_locations` table → validate municipality and department
-- **Writes**: `companies` table → create company with:
-  - name, business_entity_type, company_type
-  - country, department/municipality codes and names
-  - subscription_plan="trial", max_facilities=1, max_users=3
-  - timezone from municipality
-- **Updates**: `users` table → set company_id, timezone from municipality
+**Note**: Requiere que el usuario tenga email verificado (email_verified=true)
 
-#### Bubble API Setup
+#### Bubble API Connector Configuration
 
-**Call Type**: Action
+**Name**: `registerCompanyStep2`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/registration/register-step-2`
 
-**API Connector Configuration**:
-- **Name**: `registerCompanyStep2`
-- **Use as**: Action
-- **Method**: POST
-- **URL**: `https://handsome-jay-388.convex.site/registration/register-step-2`
-- **Headers**:
-  - `Content-Type`: `application/json`
-- **Body Type**: JSON
-- **Body**:
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
 ```json
 {
   "userId": "<userId>",
@@ -722,8 +525,8 @@ When configuring each call:
 ```
 
 **Parameters**:
-| Parameter | Type | Private | Taken from | Example |
-|-----------|------|---------|------------|---------|
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
 | userId | text | No | Body | j97abc... |
 | companyName | text | No | Body | Cultivos San José S.A.S |
 | businessEntityType | text | No | Body | S.A.S |
@@ -732,56 +535,84 @@ When configuring each call:
 | departmentCode | text | No | Body | 05 |
 | municipalityCode | text | No | Body | 05001 |
 
-**Response Fields to Initialize**:
-- `success` (boolean)
-- `userId` (text)
-- `companyId` (text)
-- `message` (text)
+**Complete Response** (inicializar TODOS estos campos en Bubble):
+```json
+{
+  "success": true,
+  "userId": "j97abc...",
+  "companyId": "k12def...",
+  "message": "¡Bienvenido! Tu empresa ha sido creada exitosamente.",
+  "error": "Email not verified",
+  "code": "EMAIL_NOT_VERIFIED"
+}
+```
 
-**Bubble Usage**:
+**Response Fields**:
+- `success` (boolean) - true si la empresa se creó exitosamente
+- `userId` (text) - ID del usuario
+- `companyId` (text) - ID de la empresa creada
+- `message` (text) - Mensaje descriptivo del resultado
+- `error` (text) - Mensaje de error si success=false
+- `code` (text) - Código técnico del error
+
+#### Bubble Workflow
+
 1. **Trigger**: Button "Create Company" is clicked
-2. **Workflow Actions**:
-   - **Step 1**: Plugins → Alquemist Backend - registerCompanyStep2
-     - userId = `Current User's backend_user_id`
-     - companyName = `Input companyName's value`
-     - businessEntityType = `Dropdown businessEntityType's value`
-     - companyType = `Dropdown companyType's value`
-     - country = "CO"
-     - departmentCode = `Dropdown Departamento's value`
-     - municipalityCode = `Dropdown Municipio's value`
-   - **Step 2** (Only when Step 1's success = true): Make changes to Current User
-     - `company_id` = `Result of Step 1's companyId`
-     - `company_name` = `Input companyName's value`
-   - **Step 3**: Navigate to "dashboard" page
+2. **Step 1**: Plugins → registerCompanyStep2
+   - userId = `Current User's backend_user_id`
+   - companyName = `Input companyName's value`
+   - businessEntityType = `Dropdown businessEntityType's value`
+   - companyType = `Dropdown companyType's value`
+   - country = "CO"
+   - departmentCode = `Dropdown Departamento's value`
+   - municipalityCode = `Dropdown Municipio's value`
+3. **Step 2** (Only when `success = true`): Make changes to Current User
+   - `company_id` = `Result of Step 1's companyId`
+   - `company_name` = `Input companyName's value`
+4. **Step 3**: Navigate to "dashboard" page
+5. **Step 4** (Only when `success = false`): Show alert with `Result of Step 1's error`
 
-**Required Option Sets** (for dropdowns):
-- **businessEntityType**: S.A.S, S.A., Ltda, E.U., etc.
-- **companyType**: cannabis, coffee, flowers, vegetables, etc.
-
-**Error Handling**:
-- "Email not verified": Redirect to verification page
-- "Invalid municipality": Show error, check dropdown values
-- Show `Result of Step 1's message` on error
+**Option Sets requeridos**:
+- `businessEntityType`: S.A.S, S.A., Ltda, E.U.
+- `companyType`: cannabis, coffee, flowers, vegetables
 
 ---
 
 ### Simple Login
 
-**Status**: ✅ Ready
-
 **Endpoint**: `POST /registration/login`
+**Status**: ✅ Ready
+**Convex Function**: `registration.login`
 
-**Triggered by**: Bubble login page "Log In" button
+**Important**: El `token` es un session token (30 días). Cada login genera un nuevo token e invalida el anterior.
 
-**Request**:
+#### Bubble API Connector Configuration
+
+**Name**: `login`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/registration/login`
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
 ```json
 {
-  "email": "user@example.com",
-  "password": "SecurePass123!"
+  "email": "<email>",
+  "password": "<password>"
 }
 ```
 
-**Response**:
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| email | text | No | Body | user@example.com |
+| password | text | Yes | Body | SecurePass123! |
+
+**Complete Response** (inicializar TODOS estos campos en Bubble):
 ```json
 {
   "success": true,
@@ -798,122 +629,81 @@ When configuring each call:
   "company": {
     "name": "Cultivos San José S.A.S",
     "subscriptionPlan": "trial"
-  }
+  },
+  "error": "Invalid credentials",
+  "code": "INVALID_CREDENTIALS"
 }
 ```
 
-**Convex Function**: `registration.login`
-
-**Database Operations**:
-- **Reads**: `users` table → find by email, verify password_hash
-- **Reads**: `companies` table → get company info
-- **Writes**: `sessions` table → create new 30-day session token
-- **Updates**: `users` table → update last_login, reset failed_login_attempts
-
-**Validation**:
-- Email exists
-- Password correct (hash comparison)
-- Email verified (email_verified=true)
-- Company exists (company_id not null)
-- Company status is "active"
-
-**Important**: The `token` field is a **session token** (30-day validity) for API authentication. Save this to Bubble User data type. A new token is generated on each login, invalidating the previous session.
-
-#### Bubble API Setup
-
-**Call Type**: Action
-
-**API Connector Configuration**:
-- **Name**: `login`
-- **Use as**: Action
-- **Method**: POST
-- **URL**: `https://handsome-jay-388.convex.site/registration/login`
-- **Headers**:
-  - `Content-Type`: `application/json`
-- **Body Type**: JSON
-- **Body**:
-```json
-{
-  "email": "<email>",
-  "password": "<password>"
-}
-```
-
-**Parameters**:
-| Parameter | Type | Private | Taken from | Example |
-|-----------|------|---------|------------|---------|
-| email | text | No | Body | user@example.com |
-| password | text | Yes | Body | SecurePass123! |
-
-**Response Fields to Initialize**:
-- `success` (boolean)
-- `token` (text)
-- `userId` (text)
-- `companyId` (text)
-- `user` (object)
+**Response Fields**:
+- `success` (boolean) - true si login exitoso
+- `token` (text) - Session token (30 días)
+- `userId` (text) - ID del usuario
+- `companyId` (text) - ID de la empresa
+- `user` (object) - Datos del usuario
   - `email` (text)
   - `firstName` (text)
   - `lastName` (text)
   - `locale` (text)
   - `preferredLanguage` (text)
-- `company` (object)
+- `company` (object) - Datos de la empresa
   - `name` (text)
   - `subscriptionPlan` (text)
+- `error` (text) - Mensaje de error si success=false
+- `code` (text) - Código técnico del error
 
-**Bubble Usage**:
+#### Bubble Workflow
+
 1. **Trigger**: Button "Log In" is clicked
-2. **Workflow Actions**:
-   - **Step 1**: Plugins → Alquemist Backend - login
-     - email = `Input email's value`
-     - password = `Input password's value`
-   - **Step 2** (Only when Step 1's success = true): Log the user in
-     - Email = `Result of Step 1's user:email`
-     - Password = `Input password's value`
-   - **Step 3**: Make changes to Current User
-     - `session_token` = `Result of Step 1's token`
-     - `backend_user_id` = `Result of Step 1's userId`
-     - `company_id` = `Result of Step 1's companyId`
-     - `company_name` = `Result of Step 1's company:name`
-     - `first_name` = `Result of Step 1's user:firstName`
-     - `last_name` = `Result of Step 1's user:lastName`
-     - `email_verified` = yes
-   - **Step 4**: Navigate to "dashboard" page
+2. **Step 1**: Plugins → login
+   - email = `Input email's value`
+   - password = `Input password's value`
+3. **Step 2** (Only when `success = true`): Log the user in
+   - Email = `Result of Step 1's user:email`
+   - Password = `Input password's value`
+4. **Step 3**: Make changes to Current User
+   - `session_token` = `Result of Step 1's token`
+   - `backend_user_id` = `Result of Step 1's userId`
+   - `company_id` = `Result of Step 1's companyId`
+   - `company_name` = `Result of Step 1's company:name`
+   - `first_name` = `Result of Step 1's user:firstName`
+   - `last_name` = `Result of Step 1's user:lastName`
+   - `email_verified` = yes
+5. **Step 4**: Navigate to "dashboard" page
+6. **Step 5** (Only when `success = false`): Show alert with `Result of Step 1's error`
 
-**Error Handling**:
-- "Invalid credentials": Show "Email o contraseña incorrectos"
-- "Email not verified": Show message, redirect to verification page
-- "Company not found": Show message, redirect to company setup
-- "Account inactive": Contact support message
-
-**Security Notes**:
-- Always use HTTPS
-- Never log or display the session token
-- Clear password input after failed attempts
-- Implement rate limiting on frontend (max 5 attempts)
+**Security**: Siempre usar HTTPS. No logear ni mostrar el token. Rate limiting: max 5 intentos.
 
 ---
 
 ### Validate Session Token
 
-**Status**: ✅ Ready
-
 **Endpoint**: `GET /registration/validate-token`
+**Status**: ✅ Ready
+**Convex Function**: `registration.validateToken`
 
-**Triggered by**: Bubble protected page load, or before any authenticated API call
+**Use**: Llamar en page load de páginas protegidas. Si valid=false, hacer logout y redirigir a login.
+
+#### Bubble API Connector Configuration
+
+**Name**: `validateToken`
+**Use as**: Data
+**Method**: GET
+**URL**: `https://handsome-jay-388.convex.site/registration/validate-token?token=<token>`
+**Data Type**: Single object (Return list = No)
 
 **Headers**:
 ```
-Authorization: Bearer a2g3YnI1M2RuazR5bWplNms...
+Content-Type: application/json
+Authorization: Bearer <token>
 ```
 
-**Query Parameters**:
-```json
-{
-  "token": "a2g3YnI1M2RuazR5bWplNms..."
-}
-```
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | URL | a2g3YnI1M2RuazR5bWplNms... |
 
-**Response (Valid)**:
+**Complete Response** (inicializar TODOS estos campos en Bubble):
 ```json
 {
   "valid": true,
@@ -932,149 +722,50 @@ Authorization: Bearer a2g3YnI1M2RuazR5bWplNms...
     "name": "Cultivos San José S.A.S",
     "status": "active",
     "subscriptionPlan": "trial"
-  }
-}
-```
-
-**Response (Invalid)**:
-```json
-{
-  "valid": false,
+  },
   "error": "Token expirado"
 }
 ```
 
-**Convex Function**: `registration.validateToken`
+**Response Fields**:
+- `valid` (boolean) - true si el token es válido
+- `userId` (text) - ID del usuario
+- `companyId` (text) - ID de la empresa
+- `user` (object) - Datos del usuario
+- `company` (object) - Datos de la empresa
+- `error` (text) - Mensaje de error si valid=false
 
-**Database Operations**:
-- **Reads**: `sessions` table → find token, check is_active and expires_at
-- **Reads**: `users` table → get user info, check status
-- **Reads**: `companies` table → get company info
-- **Updates**: `sessions` table → update last_used_at timestamp
+#### Bubble Workflow - Page Protection
 
-**Validation**:
-- Token exists in database
-- Token is_active = true
-- Token not expired (<30 days old)
-- User status = "active"
+1. **Page Load**: When page is loaded
+2. **Step 1**: Get data from API → validateToken (token = `Current User's session_token`)
+3. **Step 2** (Only when `valid = false`): Log the user out → Navigate to "login"
 
-**Bubble Usage**: Call this on every protected page load. If `valid: false`, log user out and redirect to login page.
+**Recomendación**: Crear Reusable Element "SessionValidator" para centralizar esta lógica.
 
-#### Bubble API Setup
-
-**Call Type**: Data (checking/validating)
-
-**API Connector Configuration**:
-- **Name**: `validateToken`
-- **Use as**: Data
-- **Method**: GET
-- **URL**: `https://handsome-jay-388.convex.site/registration/validate-token?token=<token>`
-- **Headers**:
-  - `Content-Type`: `application/json`
-  - `Authorization`: `Bearer <token>` (optional, but good practice)
-- **Data Type**: Return list = No (single object)
-
-**Parameters**:
-| Parameter | Type | Private | Taken from | Example |
-|-----------|------|---------|------------|---------|
-| token | text | Yes | URL | a2g3YnI1M2RuazR5bWplNms... |
-
-**Response Fields to Initialize**:
-- `valid` (boolean)
-- `userId` (text)
-- `companyId` (text)
-- `error` (text)
-- `user` (object)
-  - `email` (text)
-  - `firstName` (text)
-  - `lastName` (text)
-  - `locale` (text)
-  - `preferredLanguage` (text)
-  - `roleId` (text)
-- `company` (object)
-  - `id` (text)
-  - `name` (text)
-  - `status` (text)
-  - `subscriptionPlan` (text)
-
-**Bubble Usage - Page Load Protection**:
-1. **Every Protected Page**: Add this workflow on page load
-2. **Workflow**: When Page is loaded
-   - **Step 1**: Get data from external API → validateToken
-     - token = `Current User's session_token`
-   - **Step 2** (Only when Step 1's valid is "false"): Log the user out
-   - **Step 3**: Navigate to "login" page
-   - **Step 4**: Show alert "Sesión expirada. Por favor inicia sesión nuevamente."
-
-**Bubble Usage - Reusable Element** (Recommended):
-1. Create a **Reusable Element** "SessionValidator"
-2. Place on every protected page
-3. Runs validation automatically on page load
-4. Handles logout and redirect centrally
-
-**Performance Note**:
-- Consider caching validation for 5 minutes to reduce API calls
-- Use Custom State to track last validation time
-- Only re-validate if > 5 minutes since last check
+**Performance**: Cachear validación por 5 minutos usando Custom State.
 
 ---
 
 ### Logout
 
-**Status**: ✅ Ready
-
 **Endpoint**: `POST /registration/logout`
-
-**Triggered by**: Bubble logout button
-
-**Request**:
-```json
-{
-  "token": "a2g3YnI1M2RuazR5bWplNms..."
-}
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Sesión cerrada exitosamente"
-}
-```
-
-**Response (Error)**:
-```json
-{
-  "success": false,
-  "error": "Token no encontrado"
-}
-```
-
+**Status**: ✅ Ready
 **Convex Function**: `registration.logout`
 
-**Database Operations**:
-- **Reads**: `sessions` table → find token
-- **Updates**: `sessions` table → set is_active=false, revoked_at=now
+#### Bubble API Connector Configuration
 
-**Bubble Usage**:
-1. Call this endpoint with user's session token
-2. Clear User data type `session_token` field
-3. "Log the user out" action
-4. Navigate to login page
+**Name**: `logout`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/registration/logout`
 
-#### Bubble API Setup
+**Headers**:
+```
+Content-Type: application/json
+```
 
-**Call Type**: Action
-
-**API Connector Configuration**:
-- **Name**: `logout`
-- **Use as**: Action
-- **Method**: POST
-- **URL**: `https://handsome-jay-388.convex.site/registration/logout`
-- **Headers**:
-  - `Content-Type`: `application/json`
-- **Body Type**: JSON
-- **Body**:
+**Body**:
 ```json
 {
   "token": "<token>"
@@ -1082,38 +773,36 @@ Authorization: Bearer a2g3YnI1M2RuazR5bWplNms...
 ```
 
 **Parameters**:
-| Parameter | Type | Private | Taken from | Example |
-|-----------|------|---------|------------|---------|
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
 | token | text | Yes | Body | a2g3YnI1M2RuazR5bWplNms... |
 
-**Response Fields to Initialize**:
-- `success` (boolean)
-- `message` (text)
-- `error` (text)
+**Complete Response** (inicializar TODOS estos campos en Bubble):
+```json
+{
+  "success": true,
+  "message": "Sesión cerrada exitosamente",
+  "error": "Token no encontrado"
+}
+```
 
-**Bubble Usage**:
-1. **Trigger**: Button "Logout" is clicked (or menu item selected)
-2. **Workflow Actions**:
-   - **Step 1**: Plugins → Alquemist Backend - logout
-     - token = `Current User's session_token`
-   - **Step 2**: Make changes to Current User
-     - `session_token` = empty (clear the token)
-     - `backend_user_id` = empty
-     - `company_id` = empty
-   - **Step 3**: Log the user out
-   - **Step 4**: Navigate to "login" page
-   - **Step 5** (Optional): Show toast "Sesión cerrada exitosamente"
+**Response Fields**:
+- `success` (boolean) - true si logout exitoso
+- `message` (text) - Mensaje de confirmación
+- `error` (text) - Mensaje de error si success=false
 
-**Best Practices**:
-- Always call logout endpoint before Bubble's "Log the user out" action
-- This ensures session is invalidated on backend
-- Even if API call fails, still log user out from Bubble for security
-- Clear all sensitive Custom States on logout
+#### Bubble Workflow
 
-**Error Handling**:
-- If API call fails, still proceed with Bubble logout
-- Don't block user from logging out
-- Log error for debugging but continue workflow
+1. **Trigger**: Button "Logout" is clicked
+2. **Step 1**: Plugins → logout (token = `Current User's session_token`)
+3. **Step 2**: Make changes to Current User
+   - `session_token` = empty
+   - `backend_user_id` = empty
+   - `company_id` = empty
+4. **Step 3**: Log the user out
+5. **Step 4**: Navigate to "login" page
+
+**Importante**: Siempre hacer logout del backend antes de Bubble's "Log the user out". Aunque falle el API, continuar con el logout de Bubble.
 
 ---
 

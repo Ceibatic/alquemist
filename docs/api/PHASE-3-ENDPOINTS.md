@@ -42,6 +42,10 @@ Phase 3 endpoints use the same authentication system as Phases 1 and 2:
 
 ## MODULE 14: Compliance & Reporting
 
+⚠️ **STATUS**: Module NO implementado - Backend pendiente
+
+**Note**: Los siguientes endpoints requieren autenticación via `Authorization: Bearer <token>` header.
+
 ### Get Compliance Events
 
 **Endpoint**: `GET /compliance/get-events`
@@ -279,6 +283,10 @@ Content-Type: application/json
 
 ## MODULE 15: Analytics & Business Intelligence
 
+⚠️ **STATUS**: Module NO implementado - Backend pendiente
+
+**Note**: Los siguientes endpoints requieren autenticación via `Authorization: Bearer <token>` header.
+
 ### Get Analytics Dashboard
 
 **Endpoint**: `GET /analytics/get-dashboard`
@@ -451,6 +459,10 @@ Content-Type: application/json
 ---
 
 ## MODULE 16: Mobile Experience & Media
+
+⚠️ **STATUS**: Module NO implementado - Backend pendiente
+
+**Note**: Los siguientes endpoints requieren autenticación via `Authorization: Bearer <token>` header.
 
 ### Get Mobile Dashboard
 
@@ -629,6 +641,10 @@ Content-Type: application/json
 ---
 
 ## MODULE 17: Integrations & APIs
+
+⚠️ **STATUS**: Module NO implementado - Backend pendiente
+
+**Note**: Los siguientes endpoints requieren autenticación via `Authorization: Bearer <token>` header.
 
 ### Get Active Integrations
 

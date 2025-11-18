@@ -42,28 +42,34 @@ Phase 2 endpoints use the same authentication system as Phase 1:
 
 ## MODULE 9: Inventory Management
 
+⚠️ **STATUS**: Module NO implementado - Backend pendiente
+
 ### Get Inventory by Facility
 
 **Endpoint**: `GET /inventory/get-by-facility`
+**Status**: ⚠️ Pendiente
+**Convex Function**: `inventory.getByFacility` (TO BE CREATED)
 
-**Triggered by**: Bubble inventory dashboard page load
+#### Bubble API Connector Configuration
+
+**Name**: `getInventoryByFacility`
+**Use as**: Data
+**Method**: GET
+**URL**: `https://handsome-jay-388.convex.site/inventory/get-by-facility?facilityId=<facilityId>`
 
 **Headers**:
 ```
-Authorization: Bearer {session_token}
+Authorization: Bearer <token>
 Content-Type: application/json
 ```
 
-**Request**:
-```json
-{
-  "facilityId": "f78ghi..."
-}
-```
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | session_token |
+| facilityId | text | No | URL | f78ghi... (opcional) |
 
-**Note**: `facilityId` is optional - if not provided, company_id from session token determines scope.
-
-**Response**:
+**Complete Response**:
 ```json
 {
   "items": [
@@ -85,149 +91,154 @@ Content-Type: application/json
 }
 ```
 
-**Convex Function**: `inventory.getByFacility` ⚠️ TO BE CREATED
-
-**Database Operations**:
-- **Reads**: `inventory_items` joined with `products`, `suppliers`, `areas`
-
 ---
 
 ### Add Inventory Item
 
 **Endpoint**: `POST /inventory/add-item`
+**Status**: ⚠️ Pendiente
+**Convex Function**: `inventory.addItem` (TO BE CREATED)
 
-**Triggered by**: Bubble "Save" button in add item popup
+#### Bubble API Connector Configuration
+
+**Name**: `addInventoryItem`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/inventory/add-item`
 
 **Headers**:
 ```
-Authorization: Bearer {session_token}
+Authorization: Bearer <token>
 Content-Type: application/json
 ```
 
-**Request**:
+**Body**:
 ```json
 {
-  "productId": "prod456",
-  "areaId": "a99jkl...",
-  "supplierId": "s55mno...",
-  "quantityAvailable": 100,
-  "quantityUnit": "units",
-  "reorderPoint": 20,
-  "purchasePrice": 25000,
-  "batchNumber": "LOT-2025-001",
-  "expirationDate": 1735689600000
+  "productId": "<productId>",
+  "areaId": "<areaId>",
+  "supplierId": "<supplierId>",
+  "quantityAvailable": <quantity>,
+  "quantityUnit": "<unit>",
+  "reorderPoint": <reorderPoint>,
+  "purchasePrice": <price>,
+  "batchNumber": "<batchNumber>",
+  "expirationDate": <timestamp>
 }
 ```
 
-**Note**: `company_id` automatically extracted from session token for multi-tenant isolation.
-
-**Response**:
+**Complete Response**:
 ```json
 {
   "success": true,
   "inventoryItemId": "inv789...",
-  "message": "Item agregado al inventario"
+  "message": "Item agregado al inventario",
+  "error": "Product not found",
+  "code": "PRODUCT_NOT_FOUND"
 }
 ```
-
-**Convex Function**: `inventory.addItem` ⚠️ TO BE CREATED
-
-**Database Operations**:
-- **Writes**: `inventory_items` table
 
 ---
 
 ### Log Consumption
 
 **Endpoint**: `POST /inventory/log-consumption`
+**Status**: ⚠️ Pendiente
+**Convex Function**: `inventory.logConsumption` (TO BE CREATED)
 
-**Triggered by**: Bubble "Log Consumption" button
+#### Bubble API Connector Configuration
 
-**Request**:
+**Name**: `logInventoryConsumption`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/inventory/log-consumption`
+
+**Headers**:
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Body**:
 ```json
 {
-  "inventoryItemId": "inv123",
-  "batchId": "batch001",
-  "quantityConsumed": 5,
-  "activityType": "feeding",
-  "performedBy": "user456",
-  "notes": "Week 3 feeding schedule"
+  "inventoryItemId": "<itemId>",
+  "batchId": "<batchId>",
+  "quantityConsumed": <quantity>,
+  "activityType": "<type>",
+  "performedBy": "<userId>",
+  "notes": "<notes>"
 }
 ```
 
-**Response**:
+**Complete Response**:
 ```json
 {
   "success": true,
   "activityId": "act999...",
   "remainingQuantity": 40,
-  "needsReorder": true
+  "needsReorder": true,
+  "error": "Insufficient stock",
+  "code": "INSUFFICIENT_STOCK"
 }
 ```
-
-**Convex Function**: `inventory.logConsumption` ⚠️ TO BE CREATED
-
-**Database Operations**:
-- **Updates**: `inventory_items` → decrease quantity_available
-- **Writes**: `activities` → log consumption event
 
 ---
 
 ### Transfer Inventory
 
 **Endpoint**: `POST /inventory/transfer`
+**Status**: ⚠️ Pendiente
+**Convex Function**: `inventory.transfer` (TO BE CREATED)
 
-**Triggered by**: Bubble "Transfer" button
+#### Bubble API Connector Configuration
 
-**Request**:
+**Name**: `transferInventory`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/inventory/transfer`
+
+**Headers**:
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Body**:
 ```json
 {
-  "inventoryItemId": "inv123",
-  "fromAreaId": "a99jkl...",
-  "toAreaId": "a88ijk...",
-  "quantity": 10
+  "inventoryItemId": "<itemId>",
+  "fromAreaId": "<fromArea>",
+  "toAreaId": "<toArea>",
+  "quantity": <quantity>
 }
 ```
 
-**Response**:
+**Complete Response**:
 ```json
 {
   "success": true,
-  "message": "Transferencia completada"
+  "message": "Transferencia completada",
+  "error": "Area not available",
+  "code": "AREA_NOT_AVAILABLE"
 }
 ```
-
-**Convex Function**: `inventory.transfer` ⚠️ TO BE CREATED
-
-**Database Operations**:
-- **Updates**: `inventory_items` → adjust quantities for both areas
 
 ---
 
 ## MODULE 10: Production Templates
 
+⚠️ **STATUS**: Module NO implementado - Backend pendiente
+
+**Note**: Los siguientes endpoints requieren autenticación via `Authorization: Bearer <token>` header.
+
 ### Get Templates by Company
 
 **Endpoint**: `GET /templates/get-by-company`
+**Status**: ⚠️ Pendiente
+**Convex Function**: `templates.getByCompany` (TO BE CREATED)
 
-**Triggered by**: Bubble templates list page load
-
-**Headers**:
-```
-Authorization: Bearer {session_token}
-Content-Type: application/json
-```
-
-**Request**:
-```json
-{
-  "companyId": "k12def..."
-}
-```
-
-**Note**: `companyId` parameter is optional - defaults to company from session token.
-
-**Response**:
+**Complete Response**:
 ```json
 {
   "templates": [
@@ -245,20 +256,15 @@ Content-Type: application/json
 }
 ```
 
-**Convex Function**: `templates.getByCompany` ⚠️ TO BE CREATED
-
-**Database Operations**:
-- **Reads**: `production_templates` joined with `crop_types`
-
 ---
 
 ### Create Template
 
 **Endpoint**: `POST /templates/create`
+**Status**: ⚠️ Pendiente
+**Convex Function**: `templates.create` (TO BE CREATED)
 
-**Triggered by**: Bubble "Save Template" button
-
-**Request**:
+**Body Example**:
 ```json
 {
   "companyId": "k12def...",
@@ -267,7 +273,7 @@ Content-Type: application/json
   "cultivarId": "cult789",
   "defaultBatchSize": 200,
   "enableIndividualTracking": false,
-  "description": "Standard cannabis seed-to-harvest workflow",
+  "description": "Standard workflow",
   "estimatedDurationDays": 140,
   "environmentalRequirements": {
     "tempMin": 20,
@@ -278,29 +284,26 @@ Content-Type: application/json
 }
 ```
 
-**Response**:
+**Complete Response**:
 ```json
 {
   "success": true,
   "templateId": "tmpl456...",
-  "message": "Plantilla creada exitosamente"
+  "message": "Plantilla creada exitosamente",
+  "error": "Invalid crop type",
+  "code": "INVALID_CROP_TYPE"
 }
 ```
-
-**Convex Function**: `templates.create` ⚠️ TO BE CREATED
-
-**Database Operations**:
-- **Writes**: `production_templates` table
 
 ---
 
 ### Add Phase to Template
 
 **Endpoint**: `POST /templates/add-phase`
+**Status**: ⚠️ Pendiente
+**Convex Function**: `templates.addPhase` (TO BE CREATED)
 
-**Triggered by**: Bubble "Save Phase" button in popup
-
-**Request**:
+**Body Example**:
 ```json
 {
   "templateId": "tmpl456",
@@ -316,29 +319,26 @@ Content-Type: application/json
 }
 ```
 
-**Response**:
+**Complete Response**:
 ```json
 {
   "success": true,
   "phaseId": "phase789...",
-  "message": "Fase agregada"
+  "message": "Fase agregada",
+  "error": "Template not found",
+  "code": "TEMPLATE_NOT_FOUND"
 }
 ```
-
-**Convex Function**: `templates.addPhase` ⚠️ TO BE CREATED
-
-**Database Operations**:
-- **Writes**: `template_phases` table
 
 ---
 
 ### Add Activity to Phase
 
 **Endpoint**: `POST /templates/add-activity`
+**Status**: ⚠️ Pendiente
+**Convex Function**: `templates.addActivity` (TO BE CREATED)
 
-**Triggered by**: Bubble "Save Activity" button
-
-**Request**:
+**Body Example**:
 ```json
 {
   "phaseId": "phase789",
@@ -361,29 +361,26 @@ Content-Type: application/json
 }
 ```
 
-**Response**:
+**Complete Response**:
 ```json
 {
   "success": true,
   "activityId": "tact999...",
-  "message": "Actividad agregada a la fase"
+  "message": "Actividad agregada a la fase",
+  "error": "Phase not found",
+  "code": "PHASE_NOT_FOUND"
 }
 ```
-
-**Convex Function**: `templates.addActivity` ⚠️ TO BE CREATED
-
-**Database Operations**:
-- **Writes**: `template_activities` table
 
 ---
 
 ### Clone Template
 
 **Endpoint**: `POST /templates/clone`
+**Status**: ⚠️ Pendiente
+**Convex Function**: `templates.clone` (TO BE CREATED)
 
-**Triggered by**: Bubble "Clone" button
-
-**Request**:
+**Body Example**:
 ```json
 {
   "templateId": "tmpl456",
@@ -391,24 +388,24 @@ Content-Type: application/json
 }
 ```
 
-**Response**:
+**Complete Response**:
 ```json
 {
   "success": true,
   "newTemplateId": "tmpl777...",
-  "message": "Plantilla clonada exitosamente"
+  "message": "Plantilla clonada exitosamente",
+  "error": "Template not found",
+  "code": "TEMPLATE_NOT_FOUND"
 }
 ```
-
-**Convex Function**: `templates.clone` ⚠️ TO BE CREATED
-
-**Database Operations**:
-- **Reads**: Original template, phases, activities
-- **Writes**: New copies of all related records
 
 ---
 
 ## MODULE 11: Quality Check Templates
+
+⚠️ **STATUS**: Module NO implementado - Backend pendiente
+
+**Note**: Los siguientes endpoints requieren autenticación via `Authorization: Bearer <token>` header.
 
 ### Get QC Templates
 
@@ -605,6 +602,10 @@ Content-Type: application/json
 ---
 
 ## MODULE 12: Production Orders & Operations
+
+⚠️ **STATUS**: Module NO implementado - Backend pendiente
+
+**Note**: Los siguientes endpoints requieren autenticación via `Authorization: Bearer <token>` header.
 
 ### Get Active Orders
 
@@ -897,6 +898,10 @@ Content-Type: application/json
 ---
 
 ## MODULE 13: AI Engine & Insights
+
+⚠️ **STATUS**: Module NO implementado - Backend pendiente
+
+**Note**: Los siguientes endpoints requieren autenticación via `Authorization: Bearer <token>` header.
 
 ### Get Insights
 
