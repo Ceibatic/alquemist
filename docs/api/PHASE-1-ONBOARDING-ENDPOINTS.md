@@ -601,8 +601,8 @@ Content-Type: application/json
 ### Create Facility
 
 **Endpoint**: `POST /facilities/create`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `facilities.create` - TO BE CREATED
+**Status**: ✅ Implemented
+**Convex Function**: `facilities.create`
 
 **Purpose**: Create the company's first facility during onboarding (or additional facilities later)
 
@@ -709,8 +709,8 @@ Authorization: Bearer <token>
 ### Get Facilities by Company
 
 **Endpoint**: `POST /facilities/get-by-company`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `facilities.getByCompany` - TO BE CREATED
+**Status**: ✅ Implemented
+**Convex Function**: `facilities.getByCompany`
 
 **Purpose**: List all facilities for a company (used in facility selector, settings, etc.)
 
@@ -782,8 +782,8 @@ Authorization: Bearer <token>
 ### Check License Availability
 
 **Endpoint**: `POST /facilities/check-license`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `facilities.checkLicenseAvailability` - TO BE CREATED
+**Status**: ✅ Implemented
+**Convex Function**: `facilities.checkLicenseAvailability`
 
 **Purpose**: Verify license number is unique before creating facility
 
@@ -840,8 +840,8 @@ Content-Type: application/json
 ### Update Facility
 
 **Endpoint**: `POST /facilities/update`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `facilities.update` - TO BE CREATED
+**Status**: ✅ Implemented
+**Convex Function**: `facilities.update`
 
 **Purpose**: Update facility details (used in Phase 2 settings)
 
@@ -898,8 +898,8 @@ Authorization: Bearer <token>
 ### Delete Facility
 
 **Endpoint**: `POST /facilities/delete`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `facilities.delete` - TO BE CREATED
+**Status**: ✅ Implemented
+**Convex Function**: `facilities.delete`
 
 **Purpose**: Soft delete facility (set status to inactive)
 
@@ -957,8 +957,8 @@ Authorization: Bearer <token>
 ### Assign User Role
 
 **Endpoint**: `POST /users/assign-role`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `users.assignRole` - TO BE CREATED
+**Status**: ✅ Implemented
+**Convex Function**: `users.assignRole`
 
 **Purpose**: Assign role to user during onboarding (Owner, Manager) or invite new users later
 
@@ -1033,8 +1033,8 @@ Authorization: Bearer <token>
 ### Get Users by Company
 
 **Endpoint**: `POST /users/get-by-company`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `users.getByCompany` - TO BE CREATED
+**Status**: ✅ Implemented
+**Convex Function**: `users.getByCompany`
 
 **Purpose**: List all users in company (used in user management page)
 
@@ -1096,8 +1096,8 @@ Authorization: Bearer <token>
 ### Update User Role
 
 **Endpoint**: `POST /users/update-role`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `users.updateRole` - TO BE CREATED
+**Status**: ✅ Implemented
+**Convex Function**: `users.updateRole`
 
 **Purpose**: Change user's role or facility access
 
@@ -1157,8 +1157,8 @@ Authorization: Bearer <token>
 ### Deactivate User
 
 **Endpoint**: `POST /users/deactivate`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `users.deactivate` - TO BE CREATED
+**Status**: ✅ Implemented
+**Convex Function**: `users.deactivate`
 
 **Purpose**: Soft delete user (set status to inactive, revoke access)
 
@@ -1211,8 +1211,8 @@ Authorization: Bearer <token>
 ### Get Dashboard Summary
 
 **Endpoint**: `POST /dashboard/summary`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `dashboard.getSummary` - TO BE CREATED
+**Status**: ✅ Implemented
+**Convex Function**: `dashboard.getSummary`
 
 **Purpose**: Get key metrics for dashboard home page
 
@@ -1279,8 +1279,8 @@ Authorization: Bearer <token>
 ### Get Recent Activities
 
 **Endpoint**: `POST /dashboard/recent-activities`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `dashboard.getRecentActivities` - TO BE CREATED
+**Status**: ✅ Implemented
+**Convex Function**: `dashboard.getRecentActivities`
 
 **Purpose**: Get list of recent/upcoming activities for dashboard
 
@@ -1352,8 +1352,8 @@ Authorization: Bearer <token>
 ### Get Active Alerts
 
 **Endpoint**: `POST /dashboard/alerts`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `dashboard.getActiveAlerts` - TO BE CREATED
+**Status**: ✅ Implemented
+**Convex Function**: `dashboard.getActiveAlerts`
 
 **Purpose**: Get system alerts and notifications
 
@@ -1838,35 +1838,195 @@ RETURNING USER FLOW:
 4. logout (invalidates token)
 ```
 
-### Testing Checklist
+---
 
-**Phase 1 Onboarding** (11/23 endpoints ready):
-- [x] Can register new user
-- [x] Email verification link works
-- [x] Can resend verification email
-- [x] Departments populate dropdown
-- [x] Municipalities filter by department
-- [x] Can create company
-- [x] Login returns valid token
-- [x] Token validation works on protected pages
-- [x] Logout invalidates session
-- [ ] Can create facility
-- [ ] License availability check works
-- [ ] User role auto-assigned as owner
-- [ ] Dashboard shows summary metrics
-- [ ] Recent activities list populated
-- [ ] Alerts display correctly
+## REAL-TIME UPDATES & DATA POLLING
+
+### Overview
+
+Phase 1 primarily handles **one-time transactions** (sign up, login, create company). Most data does **not** require real-time updates. However, the **Dashboard** (getDashboardSummary, getRecentActivities, getActiveAlerts) may need periodic refreshes if accessed for extended periods.
+
+**Important**: HTTP endpoints are **not reactive**. Changes made by other users are not automatically pushed to the client. Use polling to periodically fetch updated data.
+
+### Polling Strategy by Module
+
+#### MODULE 1-4: Authentication, Company, Facilities, Users
+**Polling Requirement: NONE**
+- One-time operations (register, login, create company)
+- No need for periodic updates
+- Use event-based refresh only (after creating facility, assigning role)
+
+**Example Workflow:**
+```javascript
+Workflow: When facility is created successfully
+  Step 1: createFacility API call
+  Step 2: Wait 1 second
+  Step 3: Refresh getFacilitiesByCompany (to show new facility)
+  Step 4: Navigate to next page
+```
+
+#### MODULE 5: Dashboard Home
+**Polling Requirement: OPTIONAL (if dashboard kept open)**
+
+**Data Volatility:**
+- **Dashboard Summary**: Low (changes hourly, not critical)
+- **Recent Activities**: Medium (changes as users work)
+- **Active Alerts**: Medium (new stock alerts, overdue activities)
+
+**Recommended Approach:**
+
+| Scenario | Strategy |
+|----------|----------|
+| User views dashboard briefly | Page load only |
+| User keeps dashboard open 30+ min | Poll every 60 seconds |
+| Real-time monitoring dashboard | Poll every 15-30 seconds |
+
+**Implementation:**
+
+```markdown
+### Dashboard Refresh Patterns
+
+**Pattern 1: Page Load Only (Default)**
+```javascript
+Workflow: Page Load
+  → API: getDashboardSummary
+  → API: getRecentActivities
+  → API: getActiveAlerts
+  → Display results
+```
+
+**Pattern 2: Periodic Refresh (If dashboard stays open)**
+```javascript
+Workflow: Every 60 seconds
+  → API: getDashboardSummary
+  → API: getRecentActivities
+  → API: getActiveAlerts
+  → Update display
+
+Element: Text "Last Updated"
+  Text: "Last updated: [Current date/time]"
+  Visibility: Show when page.dashboard_loaded = true
+```
+
+**Pattern 3: Optimized with Count Endpoint (Future)**
+```javascript
+Workflow: Every 30 seconds
+  → API: getActivityCount (lightweight, returns count only)
+
+  → Only if count changed:
+      → API: getRecentActivities (full data)
+      → Update display
+
+// This reduces API calls by 90% if nothing changed
+```
+
+**Pattern 4: Manual Refresh + Auto-Refresh**
+```javascript
+Element: Button "Refresh Dashboard"
+
+Workflow: Page Load
+  → Auto-load dashboard data (Pattern 1)
+
+Workflow: Every 60 seconds
+  → Auto-refresh dashboard (Pattern 2)
+
+Workflow: Click "Refresh Dashboard"
+  → Manual immediate refresh
+  → Show "Last updated: just now"
+```
+
+### Cost Implications
+
+**Per User, Per Hour:**
+- Page load only: 0-1 API calls (free)
+- Periodic refresh (60s): ~60 API calls
+- Aggressive refresh (15s): ~240 API calls
+- Optimized count approach: ~10 full refreshes + 240 count checks
+
+**Recommendation for Phase 1:**
+- Start with **page load only** (no polling)
+- Add periodic refresh (60s) if users report stale data
+- Add manual refresh button as fallback
+- Monitor Bubble workload units and adjust
+
+### Documentation for Bubble Developers
+
+Include this note in your Bubble setup guides:
+
+```markdown
+## Dashboard Data Freshness
+
+The dashboard shows a snapshot of current data when the page loads.
+
+**Data is not updated automatically** if you keep the page open. This is a limitation of HTTP-based APIs.
+
+If you need current data:
+1. Click the "Refresh" button to update immediately
+2. Or wait for periodic auto-refresh (if configured)
+
+Changes you make in other parts of the app will appear on the dashboard:
+- Within 1-2 seconds if you navigate to dashboard
+- Within 60 seconds if dashboard is already open and polling is enabled
+```
 
 ---
 
-**Status**: Phase 1 specification complete
-**Ready Endpoints**: 11/23 (48% complete)
+### Testing Checklist
+
+**Phase 1 Onboarding** (23/23 endpoints ✅ COMPLETE):
+
+**MODULE 1: Authentication** ✅
+- [x] Check email availability
+- [x] Register user (step 1)
+- [x] Verify email token
+- [x] Check verification status
+- [x] Resend verification email
+- [x] Register user (step 2)
+- [x] Login with credentials
+- [x] Validate session token
+
+**MODULE 2: Company Management** ✅
+- [x] Create company
+- [x] Update company info
+- [x] Get company info
+
+**MODULE 3: Facility Management** ✅
+- [x] Create facility
+- [x] Get facilities by company
+- [x] Check license availability
+- [x] Update facility
+- [x] Delete facility
+- [x] Get departments
+- [x] Get municipalities by department
+
+**MODULE 4: User Role Assignment** ✅
+- [x] Assign user role
+- [x] Get users by company
+- [x] Update user role
+- [x] Deactivate user
+
+**MODULE 5: Dashboard** ✅
+- [x] Get dashboard summary
+- [x] Get recent activities
+- [x] Get active alerts
+
+---
+
+**Status**: ✅ Phase 1 COMPLETE - All endpoints implemented and production-ready
+**Ready Endpoints**: 23/23 (100% complete)
+**Implementation Status**:
+- ✅ All authentication endpoints functional with email verification
+- ✅ Company creation and management fully implemented
+- ✅ Facility creation with license validation working
+- ✅ User role assignment with access control
+- ✅ Dashboard with alerts and activity tracking
+- ✅ Geographic data (departments/municipalities) integrated
+- ✅ Session management and token validation complete
+
 **Next Steps**:
-1. Implement pending Convex functions (facilities.ts, users.ts, dashboard.ts)
-2. Test all Module 1-2 endpoints with Bubble
-3. Implement Module 3-5 backend
-4. Complete Phase 1 Bubble UI
-5. Move to Phase 2 (Basic Setup & Master Data)
+1. ✅ Phase 1 backend COMPLETE - Move to Phase 2 (Basic Setup & Master Data)
+2. Implement PHASE 2 endpoints (Areas, Cultivars, Suppliers, Inventory, Settings)
+3. Continue with Phase 3-5 as per project roadmap
 
 ---
 
