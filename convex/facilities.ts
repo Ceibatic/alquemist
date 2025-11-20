@@ -325,19 +325,17 @@ export const getSettings = query({
 
     // Return facility settings
     // Note: These settings are stored directly in the facility record
-    // Using type-safe access for optional fields that may not be in schema yet
-    const facilityAny = facility as any;
     return {
       facilityId: facility._id,
-      timezone: facilityAny.timezone || "America/Bogota",
-      workdayStart: facilityAny.workday_start || "08:00",
-      workdayEnd: facilityAny.workday_end || "17:00",
-      workdays: facilityAny.workdays || ["monday", "tuesday", "wednesday", "thursday", "friday"],
-      defaultActivityDuration: facilityAny.default_activity_duration || 30,
-      autoScheduling: facilityAny.auto_scheduling ?? true,
-      notificationsEnabled: facilityAny.notifications_enabled ?? true,
-      lowStockAlertEnabled: facilityAny.low_stock_alert_enabled ?? true,
-      overdueActivityAlertEnabled: facilityAny.overdue_activity_alert_enabled ?? true,
+      timezone: facility.timezone || "America/Bogota",
+      workdayStart: facility.workday_start || "08:00",
+      workdayEnd: facility.workday_end || "17:00",
+      workdays: facility.workdays || ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      defaultActivityDuration: facility.default_activity_duration || 30,
+      autoScheduling: facility.auto_scheduling ?? true,
+      notificationsEnabled: facility.notifications_enabled ?? true,
+      lowStockAlertEnabled: facility.low_stock_alert_enabled ?? true,
+      overdueActivityAlertEnabled: facility.overdue_activity_alert_enabled ?? true,
     };
   },
 });

@@ -115,11 +115,10 @@ export const getByFacility = query({
     // Enrich with calculated fields
     const enrichedCrops = crops.map((crop) => {
       const now = Date.now();
-      const cropAny = crop as any;
 
       let harvestStatus = "pending";
-      if (cropAny.expected_harvest_date) {
-        const daysUntilHarvest = Math.floor((cropAny.expected_harvest_date - now) / (1000 * 60 * 60 * 24));
+      if (crop.expected_harvest_date) {
+        const daysUntilHarvest = Math.floor((crop.expected_harvest_date - now) / (1000 * 60 * 60 * 24));
         if (daysUntilHarvest < 0) {
           harvestStatus = "overdue";
         } else if (daysUntilHarvest <= 7) {
@@ -130,8 +129,8 @@ export const getByFacility = query({
       }
 
       let daysPlanted = undefined;
-      if (cropAny.planting_date) {
-        daysPlanted = Math.floor((now - cropAny.planting_date) / (1000 * 60 * 60 * 24));
+      if (crop.planting_date) {
+        daysPlanted = Math.floor((now - crop.planting_date) / (1000 * 60 * 60 * 24));
       }
 
       return {
@@ -164,11 +163,10 @@ export const getById = query({
 
     // Calculate status fields
     const now = Date.now();
-    const cropAny = crop as any;
 
     let harvestStatus = "pending";
-    if (cropAny.expected_harvest_date) {
-      const daysUntilHarvest = Math.floor((cropAny.expected_harvest_date - now) / (1000 * 60 * 60 * 24));
+    if (crop.expected_harvest_date) {
+      const daysUntilHarvest = Math.floor((crop.expected_harvest_date - now) / (1000 * 60 * 60 * 24));
       if (daysUntilHarvest < 0) {
         harvestStatus = "overdue";
       } else if (daysUntilHarvest <= 7) {
@@ -179,8 +177,8 @@ export const getById = query({
     }
 
     let daysPlanted = undefined;
-    if (cropAny.planting_date) {
-      daysPlanted = Math.floor((now - cropAny.planting_date) / (1000 * 60 * 60 * 24));
+    if (crop.planting_date) {
+      daysPlanted = Math.floor((now - crop.planting_date) / (1000 * 60 * 60 * 24));
     }
 
     return {

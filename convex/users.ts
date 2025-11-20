@@ -295,16 +295,14 @@ export const getSettings = query({
     }
 
     // Return user preference settings
-    // Using type-safe access for optional fields that may not be in schema yet
-    const userAny = user as any;
     return {
       userId: user._id,
       preferredLanguage: user.locale || "es",
-      dateFormat: userAny.date_format || "DD/MM/YYYY",
-      timeFormat: userAny.time_format || "24h",
-      emailNotifications: userAny.email_notifications ?? true,
-      smsNotifications: userAny.sms_notifications ?? false,
-      theme: userAny.theme || "light",
+      dateFormat: user.date_format || "DD/MM/YYYY",
+      timeFormat: user.time_format || "24h",
+      emailNotifications: user.email_notifications ?? true,
+      smsNotifications: user.sms_notifications ?? false,
+      theme: user.theme || "light",
     };
   },
 });

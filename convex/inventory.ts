@@ -161,18 +161,30 @@ export const getByFacility = query({
     // Filter by areas belonging to this facility
     let items = allItems.filter((item) => item.area_id && areaIds.includes(item.area_id));
 
-    // Apply category filter if provided
+    // Enrich with product data for category filtering
+    const itemsWithProducts = await Promise.all(
+      items.map(async (item) => {
+        const product = await ctx.db.get(item.product_id);
+        return {
+          ...item,
+          productCategory: product?.category,
+        };
+      })
+    );
+
+    // Apply category filter if provided (category is on products table)
+    let filteredItems = itemsWithProducts;
     if (args.category) {
-      items = items.filter((item) => (item as any).category === args.category);
+      filteredItems = itemsWithProducts.filter((item) => item.productCategory === args.category);
     }
 
     // Apply status filter if provided
     if (args.status) {
-      items = items.filter((item) => item.lot_status === args.status);
+      filteredItems = filteredItems.filter((item) => item.lot_status === args.status);
     }
 
     // Calculate stock status for each item
-    const itemsWithStatus = items.map((item) => {
+    const itemsWithStatus = filteredItems.map((item) => {
       const reorderPoint = item.reorder_point || 0;
       const currentStock = item.quantity_available;
 
