@@ -92,7 +92,7 @@ Regulatory reporting, audit trails, and compliance management.
 
 ### Get Compliance Reports
 
-**Endpoint**: `GET /compliance/get-reports`
+**Endpoint**: `POST /compliance/get-reports`
 **Status**: 📋 Planned
 **Convex Function**: `compliance.getReports` - TO BE DESIGNED
 
@@ -142,7 +142,7 @@ Regulatory reporting, audit trails, and compliance management.
 
 ### Get Regulatory Requirements
 
-**Endpoint**: `GET /compliance/get-requirements`
+**Endpoint**: `POST /compliance/get-requirements`
 **Status**: 📋 Planned
 **Convex Function**: `compliance.getRequirements` - TO BE DESIGNED
 
@@ -172,7 +172,7 @@ Regulatory reporting, audit trails, and compliance management.
 
 ### Audit Trail
 
-**Endpoint**: `GET /compliance/audit-trail`
+**Endpoint**: `POST /compliance/audit-trail`
 **Status**: 📋 Planned
 **Convex Function**: `compliance.getAuditTrail` - TO BE DESIGNED
 
@@ -211,7 +211,7 @@ Business intelligence, metrics, and insights.
 
 ### Get Production Metrics
 
-**Endpoint**: `GET /analytics/production-metrics`
+**Endpoint**: `POST /analytics/production-metrics`
 **Status**: 📋 Planned
 **Convex Function**: `analytics.getProductionMetrics` - TO BE DESIGNED
 
@@ -257,7 +257,7 @@ Business intelligence, metrics, and insights.
 
 ### Get Yield Trends
 
-**Endpoint**: `GET /analytics/yield-trends`
+**Endpoint**: `POST /analytics/yield-trends`
 **Status**: 📋 Planned
 **Convex Function**: `analytics.getYieldTrends` - TO BE DESIGNED
 
@@ -302,7 +302,7 @@ Business intelligence, metrics, and insights.
 
 ### Get Cost Analysis
 
-**Endpoint**: `GET /analytics/cost-analysis`
+**Endpoint**: `POST /analytics/cost-analysis`
 **Status**: 📋 Planned
 **Convex Function**: `analytics.getCostAnalysis` - TO BE DESIGNED
 
@@ -342,7 +342,7 @@ Business intelligence, metrics, and insights.
 
 ### Get Inventory Turnover
 
-**Endpoint**: `GET /analytics/inventory-turnover`
+**Endpoint**: `POST /analytics/inventory-turnover`
 **Status**: 📋 Planned
 **Convex Function**: `analytics.getInventoryTurnover` - TO BE DESIGNED
 
@@ -389,7 +389,7 @@ Business intelligence, metrics, and insights.
 
 ### Get Activity Efficiency
 
-**Endpoint**: `GET /analytics/activity-efficiency`
+**Endpoint**: `POST /analytics/activity-efficiency`
 **Status**: 📋 Planned
 **Convex Function**: `analytics.getActivityEfficiency` - TO BE DESIGNED
 
@@ -474,7 +474,7 @@ Progressive Web App optimizations for mobile devices.
 
 ### Get Mobile Dashboard
 
-**Endpoint**: `GET /mobile/dashboard`
+**Endpoint**: `POST /mobile/dashboard`
 **Status**: 📋 Planned
 **Convex Function**: `mobile.getDashboard` - TO BE DESIGNED
 
@@ -582,7 +582,7 @@ Progressive Web App optimizations for mobile devices.
 
 ### Offline Data Cache
 
-**Endpoint**: `GET /mobile/cache-data`
+**Endpoint**: `POST /mobile/cache-data`
 **Status**: 📋 Planned
 **Convex Function**: `mobile.getCacheData` - TO BE DESIGNED
 
@@ -660,7 +660,7 @@ Connect with external systems and services.
 
 ### List Integrations
 
-**Endpoint**: `GET /integrations/list`
+**Endpoint**: `POST /integrations/list`
 **Status**: 📋 Planned
 **Convex Function**: `integrations.list` - TO BE DESIGNED
 
@@ -738,7 +738,7 @@ Connect with external systems and services.
 
 ### Get Integration Logs
 
-**Endpoint**: `GET /integrations/logs`
+**Endpoint**: `POST /integrations/logs`
 **Status**: 📋 Planned
 **Convex Function**: `integrations.getLogs` - TO BE DESIGNED
 

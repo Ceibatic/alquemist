@@ -708,7 +708,7 @@ Authorization: Bearer <token>
 
 ### Get Facilities by Company
 
-**Endpoint**: `GET /facilities/get-by-company`
+**Endpoint**: `POST /facilities/get-by-company`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `facilities.getByCompany` - TO BE CREATED
 
@@ -718,8 +718,8 @@ Authorization: Bearer <token>
 
 **Name**: `getFacilitiesByCompany`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/facilities/get-by-company?companyId=<companyId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/facilities/get-by-company`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -728,11 +728,18 @@ Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
+**Body**:
+```json
+{
+  "companyId": "<companyId>"
+}
+```
+
 **Parameters**:
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| companyId | text | No | URL | k12def... |
+| companyId | text | No | Body | k12def... |
 
 **Complete Response** (array - inicializar estos campos en Bubble):
 ```json
@@ -765,8 +772,8 @@ Authorization: Bearer <token>
 **Dropdown Setup**:
 1. **Dropdown "Facility Selector"**:
    - Choices source: Get data from API → getFacilitiesByCompany
-     - token = `Current User's session_token`
-     - companyId = `Current User's company_id`
+     - token (Header) = `Current User's session_token`
+     - companyId (Body) = `Current User's company_id`
    - Option caption: `This Facility's name`
    - Option value: `This Facility's id`
 
@@ -1025,7 +1032,7 @@ Authorization: Bearer <token>
 
 ### Get Users by Company
 
-**Endpoint**: `GET /users/get-by-company`
+**Endpoint**: `POST /users/get-by-company`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `users.getByCompany` - TO BE CREATED
 
@@ -1035,8 +1042,8 @@ Authorization: Bearer <token>
 
 **Name**: `getUsersByCompany`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/users/get-by-company?companyId=<companyId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/users/get-by-company`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -1045,11 +1052,18 @@ Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
+**Body**:
+```json
+{
+  "companyId": "<companyId>"
+}
+```
+
 **Parameters**:
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| companyId | text | No | URL | k12def... |
+| companyId | text | No | Body | k12def... |
 
 **Complete Response** (array - inicializar estos campos en Bubble):
 ```json
@@ -1196,7 +1210,7 @@ Authorization: Bearer <token>
 
 ### Get Dashboard Summary
 
-**Endpoint**: `GET /dashboard/summary`
+**Endpoint**: `POST /dashboard/summary`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `dashboard.getSummary` - TO BE CREATED
 
@@ -1206,8 +1220,8 @@ Authorization: Bearer <token>
 
 **Name**: `getDashboardSummary`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/dashboard/summary?facilityId=<facilityId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/dashboard/summary`
 **Data Type**: Single object (Return list = No)
 
 **Headers**:
@@ -1216,11 +1230,18 @@ Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
+**Body**:
+```json
+{
+  "facilityId": "<facilityId>"
+}
+```
+
 **Parameters**:
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| facilityId | text | No | URL | f78ghi... |
+| facilityId | text | No | Body | f78ghi... |
 
 **Complete Response** (inicializar TODOS estos campos en Bubble):
 ```json
@@ -1257,7 +1278,7 @@ Authorization: Bearer <token>
 
 ### Get Recent Activities
 
-**Endpoint**: `GET /dashboard/recent-activities`
+**Endpoint**: `POST /dashboard/recent-activities`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `dashboard.getRecentActivities` - TO BE CREATED
 
@@ -1267,8 +1288,8 @@ Authorization: Bearer <token>
 
 **Name**: `getRecentActivities`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/dashboard/recent-activities?facilityId=<facilityId>&limit=<limit>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/dashboard/recent-activities`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -1277,12 +1298,20 @@ Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
+**Body**:
+```json
+{
+  "facilityId": "<facilityId>",
+  "limit": <limit>
+}
+```
+
 **Parameters**:
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| facilityId | text | No | URL | f78ghi... |
-| limit | number | No | URL | 10 |
+| facilityId | text | No | Body | f78ghi... |
+| limit | number | No | Body | 10 |
 
 **Complete Response** (array - inicializar estos campos en Bubble):
 ```json
@@ -1322,7 +1351,7 @@ Authorization: Bearer <token>
 
 ### Get Active Alerts
 
-**Endpoint**: `GET /dashboard/alerts`
+**Endpoint**: `POST /dashboard/alerts`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `dashboard.getActiveAlerts` - TO BE CREATED
 
@@ -1332,8 +1361,8 @@ Authorization: Bearer <token>
 
 **Name**: `getActiveAlerts`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/dashboard/alerts?facilityId=<facilityId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/dashboard/alerts`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -1342,11 +1371,18 @@ Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
+**Body**:
+```json
+{
+  "facilityId": "<facilityId>"
+}
+```
+
 **Parameters**:
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| facilityId | text | No | URL | f78ghi... |
+| facilityId | text | No | Body | f78ghi... |
 
 **Complete Response** (array - inicializar estos campos en Bubble):
 ```json
@@ -1484,7 +1520,7 @@ Content-Type: application/json
 
 ### Validate Session Token
 
-**Endpoint**: `GET /registration/validate-token`
+**Endpoint**: `POST /registration/validate-token`
 **Status**: ✅ Ready
 **Convex Function**: `registration.validateToken`
 
@@ -1494,8 +1530,8 @@ Content-Type: application/json
 
 **Name**: `validateToken`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/registration/validate-token?token=<token>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/registration/validate-token`
 **Data Type**: Single object (Return list = No)
 
 **Headers**:
@@ -1504,10 +1540,17 @@ Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
+**Body**:
+```json
+{
+  "token": "<token>"
+}
+```
+
 **Parameters**:
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
-| token | text | Yes | URL | a2g3YnI1M2RuazR5bWplNms... |
+| token | text | Yes | Body | a2g3YnI1M2RuazR5bWplNms... |
 
 **Complete Response** (inicializar TODOS estos campos en Bubble):
 ```json

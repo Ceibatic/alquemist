@@ -203,7 +203,7 @@ Authorization: Bearer <token>
 
 ### Get Production Templates by Facility
 
-**Endpoint**: `GET /production-templates/get-by-facility`
+**Endpoint**: `POST /production-templates/get-by-facility`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `productionTemplates.getByFacility` - TO BE CREATED
 
@@ -268,7 +268,7 @@ Authorization: Bearer <token>
 
 ### Get Production Template by ID
 
-**Endpoint**: `GET /production-templates/get-by-id`
+**Endpoint**: `POST /production-templates/get-by-id`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `productionTemplates.getById` - TO BE CREATED
 
@@ -696,7 +696,7 @@ Authorization: Bearer <token>
 
 ### Get QC Templates by Facility
 
-**Endpoint**: `GET /qc-templates/get-by-facility`
+**Endpoint**: `POST /qc-templates/get-by-facility`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `qcTemplates.getByFacility` - TO BE CREATED
 
@@ -755,7 +755,7 @@ Authorization: Bearer <token>
 
 ### Get QC Template by ID
 
-**Endpoint**: `GET /qc-templates/get-by-id`
+**Endpoint**: `POST /qc-templates/get-by-id`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `qcTemplates.getById` - TO BE CREATED
 

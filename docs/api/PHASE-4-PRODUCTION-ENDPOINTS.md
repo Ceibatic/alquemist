@@ -152,7 +152,7 @@ Authorization: Bearer <token>
 
 ### Get Production Orders by Facility
 
-**Endpoint**: `GET /production-orders/get-by-facility`
+**Endpoint**: `POST /production-orders/get-by-facility`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `productionOrders.getByFacility` - TO BE CREATED
 
@@ -161,7 +161,7 @@ Authorization: Bearer <token>
 **Name**: `getProductionOrdersByFacility`
 **Use as**: Data
 **Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/production-orders/get-by-facility?facilityId=<facilityId>&status=<status>`
+**URL**: `https://handsome-jay-388.convex.site/production-orders/get-by-facility`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -227,7 +227,7 @@ Authorization: Bearer <token>
 
 ### Get Production Order by ID
 
-**Endpoint**: `GET /production-orders/get-by-id`
+**Endpoint**: `POST /production-orders/get-by-id`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `productionOrders.getById` - TO BE CREATED
 
@@ -236,7 +236,7 @@ Authorization: Bearer <token>
 **Name**: `getProductionOrderById`
 **Use as**: Data
 **Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/production-orders/get-by-id?productionOrderId=<productionOrderId>`
+**URL**: `https://handsome-jay-388.convex.site/production-orders/get-by-id`
 **Data Type**: Single object (Return list = No)
 
 **Headers**:
@@ -548,7 +548,7 @@ Authorization: Bearer <token>
 
 ### Check Area Availability
 
-**Endpoint**: `GET /production-orders/check-area-availability`
+**Endpoint**: `POST /production-orders/check-area-availability`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `productionOrders.checkAreaAvailability` - TO BE CREATED
 
@@ -559,7 +559,7 @@ Authorization: Bearer <token>
 **Name**: `checkAreaAvailability`
 **Use as**: Data
 **Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/production-orders/check-area-availability?areaId=<areaId>&startDate=<startDate>&durationDays=<durationDays>`
+**URL**: `https://handsome-jay-388.convex.site/production-orders/check-area-availability`
 **Data Type**: Single object (Return list = No)
 
 **Headers**:
@@ -677,7 +677,7 @@ Execute activities with AI-powered pest detection and quality checks.
 
 ### Get Activities by Production Order
 
-**Endpoint**: `GET /activities/get-by-order`
+**Endpoint**: `POST /activities/get-by-order`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `activities.getByOrder` - TO BE CREATED
 
@@ -686,7 +686,7 @@ Execute activities with AI-powered pest detection and quality checks.
 **Name**: `getActivitiesByOrder`
 **Use as**: Data
 **Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/activities/get-by-order?productionOrderId=<productionOrderId>&status=<status>`
+**URL**: `https://handsome-jay-388.convex.site/activities/get-by-order`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -748,7 +748,7 @@ Authorization: Bearer <token>
 
 ### Get Activity by ID
 
-**Endpoint**: `GET /activities/get-by-id`
+**Endpoint**: `POST /activities/get-by-id`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `activities.getById` - TO BE CREATED
 
@@ -756,8 +756,8 @@ Authorization: Bearer <token>
 
 **Name**: `getActivityById`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/activities/get-by-id?activityId=<activityId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/activities/get-by-id`
 **Data Type**: Single object (Return list = No)
 
 **Headers**:
@@ -1252,7 +1252,7 @@ Authorization: Bearer <token>
 
 ### Generate Activity Report (PDF)
 
-**Endpoint**: `GET /activities/generate-report`
+**Endpoint**: `POST /activities/generate-report`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `activities.generateReport` - TO BE CREATED
 
@@ -1263,7 +1263,7 @@ Authorization: Bearer <token>
 **Name**: `generateActivityReport`
 **Use as**: Data
 **Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/activities/generate-report?activityId=<activityId>`
+**URL**: `https://handsome-jay-388.convex.site/activities/generate-report`
 **Data Type**: Single object (Return list = No)
 
 **Headers**:

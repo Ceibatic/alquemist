@@ -129,7 +129,7 @@ Authorization: Bearer <token>
 
 ### Get Areas by Facility
 
-**Endpoint**: `GET /areas/get-by-facility`
+**Endpoint**: `POST /areas/get-by-facility`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `areas.getByFacility` - TO BE CREATED
 
@@ -137,8 +137,8 @@ Authorization: Bearer <token>
 
 **Name**: `getAreasByFacility`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/areas/get-by-facility?facilityId=<facilityId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/areas/get-by-facility`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -151,7 +151,7 @@ Authorization: Bearer <token>
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| facilityId | text | No | URL | f78ghi... |
+| facilityId | text | No | Body | f78ghi... |
 
 **Complete Response**:
 ```json
@@ -190,7 +190,7 @@ Authorization: Bearer <token>
 
 ### Get Area by ID
 
-**Endpoint**: `GET /areas/get-by-id`
+**Endpoint**: `POST /areas/get-by-id`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `areas.getById` - TO BE CREATED
 
@@ -198,8 +198,8 @@ Authorization: Bearer <token>
 
 **Name**: `getAreaById`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/areas/get-by-id?areaId=<areaId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/areas/get-by-id`
 **Data Type**: Single object (Return list = No)
 
 **Headers**:
@@ -355,7 +355,7 @@ Cultivars are specific plant varieties/strains within a crop type.
 
 ### Get Crop Types
 
-**Endpoint**: `GET /crops/get-types`
+**Endpoint**: `POST /crops/get-types`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `crops.getCropTypes` - TO BE CREATED
 
@@ -363,7 +363,7 @@ Cultivars are specific plant varieties/strains within a crop type.
 
 **Name**: `getCropTypes`
 **Use as**: Data
-**Method**: GET
+**Method**: POST
 **URL**: `https://handsome-jay-388.convex.site/crops/get-types`
 **Data Type**: List of objects (Return list = Yes)
 
@@ -402,7 +402,7 @@ Authorization: Bearer <token>
 
 ### Get Cultivars by Crop
 
-**Endpoint**: `GET /cultivars/get-by-crop`
+**Endpoint**: `POST /cultivars/get-by-crop`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `cultivars.getByCrop` - TO BE CREATED
 
@@ -410,8 +410,8 @@ Authorization: Bearer <token>
 
 **Name**: `getCultivarsByCrop`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/cultivars/get-by-crop?cropTypeId=<cropTypeId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/cultivars/get-by-crop`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -566,7 +566,7 @@ Authorization: Bearer <token>
 
 ### Get Cultivars by Facility
 
-**Endpoint**: `GET /cultivars/get-by-facility`
+**Endpoint**: `POST /cultivars/get-by-facility`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `cultivars.getByFacility` - TO BE CREATED
 
@@ -574,8 +574,8 @@ Authorization: Bearer <token>
 
 **Name**: `getCultivarsByFacility`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/cultivars/get-by-facility?facilityId=<facilityId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/cultivars/get-by-facility`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -588,7 +588,7 @@ Authorization: Bearer <token>
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| facilityId | text | No | URL | f78ghi... |
+| facilityId | text | No | Body | f78ghi... |
 
 **Complete Response**: Same as getCultivarsByCrop, filtered by facility linkage
 
@@ -755,7 +755,7 @@ Authorization: Bearer <token>
 
 ### Get Suppliers by Company
 
-**Endpoint**: `GET /suppliers/get-by-company`
+**Endpoint**: `POST /suppliers/get-by-company`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `suppliers.getByCompany` - TO BE CREATED
 
@@ -763,8 +763,8 @@ Authorization: Bearer <token>
 
 **Name**: `getSuppliersByCompany`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/suppliers/get-by-company?companyId=<companyId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/suppliers/get-by-company`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -811,7 +811,7 @@ Authorization: Bearer <token>
 
 ### Get Supplier by ID
 
-**Endpoint**: `GET /suppliers/get-by-id`
+**Endpoint**: `POST /suppliers/get-by-id`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `suppliers.getById` - TO BE CREATED
 
@@ -819,8 +819,8 @@ Authorization: Bearer <token>
 
 **Name**: `getSupplierById`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/suppliers/get-by-id?supplierId=<supplierId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/suppliers/get-by-id`
 **Data Type**: Single object (Return list = No)
 
 **Headers**:
@@ -977,7 +977,7 @@ Authorization: Bearer <token>
 
 ### Get Other Crops by Facility
 
-**Endpoint**: `GET /other-crops/get-by-facility`
+**Endpoint**: `POST /other-crops/get-by-facility`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `otherCrops.getByFacility` - TO BE CREATED
 
@@ -985,8 +985,8 @@ Authorization: Bearer <token>
 
 **Name**: `getOtherCropsByFacility`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/other-crops/get-by-facility?facilityId=<facilityId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/other-crops/get-by-facility`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -999,7 +999,7 @@ Authorization: Bearer <token>
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| facilityId | text | No | URL | f78ghi... |
+| facilityId | text | No | Body | f78ghi... |
 
 **Complete Response**:
 ```json
@@ -1111,7 +1111,7 @@ Authorization: Bearer <token>
 
 ### Get Compliance Templates by Facility
 
-**Endpoint**: `GET /compliance-templates/get-by-facility`
+**Endpoint**: `POST /compliance-templates/get-by-facility`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `complianceTemplates.getByFacility` - TO BE CREATED
 
@@ -1119,8 +1119,8 @@ Authorization: Bearer <token>
 
 **Name**: `getComplianceTemplatesByFacility`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/compliance-templates/get-by-facility?facilityId=<facilityId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/compliance-templates/get-by-facility`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -1249,7 +1249,7 @@ Authorization: Bearer <token>
 
 ### Get Inventory by Facility
 
-**Endpoint**: `GET /inventory/get-by-facility`
+**Endpoint**: `POST /inventory/get-by-facility`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `inventory.getByFacility` - TO BE CREATED
 
@@ -1257,8 +1257,8 @@ Authorization: Bearer <token>
 
 **Name**: `getInventoryByFacility`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/inventory/get-by-facility?facilityId=<facilityId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/inventory/get-by-facility`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -1292,7 +1292,7 @@ Authorization: Bearer <token>
 
 ### Get Inventory by Category
 
-**Endpoint**: `GET /inventory/get-by-category`
+**Endpoint**: `POST /inventory/get-by-category`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `inventory.getByCategory` - TO BE CREATED
 
@@ -1300,8 +1300,8 @@ Authorization: Bearer <token>
 
 **Name**: `getInventoryByCategory`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/inventory/get-by-category?facilityId=<facilityId>&category=<category>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/inventory/get-by-category`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -1314,7 +1314,7 @@ Authorization: Bearer <token>
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| facilityId | text | No | URL | f78ghi... |
+| facilityId | text | No | Body | f78ghi... |
 | category | text | No | URL | consumables |
 
 **Complete Response**: Same as getByFacility, filtered by category
@@ -1398,7 +1398,7 @@ Authorization: Bearer <token>
 
 ### Get Low Stock Items
 
-**Endpoint**: `GET /inventory/low-stock`
+**Endpoint**: `POST /inventory/low-stock`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `inventory.getLowStock` - TO BE CREATED
 
@@ -1406,8 +1406,8 @@ Authorization: Bearer <token>
 
 **Name**: `getLowStockItems`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/inventory/low-stock?facilityId=<facilityId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/inventory/low-stock`
 **Data Type**: List of objects (Return list = Yes)
 
 **Headers**:
@@ -1437,7 +1437,7 @@ Configure facility-specific settings.
 
 ### Get Facility Settings
 
-**Endpoint**: `GET /facilities/settings/get`
+**Endpoint**: `POST /facilities/settings/get`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `facilities.getSettings` - TO BE CREATED
 
@@ -1445,8 +1445,8 @@ Configure facility-specific settings.
 
 **Name**: `getFacilitySettings`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/facilities/settings/get?facilityId=<facilityId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/facilities/settings/get`
 **Data Type**: Single object (Return list = No)
 
 **Headers**:
@@ -1459,7 +1459,7 @@ Authorization: Bearer <token>
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| facilityId | text | No | URL | f78ghi... |
+| facilityId | text | No | Body | f78ghi... |
 
 **Complete Response**:
 ```json
@@ -1532,7 +1532,7 @@ User-specific preferences.
 
 ### Get Account Settings
 
-**Endpoint**: `GET /users/settings/get`
+**Endpoint**: `POST /users/settings/get`
 **Status**: ⚠️ Not yet implemented
 **Convex Function**: `users.getSettings` - TO BE CREATED
 
@@ -1540,8 +1540,8 @@ User-specific preferences.
 
 **Name**: `getAccountSettings`
 **Use as**: Data
-**Method**: GET
-**URL**: `https://handsome-jay-388.convex.site/users/settings/get?userId=<userId>`
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/users/settings/get`
 **Data Type**: Single object (Return list = No)
 
 **Headers**:
