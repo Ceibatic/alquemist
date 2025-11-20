@@ -304,3 +304,137 @@ export const getById = query({
     return facility;
   },
 });
+
+// ============================================================================
+// PHASE 2: FACILITY SETTINGS (MODULE 20)
+// ============================================================================
+
+/**
+ * Get facility settings
+ * Phase 2 Module 20
+ */
+export const getSettings = query({
+  args: {
+    facilityId: v.id("facilities"),
+  },
+  handler: async (ctx, args) => {
+    const facility = await ctx.db.get(args.facilityId);
+    if (!facility) {
+      throw new Error("Facility not found");
+    }
+
+    // Return facility settings
+    // Note: These settings are stored directly in the facility record
+    // Using type-safe access for optional fields that may not be in schema yet
+    const facilityAny = facility as any;
+    return {
+      facilityId: facility._id,
+      timezone: facilityAny.timezone || "America/Bogota",
+      workdayStart: facilityAny.workday_start || "08:00",
+      workdayEnd: facilityAny.workday_end || "17:00",
+      workdays: facilityAny.workdays || ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      defaultActivityDuration: facilityAny.default_activity_duration || 30,
+      autoScheduling: facilityAny.auto_scheduling ?? true,
+      notificationsEnabled: facilityAny.notifications_enabled ?? true,
+      lowStockAlertEnabled: facilityAny.low_stock_alert_enabled ?? true,
+      overdueActivityAlertEnabled: facilityAny.overdue_activity_alert_enabled ?? true,
+    };
+  },
+});
+
+/**
+ * Update facility settings
+ * Phase 2 Module 20
+ */
+export const updateSettings = mutation({
+  args: {
+    facilityId: v.id("facilities"),
+    timezone: v.optional(v.string()),
+    workdayStart: v.optional(v.string()),
+    workdayEnd: v.optional(v.string()),
+    workdays: v.optional(v.array(v.string())),
+    defaultActivityDuration: v.optional(v.number()),
+    autoScheduling: v.optional(v.boolean()),
+    notificationsEnabled: v.optional(v.boolean()),
+    lowStockAlertEnabled: v.optional(v.boolean()),
+    overdueActivityAlertEnabled: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Verify facility exists
+    const facility = await ctx.db.get(args.facilityId);
+    if (!facility) {
+      throw new Error("Facility not found");
+    }
+
+    const updates: any = {
+      updated_at: now,
+    };
+
+    // Only update provided fields
+    if (args.timezone !== undefined) {
+      // Validate timezone format (basic check)
+      if (!/^[A-Za-z_]+\/[A-Za-z_]+$/.test(args.timezone)) {
+        throw new Error("Invalid timezone format");
+      }
+      updates.timezone = args.timezone;
+    }
+
+    if (args.workdayStart !== undefined) {
+      // Validate time format HH:MM
+      if (!/^\d{2}:\d{2}$/.test(args.workdayStart)) {
+        throw new Error("Invalid workday start time format (use HH:MM)");
+      }
+      updates.workday_start = args.workdayStart;
+    }
+
+    if (args.workdayEnd !== undefined) {
+      // Validate time format HH:MM
+      if (!/^\d{2}:\d{2}$/.test(args.workdayEnd)) {
+        throw new Error("Invalid workday end time format (use HH:MM)");
+      }
+      updates.workday_end = args.workdayEnd;
+    }
+
+    if (args.workdays !== undefined) {
+      // Validate workdays
+      const validDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+      const invalidDays = args.workdays.filter(day => !validDays.includes(day.toLowerCase()));
+      if (invalidDays.length > 0) {
+        throw new Error(`Invalid workdays: ${invalidDays.join(", ")}`);
+      }
+      updates.workdays = args.workdays;
+    }
+
+    if (args.defaultActivityDuration !== undefined) {
+      if (args.defaultActivityDuration < 1 || args.defaultActivityDuration > 480) {
+        throw new Error("Default activity duration must be between 1 and 480 minutes");
+      }
+      updates.default_activity_duration = args.defaultActivityDuration;
+    }
+
+    if (args.autoScheduling !== undefined) {
+      updates.auto_scheduling = args.autoScheduling;
+    }
+
+    if (args.notificationsEnabled !== undefined) {
+      updates.notifications_enabled = args.notificationsEnabled;
+    }
+
+    if (args.lowStockAlertEnabled !== undefined) {
+      updates.low_stock_alert_enabled = args.lowStockAlertEnabled;
+    }
+
+    if (args.overdueActivityAlertEnabled !== undefined) {
+      updates.overdue_activity_alert_enabled = args.overdueActivityAlertEnabled;
+    }
+
+    await ctx.db.patch(args.facilityId, updates);
+
+    return {
+      success: true,
+      message: "Facility settings updated successfully",
+    };
+  },
+});

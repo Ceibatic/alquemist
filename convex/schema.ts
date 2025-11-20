@@ -245,6 +245,25 @@ export default defineSchema({
     .index("by_supplier", ["supplier_id"])
     .index("by_status", ["status"]),
 
+  other_crops: defineTable({
+    facility_id: v.id("facilities"),
+    name: v.string(),
+    category: v.string(), // herbs/vegetables/fruits/ornamental/experimental/other
+    purpose: v.string(), // companion_planting/pest_control/experimental/diversification/other
+    quantity: v.optional(v.number()),
+    unit: v.optional(v.string()),
+    planting_date: v.optional(v.number()),
+    expected_harvest_date: v.optional(v.number()),
+    location_notes: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    status: v.string(), // active/harvested/removed/failed
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_facility", ["facility_id"])
+    .index("by_category", ["category"])
+    .index("by_status", ["status"]),
+
   // ============================================================================
   // FACILITIES & OPERATIONS TABLES (2)
   // ============================================================================
