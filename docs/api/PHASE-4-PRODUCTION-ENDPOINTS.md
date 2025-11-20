@@ -1451,6 +1451,394 @@ For complete error handling, see [../i18n/STRATEGY.md](../i18n/STRATEGY.md).
 
 ---
 
+## REAL-TIME UPDATES & DATA POLLING
+
+**Overview**: Phase 4 is the most data-volatile phase. Production orders change status continuously, activities complete throughout the day, and multiple users track progress simultaneously. This requires aggressive polling for critical data.
+
+### Polling Requirements by Module
+
+| Module | Data Type | Volatility | Recommended Polling | Use Case |
+|--------|-----------|-----------|-------------------|----------|
+| Production Orders (List) | Order Status | High | 30-60 seconds | Track completion %, overdue activities, status changes |
+| Production Orders (Detail) | Order Progress | **Very High** | **15-30 seconds** | Dashboard showing real-time progress, phases, activities |
+| Activities List | Activity Status | **Very High** | **15-30 seconds** | Activities marked complete by operators throughout day |
+| Activity Detail/Execution | Form Data & Photos | Medium | 30-45 seconds | Auto-save photos, QC forms, progress updates |
+| Area Availability | Area Occupancy | High | 60 seconds | Check capacity during order creation |
+
+### Implementation Patterns
+
+#### Pattern 1: Aggressive Polling for Production Dashboard (CRITICAL)
+
+**Use When**: Manager/Supervisor viewing active production orders.
+
+**Workflow**:
+```javascript
+// Production Orders List Page (Active Orders)
+Workflow: Page Load
+  → Step 1: API getProductionOrdersByFacility (status=active)
+  → Step 2: Set repeating group data source
+  → Step 3: Store order count in state
+
+Workflow: Every 20 seconds (aggressive interval)
+  → IF Page is visible AND (user is manager OR supervisor):
+    → API: getProductionOrdersByFacility (status=active)
+    → Compare with stored data
+    → IF any order status changed:
+      → Update repeating group
+      → Show subtle notification "Order status changed"
+    → Update progress % in real-time
+    → Highlight overdueActivities changes
+```
+
+**Cost**: 3 API calls per minute = 180 calls/hour per user
+**Latency**: 0-20 seconds (shows changes within 20s)
+**Justification**: Managers need to see issues immediately for intervention
+
+---
+
+#### Pattern 2: Real-Time Order Detail Page (Supervisor Monitoring)
+
+**Use When**: Supervisor viewing specific active production order detail.
+
+**Workflow**:
+```javascript
+// Production Order Detail Page (Supervisor Dashboard)
+Workflow: Page Load
+  → Step 1: API getProductionOrderById
+  → Step 2: Display order, phases, activities, progress
+  → Step 3: Set refresh timer
+
+Workflow: Every 15 seconds (very aggressive - critical path)
+  → IF Page is visible:
+    → API: getProductionOrderById
+    → Check for status changes
+    → Check for phase progress changes
+    → Check for new overdueActivities
+    → IF progress % changed:
+      → Smoothly animate progress bar
+      → Update activity counts
+    → IF new overdueActivities:
+      → Highlight red section
+      → Show alert notification
+    → IF order status changed (to completed/cancelled):
+      → Stop polling
+      → Show completion summary
+
+Element: "Refresh Now" Button
+Workflow: Click
+  → Immediately call getProductionOrderById
+  → Update all display elements
+```
+
+**Cost**: 4 API calls per minute = 240 calls/hour per user
+**Latency**: 0-15 seconds (real-time monitoring)
+**Critical Use Case**: Supervisors need immediate visibility to oversee operations
+
+---
+
+#### Pattern 3: Activity Status Updates (Field Operator Tracking)
+
+**Use When**: Field operator executing activities, needs to see peer activity status.
+
+**Workflow**:
+```javascript
+// Activities List Page (In-Progress Activities)
+Workflow: Page Load
+  → Step 1: API getActivitiesByOrder (status=in_progress OR pending)
+  → Step 2: Filter by today/upcoming dates
+  → Step 3: Set repeating group data source
+
+Workflow: Every 30 seconds
+  → IF Page is visible:
+    → API: getActivitiesByOrder
+    → Update status for completed activities
+    → Reorder list by priority
+    → Remove completed activities from view
+    → Show toast "Activity X marked complete by Juan"
+```
+
+**Cost**: 2 API calls per minute = 120 calls/hour per user
+**Latency**: 0-30 seconds
+**Use Case**: Operators see when peer activities complete
+
+---
+
+#### Pattern 4: Smart Activity Detail Page (Executing Activity)
+
+**Use When**: Operator actively executing a single activity.
+
+**Workflow**:
+```javascript
+// Activity Execution Page (User actively working)
+
+Workflow: Page Load
+  → API: getActivityById
+  → Load QC form/photos
+  → Start auto-save timer
+
+Workflow: Every 30 seconds (auto-save)
+  → IF Page is visible AND (form has changes):
+    → Call saveActivityProgress (updates auto-save timestamp)
+    → Show "Saving..." then "Saved at 14:32"
+
+Element: Photo Upload
+Workflow: Photo uploaded
+  → Immediately show in gallery
+  → Auto-save activity progress
+  → Option to "Analyze with AI" appears immediately
+
+Element: QC Form
+Workflow: Any field changed
+  → Mark as "unsaved" (visual indicator)
+  → Auto-save after 30 seconds of no changes
+  → Show validation errors in real-time
+
+Workflow: Complete Activity Button clicked
+  → Final save of all data
+  → API: completeActivity
+  → Emit notification visible to Supervisor
+```
+
+**Cost**: 1 auto-save call every 30s = 120 calls/hour per operator (when actively working)
+**Latency**: Up to 30 seconds for progress save
+**Design**: Non-blocking auto-save (operator doesn't wait)
+
+---
+
+#### Pattern 5: Supervisor Monitoring Board (Multiple Active Orders)
+
+**Use When**: Supervisor viewing dashboard with multiple simultaneous active orders.
+
+**Workflow**:
+```javascript
+// Production Monitoring Dashboard
+Workflow: Page Load
+  → Step 1: API getProductionOrdersByFacility (status=active, limit=10)
+  → Step 2: Display cards/grid for each order
+  → Step 3: Calculate average completion % and alerts
+
+Workflow: Every 30 seconds
+  → IF Page is visible:
+    → API: getProductionOrdersByFacility (status=active, limit=10)
+    → Update each order card:
+      → Progress % animate
+      → Overdue count change
+      → Status badge updates
+    → Recalculate overall metrics:
+      → Total completion % (weighted)
+      → Count of overdue activities across all orders
+    → Highlight orders with critical issues (>5 overdue)
+```
+
+**Cost**: 2 API calls per minute = 120 calls/hour
+**Latency**: 0-30 seconds
+**UI Design**: Cards update smoothly without full page reload
+
+---
+
+### AI Processing in Phase 4 (Special Case)
+
+**Challenge**: AI pest detection takes 2-5 seconds. Multiple photos per activity.
+
+**Solution - Blocking Calls with Progress**:
+
+```javascript
+// Pest Detection Workflow
+
+Element: "Analyze with AI" Button (on photo)
+Workflow: Click
+  → Show loading modal with spinner
+  → "Analyzing photo for pests... (processing)"
+  → Call API: analyzePhotoForPests
+  → Wait for response (blocking, timeout 10s)
+  → Show results:
+    - List of detected pests with confidence
+    - Bounding boxes overlaid on image
+    - Treatment recommendations
+  → User confirms/rejects each detection
+  → Option to create remediation activity
+
+Cost: 1 per photo analysis
+Response Time: 2-5 seconds
+No polling needed (HTTP blocking call handles it)
+```
+
+---
+
+### Multi-User Collaboration Patterns
+
+**Scenario**: Multiple operators working on same production order (different activities)
+
+**Solution - Optimized Polling**:
+
+```javascript
+// Production Order with Multiple Activities
+
+Operator A: Activity #1 - Riego → in_progress (saves every 30s)
+Operator B: Activity #2 - Inspección → in_progress (saves every 30s)
+Supervisor: Viewing order detail (polls every 15s)
+
+When Operator A completes:
+  → API: completeActivity (Activity #1)
+  → Supervisor's next poll (max 15s later) shows:
+    - Progress % increased
+    - Activity #1 marked complete
+    - Activity #3 now eligible to start
+
+When Operator B uploads photo + AI analysis:
+  → Auto-saves progress
+  → Supervisor's next poll shows updated photo/analysis
+  → Could trigger automatic remediation activity creation
+```
+
+**Cost Analysis**:
+- Operator A: 120 calls/hour (auto-save only)
+- Operator B: 120 calls/hour (auto-save only)
+- Supervisor: 240 calls/hour (aggressive monitoring)
+- **Total: 480 calls/hour for 3-user team**
+- Per user: ~160 calls/hour (acceptable for critical operations)
+
+---
+
+### Data Freshness vs Cost Tradeoff
+
+| Scenario | Pattern | Interval | Calls/Hour | Latency | Cost Impact |
+|----------|---------|----------|-----------|---------|-------------|
+| Manager Monitoring | Aggressive | 20s | 180 | 0-20s | High ($) |
+| Supervisor Detail | Very Aggressive | 15s | 240 | 0-15s | **Very High ($$)** |
+| Operator Executing | Auto-save | 30s | 120 | 0-30s | Medium |
+| Field Team View | Standard | 30s | 120 | 0-30s | Medium |
+| Admin Oversight | Moderate | 60s | 60 | 0-60s | Low |
+| Multi-Order Board | Standard | 30s | 120 | 0-30s | Medium |
+
+**Recommended for Phase 4**:
+- **Active Order List (Managers)**: 30s polling (~60 calls/hour)
+- **Order Detail Page (Supervisors)**: 30s polling (~60 calls/hour) or 15s if critical
+- **Activity Execution (Operators)**: 30s auto-save only (~120 calls/hour)
+- **Multi-Order Dashboard**: 30s polling (~120 calls/hour)
+- **Field Team Activity List**: 30s polling (~120 calls/hour)
+
+**Optional High-Performance**:
+- Supervisor viewing critical order: 15s polling (~240 calls/hour) - only when needed
+- Production emergency: 10s polling (~360 calls/hour) - temporary
+
+---
+
+### Optimization Techniques
+
+#### 1. Smart Polling (Only Changed Data)
+
+```javascript
+// Minimize data transfer
+API getProductionOrderSummary (lightweight)
+Returns: {
+  orderId, status, completionRate, overdueCount,
+  lastModified timestamp
+}
+
+Workflow: Every 30 seconds
+  → Call getProductionOrderSummary (lightweight)
+  → IF lastModified > currentTimestamp:
+    → Call getProductionOrderById (full details)
+  → ELSE:
+    → Skip full refresh
+```
+
+**Benefit**: 50-70% fewer API calls for unchanged data
+
+#### 2. Conditional Polling
+
+```javascript
+// Only poll when necessary
+Workflow: Every 30 seconds
+  → IF Page is visible AND (
+    →   (currentUser.role == "supervisor") OR
+    →   (order.status == "active") OR
+    →   (order.overdueActivities > 0)
+    → ):
+    → Continue polling
+  → ELSE:
+    → Stop polling (reduce cost for passive viewers)
+```
+
+**Benefit**: Users viewing historical/completed orders don't incur cost
+
+#### 3. Batch Requests
+
+```javascript
+// Multiple orders in one call
+API getProductionOrdersSummary (list view)
+Returns: [{id, status, completionRate, overdue}, ...]
+
+One API call = data for 10 orders
+Saves: 9 API calls per poll cycle
+```
+
+**Benefit**: Dashboard with 10 active orders = 12 calls/hour instead of 120
+
+---
+
+### Bubble Developer Guidance
+
+**Critical Implementation Notes**:
+
+1. **Progressive Enhancement**:
+   - ✅ Load page without polling first
+   - ✅ After data loads, start polling timer
+   - ✅ Show "Updates every 30 seconds" indicator
+   - ✅ Stop polling when navigating away
+
+2. **User-Visible Indicators**:
+   - ✅ Show "Last updated: 2:45 PM" timestamp
+   - ✅ Subtle glow effect when data refreshes
+   - ✅ Toast notifications for critical changes (overdue activities)
+   - ❌ Don't distract with every update
+
+3. **Performance**:
+   - ✅ Debounce rapid polling requests
+   - ✅ Use data comparison to avoid unnecessary re-renders
+   - ✅ Cache responses for 5 seconds max
+   - ❌ Don't poll faster than 15 seconds (avoid abuse)
+
+4. **Error Handling**:
+   - ✅ If poll fails, retry 3 times with backoff
+   - ✅ Show "Connection lost, will retry..." message
+   - ✅ After 3 failures, show "Refresh manually" button
+   - ✅ Log polling failures for debugging
+
+5. **Cost Control**:
+   - 🎯 Target: 120-180 calls/hour per active supervisor
+   - 🎯 Target: 60-120 calls/hour per field operator
+   - ⚠️ If exceeding 300 calls/hour per user, reduce interval
+   - ⚠️ Monitor Convex analytics for usage patterns
+
+6. **Testing Multi-User Scenarios**:
+   - [ ] 5 operators + 2 supervisors polling simultaneously
+   - [ ] Simulate activity completion while polling
+   - [ ] Verify photo upload triggers immediate supervisor update
+   - [ ] Test AI analysis doesn't break polling logic
+   - [ ] Verify page hide/show resumes/pauses polling correctly
+
+---
+
+### Testing Real-Time Behavior
+
+**Test Checklist**:
+- [ ] Order completion rate updates every 30 seconds
+- [ ] New overdue activities appear within 30 seconds
+- [ ] Activity status changes visible in less than 1 minute
+- [ ] Multiple operators editing same order don't conflict
+- [ ] Photo upload immediately available for AI analysis
+- [ ] AI analysis doesn't block activity editing
+- [ ] Supervisor sees all activity updates in real-time
+- [ ] Polling stops when page hidden/hidden tab
+- [ ] Polling resumes when page becomes visible
+- [ ] Auto-save doesn't interfere with operator workflow
+- [ ] Network latency doesn't cause duplicate updates
+- [ ] Cost monitoring shows expected call volumes
+
+---
+
 ## TESTING CHECKLIST
 
 Phase 4 Production Execution (0/18 endpoints ready):

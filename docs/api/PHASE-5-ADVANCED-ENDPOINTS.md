@@ -980,6 +980,388 @@ For complete error handling, see [../i18n/STRATEGY.md](../i18n/STRATEGY.md).
 
 ---
 
+## REAL-TIME UPDATES & DATA POLLING
+
+**Overview**: Phase 5 features (Compliance, Analytics, Mobile, Integrations) have minimal real-time polling requirements. These are primarily reporting and integration features that don't require constant updates. Polling, when used, should be minimal and user-initiated.
+
+### Polling Requirements by Module
+
+| Module | Data Type | Volatility | Recommended Polling | Use Case |
+|--------|-----------|-----------|-------------------|----------|
+| Compliance & Reporting | Reports/Submissions | Low | Page load only | Reports generated on-demand, not monitored |
+| Analytics Dashboard | Historical Data | None | Page load only | Analytics computed once, static reports |
+| Mobile App (PWA) | Synced Data | Medium | 60-120 seconds | Background sync, offline reconciliation |
+| Third-Party Integrations | Webhook Events | Variable | Event-based | External system triggers data sync |
+
+### Implementation Patterns
+
+#### Pattern 1: Page Load Only (Analytics & Reporting)
+
+**Use When**: Viewing static reports, historical data, or generated compliance documents.
+
+**Workflow**:
+```javascript
+// Compliance Report List Page
+Workflow: Page Load
+  → Step 1: API getComplianceReports (with date range filters)
+  → Step 2: Set repeating group data source
+  → Step 3: Display report metadata (date, status, type)
+
+// Analytics Dashboard
+Workflow: Page Load
+  → Step 1: API getProductionAnalytics (facility, date range)
+  → Step 2: Display charts (production metrics, yields, costs)
+  → Step 3: No polling - charts are static snapshots
+
+// Report Generation
+Workflow: Button "Generate Report" clicked
+  → Show loading "Generating compliance report..."
+  → Call API: generateComplianceReport (blocking call, timeout 30s)
+  → Save PDF to cloud storage
+  → Show download/preview link
+```
+
+**Cost**: Minimal (1 call per page load)
+**Latency**: 0 seconds (manual refresh)
+**Developer Notes**:
+- Reports are generated on-demand, not monitored
+- Analytics are historical snapshots
+- No periodic timers needed
+- User-triggered refreshes sufficient
+
+---
+
+#### Pattern 2: Event-Based Sync (Mobile & Integrations)
+
+**Use When**: Mobile app syncing offline data or third-party integrations pushing updates.
+
+**Workflow**:
+```javascript
+// Mobile PWA - Offline Sync
+
+App State:
+  → Online: Normal operation (instant API calls)
+  → Offline: Queue changes locally
+  → Back Online: Sync queued changes
+
+Workflow: Connection restored
+  → Call API: syncOfflineChanges
+  → IF conflicts detected:
+    → Show conflict resolution dialog
+    → User chooses: Keep Local / Overwrite with Server
+  → Sync completes, resume normal operation
+
+// Third-Party Integration - Webhook Callback
+
+External System (Accounting, Weather, IoT):
+  → Change occurs in external system
+  → Webhooks send event to `/integrations/webhook/<type>`
+  → Convex stores event in queue
+  → User-initiated refresh OR scheduled pull:
+    → Call API: getIntegrationData
+    → Fetch accumulated events
+    → Update local data
+```
+
+**Cost**: Minimal (on-demand, event-driven)
+**Latency**: 0-60 seconds (when user syncs or webhook arrives)
+
+---
+
+#### Pattern 3: Smart Sync for Mobile (PWA)
+
+**Use When**: Mobile app needs background synchronization without draining battery.
+
+**Workflow**:
+```javascript
+// PWA Background Sync (Advanced)
+
+Workflow: Every 2-5 minutes (less aggressive than Phase 4)
+  → IF device connected to Wi-Fi (not cellular):
+    → Sync offline changes with server
+    → Download updated data if available
+  → IF on cellular:
+    → Only sync if user explicitly requests
+    → Minimize data transfer
+
+Workflow: App suspends
+  → Auto-save all local changes
+  → Store in local database
+  → No active polling
+
+Workflow: App resumes
+  → User sees last known state
+  → Check server for updates (blocking call)
+  → Merge if conflicts
+  → Show "Last synced: 2:45 PM"
+```
+
+**Cost**: Low (Wi-Fi only, 2-5 minute intervals)
+**Latency**: 0-5 minutes (periodic)
+**Battery Impact**: Minimal (respects device state)
+
+---
+
+### Compliance & Regulatory Considerations
+
+**Phase 5A - Compliance Reporting**:
+
+No real-time polling needed because:
+- Reports are generated on-demand (user-initiated)
+- Submissions happen at regulatory deadlines (scheduled)
+- Audit trails are immutable (no live updates)
+- Historical data doesn't change after period close
+
+**Implementation**:
+```javascript
+// Compliance Workflow
+
+User selects: Date range + Report type
+  ↓
+Click "Generate Report" button
+  ↓
+Backend processes (3-10 seconds):
+  1. Query activities/data for period
+  2. Calculate metrics
+  3. Validate compliance requirements
+  4. Generate PDF with signatures/photos
+  ↓
+User downloads/previews PDF
+```
+
+**No polling** - Single blocking call handles entire process
+
+---
+
+### Analytics Dashboard - Static vs Dynamic
+
+**Static (No Polling)**:
+- YTD production volumes
+- Lifetime yield trends
+- Historical cost analysis
+- Compliance status summary
+
+**Semi-Dynamic (Reload on Navigation)**:
+- This month's metrics
+- Active order progress (load on page return)
+- Latest production data
+
+**Never Real-Time**:
+- Analytics are historical summaries
+- 24-hour lag acceptable
+- Real-time needs met by Phase 4 production dashboard
+
+**Implementation**:
+```javascript
+// Production Analytics Page
+
+Workflow: Page Load
+  → API: getProductionAnalytics
+    - Parameters: facility, dateRange
+  → Display charts (no updating)
+  → Provide "Refresh" button for manual reload
+
+Workflow: Date Range Selector Changed
+  → API: getProductionAnalytics (new date range)
+  → Update all charts
+
+Workflow: Browser Back Button
+  → Page reloads naturally
+  → getProductionAnalytics called again
+```
+
+**Cost**: 1 call per page load or manual refresh
+**No timers or polling loops**
+
+---
+
+### Third-Party Integration Data Sync
+
+**Scenario**: Accounting software, Weather API, IoT sensors
+
+**Synchronization Patterns**:
+
+#### Pattern A: Pull-Based (User-Triggered)
+```javascript
+// Manual Integration Sync
+
+Element: Button "Sync with QuickBooks"
+Workflow: Click
+  → Show spinner "Syncing..."
+  → Call API: syncIntegration("quickbooks")
+  → Convex calls external API
+  → Store results
+  → Show "Synced 45 transactions" + timestamp
+```
+
+**Cost**: User-initiated only
+**Latency**: 2-5 seconds per sync
+
+#### Pattern B: Webhook-Based (Event-Driven)
+```javascript
+// External System → Alquemist
+
+External system detects change:
+  → POST to alquemist: /integrations/webhook/weather
+  → Payload: { eventType, data }
+  → Convex stores in queue
+
+User views Dashboard:
+  → Shows latest weather data from cache
+  → No polling needed
+```
+
+**Cost**: Zero (push-based)
+**Latency**: Real-time (external system depends)
+
+#### Pattern C: Scheduled Pull (Cron Job)
+```javascript
+// Automated periodic sync (if no webhook available)
+
+Convex Cron:
+  → Every 2 hours: Check external API for new data
+  → Query: "Give me changes since last sync"
+  → Store results in Convex database
+
+Users see data when they refresh page
+```
+
+**Cost**: 12 calls/day (configurable)
+**Latency**: 0-2 hours
+
+---
+
+### Mobile PWA Offline & Sync Strategy
+
+**Design Pattern**:
+```javascript
+// Offline-First Mobile App
+
+State: Online
+  → User actions: Immediate API calls
+  → Auto-save every field change
+  → Instant feedback
+
+State: Network Lost
+  → User actions: Store locally
+  → Queue changes in local database
+  → Show "Offline mode" indicator
+  → Continue working normally
+
+State: Network Restored
+  → Auto-sync queued changes
+  → IF no conflicts: Silent sync
+  → IF conflicts: Show dialog
+  → Resume normal operation
+```
+
+**Polling Avoided**:
+- Mobile uses local-first approach
+- No constant polling (saves battery)
+- Sync only on demand or connection change
+
+**Background Sync** (Advanced):
+- Browser's Background Sync API (if supported)
+- Sync only on Wi-Fi to save data
+- 2-hour minimum intervals
+- User can manually trigger anytime
+
+---
+
+### Cost Implications Summary
+
+| Feature | Pattern | Calls/Hour | Data Freshness | Notes |
+|---------|---------|-----------|-----------------|-------|
+| Compliance Reports | Page load only | 0-1 | Manual refresh | Generate on-demand |
+| Analytics Dashboard | Page load only | 0-1 | 24h+ acceptable | Historical data only |
+| Report Generation | Blocking call | 1 per report | Immediate | User-triggered |
+| Mobile Sync (Wi-Fi) | 2-5 min interval | 12-30 | 2-5 minutes | Background only |
+| Mobile Sync (Cellular) | Manual only | Variable | On-demand | User controls |
+| Webhook Events | Event-based | Variable | Real-time | External system pushes |
+| Scheduled Integrations | Cron job | 12-24 | 1-2 hours | Configurable |
+
+**Recommended for Phase 5**:
+- **Compliance Reports**: Page load only (no polling)
+- **Analytics Dashboard**: Page load only (no polling)
+- **Mobile Sync**: 2-5 minute background sync (Wi-Fi only)
+- **Integrations**: Event-based webhooks or user-triggered sync
+- **Real-time Dashboard**: Not needed in Phase 5 (Phase 4 handles it)
+
+---
+
+### Bubble Developer Guidance
+
+**Key Design Points**:
+
+1. **No Aggressive Polling**:
+   - ❌ Compliance reports do NOT auto-refresh
+   - ❌ Analytics do NOT update every 30 seconds
+   - ✅ Reports generate on-demand only
+   - ✅ Analytics computed once per load
+
+2. **Mobile First Strategy**:
+   - ✅ Use offline-first architecture
+   - ✅ Sync automatically (when appropriate)
+   - ✅ Show sync status to user
+   - ❌ Do NOT poll for updates constantly
+
+3. **Integration Flexibility**:
+   - ✅ Support webhooks (no polling)
+   - ✅ Support manual sync button
+   - ✅ Support scheduled background sync
+   - ❌ Avoid constant polling for external data
+
+4. **Performance Optimization**:
+   - ✅ Cache analytics results (24 hours)
+   - ✅ Compress historical data exports
+   - ✅ Lazy-load large reports
+   - ✅ Use pagination for data lists
+
+5. **User Experience**:
+   - ✅ Show "Last generated" timestamp
+   - ✅ Provide "Refresh Now" button
+   - ✅ Show sync progress for integrations
+   - ✅ Explain offline limitations clearly
+
+---
+
+### Future Considerations for Phase 5
+
+**WebSocket Upgrade Path** (Not Required Now):
+- If Phase 5 implements real-time compliance notifications
+- Could upgrade to WebSocket for live alert delivery
+- Would replace polling pattern shown above
+- Significant architectural change for Phase 5+
+
+**Machine Learning Integration**:
+- Predictive analytics (no polling needed)
+- Computed daily/weekly batch jobs
+- Results stored and displayed historically
+- Not a real-time feature
+
+**Multi-Facility Management**:
+- Analytics across multiple facilities
+- Could benefit from smart polling (if needed later)
+- Currently: Page load only sufficient
+
+---
+
+### Testing Real-Time Behavior
+
+**Test Checklist**:
+- [ ] Compliance reports generate within timeout (30s)
+- [ ] Analytics charts display correctly
+- [ ] Mobile app syncs offline changes successfully
+- [ ] Webhook events processed and stored
+- [ ] Manual sync button works
+- [ ] No data loss during offline state
+- [ ] Conflict resolution works correctly
+- [ ] Integration data stays fresh
+- [ ] No unnecessary API calls detected
+- [ ] Mobile battery impact is minimal
+
+---
+
 ## TESTING CHECKLIST
 
 Phase 5 Advanced Features (0/~40 endpoints ready):

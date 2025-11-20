@@ -1111,6 +1111,299 @@ scheduledDate = dependsOnActivity.actualCompletionDate + daysAfterCompletion
 
 ---
 
+## REAL-TIME UPDATES & DATA POLLING
+
+**Overview**: Phase 3 involves template design and AI-powered form generation. These are relatively static master data with manual updates. Unlike Phase 1 & 2, there is minimal real-time data volatility.
+
+### Polling Requirements by Module
+
+| Module | Data Type | Volatility | Recommended Polling | Use Case |
+|--------|-----------|-----------|-------------------|----------|
+| Production Templates | Template Data | Very Low | Page load only | Templates change infrequently (manual edit) |
+| QC Templates | Template Data | Very Low | Page load only | Templates change infrequently (AI generated once) |
+
+### Implementation Patterns
+
+#### Pattern 1: Page Load Only (All Phase 3 Templates)
+
+**Use When**: Templates are designed once, rarely modified. Users don't need live updates.
+
+**Workflow**:
+```javascript
+// Templates List Page - Page Load
+Workflow: Page Load
+  → Step 1: API getProductionTemplatesByFacility
+  → Step 2: Set repeating group data source
+
+// Template Detail Page - Page Load
+Workflow: Page Load (Detail page)
+  → Step 1: API getProductionTemplateById
+  → Step 2: Display template structure, phases, activities
+  → Step 3: Display timeline visualization
+
+// QC Templates List Page - Page Load
+Workflow: Page Load
+  → Step 1: API getQCTemplatesByFacility
+  → Step 2: Set repeating group data source
+
+// QC Template Detail Page - Page Load
+Workflow: Page Load
+  → Step 1: API getQCTemplateById
+  → Step 2: Render HTML form in HTML element
+  → Step 3: Display field metadata
+```
+
+**Cost**: Minimal (1 call per page load)
+**Latency**: 0 seconds (manual refresh required)
+**Developer Notes**:
+- No periodic timers needed
+- Templates designed in dedicated pages, not dashboard
+- Most users only reference templates, not modify them
+- Modifications are infrequent design changes
+
+---
+
+#### Pattern 2: Event-Based Refresh (Template Modifications)
+
+**Use When**: Template is modified and user needs to see changes reflected.
+
+**Workflow**:
+```javascript
+// After Create Template Success
+Workflow: createProductionTemplate → success
+  → Step 1: Close form/modal
+  → Step 2: API getProductionTemplatesByFacility (refresh list)
+  → Step 3: Navigate to new template detail page
+  → Step 4: Show toast "Template created successfully"
+
+// After Update Template Success
+Workflow: updateProductionTemplate → success
+  → Step 1: API getProductionTemplateById (refresh detail view)
+  → Step 2: Show timeline with updated activities
+  → Step 3: Navigate/show success message
+
+// After Duplicate Template Success
+Workflow: duplicateProductionTemplate → success
+  → Step 1: Navigate to new template edit page
+  → Step 2: Display duplicated template structure
+
+// After AI Generation (QC Template)
+Workflow: generateQCTemplate → success
+  → Step 1: Show preview of generated form
+  → Step 2: Option to regenerate if unsatisfactory
+  → Step 3: Save when user approves
+  → Step 4: Navigate to template detail page
+
+// After Delete Template Success
+Workflow: deleteProductionTemplate → success
+  → Step 1: API getProductionTemplatesByFacility (refresh list)
+  → Step 2: Navigate back to templates list
+  → Step 3: Show toast "Template deleted"
+```
+
+**Cost**: Minimal additional calls
+**Latency**: 0 seconds (immediate after action)
+
+---
+
+#### Pattern 3: Schedule Validation (Real-time During Creation)
+
+**Use When**: User is configuring complex scheduling in production template.
+
+**Workflow**:
+```javascript
+// Activity Scheduling Configurator (During Template Creation)
+
+Element: Scheduling Type Dropdown
+Workflow: Selection changed
+  → Show conditional panels for selected type
+  → IF recurring:
+    → Show frequency, start day, end day, interval options
+    → Real-time validation: end day >= start day
+    → Real-time validation: interval > 0
+
+Element: Activity Days Input
+Workflow: Value changed (debounce 500ms)
+  → IF has dependent schedule:
+    → Highlight dependency chain
+  → IF schedule exceeds phase duration:
+    → Show warning "Activity scheduled beyond phase"
+
+Button: "Validate Schedule"
+Workflow: Click
+  → API: validateActivitySchedule
+  → IF valid:
+    → Show "✓ Schedule valid (145 projected activities)"
+  → ELSE:
+    → Show errors and suggestions
+
+Element: Template Preview/Timeline
+Workflow: Update automatically
+  → Recalculate based on current config
+  → Show Gantt-style timeline
+  → Highlight conflicts or warnings
+```
+
+**Cost**: 1 validation call per user save (not per keystroke)
+**Latency**: 0-2 seconds (validation response)
+**Developer Note**: Debounce validation requests to avoid excessive calls
+
+---
+
+### AI Processing - Special Case
+
+**Challenge**: AI QC template generation takes 3-10 seconds. Cannot use polling for status.
+
+**Solution - Callback/Webhook Pattern**:
+
+Since Bubble cannot maintain persistent connections, the workflow is:
+
+```javascript
+// Generate QC Template
+User clicks "Generate with AI"
+  ↓
+Show loading spinner
+  ↓
+Call API: generateQCTemplate (blocking call)
+  ↓
+Convex:
+  1. Receive request
+  2. Call Gemini Vision API (wait for response)
+  3. Process response, generate HTML
+  4. Store in database
+  5. Return success + htmlForm
+  ↓
+Show result in preview (no polling needed)
+```
+
+**Why This Works**:
+- HTTP request naturally waits for Gemini response
+- Timeout: 30 seconds (covers 3-10 second AI processing)
+- No need for polling/webhooks
+- User sees loading spinner during entire process
+
+**Bubble Configuration**:
+```
+API Call: generateQCTemplate
+Timeout: 30 seconds (must exceed max AI processing time)
+Retry on timeout: Show "AI Service Unavailable" error
+```
+
+---
+
+### Multi-User Scenarios
+
+**Scenario**: Multiple users working with templates simultaneously (same facility)
+
+**Problem**: User A creates template, User B viewing template list might not see it immediately
+
+**Solution - Acceptable Approach**:
+```javascript
+// User B viewing templates list
+Page Load:
+  → API: getProductionTemplatesByFacility
+  → Display list
+
+// User A creates new template while User B viewing
+User A → API: createProductionTemplate → success
+User B → Still sees old list (no polling)
+
+// When User B navigates away and returns to page:
+Workflow: Page becomes visible again
+  → Page load triggered automatically
+  → API: getProductionTemplatesByFacility (refreshed)
+  → User B now sees User A's template
+```
+
+**Why This Is Acceptable**:
+- Templates rarely created in real-time (design activity)
+- Multiple users creating templates simultaneously is rare
+- Page navigation naturally refreshes data
+- Cost savings far outweigh real-time benefit
+
+**Alternative - Optional Real-Time (if needed for teams)**:
+```javascript
+// Only IF multiple users actively designing templates:
+
+Workflow: Every 60 seconds (while on templates list page)
+  → IF Page is visible:
+    → API: getProductionTemplatesByFacility
+    → Update repeating group (only if list changed)
+
+Cost: 1 call per minute = 60 calls/hour per user
+Only enable if team reports missing newly created templates
+```
+
+---
+
+### Cost Implications Summary
+
+| Feature | Pattern | Calls/Hour | Data Freshness | Notes |
+|---------|---------|-----------|-----------------|-------|
+| Template Lists | Page load only | 0-2 | Manual refresh | Minimal cost |
+| Template Details | Page load only | 0-1 | Manual refresh | View-only usage |
+| Template Creation | Event-based | 1 per create | Immediate | Low frequency |
+| Schedule Validation | On-demand | 1 per validate | Immediate | User-triggered |
+| AI QC Generation | Blocking call | 1 per generate | Immediate | 3-10s wait |
+| Multi-user (optional) | 60s polling | 60 | 0-60s | Only if needed |
+
+**Recommended for Phase 3**:
+- **Production Templates (Lists/Details)**: Page load only + event-based after CRUD
+- **QC Templates (Lists/Details)**: Page load only + event-based after AI generation
+- **AI Processing**: Blocking HTTP call (no polling)
+- **Schedule Validation**: On-demand call (only when user clicks validate)
+- **Multi-user Refresh**: NOT needed (templates are design artifacts, not operational data)
+
+---
+
+### Bubble Developer Guidance
+
+**Key Design Points**:
+
+1. **No Aggressive Polling**:
+   - ❌ Template lists do NOT need real-time updates
+   - ❌ QC templates do NOT need real-time updates
+   - ✅ Page reload naturally refreshes when returning to page
+
+2. **AI Processing**:
+   - ✅ Use blocking HTTP call (wait for Gemini response)
+   - ✅ Show loading spinner during wait
+   - ❌ Do NOT use polling for status
+   - ❌ Do NOT use webhooks (overcomplicated)
+
+3. **Schedule Validation**:
+   - ✅ Validate on-demand (when user clicks validate button)
+   - ✅ Debounce real-time validation if needed
+   - ❌ Do NOT validate on every keystroke
+
+4. **Complex UI**:
+   - Multi-step form is OK (not real-time)
+   - Timeline visualization is static (not live)
+   - Activity schedulers don't need live updates
+
+5. **Testing AI Integration**:
+   - Use test documents in development
+   - Monitor Gemini API quota
+   - Set reasonable timeout (30s) for HTTP call
+   - Handle network failures gracefully
+
+---
+
+### Testing Real-Time Behavior
+
+**Test Checklist**:
+- [ ] Page load retrieves current template list
+- [ ] After template create, list updates on return
+- [ ] Timeline visualization accurate for complex schedules
+- [ ] Schedule validation detects conflicts
+- [ ] AI QC generation completes within 30s timeout
+- [ ] AI timeout error shows proper message
+- [ ] Multiple users see each other's templates on page refresh
+- [ ] No duplicate API calls when staying on same page
+- [ ] Browser back button triggers page reload (auto-refresh)
+
+---
+
 ## TESTING CHECKLIST
 
 Phase 3 Templates & AI (0/12 endpoints ready):

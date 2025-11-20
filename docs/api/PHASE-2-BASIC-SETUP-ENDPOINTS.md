@@ -1764,6 +1764,310 @@ Check for dependencies:
 
 ---
 
+## REAL-TIME UPDATES & DATA POLLING
+
+**Overview**: Phase 2 involves primarily static master data and inventory tracking. Most modules have low polling requirements, with **Inventory** being the exception requiring more frequent updates.
+
+### Polling Requirements by Module
+
+| Module | Data Type | Volatility | Recommended Polling | Use Case |
+|--------|-----------|-----------|-------------------|----------|
+| Areas | Master Data | Low | Page load only | Areas rarely change once set up |
+| Cultivars | Master Data | Very Low | Page load only | System/facility cultivars static |
+| Suppliers | Master Data | Very Low | Page load only | Supplier list rarely changes |
+| Other Crops | Master Data | Low | Page load only | Companion plants rarely change |
+| Compliance Templates | Master Data | Very Low | Page load only | Templates change infrequently |
+| Inventory | Stock Levels | **High** | **30-60 seconds** | Stock levels change with purchases/consumption |
+| Facility Settings | Configuration | None | User-triggered | Settings change via form submission |
+| Account Settings | User Prefs | None | User-triggered | Settings change via form submission |
+
+### Implementation Patterns by Module
+
+#### Pattern 1: Page Load Only (Areas, Cultivars, Suppliers, Other Crops, Compliance)
+
+**Use When**: Data changes infrequently and users refresh manually for updates.
+
+**Workflow**:
+```javascript
+// Areas List Page - Page Load
+Workflow: Page Load
+  → Step 1: API getAreasByFacility
+  → Step 2: Set repeating group data source
+
+// Detail Page - Page Load
+Workflow: Page Load (Detail page)
+  → Step 1: API getAreaById
+  → Step 2: Display in form elements
+
+// After Create/Update/Delete
+Workflow: After successful action
+  → Step 1: Navigate back to list
+  → Step 2: List page reloads automatically
+  → Step 3: getAreasByFacility called again via page load
+```
+
+**Cost**: Minimal (1 call per page load)
+**Latency**: 0 seconds (manual refresh)
+**Developer Notes**:
+- No periodic timer needed
+- Users see latest data after successful operations
+- Browser back button naturally triggers page reload
+- Suitable for master data that changes infrequently
+
+#### Pattern 2: Event-Based Refresh (All CRUD Operations)
+
+**Use When**: Need immediate reflection of changes without polling.
+
+**Workflow**:
+```javascript
+// After Create Area Success
+Workflow: createArea → success
+  → Step 1: Close popup
+  → Step 2: API getAreasByFacility (refresh list immediately)
+  → Step 3: Show toast notification "Area created"
+
+// After Update Area Success
+Workflow: updateArea → success
+  → Step 1: API getAreaById (refresh detail page)
+  → Step 2: API getAreasByFacility (refresh list if visible)
+  → Step 3: Navigate/show success message
+
+// After Delete Area Success
+Workflow: deleteArea → success
+  → Step 1: API getAreasByFacility (refresh list)
+  → Step 2: Navigate to list page
+```
+
+**Cost**: Minimal additional calls
+**Latency**: 0 seconds (immediate after action)
+**Implementation**:
+```
+1. Create: Set popup as "full page" or "floating fixed"
+2. On success:
+   - Close popup
+   - Trigger list refresh manually
+   - Show notification
+
+3. Update: Similar pattern
+   - Save changes
+   - Refresh detail and list
+
+4. Delete: With confirmation
+   - Show confirmation dialog
+   - Delete on confirm
+   - Refresh list
+```
+
+---
+
+### Inventory Polling Strategy (HIGH PRIORITY)
+
+**Challenge**: Stock levels change frequently with purchases and production usage. Multiple users may update inventory simultaneously.
+
+#### Pattern 3: Smart Polling with Count Endpoint (Recommended)
+
+**Why**: Minimize API calls while maintaining data freshness.
+
+**Workflow**:
+```javascript
+// Inventory List Page
+Workflow: Page Load
+  → API: getInventoryByFacility
+  → Store inventory data in local variable
+  → Set repeating group source
+
+Workflow: Every 30 seconds
+  → IF Page is visible (use "Page is visible" state):
+    → API: Get count of inventory items in facility
+    → IF count differs from stored count:
+      → API: getInventoryByFacility (refresh full list)
+      → Update repeating group
+    → ELSE:
+      → Do nothing (no changes)
+```
+
+**Cost**: 2 calls per 30 seconds = ~240 calls/day per user
+**Latency**: Up to 30 seconds
+**Efficiency**: Prevents unnecessary full list refreshes
+
+**Implementation Detail**:
+```javascript
+// In Bubble:
+Repeating Group Source: inventoryList
+Page Load:
+  1. Set state: inventoryCount = 0
+  2. Call getInventoryByFacility
+  3. Set state: inventoryCount = getInventoryByFacility.length
+
+Every 30 seconds:
+  1. Call checkInventoryCount (lightweight count endpoint)
+  2. IF checkInventoryCount > inventoryCount:
+     - Call getInventoryByFacility
+     - Update repeating group
+     - Set state: inventoryCount = new count
+```
+
+**Convex Backend - Add Count Endpoint**:
+```typescript
+// Add to inventory.ts
+export const getInventoryCount = httpAction(async (ctx, request) => {
+  const body = await request.json();
+  const count = await ctx.runQuery(api.inventory.list, body);
+  return new Response(JSON.stringify({ count: count.length }), { status: 200 });
+});
+
+// Add to http.ts
+http.route({
+  path: "/inventory/count",
+  method: "POST",
+  handler: api.inventory.getInventoryCount,
+});
+```
+
+**Bubble Configuration**:
+```
+API Name: getInventoryCount
+Method: POST
+URL: https://handsome-jay-388.convex.site/inventory/count
+Body: { "facilityId": "<facilityId>" }
+Return Type: Object with "count" field
+```
+
+#### Pattern 4: Manual Refresh + Auto-Refresh Hybrid
+
+**Use When**: Users expect immediate updates after their actions but polling for other users' changes.
+
+**Workflow**:
+```javascript
+// Inventory List Page - Combined Pattern
+
+Page Load:
+  → API: getInventoryByFacility
+  → Set repeating group data
+
+Workflow: Every 45 seconds (auto-refresh)
+  → IF Page is visible:
+    → API: getInventoryByFacility
+    → Update repeating group
+    → Update timestamp indicator
+
+Element: Button "Refresh Now"
+Workflow: Click
+  → Show loading state
+  → API: getInventoryByFacility
+  → Update repeating group
+  → Update "Last updated" timestamp
+  → Hide loading state
+
+Element: Stock Adjustment Form
+Workflow: After adjustment success
+  → Immediately call getInventoryByFacility
+  → Update repeating group
+  → Show success notification
+```
+
+**Cost**:
+- Auto-refresh: 2 calls per minute = ~2,880 calls/day per user (aggressive)
+- Manual refresh: User-initiated, no base cost
+- Event-refresh: 1 call per action
+
+**Recommendation**: Use 45-60 second interval, not 15 seconds.
+
+---
+
+### Multi-User Collaboration Strategies
+
+**Scenario**: Multiple users managing inventory simultaneously (team at same facility)
+
+**Solution - Event-Based + Periodic Hybrid**:
+```javascript
+// User A adjusts inventory (stock reduced by 10 units)
+Workflow: adjustInventoryStock → success
+  → Immediately call getInventoryByFacility
+  → Show toast "Stock updated"
+
+// Background periodic refresh (every 45 seconds)
+Workflow: Every 45 seconds
+  → Call getInventoryByFacility
+  → Compare with local copy
+  → If any items changed stock levels or status:
+    → Update repeating group
+    → Show subtle indicator "Updated by another user"
+```
+
+**Cost Analysis**:
+- Local updates: 0s latency (immediate feedback)
+- Other users' updates: 0-45s latency (periodic polling)
+- Total cost: ~30 calls/hour per user for 45s interval
+
+---
+
+### Cost Implications Summary
+
+| Strategy | Pattern | Calls/Hour | Data Freshness | Notes |
+|----------|---------|-----------|-----------------|-------|
+| Page Load Only | Master data | 0-2 | Manual refresh | Low cost, no real-time |
+| Event-Based | CRUD actions | 1-3 | Immediate | Best UX, minimal cost |
+| Smart Count | Inventory | 120 | 0-30s | Efficient, recommended |
+| Auto Refresh (45s) | Polling | 80 | 0-45s | Balanced approach |
+| Auto Refresh (15s) | Aggressive | 240+ | 0-15s | High cost, avoid |
+| Hybrid | Mixed | 100-150 | 0-45s | Best for inventory |
+
+**Recommended for Phase 2**:
+- **Master Data (Areas, Cultivars, Suppliers, Other Crops, Compliance)**: Page load only + event-based refresh after CRUD
+- **Inventory (Critical)**: Smart count polling (30s) + event-based after adjustments
+- **Settings**: User-triggered only (no polling)
+
+---
+
+### Bubble Developer Guidance
+
+**No Native WebSocket Support**:
+Bubble's API Connector cannot maintain persistent WebSocket connections to Convex. HTTP endpoints are one-time request-response, not subscriptions.
+
+**Key Implementation Notes**:
+
+1. **Avoid Polling Anti-Patterns**:
+   - ❌ 5-second intervals (excessive cost)
+   - ❌ Polling even when page is not visible (wasted calls)
+   - ❌ Polling every module equally (prioritize high-volatility data)
+
+2. **Optimize Polling with Conditions**:
+   - Use "Page is visible" check before polling
+   - Use "Workflow is in view" for specific repeating groups
+   - Reduce polling interval when idle (detect user activity)
+
+3. **Data Freshness Tradeoff**:
+   - 0s latency: Event-based refresh (immediate feedback)
+   - 30s latency: Smart polling with count endpoint
+   - 60s latency: Basic periodic polling
+   - Manual refresh: Acceptable for static master data
+
+4. **Cost Monitoring**:
+   - Estimate: 30s polling = 2,880 calls/day/user
+   - Track actual usage in Convex analytics
+   - Adjust intervals based on actual data change patterns
+
+5. **Multi-User Scenarios**:
+   - Stock adjustments: Immediate refresh for actor + periodic for others
+   - Master data: Event-based refresh sufficient
+   - Settings: No polling needed (explicit submission)
+
+---
+
+### Testing Real-Time Behavior
+
+**Test Checklist**:
+- [ ] Multiple users adjust same inventory item simultaneously
+- [ ] One user sees other user's changes within polling interval
+- [ ] Page hide/show stops/resumes polling correctly
+- [ ] Manual refresh works and immediately reflects changes
+- [ ] Network latency doesn't break polling logic
+- [ ] Cost (API call count) stays within expectations
+- [ ] No duplicate refreshes (debounce/throttle working)
+
+---
+
 ## TESTING CHECKLIST
 
 Phase 2 Master Data Setup (0/43 endpoints ready):
