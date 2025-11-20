@@ -63,7 +63,6 @@ When configuring each call:
 ### Check Email Availability
 
 **Endpoint**: `POST /registration/check-email`
-**Status**: ✅ Ready
 **Convex Function**: `registration.checkEmailAvailability`
 
 #### Bubble API Connector Configuration
@@ -119,7 +118,6 @@ Content-Type: application/json
 ### Register User (Step 1)
 
 **Endpoint**: `POST /registration/register-step-1`
-**Status**: ✅ Ready
 **Convex Function**: `registration.registerUserStep1`
 
 **Important**: El campo `token` es un session token de 30 días. Guardarlo en el User de Bubble.
@@ -204,7 +202,6 @@ Content-Type: application/json
 ### Verify Email Token
 
 **Endpoint**: `POST /registration/verify-email`
-**Status**: ✅ Ready
 **Convex Function**: `emailVerification.verifyEmailToken`
 
 #### Bubble API Connector Configuration
@@ -271,7 +268,6 @@ Content-Type: application/json
 ### Resend Verification Email
 
 **Endpoint**: `POST /registration/resend-verification`
-**Status**: ✅ Ready
 **Convex Function**: `emailVerification.resendVerificationEmail`
 
 **Rate Limiting**: Max 5 resends, 5 minutos entre cada reenvío
@@ -332,7 +328,6 @@ Content-Type: application/json
 ### Check Verification Status
 
 **Endpoint**: `POST /registration/check-verification-status`
-**Status**: ✅ Ready
 **Convex Function**: `emailVerification.checkEmailVerificationStatus`
 
 #### Bubble API Connector Configuration
@@ -393,7 +388,6 @@ Content-Type: application/json
 ### Get Departments
 
 **Endpoint**: `POST /geographic/departments`
-**Status**: ✅ Ready
 **Convex Function**: `geographic.getDepartments`
 
 #### Bubble API Connector Configuration
@@ -449,7 +443,6 @@ Content-Type: application/json
 ### Get Municipalities
 
 **Endpoint**: `POST /geographic/municipalities`
-**Status**: ✅ Ready
 **Convex Function**: `geographic.getMunicipalities`
 
 #### Bubble API Connector Configuration
@@ -512,7 +505,6 @@ Content-Type: application/json
 ### Create Company (Step 2)
 
 **Endpoint**: `POST /registration/register-step-2`
-**Status**: ✅ Ready
 **Convex Function**: `registration.registerCompanyStep2`
 
 **Note**: Requiere que el usuario tenga email verificado (email_verified=true)
@@ -601,7 +593,6 @@ Content-Type: application/json
 ### Create Facility
 
 **Endpoint**: `POST /facilities/create`
-**Status**: ✅ Implemented
 **Convex Function**: `facilities.create`
 
 **Purpose**: Create the company's first facility during onboarding (or additional facilities later)
@@ -709,7 +700,6 @@ Authorization: Bearer <token>
 ### Get Facilities by Company
 
 **Endpoint**: `POST /facilities/get-by-company`
-**Status**: ✅ Implemented
 **Convex Function**: `facilities.getByCompany`
 
 **Purpose**: List all facilities for a company (used in facility selector, settings, etc.)
@@ -782,7 +772,6 @@ Authorization: Bearer <token>
 ### Check License Availability
 
 **Endpoint**: `POST /facilities/check-license`
-**Status**: ✅ Implemented
 **Convex Function**: `facilities.checkLicenseAvailability`
 
 **Purpose**: Verify license number is unique before creating facility
@@ -840,7 +829,6 @@ Content-Type: application/json
 ### Update Facility
 
 **Endpoint**: `POST /facilities/update`
-**Status**: ✅ Implemented
 **Convex Function**: `facilities.update`
 
 **Purpose**: Update facility details (used in Phase 2 settings)
@@ -898,7 +886,6 @@ Authorization: Bearer <token>
 ### Delete Facility
 
 **Endpoint**: `POST /facilities/delete`
-**Status**: ✅ Implemented
 **Convex Function**: `facilities.delete`
 
 **Purpose**: Soft delete facility (set status to inactive)
@@ -957,7 +944,6 @@ Authorization: Bearer <token>
 ### Assign User Role
 
 **Endpoint**: `POST /users/assign-role`
-**Status**: ✅ Implemented
 **Convex Function**: `users.assignRole`
 
 **Purpose**: Assign role to user during onboarding (Owner, Manager) or invite new users later
@@ -1033,7 +1019,6 @@ Authorization: Bearer <token>
 ### Get Users by Company
 
 **Endpoint**: `POST /users/get-by-company`
-**Status**: ✅ Implemented
 **Convex Function**: `users.getByCompany`
 
 **Purpose**: List all users in company (used in user management page)
@@ -1096,7 +1081,6 @@ Authorization: Bearer <token>
 ### Update User Role
 
 **Endpoint**: `POST /users/update-role`
-**Status**: ✅ Implemented
 **Convex Function**: `users.updateRole`
 
 **Purpose**: Change user's role or facility access
@@ -1157,7 +1141,6 @@ Authorization: Bearer <token>
 ### Deactivate User
 
 **Endpoint**: `POST /users/deactivate`
-**Status**: ✅ Implemented
 **Convex Function**: `users.deactivate`
 
 **Purpose**: Soft delete user (set status to inactive, revoke access)
@@ -1211,7 +1194,6 @@ Authorization: Bearer <token>
 ### Get Dashboard Summary
 
 **Endpoint**: `POST /dashboard/summary`
-**Status**: ✅ Implemented
 **Convex Function**: `dashboard.getSummary`
 
 **Purpose**: Get key metrics for dashboard home page
@@ -1279,7 +1261,6 @@ Authorization: Bearer <token>
 ### Get Recent Activities
 
 **Endpoint**: `POST /dashboard/recent-activities`
-**Status**: ✅ Implemented
 **Convex Function**: `dashboard.getRecentActivities`
 
 **Purpose**: Get list of recent/upcoming activities for dashboard
@@ -1352,7 +1333,6 @@ Authorization: Bearer <token>
 ### Get Active Alerts
 
 **Endpoint**: `POST /dashboard/alerts`
-**Status**: ✅ Implemented
 **Convex Function**: `dashboard.getActiveAlerts`
 
 **Purpose**: Get system alerts and notifications
@@ -1423,7 +1403,6 @@ Authorization: Bearer <token>
 ### Simple Login
 
 **Endpoint**: `POST /registration/login`
-**Status**: ✅ Ready
 **Convex Function**: `registration.login`
 
 **Important**: El `token` es un session token (30 días). Cada login genera un nuevo token e invalida el anterior.
@@ -1521,7 +1500,6 @@ Content-Type: application/json
 ### Validate Session Token
 
 **Endpoint**: `POST /registration/validate-token`
-**Status**: ✅ Ready
 **Convex Function**: `registration.validateToken`
 
 **Use**: Llamar en page load de páginas protegidas. Si valid=false, hacer logout y redirigir a login.
@@ -1599,7 +1577,6 @@ Authorization: Bearer <token>
 ### Logout
 
 **Endpoint**: `POST /registration/logout`
-**Status**: ✅ Ready
 **Convex Function**: `registration.logout`
 
 #### Bubble API Connector Configuration
