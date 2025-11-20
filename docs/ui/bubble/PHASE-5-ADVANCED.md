@@ -1,14 +1,14 @@
-# PHASE 3: ADVANCED - UI REQUIREMENTS
+# PHASE 5: ADVANCED - UI REQUIREMENTS
 
 **Focus**: Compliance, analytics, mobile, and integrations
 **Database**: See [../../database/SCHEMA.md](../../database/SCHEMA.md)
-**API Endpoints**: See [../../api/PHASE-3-ENDPOINTS.md](../../api/PHASE-3-ENDPOINTS.md)
+**API Endpoints**: See [../../api/PHASE-5-ENDPOINTS.md](../../api/PHASE-5-ENDPOINTS.md)
 
 ---
 
 ## Overview
 
-Phase 3 adds reporting, compliance, analytics, and ecosystem integration. Transforms operational data into compliance reports, business intelligence dashboards, and enables third-party integrations.
+Phase 5 adds reporting, compliance, analytics, and ecosystem integration. Transforms operational data into compliance reports, business intelligence dashboards, and enables third-party integrations.
 
 **Total Pages**: ~18 screens
 **User Flow**: Non-linear, analytics-heavy

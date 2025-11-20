@@ -8,12 +8,13 @@
 
 ## Overview
 
-Phase 1 is a guided onboarding wizard that takes users from signup → fully configured company. Users complete 8 modules in sequence to set up their agricultural operation.
+Phase 1 is a guided onboarding wizard that takes users from signup → company with facility created. Users complete 4 modules to create their account, company, and first facility. Post-onboarding setup (Areas, Cultivars, Suppliers) happens in the operational dashboard (PHASE 2).
 
-**Total Pages**: 17 screens
+**Total Pages**: 7 screens
+**Total Modules**: 4
 **User Flow**: Linear progression with back navigation
 **Entry**: Public landing page
-**Exit**: Dashboard (ready for operations)
+**Exit**: Operational Dashboard (home page - facility context established)
 
 ---
 
@@ -514,462 +515,29 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 
 ---
 
-## MODULE 4: Area Setup
+## MODULE 4: Onboarding Complete - Ready to Start
 
-### Page 7: Define Cultivation Areas
+**Note**: Onboarding ends here. Areas, Cultivars, and Suppliers are now managed in the operational dashboard (PHASE 2).
+
+### Page 7: Setup Complete - Go to Dashboard
 ```
 ┌─────────────────────────────────┐
-│   🌿 CULTIVATION AREAS          │
-│   at North Farm                 │
+│   ✅ FACILITY CREATED!          │
 ├─────────────────────────────────┤
 │                                 │
-│  [+ Add New Area]               │
-│                                 │
-│  ┌─────────────────────────┐   │
-│  │ Area 1: Propagation     │   │
-│  │ Type: Propagation       │   │
-│  │ Size: 50 m²             │   │
-│  │ Capacity: 500 plants    │   │
-│  │ [Edit] [Delete]         │   │
-│  └─────────────────────────┘   │
-│                                 │
-│  ┌─────────────────────────┐   │
-│  │ Area 2: Vegetative Rm   │   │
-│  │ Type: Vegetative        │   │
-│  │ Size: 100 m²            │   │
-│  │ Capacity: 300 plants    │   │
-│  │ [Edit] [Delete]         │   │
-│  └─────────────────────────┘   │
-│                                 │
-│  ┌─────────────────────────┐   │
-│  │ Area 3: Flowering Rm    │   │
-│  │ Type: Flowering         │   │
-│  │ Size: 150 m²            │   │
-│  │ Capacity: 200 plants    │   │
-│  │ [Edit] [Delete]         │   │
-│  └─────────────────────────┘   │
-│                                 │
-│  [     Continue     ]           │
-│                                 │
-└─────────────────────────────────┘
-```
-
-**Bubble Elements**:
-- Button: "+ Add New Area" → opens popup/modal
-- Repeating Group: List of created areas
-  - Shows: area name, type, size, capacity
-  - Buttons: "Edit", "Delete" for each area
-- Button: "Continue" → navigate to next module
-
-**Database Context**:
-- **Reads from**: `areas` table
-  - Gets: all areas for current facility
-- **Writes to**: `areas` table (via popup workflow)
-  - Stores: name, area_type, total_area_m2, capacity, compatible_crop_type_ids
-
-**UI Translations**:
-
-| Elemento | Español | English | Key |
-|----------|---------|---------|-----|
-| Page Header | ÁREAS DE CULTIVO | CULTIVATION AREAS | areas_header |
-| At Facility Text | en | at | areas_at_facility |
-| Add New Button | + Agregar Nueva Área | + Add New Area | areas_add_new_btn |
-| Area Label | Área | Area | areas_area_label |
-| Type Label | Tipo | Type | areas_type_label |
-| Size Label | Tamaño | Size | areas_size_label |
-| Capacity Label | Capacidad | Capacity | areas_capacity_label |
-| Plants Unit | plantas | plants | areas_plants_unit |
-| Edit Button | Editar | Edit | areas_edit_btn |
-| Delete Button | Eliminar | Delete | areas_delete_btn |
-| Continue Button | Continuar | Continue | areas_continue_btn |
-
----
-
-### Popup: Add/Edit Area
-```
-┌─────────────────────────────────┐
-│    ADD CULTIVATION AREA         │
-├─────────────────────────────────┤
-│                                 │
-│  Area Name:                     │
-│  [_______________________]      │
-│                                 │
-│  Area Type:                     │
-│  [v Propagation ▼]              │
-│  Options: Propagation,          │
-│          Vegetative,            │
-│          Flowering,             │
-│          Drying/Curing,         │
-│          Storage                │
-│                                 │
-│  Size (m²):                     │
-│  [________]                     │
-│                                 │
-│  Capacity (plants/batches):     │
-│  [________]                     │
-│                                 │
-│  Climate Controlled:            │
-│  ☐ Yes                          │
-│                                 │
-│  Environmental Settings:        │
-│  Temperature: [20] - [25] °C    │
-│  Humidity: [60] - [70] %        │
-│                                 │
-│  [Cancel]  [Save Area]          │
-│                                 │
-└─────────────────────────────────┘
-```
-
-**Bubble Elements** (in popup):
-- Input: Area name
-- Dropdown: Area type
-- Input: Size (numeric)
-- Input: Capacity (numeric)
-- Checkbox: Climate controlled
-- Input: Temp min/max (numeric)
-- Input: Humidity min/max (numeric)
-- Button: "Cancel" → close popup
-- Button: "Save Area" → create/update area, refresh list, close popup
-
-**Workflow**:
-1. User fills form
-2. On "Save Area" → Call API: Create area
-3. Refresh areas list on main page
-4. Close popup
-
-**Database Context**:
-- **Writes to**: `areas` table
-  - Stores: facility_id, name, area_type, total_area_m2, capacity, climate_controlled, environmental_specs
-  - Sets: status = "active"
-
-**UI Translations (Popup)**:
-
-| Elemento | Español | English | Key |
-|----------|---------|---------|-----|
-| Popup Header (Add) | AGREGAR ÁREA DE CULTIVO | ADD CULTIVATION AREA | areas_popup_add_header |
-| Popup Header (Edit) | EDITAR ÁREA DE CULTIVO | EDIT CULTIVATION AREA | areas_popup_edit_header |
-| Area Name Label | Nombre del Área | Area Name | areas_popup_name_label |
-| Area Type Label | Tipo de Área | Area Type | areas_popup_type_label |
-| Size Label | Tamaño (m²) | Size (m²) | areas_popup_size_label |
-| Capacity Label | Capacidad (plantas/lotes) | Capacity (plants/batches) | areas_popup_capacity_label |
-| Climate Controlled Label | Climatizado | Climate Controlled | areas_popup_climate_controlled_label |
-| Yes Option | Sí | Yes | areas_popup_yes |
-| Environmental Settings | Configuración Ambiental | Environmental Settings | areas_popup_environmental_label |
-| Temperature Label | Temperatura | Temperature | areas_popup_temperature_label |
-| Humidity Label | Humedad | Humidity | areas_popup_humidity_label |
-| Cancel Button | Cancelar | Cancel | areas_popup_cancel_btn |
-| Save Button | Guardar Área | Save Area | areas_popup_save_btn |
-| Success Message | Área creada exitosamente | Area created successfully | areas_popup_create_success |
-| Update Success Message | Área actualizada exitosamente | Area updated successfully | areas_popup_update_success |
-
-**Enum Translations (Area Types)**:
-
-| value | display_es | display_en |
-|-------|------------|------------|
-| propagation | Propagación | Propagation |
-| vegetative | Vegetativo | Vegetative |
-| flowering | Floración | Flowering |
-| drying | Secado/Curado | Drying/Curing |
-| processing | Procesamiento | Processing |
-| storage | Almacenamiento | Storage |
-
-**Enum Translations (Area Status)**:
-
-| value | display_es | display_en |
-|-------|------------|------------|
-| active | Activo | Active |
-| maintenance | Mantenimiento | Maintenance |
-| inactive | Inactivo | Inactive |
-
----
-
-## MODULE 5: Cultivar Selection
-
-### Page 8: Select Cultivars
-```
-┌─────────────────────────────────┐
-│   🌾 SELECT CULTIVARS           │
-│   (Crop Varieties)              │
-├─────────────────────────────────┤
-│                                 │
-│  For Crop: [Cannabis ▼]         │
-│                                 │
-│  ┌─────────────────────────┐   │
-│  │ ☑ Cherry AK             │   │
-│  │   Type: Indica          │   │
-│  │   Flowering: 8 weeks    │   │
-│  │   Yield: Medium-High    │   │
-│  └─────────────────────────┘   │
-│                                 │
-│  ┌─────────────────────────┐   │
-│  │ ☐ White Widow           │   │
-│  │   Type: Hybrid          │   │
-│  │   Flowering: 9 weeks    │   │
-│  │   Yield: High           │   │
-│  └─────────────────────────┘   │
-│                                 │
-│  ┌─────────────────────────┐   │
-│  │ ☐ Green Crack           │   │
-│  │   Type: Sativa          │   │
-│  │   Flowering: 10 weeks   │   │
-│  │   Yield: Very High      │   │
-│  └─────────────────────────┘   │
-│                                 │
-│  [+ Add Custom Cultivar]        │
-│                                 │
-│  [     Continue     ]           │
-│                                 │
-└─────────────────────────────────┘
-```
-
-**Bubble Elements**:
-- Dropdown: Crop type filter
-- Repeating Group: Available cultivars for selected crop
-  - Shows: name, variety type, flowering weeks, yield level
-  - Checkboxes: Select cultivar (multiple allowed)
-- Button: "+ Add Custom Cultivar" → opens popup
-- Button: "Continue" → save selections, navigate to next module
-
-**Workflow**:
-1. On page load → Call API: Get cultivars for facility's primary crops
-2. User selects cultivars
-3. On "Continue" → Call API: Link cultivars to facility
-4. Navigate to next module
-
-**Database Context**:
-- **Reads from**: `cultivars` table
-  - Gets: cultivars filtered by crop_type_id
-- **Reads from**: `facilities` table
-  - Gets: primary_crop_type_ids to filter cultivars
-- **Updates**: `facilities` table
-  - Links: selected cultivar IDs to facility
-
-**UI Translations**:
-
-| Elemento | Español | English | Key |
-|----------|---------|---------|-----|
-| Page Header | SELECCIONAR CULTIVARES | SELECT CULTIVARS | cultivars_header |
-| Subtitle | (Variedades de Cultivo) | (Crop Varieties) | cultivars_subtitle |
-| For Crop Label | Para Cultivo | For Crop | cultivars_for_crop_label |
-| Type Label | Tipo | Type | cultivars_type_label |
-| Flowering Label | Floración | Flowering | cultivars_flowering_label |
-| Weeks | semanas | weeks | cultivars_weeks_unit |
-| Yield Label | Rendimiento | Yield | cultivars_yield_label |
-| Add Custom Button | + Agregar Cultivar Personalizado | + Add Custom Cultivar | cultivars_add_custom_btn |
-| Continue Button | Continuar | Continue | cultivars_continue_btn |
-| Success Message | Cultivares vinculados exitosamente | Cultivars linked successfully | cultivars_link_success |
-
-**Enum Translations (Variety Types)**:
-
-| value | display_es | display_en |
-|-------|------------|------------|
-| Indica | Indica | Indica |
-| Sativa | Sativa | Sativa |
-| Hybrid | Híbrido | Hybrid |
-| Arabica | Arábica | Arabica |
-| Robusta | Robusta | Robusta |
-
-**Enum Translations (Yield Levels)**:
-
-| value | display_es | display_en |
-|-------|------------|------------|
-| low | Bajo | Low |
-| medium | Medio | Medium |
-| medium-high | Medio-Alto | Medium-High |
-| high | Alto | High |
-| very-high | Muy Alto | Very High |
-
----
-
-## MODULE 6: Supplier Setup
-
-### Page 9: Add Suppliers
-```
-┌─────────────────────────────────┐
-│   🚚 INPUT SUPPLIERS            │
-├─────────────────────────────────┤
-│                                 │
-│  Suppliers provide:             │
-│  • Seeds/Cuttings               │
-│  • Nutrients                    │
-│  • Pesticides                   │
-│  • Equipment                    │
-│                                 │
-│  [+ Add Supplier]               │
-│                                 │
-│  ┌─────────────────────────┐   │
-│  │ FarmChem Inc            │   │
-│  │ Tax ID: 900123456-7     │   │
-│  │ Products: Nutrients     │   │
-│  │ Contact: Juan Pérez     │   │
-│  │ [Edit] [Delete]         │   │
-│  └─────────────────────────┘   │
-│                                 │
-│  ┌─────────────────────────┐   │
-│  │ Seed Supply Co.         │   │
-│  │ Tax ID: 800987654-3     │   │
-│  │ Products: Seeds         │   │
-│  │ Contact: María García   │   │
-│  │ [Edit] [Delete]         │   │
-│  └─────────────────────────┘   │
-│                                 │
-│  [Skip for Now] [Continue]      │
-│                                 │
-└─────────────────────────────────┘
-```
-
-**Bubble Elements**:
-- Button: "+ Add Supplier" → opens popup
-- Repeating Group: List of added suppliers
-  - Shows: name, tax ID, product categories, contact
-  - Buttons: "Edit", "Delete" for each
-- Button: "Skip for Now" → navigate to dashboard
-- Button: "Continue" → navigate to dashboard
-
-**Database Context**:
-- **Reads from**: `suppliers` table
-  - Gets: all suppliers for current company
-- **Writes to**: `suppliers` table (via popup)
-  - Stores: name, tax_id, product_categories, contact info
-
-**UI Translations**:
-
-| Elemento | Español | English | Key |
-|----------|---------|---------|-----|
-| Page Header | PROVEEDORES DE INSUMOS | INPUT SUPPLIERS | suppliers_header |
-| Description Line 1 | Los proveedores proporcionan: | Suppliers provide: | suppliers_description |
-| Seeds Item | • Semillas/Esquejes | • Seeds/Cuttings | suppliers_item_seeds |
-| Nutrients Item | • Nutrientes | • Nutrients | suppliers_item_nutrients |
-| Pesticides Item | • Pesticidas | • Pesticides | suppliers_item_pesticides |
-| Equipment Item | • Equipamiento | • Equipment | suppliers_item_equipment |
-| Add Supplier Button | + Agregar Proveedor | + Add Supplier | suppliers_add_btn |
-| Tax ID Label | NIT | Tax ID | suppliers_tax_id_label |
-| Products Label | Productos | Products | suppliers_products_label |
-| Contact Label | Contacto | Contact | suppliers_contact_label |
-| Edit Button | Editar | Edit | suppliers_edit_btn |
-| Delete Button | Eliminar | Delete | suppliers_delete_btn |
-| Skip Button | Omitir por Ahora | Skip for Now | suppliers_skip_btn |
-| Continue Button | Continuar | Continue | suppliers_continue_btn |
-
----
-
-### Popup: Add/Edit Supplier
-```
-┌─────────────────────────────────┐
-│    ADD SUPPLIER                 │
-├─────────────────────────────────┤
-│                                 │
-│  Supplier Name:                 │
-│  [_______________________]      │
-│                                 │
-│  Tax ID (NIT):                  │
-│  [_______________________]      │
-│                                 │
-│  Product Categories:            │
-│  ☐ Seeds/Cuttings               │
-│  ☐ Nutrients                    │
-│  ☐ Pesticides                   │
-│  ☐ Equipment                    │
-│  ☐ Other                        │
-│                                 │
-│  Contact Person:                │
-│  [_______________________]      │
-│                                 │
-│  Contact Email:                 │
-│  [_______________________]      │
-│                                 │
-│  Contact Phone:                 │
-│  [_______________________]      │
-│                                 │
-│  [Cancel]  [Save Supplier]      │
-│                                 │
-└─────────────────────────────────┘
-```
-
-**Bubble Elements** (in popup):
-- Input: Supplier name
-- Input: Tax ID
-- Checkboxes: Product categories (multiple)
-- Input: Contact name
-- Input: Contact email
-- Input: Contact phone
-- Button: "Cancel" → close popup
-- Button: "Save Supplier" → create supplier, refresh list, close popup
-
-**Workflow**:
-1. User fills form
-2. On "Save Supplier" → Call API: Create supplier
-3. Refresh suppliers list on main page
-4. Close popup
-
-**Database Context**:
-- **Writes to**: `suppliers` table
-  - Stores: company_id, name, tax_id, product_categories, contact_name, contact_email, contact_phone
-  - Sets: status = "active"
-
-**UI Translations (Popup)**:
-
-| Elemento | Español | English | Key |
-|----------|---------|---------|-----|
-| Popup Header (Add) | AGREGAR PROVEEDOR | ADD SUPPLIER | suppliers_popup_add_header |
-| Popup Header (Edit) | EDITAR PROVEEDOR | EDIT SUPPLIER | suppliers_popup_edit_header |
-| Supplier Name Label | Nombre del Proveedor | Supplier Name | suppliers_popup_name_label |
-| Tax ID Label | NIT | Tax ID (NIT) | suppliers_popup_tax_id_label |
-| Product Categories Label | Categorías de Productos | Product Categories | suppliers_popup_categories_label |
-| Seeds Checkbox | Semillas/Esquejes | Seeds/Cuttings | suppliers_popup_category_seeds |
-| Nutrients Checkbox | Nutrientes | Nutrients | suppliers_popup_category_nutrients |
-| Pesticides Checkbox | Pesticidas | Pesticides | suppliers_popup_category_pesticides |
-| Equipment Checkbox | Equipamiento | Equipment | suppliers_popup_category_equipment |
-| Other Checkbox | Otro | Other | suppliers_popup_category_other |
-| Contact Person Label | Persona de Contacto | Contact Person | suppliers_popup_contact_person_label |
-| Contact Email Label | Correo de Contacto | Contact Email | suppliers_popup_contact_email_label |
-| Contact Phone Label | Teléfono de Contacto | Contact Phone | suppliers_popup_contact_phone_label |
-| Cancel Button | Cancelar | Cancel | suppliers_popup_cancel_btn |
-| Save Button | Guardar Proveedor | Save Supplier | suppliers_popup_save_btn |
-| Success Message | Proveedor creado exitosamente | Supplier created successfully | suppliers_popup_create_success |
-| Update Success Message | Proveedor actualizado exitosamente | Supplier updated successfully | suppliers_popup_update_success |
-
-**Enum Translations (Product Categories)**:
-
-| value | display_es | display_en |
-|-------|------------|------------|
-| seeds | Semillas/Esquejes | Seeds/Cuttings |
-| nutrients | Nutrientes | Nutrients |
-| pesticides | Pesticidas | Pesticides |
-| equipment | Equipamiento | Equipment |
-| other | Otro | Other |
-
-**Enum Translations (Supplier Status)**:
-
-| value | display_es | display_en |
-|-------|------------|------------|
-| active | Activo | Active |
-| inactive | Inactivo | Inactive |
-
----
-
-## MODULE 7: Onboarding Complete
-
-### Page 10: Welcome to Dashboard
-```
-┌─────────────────────────────────┐
-│   ✅ SETUP COMPLETE!            │
-├─────────────────────────────────┤
-│                                 │
-│  Congratulations!               │
-│  Your facility is ready.        │
+│  Your facility is ready!        │
 │                                 │
 │  Summary:                       │
 │  ✓ Company: Cultivos San José  │
 │  ✓ Facility: North Farm         │
-│  ✓ Areas: 4 defined             │
-│  ✓ Cultivars: 2 selected        │
-│  ✓ Suppliers: 2 added           │
 │                                 │
-│  Next Steps:                    │
-│  1. Create production templates │
-│  2. Set up inventory            │
-│  3. Start your first batch      │
+│  Next, you'll set up:           │
+│  • Cultivation Areas            │
+│  • Cultivars (varieties)        │
+│  • Suppliers (optional)         │
+│                                 │
+│  These can be managed from      │
+│  your operational dashboard.    │
 │                                 │
 │  [  Go to Dashboard  ]          │
 │                                 │
@@ -977,40 +545,36 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 ```
 
 **Bubble Elements**:
-- Text: Summary of completed setup
-- List: Checkmarks showing what was configured
-- Text: Next steps guidance
-- Button: "Go to Dashboard" → navigate to main dashboard
+- Text: Summary showing company and facility created
+- Text: Next steps guidance (what to do in dashboard)
+- Button: "Go to Dashboard" → navigate to home page (facility dashboard)
 
 **Workflow**:
-1. Display summary of onboarding
-2. On button click → Navigate to Dashboard (start of Phase 2)
+1. Display summary of completed setup
+2. Set Current User's `currentFacilityId` to newly created facility
+3. On button click → Navigate to Dashboard home page (PHASE 2)
 
 **Database Context**:
 - **No writes**: Just displays data already saved
-- **Reads from**: `companies`, `facilities`, `areas`, `cultivars`, `suppliers`
-  - Gets: counts and names for summary display
+- **Reads from**: `companies`, `facilities`
+  - Gets: company name, facility name for summary display
+- **Updates**: `users` table
+  - Sets: `currentFacilityId` to this facility (establishes global context)
 
 **UI Translations**:
 
 | Elemento | Español | English | Key |
 |----------|---------|---------|-----|
-| Page Header | ¡CONFIGURACIÓN COMPLETA! | SETUP COMPLETE! | onboarding_complete_header |
-| Congratulations | ¡Felicitaciones! | Congratulations! | onboarding_complete_congrats |
-| Ready Message | Tu instalación está lista. | Your facility is ready. | onboarding_complete_ready |
+| Page Header | ¡INSTALACIÓN CREADA! | FACILITY CREATED! | onboarding_facility_complete_header |
+| Ready Message | ¡Tu instalación está lista! | Your facility is ready! | onboarding_facility_ready |
 | Summary Label | Resumen: | Summary: | onboarding_complete_summary_label |
 | Company Checkmark | ✓ Empresa: | ✓ Company: | onboarding_complete_company |
 | Facility Checkmark | ✓ Instalación: | ✓ Facility: | onboarding_complete_facility |
-| Areas Checkmark | ✓ Áreas: | ✓ Areas: | onboarding_complete_areas |
-| Areas Count | [X] definidas | [X] defined | onboarding_complete_areas_count |
-| Cultivars Checkmark | ✓ Cultivares: | ✓ Cultivars: | onboarding_complete_cultivars |
-| Cultivars Count | [X] seleccionados | [X] selected | onboarding_complete_cultivars_count |
-| Suppliers Checkmark | ✓ Proveedores: | ✓ Suppliers: | onboarding_complete_suppliers |
-| Suppliers Count | [X] agregados | [X] added | onboarding_complete_suppliers_count |
-| Next Steps Label | Próximos Pasos: | Next Steps: | onboarding_complete_next_steps_label |
-| Step 1 | 1. Crear plantillas de producción | 1. Create production templates | onboarding_complete_step_1 |
-| Step 2 | 2. Configurar inventario | 2. Set up inventory | onboarding_complete_step_2 |
-| Step 3 | 3. Iniciar tu primer lote | 3. Start your first batch | onboarding_complete_step_3 |
+| Next Setup Label | A continuación, configurarás: | Next, you'll set up: | onboarding_next_setup_label |
+| Areas Item | • Áreas de Cultivo | • Cultivation Areas | onboarding_next_areas |
+| Cultivars Item | • Cultivares (variedades) | • Cultivars (varieties) | onboarding_next_cultivars |
+| Suppliers Item | • Proveedores (opcional) | • Suppliers (optional) | onboarding_next_suppliers |
+| Dashboard Message | Estos pueden gestionarse desde tu panel operacional. | These can be managed from your operational dashboard. | onboarding_dashboard_message |
 | Go to Dashboard Button | Ir al Panel de Control | Go to Dashboard | onboarding_complete_dashboard_btn |
 
 ---
@@ -1031,11 +595,11 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 
 **Progress Indicator** (onboarding wizard):
 ```
-1○─2○─3○─4○─5○─6○─7●
-Step 7 of 7: Add Suppliers
+1○─2○─3●
+Step 3 of 3: Create Facility
 ```
-- Shows current step
-- Total steps
+- Shows current step (Authentication → Company → Facility)
+- Total steps: 3 (excluding optional subscription page)
 - Progress visualization
 
 **Reusable Components Translations**:
@@ -1077,7 +641,10 @@ Signup → users table (email_verified=false)
 
 Verify → users table (email_verified=true)
        → emailVerificationTokens (used=true)
+```
 
+### Module 1 (Page 3): Company Setup
+```
 Company → companies table
         → users table (add company_id)
 ```
@@ -1086,13 +653,15 @@ Company → companies table
 ```
 Facility → facilities table
          → Check companies.max_facilities limit
-
-Areas → areas table (linked to facility_id)
-
-Cultivars → Link to facilities (update facility record)
-
-Suppliers → suppliers table (linked to company_id)
+         → users table (set currentFacilityId - establishes global context)
 ```
+
+### Module 4: Complete Onboarding
+```
+Navigate to Dashboard → User ready to configure Areas, Cultivars, Suppliers in PHASE 2
+```
+
+**Note**: Areas, Cultivars, and Suppliers are no longer part of onboarding. They are managed in operational pages (PHASE 2, MODULE 8, 15, 16).
 
 ---
 
