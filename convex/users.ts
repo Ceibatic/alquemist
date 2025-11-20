@@ -88,7 +88,7 @@ export const getUsersByCompany = query({
           firstName: user.first_name,
           lastName: user.last_name,
           roleId: user.role_id,
-          roleName: role?.display_name || "Sin rol",
+          roleName: role?.display_name_es || "Sin rol",
           status: user.status,
           lastLogin: user.last_login,
         };
@@ -263,7 +263,7 @@ export const getUserById = query({
       phone: user.phone,
       emailVerified: user.email_verified,
       roleId: user.role_id,
-      roleName: role?.display_name || "Sin rol",
+      roleName: role?.display_name_es || "Sin rol",
       companyId: user.company_id,
       companyName: company?.name || null,
       accessibleFacilityIds: user.accessible_facility_ids,

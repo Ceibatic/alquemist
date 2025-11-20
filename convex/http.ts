@@ -1110,6 +1110,259 @@ http.route({
 });
 
 // ============================================================================
+// MODULE 4: USER ROLE ASSIGNMENT ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /users/assign-role
+ * Assign role to user (during onboarding or later)
+ */
+http.route({
+  path: "/users/assign-role",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.users.assignUserRole, body);
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /users/get-by-company
+ * Get all users in a company
+ */
+http.route({
+  path: "/users/get-by-company",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runQuery(api.users.getUsersByCompany, body);
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /users/update-role
+ * Update user's role or facility access
+ */
+http.route({
+  path: "/users/update-role",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.users.updateUserRole, body);
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /users/deactivate
+ * Deactivate user (soft delete)
+ */
+http.route({
+  path: "/users/deactivate",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runMutation(api.users.deactivateUser, body);
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+// ============================================================================
+// MODULE 5: DASHBOARD HOME ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /dashboard/summary
+ * Get dashboard summary metrics
+ */
+http.route({
+  path: "/dashboard/summary",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runQuery(api.dashboard.getDashboardSummary, body);
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /dashboard/recent-activities
+ * Get recent/upcoming activities for dashboard
+ */
+http.route({
+  path: "/dashboard/recent-activities",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runQuery(api.dashboard.getRecentActivities, body);
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /dashboard/alerts
+ * Get active alerts and notifications
+ */
+http.route({
+  path: "/dashboard/alerts",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+
+      const result = await ctx.runQuery(api.dashboard.getActiveAlerts, body);
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+// ============================================================================
 // DATABASE SEEDING (DEVELOPMENT/ADMIN)
 // ============================================================================
 

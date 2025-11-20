@@ -273,8 +273,13 @@ export const getFacilitiesByCompany = query({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    const result = await list(ctx, { companyId: args.companyId });
-    return result.facilities;
+    // Direct implementation instead of calling list()
+    let facilitiesQuery = ctx.db.query("facilities")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId));
+
+    const allFacilities = await facilitiesQuery.collect();
+
+    return allFacilities;
   },
 });
 
@@ -288,6 +293,14 @@ export const getById = query({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    return await get(ctx, { id: args.facilityId, companyId: args.companyId });
+    // Direct implementation instead of calling get()
+    const facility = await ctx.db.get(args.facilityId);
+
+    // Verify company ownership
+    if (!facility || facility.company_id !== args.companyId) {
+      return null;
+    }
+
+    return facility;
   },
 });
