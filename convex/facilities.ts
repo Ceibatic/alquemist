@@ -259,3 +259,35 @@ export const linkCultivars = mutation({
     };
   },
 });
+
+// ============================================================================
+// PHASE 1 API ENDPOINTS (Wrappers for Bubble.io compatibility)
+// ============================================================================
+
+/**
+ * Get facilities by company
+ * Wrapper for Bubble.io API compatibility (Phase 1 Module 3)
+ */
+export const getFacilitiesByCompany = query({
+  args: {
+    companyId: v.id("companies"),
+  },
+  handler: async (ctx, args) => {
+    const result = await list(ctx, { companyId: args.companyId });
+    return result.facilities;
+  },
+});
+
+/**
+ * Get facility by ID
+ * Wrapper for Bubble.io API compatibility (Phase 1 Module 3)
+ */
+export const getById = query({
+  args: {
+    facilityId: v.id("facilities"),
+    companyId: v.id("companies"),
+  },
+  handler: async (ctx, args) => {
+    return await get(ctx, { id: args.facilityId, companyId: args.companyId });
+  },
+});
