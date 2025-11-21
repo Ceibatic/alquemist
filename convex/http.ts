@@ -110,6 +110,37 @@ http.route({
 });
 
 // ============================================================================
+// CROP TYPES ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /crop-types/list
+ * Returns list of available crop types (Cannabis, Coffee, Cocoa, Flowers)
+ *
+ * Body: { "includeInactive": false } (optional)
+ * Response: [{ id, name, display_name_es, category, default_units, ... }]
+ */
+http.route({
+  path: "/crop-types/list",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const body = await request.json();
+
+    const cropTypes = await ctx.runQuery(api.crops.getCropTypes, {
+      includeInactive: body?.includeInactive || false,
+    });
+
+    return new Response(JSON.stringify(cropTypes), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  }),
+});
+
+// ============================================================================
 // REGISTRATION ENDPOINTS
 // ============================================================================
 

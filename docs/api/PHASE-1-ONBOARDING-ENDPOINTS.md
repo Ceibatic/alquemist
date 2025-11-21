@@ -502,6 +502,93 @@ Content-Type: application/json
 
 ---
 
+### Get Crop Types
+
+**Endpoint**: `POST /crop-types/list`
+**Convex Function**: `crops.getCropTypes`
+
+**Purpose**: Obtain list of available crop types (Cannabis, Coffee, Cocoa, Flowers) for facility creation
+
+#### Bubble API Connector Configuration
+
+**Name**: `getCropTypes`
+**Use as**: Data
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/crop-types/list`
+**Data Type**: List of objects (Return list = Yes)
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "includeInactive": false
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| includeInactive | boolean | No | Body | false |
+
+**Complete Response** (array - inicializar estos campos en Bubble):
+```json
+[
+  {
+    "id": "crop123...",
+    "name": "Cannabis",
+    "display_name_es": "Cannabis",
+    "category": "flowering_plant",
+    "default_units": "kg",
+    "is_active": true
+  },
+  {
+    "id": "crop456...",
+    "name": "Coffee",
+    "display_name_es": "Café",
+    "category": "crop",
+    "default_units": "kg",
+    "is_active": true
+  },
+  {
+    "id": "crop789...",
+    "name": "Cocoa",
+    "display_name_es": "Cacao",
+    "category": "tree_crop",
+    "default_units": "kg",
+    "is_active": true
+  }
+]
+```
+
+**Response Fields**:
+- `id` (text) - ID del tipo de cultivo
+- `name` (text) - Nombre en inglés
+- `display_name_es` (text) - Nombre en español
+- `category` (text) - Categoría del cultivo
+- `default_units` (text) - Unidad de medida por defecto
+- `is_active` (boolean) - Si el cultivo está activo
+
+#### Bubble Dropdown Setup
+
+1. **Multi-select Dropdown "Crop Types"**:
+   - Choices source: Get data from API → getCropTypes
+   - Option caption: `This crop's display_name_es`
+   - Option value: `This crop's id`
+   - Allow multiple selections: Yes (for primaryCropTypeIds)
+
+#### Usage in Facility Creation
+
+When creating a facility (MODULE 3 - Create Facility), use this endpoint to populate the crop type selector:
+- Load crop types on page load or when user accesses facility form
+- User can select one or more crop types as primary crops
+- Selected IDs are passed to `createFacility` as `primaryCropTypeIds`
+
+---
+
 ### Create Company (Step 2)
 
 **Endpoint**: `POST /registration/register-step-2`
@@ -665,6 +752,11 @@ Authorization: Bearer <token>
 
 #### Bubble Workflow
 
+**Setup (on page load)**:
+1. Load crop types: API Call → getCropTypes
+2. Populate multi-select dropdown with crop types
+
+**On Create Facility Click**:
 1. **Trigger**: Button "Create Facility" is clicked
 2. **Step 1**: Plugins → createFacility
    - token = `Current User's session_token`
@@ -672,7 +764,7 @@ Authorization: Bearer <token>
    - name = `Input name's value`
    - licenseNumber = `Input licenseNumber's value`
    - licenseType = `Dropdown licenseType's value`
-   - primaryCropTypeIds = `Dropdown cropTypes's value (list)`
+   - primaryCropTypeIds = `Dropdown cropTypes's checked values (list of IDs)`
    - address = `Input address's value`
    - municipalityCode = `Dropdown municipality's value`
    - departmentCode = `Dropdown department's value`
@@ -1648,17 +1740,21 @@ Content-Type: application/json
 - ✅ Get municipalities
 - ✅ Create company (step 2)
 
+**MODULE 3: Facility Creation** - 1 endpoint
+- ✅ Get crop types (NEW)
+
 **MODULE 6: Login & Session** - 3 endpoints
 - ✅ Simple login
 - ✅ Validate session token
 - ✅ Logout
 
-**Total Ready**: 11 endpoints
+**Total Ready**: 12 endpoints
 
 **Convex Files**:
 - [convex/registration.ts](../../convex/registration.ts)
 - [convex/emailVerification.ts](../../convex/emailVerification.ts)
 - [convex/geographic.ts](../../convex/geographic.ts)
+- [convex/crops.ts](../../convex/crops.ts)
 
 ---
 
@@ -1751,7 +1847,7 @@ For complete error code translations, see [../i18n/STRATEGY.md](../i18n/STRATEGY
    - Name: "Alquemist Backend"
    - Authentication: None (we use custom tokens)
 
-3. **Configure Each Endpoint** (11 ready + 12 pending)
+3. **Configure Each Endpoint** (12 ready + 11 pending)
    - Follow the "Bubble API Setup" section for each endpoint above
    - Initialize all response fields exactly as specified
    - Mark passwords and tokens as "Private"
@@ -1778,7 +1874,7 @@ For complete error code translations, see [../i18n/STRATEGY.md](../i18n/STRATEGY
    - Signup page → registerUserStep1
    - Verification page → verifyEmailToken, checkVerificationStatus
    - Company setup → getDepartments, getMunicipalities, registerCompanyStep2
-   - Facility setup → createFacility, checkLicenseAvailability
+   - Facility setup → getCropTypes, createFacility, checkLicenseAvailability
    - User roles → assignUserRole
    - Dashboard → getDashboardSummary, getRecentActivities, getActiveAlerts
    - Login page → login
@@ -1799,11 +1895,13 @@ ONBOARDING FLOW:
    ↓
 5. registerCompanyStep2 (creates company)
    ↓
-6. createFacility (with checkLicenseAvailability)
+6. getCropTypes (for facility form dropdowns)
    ↓
-7. assignUserRole (auto-assign owner)
+7. createFacility (with checkLicenseAvailability)
    ↓
-8. Navigate to dashboard → getDashboardSummary, getRecentActivities
+8. assignUserRole (auto-assign owner)
+   ↓
+9. Navigate to dashboard → getDashboardSummary, getRecentActivities
 
 RETURNING USER FLOW:
 1. login (returns token)
