@@ -1758,32 +1758,33 @@ Content-Type: application/json
 
 ---
 
-### ⚠️ Not Yet Implemented (Need to Create)
+### ✅ Newly Completed (2025-01-20)
 
 **MODULE 3: Facility Creation** - 5 endpoints
-- ❌ Create facility
-- ❌ Get facilities by company
-- ❌ Check license availability
-- ❌ Update facility
-- ❌ Delete facility
+- ✅ Create facility
+- ✅ Get facilities by company
+- ✅ Check license availability
+- ✅ Update facility
+- ✅ Delete facility
 
 **MODULE 4: User Role Assignment** - 4 endpoints
-- ❌ Assign user role
-- ❌ Get users by company
-- ❌ Update user role
-- ❌ Deactivate user
+- ✅ Assign user role
+- ✅ Get users by company
+- ✅ Update user role
+- ✅ Deactivate user
 
 **MODULE 5: Dashboard Home** - 3 endpoints
-- ❌ Get dashboard summary
-- ❌ Get recent activities
-- ❌ Get active alerts
+- ✅ Get dashboard summary
+- ✅ Get recent activities
+- ✅ Get active alerts
 
-**Total Pending**: 12 endpoints
+**Total Completed**: 12 endpoints
 
-**Convex Files to Create**:
-- `convex/facilities.ts`
-- `convex/users.ts`
-- `convex/dashboard.ts`
+**Implementation Files**:
+- [convex/facilities.ts](../../convex/facilities.ts) - Facility management functions
+- [convex/users.ts](../../convex/users.ts) - User role management functions
+- [convex/dashboard.ts](../../convex/dashboard.ts) - Dashboard metrics and alerts
+- [convex/http.ts](../../convex/http.ts) - HTTP endpoints for all modules (lines 507-1363)
 
 ---
 
@@ -2093,10 +2094,15 @@ Changes you make in other parts of the app will appear on the dashboard:
 - ✅ All authentication endpoints functional with email verification
 - ✅ Company creation and management fully implemented
 - ✅ Facility creation with license validation working
-- ✅ User role assignment with access control
-- ✅ Dashboard with alerts and activity tracking
+- ✅ User role assignment with access control NEWLY ADDED
+- ✅ Dashboard with alerts and activity tracking NEWLY ADDED
 - ✅ Geographic data (departments/municipalities) integrated
 - ✅ Session management and token validation complete
+
+**Recent Changes (2025-01-20)**:
+- Added MODULE 4 HTTP endpoints for user role assignment (4 endpoints)
+- Added MODULE 5 HTTP endpoints for dashboard (3 endpoints)
+- All 23 Phase 1 endpoints now exposed via HTTP for Bubble integration
 
 **Next Steps**:
 1. ✅ Phase 1 backend COMPLETE - Move to Phase 2 (Basic Setup & Master Data)
@@ -2105,5 +2111,5 @@ Changes you make in other parts of the app will appear on the dashboard:
 
 ---
 
-**Last Updated**: 2025-01-19
-**Version**: 2.0 (Restructured from 3 phases to 5 phases)
+**Last Updated**: 2025-01-20
+**Version**: 2.1 (Phase 1 fully complete with all HTTP endpoints)

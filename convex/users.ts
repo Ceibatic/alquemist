@@ -88,7 +88,7 @@ export const getUsersByCompany = query({
           firstName: user.first_name,
           lastName: user.last_name,
           roleId: user.role_id,
-          roleName: role?.display_name || "Sin rol",
+          roleName: role?.display_name_es || "Sin rol",
           status: user.status,
           lastLogin: user.last_login,
         };
@@ -263,7 +263,7 @@ export const getUserById = query({
       phone: user.phone,
       emailVerified: user.email_verified,
       roleId: user.role_id,
-      roleName: role?.display_name || "Sin rol",
+      roleName: role?.display_name_es || "Sin rol",
       companyId: user.company_id,
       companyName: company?.name || null,
       accessibleFacilityIds: user.accessible_facility_ids,
@@ -272,6 +272,114 @@ export const getUserById = query({
       status: user.status,
       lastLogin: user.last_login,
       createdAt: user.created_at,
+    };
+  },
+});
+
+// ============================================================================
+// PHASE 2: ACCOUNT SETTINGS (MODULE 21)
+// ============================================================================
+
+/**
+ * Get account settings for a user
+ * Phase 2 Module 21
+ */
+export const getSettings = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Return user preference settings
+    return {
+      userId: user._id,
+      preferredLanguage: user.locale || "es",
+      dateFormat: user.date_format || "DD/MM/YYYY",
+      timeFormat: user.time_format || "24h",
+      emailNotifications: user.email_notifications ?? true,
+      smsNotifications: user.sms_notifications ?? false,
+      theme: user.theme || "light",
+    };
+  },
+});
+
+/**
+ * Update account settings for a user
+ * Phase 2 Module 21
+ */
+export const updateSettings = mutation({
+  args: {
+    userId: v.id("users"),
+    preferredLanguage: v.optional(v.string()),
+    dateFormat: v.optional(v.string()),
+    timeFormat: v.optional(v.string()),
+    emailNotifications: v.optional(v.boolean()),
+    smsNotifications: v.optional(v.boolean()),
+    theme: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Verify user exists
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const updates: any = {
+      updated_at: now,
+    };
+
+    // Only update provided fields with validation
+    if (args.preferredLanguage !== undefined) {
+      const validLanguages = ["es", "en"];
+      if (!validLanguages.includes(args.preferredLanguage)) {
+        throw new Error("Invalid language code. Use 'es' or 'en'");
+      }
+      updates.locale = args.preferredLanguage;
+    }
+
+    if (args.dateFormat !== undefined) {
+      const validFormats = ["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"];
+      if (!validFormats.includes(args.dateFormat)) {
+        throw new Error("Invalid date format. Use DD/MM/YYYY, MM/DD/YYYY, or YYYY-MM-DD");
+      }
+      updates.date_format = args.dateFormat;
+    }
+
+    if (args.timeFormat !== undefined) {
+      const validFormats = ["12h", "24h"];
+      if (!validFormats.includes(args.timeFormat)) {
+        throw new Error("Invalid time format. Use '12h' or '24h'");
+      }
+      updates.time_format = args.timeFormat;
+    }
+
+    if (args.emailNotifications !== undefined) {
+      updates.email_notifications = args.emailNotifications;
+    }
+
+    if (args.smsNotifications !== undefined) {
+      updates.sms_notifications = args.smsNotifications;
+    }
+
+    if (args.theme !== undefined) {
+      const validThemes = ["light", "dark"];
+      if (!validThemes.includes(args.theme)) {
+        throw new Error("Invalid theme. Use 'light' or 'dark'");
+      }
+      updates.theme = args.theme;
+    }
+
+    await ctx.db.patch(args.userId, updates);
+
+    return {
+      success: true,
+      message: "Account settings updated successfully",
     };
   },
 });

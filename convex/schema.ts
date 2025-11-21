@@ -107,6 +107,11 @@ export default defineSchema({
     // Preferences
     locale: v.string(), // Default: "es"
     timezone: v.string(), // Default: "America/Bogota"
+    date_format: v.optional(v.string()), // Default: "DD/MM/YYYY"
+    time_format: v.optional(v.string()), // Default: "24h"
+    theme: v.optional(v.string()), // Default: "light"
+    email_notifications: v.optional(v.boolean()), // Default: true
+    sms_notifications: v.optional(v.boolean()), // Default: false
     preferred_language: v.optional(v.string()), // "es" | "en" - for Bubble UI language preference
 
     // Security
@@ -245,6 +250,25 @@ export default defineSchema({
     .index("by_supplier", ["supplier_id"])
     .index("by_status", ["status"]),
 
+  other_crops: defineTable({
+    facility_id: v.id("facilities"),
+    name: v.string(),
+    category: v.string(), // herbs/vegetables/fruits/ornamental/experimental/other
+    purpose: v.string(), // companion_planting/pest_control/experimental/diversification/other
+    quantity: v.optional(v.number()),
+    unit: v.optional(v.string()),
+    planting_date: v.optional(v.number()),
+    expected_harvest_date: v.optional(v.number()),
+    location_notes: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    status: v.string(), // active/harvested/removed/failed
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_facility", ["facility_id"])
+    .index("by_category", ["category"])
+    .index("by_status", ["status"]),
+
   // ============================================================================
   // FACILITIES & OPERATIONS TABLES (2)
   // ============================================================================
@@ -286,6 +310,17 @@ export default defineSchema({
     climate_monitoring: v.boolean(), // Default: false
     weather_api_provider: v.optional(v.string()), // IDEAM
     weather_station_id: v.optional(v.string()),
+
+    // Facility Settings (Module 20)
+    timezone: v.optional(v.string()), // Default: "America/Bogota"
+    workday_start: v.optional(v.string()), // Default: "08:00"
+    workday_end: v.optional(v.string()), // Default: "17:00"
+    workdays: v.optional(v.array(v.string())), // Default: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    default_activity_duration: v.optional(v.number()), // Default: 60 minutes
+    auto_scheduling: v.optional(v.boolean()), // Default: false
+    notifications_enabled: v.optional(v.boolean()), // Default: true
+    low_stock_alert_enabled: v.optional(v.boolean()), // Default: true
+    overdue_activity_alert_enabled: v.optional(v.boolean()), // Default: true
 
     // Metadata
     status: v.string(), // active/inactive/suspended

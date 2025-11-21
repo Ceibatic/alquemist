@@ -261,7 +261,7 @@ export const getUserFacilities = query({
     if (role && (role.name === "COMPANY_OWNER" || role.name === "MANAGER")) {
       const facilities = await ctx.db
         .query("facilities")
-        .withIndex("by_company", (q) => q.eq("company_id", user.company_id))
+        .withIndex("by_company", (q) => q.eq("company_id", user.company_id!))
         .filter((q) => q.eq(q.field("status"), "active"))
         .collect();
 

@@ -90,6 +90,39 @@ export const get = query({
 });
 
 /**
+ * Get cultivars by facility
+ * Returns cultivars that are linked to a facility via batches
+ * Phase 2 Module 15
+ */
+export const getByFacility = query({
+  args: {
+    facilityId: v.id("facilities"),
+  },
+  handler: async (ctx, args) => {
+    // Get all batches for this facility to find linked cultivars
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    // Extract unique cultivar IDs from batches
+    const cultivarIds = [...new Set(batches.map((b) => b.cultivar_id).filter((id) => id !== undefined))];
+
+    // Get cultivar details
+    const cultivars = await Promise.all(
+      cultivarIds.map(async (cultivarId) => {
+        if (!cultivarId) return null;
+        const cultivar = await ctx.db.get(cultivarId);
+        return cultivar;
+      })
+    );
+
+    // Filter out any null values and return
+    return cultivars.filter((c) => c !== null);
+  },
+});
+
+/**
  * Create a custom cultivar
  * Allows companies to add their own cultivar varieties
  */

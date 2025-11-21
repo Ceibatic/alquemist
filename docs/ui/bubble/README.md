@@ -45,7 +45,6 @@ The system is implemented in 5 progressive phases:
 
 **Files**:
 - [PHASE-2-BASIC-SETUP.md](PHASE-2-BASIC-SETUP.md) - Configuration and master data
-- [PHASE-2-OPERATIONS.md](PHASE-2-OPERATIONS.md) - Legacy operations (being reorganized)
 
 **Focus**: Configure essential master data for operations
 

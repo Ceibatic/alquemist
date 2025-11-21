@@ -273,8 +273,13 @@ export const getFacilitiesByCompany = query({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    const result = await list(ctx, { companyId: args.companyId });
-    return result.facilities;
+    // Direct implementation instead of calling list()
+    let facilitiesQuery = ctx.db.query("facilities")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId));
+
+    const allFacilities = await facilitiesQuery.collect();
+
+    return allFacilities;
   },
 });
 
@@ -288,6 +293,146 @@ export const getById = query({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    return await get(ctx, { id: args.facilityId, companyId: args.companyId });
+    // Direct implementation instead of calling get()
+    const facility = await ctx.db.get(args.facilityId);
+
+    // Verify company ownership
+    if (!facility || facility.company_id !== args.companyId) {
+      return null;
+    }
+
+    return facility;
+  },
+});
+
+// ============================================================================
+// PHASE 2: FACILITY SETTINGS (MODULE 20)
+// ============================================================================
+
+/**
+ * Get facility settings
+ * Phase 2 Module 20
+ */
+export const getSettings = query({
+  args: {
+    facilityId: v.id("facilities"),
+  },
+  handler: async (ctx, args) => {
+    const facility = await ctx.db.get(args.facilityId);
+    if (!facility) {
+      throw new Error("Facility not found");
+    }
+
+    // Return facility settings
+    // Note: These settings are stored directly in the facility record
+    return {
+      facilityId: facility._id,
+      timezone: facility.timezone || "America/Bogota",
+      workdayStart: facility.workday_start || "08:00",
+      workdayEnd: facility.workday_end || "17:00",
+      workdays: facility.workdays || ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      defaultActivityDuration: facility.default_activity_duration || 30,
+      autoScheduling: facility.auto_scheduling ?? true,
+      notificationsEnabled: facility.notifications_enabled ?? true,
+      lowStockAlertEnabled: facility.low_stock_alert_enabled ?? true,
+      overdueActivityAlertEnabled: facility.overdue_activity_alert_enabled ?? true,
+    };
+  },
+});
+
+/**
+ * Update facility settings
+ * Phase 2 Module 20
+ */
+export const updateSettings = mutation({
+  args: {
+    facilityId: v.id("facilities"),
+    timezone: v.optional(v.string()),
+    workdayStart: v.optional(v.string()),
+    workdayEnd: v.optional(v.string()),
+    workdays: v.optional(v.array(v.string())),
+    defaultActivityDuration: v.optional(v.number()),
+    autoScheduling: v.optional(v.boolean()),
+    notificationsEnabled: v.optional(v.boolean()),
+    lowStockAlertEnabled: v.optional(v.boolean()),
+    overdueActivityAlertEnabled: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Verify facility exists
+    const facility = await ctx.db.get(args.facilityId);
+    if (!facility) {
+      throw new Error("Facility not found");
+    }
+
+    const updates: any = {
+      updated_at: now,
+    };
+
+    // Only update provided fields
+    if (args.timezone !== undefined) {
+      // Validate timezone format (basic check)
+      if (!/^[A-Za-z_]+\/[A-Za-z_]+$/.test(args.timezone)) {
+        throw new Error("Invalid timezone format");
+      }
+      updates.timezone = args.timezone;
+    }
+
+    if (args.workdayStart !== undefined) {
+      // Validate time format HH:MM
+      if (!/^\d{2}:\d{2}$/.test(args.workdayStart)) {
+        throw new Error("Invalid workday start time format (use HH:MM)");
+      }
+      updates.workday_start = args.workdayStart;
+    }
+
+    if (args.workdayEnd !== undefined) {
+      // Validate time format HH:MM
+      if (!/^\d{2}:\d{2}$/.test(args.workdayEnd)) {
+        throw new Error("Invalid workday end time format (use HH:MM)");
+      }
+      updates.workday_end = args.workdayEnd;
+    }
+
+    if (args.workdays !== undefined) {
+      // Validate workdays
+      const validDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+      const invalidDays = args.workdays.filter(day => !validDays.includes(day.toLowerCase()));
+      if (invalidDays.length > 0) {
+        throw new Error(`Invalid workdays: ${invalidDays.join(", ")}`);
+      }
+      updates.workdays = args.workdays;
+    }
+
+    if (args.defaultActivityDuration !== undefined) {
+      if (args.defaultActivityDuration < 1 || args.defaultActivityDuration > 480) {
+        throw new Error("Default activity duration must be between 1 and 480 minutes");
+      }
+      updates.default_activity_duration = args.defaultActivityDuration;
+    }
+
+    if (args.autoScheduling !== undefined) {
+      updates.auto_scheduling = args.autoScheduling;
+    }
+
+    if (args.notificationsEnabled !== undefined) {
+      updates.notifications_enabled = args.notificationsEnabled;
+    }
+
+    if (args.lowStockAlertEnabled !== undefined) {
+      updates.low_stock_alert_enabled = args.lowStockAlertEnabled;
+    }
+
+    if (args.overdueActivityAlertEnabled !== undefined) {
+      updates.overdue_activity_alert_enabled = args.overdueActivityAlertEnabled;
+    }
+
+    await ctx.db.patch(args.facilityId, updates);
+
+    return {
+      success: true,
+      message: "Facility settings updated successfully",
+    };
   },
 });
