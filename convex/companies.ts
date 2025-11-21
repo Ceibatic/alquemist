@@ -27,6 +27,18 @@ import { mutation, query } from "./_generated/server";
 // });
 
 /**
+ * Get company by ID
+ */
+export const getById = query({
+  args: {
+    id: v.id("companies"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
+
+/**
  * List all companies (admin only)
  */
 export const list = query({

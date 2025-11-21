@@ -2395,4 +2395,119 @@ http.route({
   }),
 });
 
+// ============================================================================
+// CONTEXT DATA ENDPOINTS (Persistent Data for Bubble State)
+// ============================================================================
+
+/**
+ * GET /companies/get
+ * Get complete company data for context persistence
+ * Used to populate CurrentContext.company in Bubble
+ */
+http.route({
+  path: "/companies/get",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const { companyId } = await request.json();
+
+    if (!companyId) {
+      return new Response(
+        JSON.stringify({
+          error: "companyId is required",
+        }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+
+    const company = await ctx.runQuery(api.companies.getById, {
+      id: companyId,
+    });
+
+    if (!company) {
+      return new Response(
+        JSON.stringify({
+          error: "Company not found",
+        }),
+        {
+          status: 404,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+
+    return new Response(JSON.stringify(company), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  }),
+});
+
+/**
+ * GET /facilities/get
+ * Get complete facility data for context persistence
+ * Used to populate CurrentContext.facility in Bubble
+ */
+http.route({
+  path: "/facilities/get",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const { facilityId, companyId } = await request.json();
+
+    if (!facilityId || !companyId) {
+      return new Response(
+        JSON.stringify({
+          error: "facilityId and companyId are required",
+        }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+
+    const facility = await ctx.runQuery(api.facilities.get, {
+      id: facilityId,
+      companyId: companyId,
+    });
+
+    if (!facility) {
+      return new Response(
+        JSON.stringify({
+          error: "Facility not found",
+        }),
+        {
+          status: 404,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+
+    return new Response(JSON.stringify(facility), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  }),
+});
+
 export default http;

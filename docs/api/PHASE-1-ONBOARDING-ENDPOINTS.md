@@ -1031,6 +1031,190 @@ Authorization: Bearer <token>
 
 ---
 
+## CONTEXT DATA ENDPOINTS (Persistent Application State)
+
+**Purpose**: Load and cache contextual data (Company, Facility) in Bubble's custom state for use across the entire application. These endpoints provide complete entity data for filtering, validation, and UI state.
+
+**When to Load**:
+1. **Page Load**: When user enters an authenticated page
+2. **Facility Change**: When user switches to a different facility
+3. **After Create/Update**: After creating or updating company/facility
+
+---
+
+### Get Company Data
+
+**Endpoint**: `POST /companies/get`
+**Convex Function**: `companies.getById`
+
+**Purpose**: Retrieve complete company data for context persistence in Bubble
+
+#### Bubble API Connector Configuration
+
+**Name**: `getCompanyData`
+**Use as**: Data
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/companies/get`
+**Data Type**: Single object (Return list = No)
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "companyId": "<companyId>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| companyId | text | No | Body | k12def... |
+
+**Complete Response** (inicializar TODOS estos campos en Bubble):
+```json
+{
+  "id": "k12def...",
+  "name": "Cultivos San José S.A.S",
+  "legal_name": "Cultivos San José Sociedad por Acciones Simplificada",
+  "business_entity_type": "S.A.S",
+  "company_type": "cannabis",
+  "country": "CO",
+  "department_code": "05",
+  "municipality_code": "05001",
+  "subscription_plan": "trial",
+  "max_facilities": 3,
+  "max_users": 10,
+  "status": "active",
+  "created_at": 1705329600000
+}
+```
+
+**Response Fields**:
+- `id` (text) - ID de la empresa
+- `name` (text) - Nombre de la empresa
+- `legal_name` (text) - Nombre legal registrado
+- `business_entity_type` (text) - Tipo de entidad (S.A.S, S.A., Ltda)
+- `company_type` (text) - Tipo de cultivo (cannabis, coffee, etc.)
+- `country` (text) - País (CO)
+- `department_code` (text) - Código del departamento
+- `municipality_code` (text) - Código del municipio
+- `subscription_plan` (text) - Plan de suscripción
+- `max_facilities` (number) - Máximo de instalaciones permitidas
+- `max_users` (number) - Máximo de usuarios permitidos
+- `status` (text) - Estado de la empresa (active, inactive)
+- `created_at` (number) - Timestamp de creación
+
+#### Bubble Usage - Store in Custom State
+
+```javascript
+// On page load (after validateToken)
+Workflow: When page loads
+  Step 1: Get Current User's company_id
+  Step 2: API Call → getCompanyData (companyId = Current User's company_id)
+  Step 3: Save to Custom State "CurrentContext"
+    - Set CurrentContext.company = Result of Step 2
+    - Set CurrentContext.loaded = yes
+```
+
+---
+
+### Get Facility Data
+
+**Endpoint**: `POST /facilities/get`
+**Convex Function**: `facilities.get`
+
+**Purpose**: Retrieve complete facility data for context persistence in Bubble
+
+#### Bubble API Connector Configuration
+
+**Name**: `getFacilityData`
+**Use as**: Data
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/facilities/get`
+**Data Type**: Single object (Return list = No)
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "facilityId": "<facilityId>",
+  "companyId": "<companyId>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| facilityId | text | No | Body | f78ghi... |
+| companyId | text | No | Body | k12def... |
+
+**Complete Response** (inicializar TODOS estos campos en Bubble):
+```json
+{
+  "id": "f78ghi...",
+  "company_id": "k12def...",
+  "name": "North Farm",
+  "license_number": "LC-12345-2025",
+  "license_type": "commercial_growing",
+  "primary_crop_type_ids": ["crop123", "crop456"],
+  "address": "Finca La Esperanza, Km 15",
+  "administrative_division_1": "05",
+  "administrative_division_2": "05001",
+  "latitude": 6.244747,
+  "longitude": -75.581211,
+  "total_area_m2": 5000,
+  "status": "active",
+  "created_at": 1705329600000
+}
+```
+
+**Response Fields**:
+- `id` (text) - ID de la instalación
+- `company_id` (text) - ID de la empresa propietaria
+- `name` (text) - Nombre de la instalación
+- `license_number` (text) - Número de licencia
+- `license_type` (text) - Tipo de licencia
+- `primary_crop_type_ids` (list) - IDs de cultivos principales
+- `address` (text) - Dirección de la instalación
+- `administrative_division_1` (text) - Código del departamento
+- `administrative_division_2` (text) - Código del municipio
+- `latitude` (number) - Coordenada de latitud
+- `longitude` (number) - Coordenada de longitud
+- `total_area_m2` (number) - Área total en metros cuadrados
+- `status` (text) - Estado (active, inactive)
+- `created_at` (number) - Timestamp de creación
+
+#### Bubble Usage - Store in Custom State
+
+```javascript
+// On page load or when user changes facility
+Workflow: When page loads OR When facility selector changes
+  Step 1: Get facility ID (from Current User's primary_facility_id OR dropdown)
+  Step 2: API Call → getFacilityData
+    - facilityId = facility ID
+    - companyId = Current User's company_id
+  Step 3: Save to Custom State "CurrentContext"
+    - Set CurrentContext.facility = Result of Step 2
+    - Set CurrentContext.loaded = yes
+
+// Used by all dropdowns for pre-population:
+Dropdown "Department":
+  - Initial value: CurrentContext.facility.administrative_division_1
+
+Dropdown "Municipality":
+  - Load: getMunicipalities(departmentCode = CurrentContext.facility.administrative_division_1)
+```
+
+---
+
 ## MODULE 4: User Role Assignment
 
 ### Assign User Role
@@ -1743,18 +1927,24 @@ Content-Type: application/json
 **MODULE 3: Facility Creation** - 1 endpoint
 - ✅ Get crop types (NEW)
 
+**Context Data Endpoints** - 2 endpoints
+- ✅ Get company data (NEW)
+- ✅ Get facility data (NEW)
+
 **MODULE 6: Login & Session** - 3 endpoints
 - ✅ Simple login
 - ✅ Validate session token
 - ✅ Logout
 
-**Total Ready**: 12 endpoints
+**Total Ready**: 14 endpoints
 
 **Convex Files**:
 - [convex/registration.ts](../../convex/registration.ts)
 - [convex/emailVerification.ts](../../convex/emailVerification.ts)
 - [convex/geographic.ts](../../convex/geographic.ts)
 - [convex/crops.ts](../../convex/crops.ts)
+- [convex/companies.ts](../../convex/companies.ts)
+- [convex/facilities.ts](../../convex/facilities.ts)
 
 ---
 
