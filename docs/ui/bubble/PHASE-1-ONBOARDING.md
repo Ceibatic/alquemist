@@ -962,7 +962,7 @@ This module handles the onboarding flow for users who have been invited by an ad
 | **Email Verification** | Required before proceeding | Pre-verified (invitation link = verification) |
 | **Company Creation** | Creates new company | Joins existing company |
 | **Facility Creation** | Creates first facility | Access granted to existing facilities |
-| **Role Assignment** | Auto-assigned "COMPANY_OWNER" | Pre-assigned by inviter (any role) |
+| **Role Assignment** | Auto-assigned "COMPANY_OWNER" during company creation (registerCompanyStep2) | Pre-assigned by inviter during invitation creation |
 | **Dashboard Access** | After facility creation | Immediate after password setup |
 | **Pages** | 7 pages | 4 pages (faster flow) |
 

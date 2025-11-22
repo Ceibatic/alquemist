@@ -1326,6 +1326,7 @@ Content-Type: application/json
   "success": true,
   "userId": "j97abc...",
   "companyId": "k12def...",
+  "roleId": "role_owner",
   "message": "¡Bienvenido! Tu empresa ha sido creada exitosamente.",
   "error": "Email not verified",
   "code": "EMAIL_NOT_VERIFIED"
@@ -1336,6 +1337,7 @@ Content-Type: application/json
 - `success` (boolean) - true si la empresa se creó exitosamente
 - `userId` (text) - ID del usuario
 - `companyId` (text) - ID de la empresa creada
+- `roleId` (text) - ID del rol asignado automáticamente (siempre "role_owner" para el creador de la empresa)
 - `message` (text) - Mensaje descriptivo del resultado
 - `error` (text) - Mensaje de error si success=false
 - `code` (text) - Código técnico del error
@@ -1354,8 +1356,11 @@ Content-Type: application/json
 3. **Step 2** (Only when `success = true`): Make changes to Current User
    - `company_id` = `Result of Step 1's companyId`
    - `company_name` = `Input companyName's value`
+   - `role_id` = `Result of Step 1's roleId` (automáticamente "role_owner")
 4. **Step 3**: Navigate to "facility-setup" page
 5. **Step 4** (Only when `success = false`): Show alert with `Result of Step 1's error`
+
+**Nota importante**: Este endpoint asigna automáticamente el rol de "COMPANY_OWNER" al usuario que crea la empresa. No es necesario llamar al endpoint `assignUserRole` después de este paso.
 
 **Option Sets requeridos**:
 - `businessEntityType`: S.A.S, S.A., Ltda, E.U.
@@ -1462,7 +1467,7 @@ Authorization: Bearer <token>
    - climateZone = `Dropdown climateZone's value`
 3. **Step 2** (Only when `success = true`): Make changes to Current User
    - `primary_facility_id` = `Result of Step 1's facilityId`
-4. **Step 3**: Navigate to "user-roles" page
+4. **Step 3**: Navigate to "dashboard" page
 5. **Step 4** (Only when `success = false`): Show alert with `Result of Step 1's error`
 
 **Option Sets requeridos**:
@@ -1910,7 +1915,7 @@ Dropdown "Municipality":
 **Endpoint**: `POST /users/assign-role`
 **Convex Function**: `users.assignRole`
 
-**Purpose**: Assign role to user during onboarding (Owner, Manager) or invite new users later
+**Purpose**: Assign or update role for existing team members. **Note**: Este endpoint NO se usa durante el onboarding inicial - el rol de Company Owner se asigna automáticamente en `registerCompanyStep2`
 
 #### Bubble API Connector Configuration
 
@@ -1962,15 +1967,22 @@ Authorization: Bearer <token>
 
 #### Bubble Workflow
 
-**During Onboarding (auto-assign Owner)**:
-1. **Trigger**: Page "user-roles" is loaded
+**Uso típico** (Phase 2 - Team Management):
+1. **Trigger**: Button "Update Role" is clicked (en página de gestión de usuarios)
 2. **Step 1**: Plugins → assignUserRole
    - token = `Current User's session_token`
-   - userId = `Current User's backend_user_id`
+   - userId = `Selected User's backend_user_id`
    - companyId = `Current User's company_id`
-   - roleId = "role_owner"
-   - facilityAccess = [`Current User's primary_facility_id`]
-3. **Step 2** (Only when `success = true`): Navigate to "dashboard"
+   - roleId = `Dropdown role's value` (ej: "role_manager")
+   - facilityAccess = `MultiDropdown facilities's checked values`
+3. **Step 2** (Only when `success = true`): Show alert "Role updated successfully"
+4. **Step 3**: Refresh user list
+
+**Cuándo usar este endpoint**:
+- ✅ Cambiar rol de un usuario existente
+- ✅ Asignar acceso a facilities adicionales
+- ✅ Gestionar permisos de team members
+- ❌ NO usar durante onboarding del primer usuario (rol Owner se asigna automáticamente)
 
 **Role Types**:
 - `role_owner` - Full access, can manage company settings
@@ -2754,7 +2766,6 @@ For complete error code translations, see [../i18n/STRATEGY.md](../i18n/STRATEGY
    - Verification page → verifyEmailToken, checkVerificationStatus
    - Company setup → getDepartments, getMunicipalities, registerCompanyStep2
    - Facility setup → getCropTypes, createFacility, checkLicenseAvailability
-   - User roles → assignUserRole
    - Dashboard → getDashboardSummary, getRecentActivities, getActiveAlerts
    - Login page → login
    - Protected pages → validateToken (on page load)
@@ -2772,15 +2783,13 @@ ONBOARDING FLOW:
    ↓
 4. getDepartments → getMunicipalities (dropdowns)
    ↓
-5. registerCompanyStep2 (creates company)
+5. registerCompanyStep2 (creates company + auto-assigns Company Owner role)
    ↓
 6. getCropTypes (for facility form dropdowns)
    ↓
 7. createFacility (with checkLicenseAvailability)
    ↓
-8. assignUserRole (auto-assign owner)
-   ↓
-9. Navigate to dashboard → getDashboardSummary, getRecentActivities
+8. Navigate to dashboard → getDashboardSummary, getRecentActivities
 
 RETURNING USER FLOW:
 1. login (returns token)
