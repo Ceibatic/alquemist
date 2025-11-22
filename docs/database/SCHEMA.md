@@ -99,6 +99,43 @@ This document defines the complete database structure for Alquemist. Each table 
 
 ---
 
+### invitations
+**Purpose**: User invitation tracking and acceptance for team member onboarding
+
+| Field | Type | Description |
+|-------|------|-------------|
+| _id | Id | Convex auto-generated ID |
+| email | string | Invited user email address |
+| firstName | string | Invitee first name |
+| lastName | string | Invitee last name |
+| inviter_user_id | Id | User who sent the invitation |
+| company_id | Id | Reference to companies table |
+| role_id | Id | Pre-assigned role for invited user |
+| facility_ids | array | Array of facility IDs user will have access to |
+| token | string | Unique invitation token (UUID v4) |
+| status | string | pending, accepted, expired, revoked, rejected |
+| expires_at | number | Token expiration timestamp (72h from creation) |
+| accepted_at | number? | When invitation was accepted (null if pending) |
+| rejected_at | number? | When invitation was rejected (null if not rejected) |
+| revoked_at | number? | When invitation was revoked by inviter (null if not revoked) |
+| created_at | number | Creation timestamp |
+| updated_at | number | Last update timestamp |
+
+**Relationships**:
+- Many-to-one: invitations → companies
+- Many-to-one: invitations → users (inviter)
+- Many-to-one: invitations → roles
+- One-to-one: invitations → users (invitee, created after acceptance)
+
+**Notes**:
+- Invitation links are sent via email with unique token
+- Tokens expire after 72 hours for security
+- Invited users skip email verification (invitation link acts as verification)
+- When accepted, a new user account is created and invitation status changes to "accepted"
+- Resending an invitation generates a new token and invalidates the old one
+
+---
+
 ## GEOGRAPHIC & REFERENCE DATA
 
 ### geographic_locations

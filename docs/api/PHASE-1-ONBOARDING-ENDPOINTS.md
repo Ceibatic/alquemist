@@ -13,14 +13,20 @@
 
 **Purpose**: User authentication, company setup, initial facility configuration, and dashboard access
 
+**Two Onboarding Flows**:
+1. **First User Flow** (Modules 1-4): Complete signup → company → facility creation (7 screens)
+2. **Invited User Flow** (Module 1B + 5): Accept invitation → set password → join company (4 screens)
+
 **Modules**:
-- **MODULE 1**: Authentication & Account Creation
+- **MODULE 1**: Authentication & Account Creation (First User)
+- **MODULE 1B**: Invited User Acceptance
 - **MODULE 2**: Company Creation
 - **MODULE 3**: Facility Creation & Basics
 - **MODULE 4**: User Role Assignment
 - **MODULE 5**: Dashboard Home
+- **MODULE 6**: Login & Session Management
 
-**Estimated Pages**: 7 screens
+**Estimated Pages**: 11 screens total (7 for first user + 4 for invited user)
 **Exit Point**: Operational Dashboard with facility context established
 
 ---
@@ -380,6 +386,688 @@ Content-Type: application/json
 2. **Conditional Workflow**: When verified = yes
    - Make changes to Current User → `email_verified` = yes
    - Navigate to "company-setup"
+
+---
+
+## MODULE 1B: Invited User Acceptance
+
+**Related UI Documentation**: See [Phase 1, Module 5](../ui/bubble/PHASE-1-ONBOARDING.md#module-5-invited-user-acceptance) for complete user flow
+
+**Purpose**: Handle user invitations for joining existing companies. Unlike the first user flow (Module 1), invited users receive an email with a token, set their password, and join pre-existing companies and facilities.
+
+**Key Differences**:
+- No email verification step (invitation link acts as verification)
+- No company or facility creation
+- Role and facilities pre-assigned by inviter
+- Faster onboarding (4 screens vs 7 screens)
+
+---
+
+### Validate Invitation Token
+
+**Endpoint**: `POST /invitations/validate-token`
+**Convex Function**: `invitations.validateToken`
+
+**Purpose**: Validate invitation token and retrieve invitation details when user clicks email link
+
+#### Bubble API Connector Configuration
+
+**Name**: `validateInvitationToken`
+**Use as**: Data
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/invitations/validate-token`
+**Data Type**: Single object (Return list = No)
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "token": "<token>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | No | URL parameter | abc123xyz789... |
+
+**Complete Response** (inicializar TODOS estos campos en Bubble):
+```json
+{
+  "valid": true,
+  "invitation": {
+    "_id": "inv789",
+    "email": "maria@example.com",
+    "firstName": "María",
+    "lastName": "García",
+    "company": {
+      "_id": "comp123",
+      "name": "Agrícola del Valle SAS",
+      "businessType": "S.A.S"
+    },
+    "role": {
+      "_id": "role456",
+      "name": "PRODUCTION_SUPERVISOR",
+      "display_name": "Supervisor de Producción"
+    },
+    "inviter": {
+      "_id": "user001",
+      "firstName": "Juan",
+      "lastName": "Pérez"
+    },
+    "facilities": [
+      {
+        "_id": "fac001",
+        "name": "Instalación Norte"
+      },
+      {
+        "_id": "fac002",
+        "name": "Instalación Sur"
+      }
+    ],
+    "expiresAt": 1700000000000,
+    "createdAt": 1699741200000
+  }
+}
+```
+
+**Response Fields**:
+- `valid` (yes/no) - Si el token es válido
+- `invitation._id` (text) - ID de la invitación
+- `invitation.email` (text) - Email del usuario invitado
+- `invitation.firstName` (text) - Nombre
+- `invitation.lastName` (text) - Apellido
+- `invitation.company._id` (text) - ID de la empresa
+- `invitation.company.name` (text) - Nombre de la empresa
+- `invitation.company.businessType` (text) - Tipo de empresa
+- `invitation.role._id` (text) - ID del rol asignado
+- `invitation.role.name` (text) - Nombre técnico del rol
+- `invitation.role.display_name` (text) - Nombre del rol para mostrar
+- `invitation.inviter._id` (text) - ID del usuario que invitó
+- `invitation.inviter.firstName` (text) - Nombre del invitador
+- `invitation.inviter.lastName` (text) - Apellido del invitador
+- `invitation.facilities` (list) - Lista de instalaciones asignadas
+- `invitation.facilities.each._id` (text) - ID de la instalación
+- `invitation.facilities.each.name` (text) - Nombre de la instalación
+- `invitation.expiresAt` (number) - Timestamp de expiración (72 horas)
+- `invitation.createdAt` (number) - Timestamp de creación
+
+**Error Response** (token inválido):
+```json
+{
+  "valid": false,
+  "error": {
+    "code": "INVALID_TOKEN",
+    "message": "El token de invitación no es válido o ha expirado"
+  }
+}
+```
+
+#### Bubble Usage
+
+**On Accept Invitation Page Load**:
+1. Get `token` from URL parameter
+2. Call `validateInvitationToken`
+3. If `valid` = yes:
+   - Display invitation details
+   - Show company name, role, inviter, facilities
+4. If `valid` = no:
+   - Navigate to "invitation-invalid" page
+   - Display error message
+
+#### Database Operations (Backend)
+
+**Reads from**:
+- `invitations` table - Get invitation by token
+- `companies` table - Get company details
+- `roles` table - Get role details
+- `users` table - Get inviter details
+- `facilities` table - Get assigned facilities
+
+**Validates**:
+- Token exists and matches
+- `status` = "pending"
+- `expiresAt` > now() (not expired)
+
+---
+
+### Accept Invitation
+
+**Endpoint**: `POST /invitations/accept`
+**Convex Function**: `invitations.accept`
+
+**Purpose**: Create user account from invitation and link to company/facilities
+
+#### Bubble API Connector Configuration
+
+**Name**: `acceptInvitation`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/invitations/accept`
+**Data Type**: Single object (Return list = No)
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "token": "<token>",
+  "password": "<password>",
+  "phone": "<phone>",
+  "language": "<language>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Required | Example |
+|-----------|------|---------|--------|----------|---------|
+| token | text | No | URL parameter | Yes | abc123xyz789... |
+| password | text | Yes | Input field | Yes | MyP@ssw0rd123 |
+| phone | text | No | Input field | No | 3001234567 |
+| language | text | No | Radio button | No | es / en |
+
+**Complete Response** (inicializar TODOS estos campos en Bubble):
+```json
+{
+  "success": true,
+  "user": {
+    "_id": "user789",
+    "email": "maria@example.com",
+    "firstName": "María",
+    "lastName": "García",
+    "phone": "3001234567",
+    "language": "es",
+    "email_verified": true,
+    "company_id": "comp123",
+    "role_id": "role456",
+    "currentFacilityId": "fac001"
+  },
+  "authToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "company": {
+    "_id": "comp123",
+    "name": "Agrícola del Valle SAS"
+  },
+  "facilities": [
+    {
+      "_id": "fac001",
+      "name": "Instalación Norte"
+    },
+    {
+      "_id": "fac002",
+      "name": "Instalación Sur"
+    }
+  ]
+}
+```
+
+**Response Fields**:
+- `success` (yes/no) - Si la aceptación fue exitosa
+- `user._id` (text) - ID del nuevo usuario creado
+- `user.email` (text) - Email del usuario
+- `user.firstName` (text) - Nombre
+- `user.lastName` (text) - Apellido
+- `user.phone` (text) - Teléfono
+- `user.language` (text) - Idioma preferido (es/en)
+- `user.email_verified` (yes/no) - Email verificado (siempre true para invitados)
+- `user.company_id` (text) - ID de la empresa
+- `user.role_id` (text) - ID del rol asignado
+- `user.currentFacilityId` (text) - ID de la instalación por defecto
+- `authToken` (text) - Token de autenticación (guardar en sesión)
+- `company._id` (text) - ID de la empresa
+- `company.name` (text) - Nombre de la empresa
+- `facilities` (list) - Lista de instalaciones asignadas
+
+**Error Responses**:
+
+```json
+// Token expirado
+{
+  "success": false,
+  "error": {
+    "code": "TOKEN_EXPIRED",
+    "message": "El token de invitación ha expirado. Solicita una nueva invitación."
+  }
+}
+
+// Token ya usado
+{
+  "success": false,
+  "error": {
+    "code": "TOKEN_ALREADY_USED",
+    "message": "Esta invitación ya fue aceptada."
+  }
+}
+
+// Contraseña débil
+{
+  "success": false,
+  "error": {
+    "code": "WEAK_PASSWORD",
+    "message": "La contraseña debe tener mínimo 8 caracteres, 1 mayúscula, 1 número y 1 carácter especial."
+  }
+}
+```
+
+#### Bubble Usage
+
+**On Submit Create Account**:
+1. Validate password requirements met
+2. Call `acceptInvitation` with token, password, phone, language
+3. If `success` = yes:
+   - Store `authToken` in browser storage
+   - Set Current User data from response
+   - Navigate to welcome page (`/welcome-invited`)
+4. If `success` = no:
+   - Display error message
+   - If TOKEN_EXPIRED, offer "Request New Invitation"
+
+**Auto-Login After Accept**:
+- Use `authToken` from response to authenticate user
+- Set Bubble Current User with returned user data
+- Establish facility context with `currentFacilityId`
+
+#### Database Operations (Backend)
+
+**Reads from**:
+- `invitations` table - Validate token and get invitation data
+
+**Writes to**:
+- `users` table - Create new user account with hashed password
+  - Sets: email, firstName, lastName, phone, language, email_verified=true, company_id, role_id, currentFacilityId
+- `facility_users` table - Link user to all assigned facilities
+  - Creates: One record per facility in invitation
+
+**Updates**:
+- `invitations` table - Mark invitation as used
+  - Sets: status = "accepted", accepted_at = now()
+
+**Validation**:
+- Token exists and valid
+- Token not expired (< 72 hours old)
+- Status = "pending" (not already accepted)
+- Password meets security requirements
+- Email not already registered (should not happen, but validate)
+
+---
+
+### Reject Invitation
+
+**Endpoint**: `POST /invitations/reject`
+**Convex Function**: `invitations.reject`
+
+**Purpose**: Allow user to reject an invitation (updates status, notifies inviter)
+
+#### Bubble API Connector Configuration
+
+**Name**: `rejectInvitation`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/invitations/reject`
+**Data Type**: Single object (Return list = No)
+
+**Headers**:
+```
+Content-Type: application/json
+```
+
+**Body**:
+```json
+{
+  "token": "<token>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | No | URL parameter | abc123xyz789... |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "message": "Invitación rechazada exitosamente"
+}
+```
+
+**Response Fields**:
+- `success` (yes/no) - Si el rechazo fue exitoso
+- `message` (text) - Mensaje de confirmación
+
+#### Bubble Usage
+
+**On Reject Button Click**:
+1. Show confirmation popup: "¿Estás seguro que deseas rechazar esta invitación?"
+2. If confirmed, call `rejectInvitation`
+3. If `success` = yes:
+   - Display "Invitación rechazada" message
+   - Navigate to login page after 3 seconds
+4. Backend sends notification email to inviter
+
+#### Database Operations (Backend)
+
+**Updates**:
+- `invitations` table
+  - Sets: status = "rejected", updated_at = now()
+
+**Side Effects**:
+- Send notification email to inviter
+- Log rejection event
+
+---
+
+### Create Invitation (Admin Endpoint)
+
+**Endpoint**: `POST /invitations/create`
+**Convex Function**: `invitations.create`
+
+**Purpose**: Admin/Manager creates invitation for new team member
+
+**Related UI**: See [Phase 2, Module 17](../ui/bubble/PHASE-2-BASIC-SETUP.md#module-17-user-invitations--team-management) for invitation management interface
+
+#### Bubble API Connector Configuration
+
+**Name**: `createInvitation`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/invitations/create`
+**Data Type**: Single object (Return list = No)
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "email": "<email>",
+  "firstName": "<firstName>",
+  "lastName": "<lastName>",
+  "roleId": "<roleId>",
+  "facilityIds": ["<facilityId1>", "<facilityId2>"]
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Required | Example |
+|-----------|------|---------|--------|----------|---------|
+| token | text | Yes | Current User session | Yes | a2g3YnI1M2RuazR5bWplNms... |
+| email | text | No | Input field | Yes | maria@example.com |
+| firstName | text | No | Input field | Yes | María |
+| lastName | text | No | Input field | Yes | García |
+| roleId | text | No | Dropdown | Yes | role456 |
+| facilityIds | list | No | Multiselect | Yes | ["fac001", "fac002"] |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "invitation": {
+    "_id": "inv789",
+    "email": "maria@example.com",
+    "token": "abc123xyz789",
+    "invitationLink": "https://app.alquemist.com/accept-invitation?token=abc123xyz789",
+    "expiresAt": 1700000000000,
+    "status": "pending"
+  },
+  "emailSent": true
+}
+```
+
+**Response Fields**:
+- `success` (yes/no) - Si la invitación fue creada
+- `invitation._id` (text) - ID de la invitación creada
+- `invitation.email` (text) - Email del invitado
+- `invitation.token` (text) - Token único de la invitación
+- `invitation.invitationLink` (text) - URL completa de aceptación
+- `invitation.expiresAt` (number) - Timestamp de expiración
+- `invitation.status` (text) - Estado (siempre "pending" al crear)
+- `emailSent` (yes/no) - Si el email fue enviado exitosamente
+
+**Error Responses**:
+```json
+// Email ya registrado
+{
+  "success": false,
+  "error": {
+    "code": "EMAIL_EXISTS",
+    "message": "Este email ya está registrado en el sistema."
+  }
+}
+
+// Invitación pendiente existe
+{
+  "success": false,
+  "error": {
+    "code": "INVITATION_PENDING",
+    "message": "Ya existe una invitación pendiente para este email."
+  }
+}
+
+// Límite de usuarios alcanzado (según plan)
+{
+  "success": false,
+  "error": {
+    "code": "USER_LIMIT_REACHED",
+    "message": "Has alcanzado el límite de usuarios de tu plan actual."
+  }
+}
+```
+
+#### Bubble Usage
+
+**On Invite User Popup Submit**:
+1. Validate all fields filled
+2. Call `createInvitation` with user details
+3. If `success` = yes:
+   - Show success message: "Invitación enviada a [email]"
+   - Optionally display `invitationLink` for manual sharing
+   - Refresh users list
+4. If error:
+   - Display appropriate error message
+
+#### Database Operations (Backend)
+
+**Reads from**:
+- `users` table - Check if email already exists
+- `invitations` table - Check for pending invitations
+- `companies` table - Get company plan limits
+
+**Writes to**:
+- `invitations` table - Create invitation record
+  - Sets: email, firstName, lastName, inviter_user_id, company_id, role_id, facility_ids, token (generated), status="pending", expires_at (now + 72 hours)
+
+**Side Effects**:
+- Generate unique invitation token (UUID v4)
+- Send invitation email with link
+- Log invitation creation event
+
+**Validation**:
+- User has permission to invite (ADMIN, FACILITY_MANAGER roles only)
+- Email not already registered
+- No pending invitation for this email
+- Company hasn't reached user limit from plan
+- Facilities belong to the company
+
+---
+
+### Resend Invitation
+
+**Endpoint**: `POST /invitations/resend`
+**Convex Function**: `invitations.resend`
+
+**Purpose**: Resend invitation email with new token (previous token expires)
+
+#### Bubble API Connector Configuration
+
+**Name**: `resendInvitation`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/invitations/resend`
+**Data Type**: Single object (Return list = No)
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "invitationId": "<invitationId>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Current User session | a2g3YnI1M2RuazR5bWplNms... |
+| invitationId | text | No | Repeating group cell | inv789 |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "newToken": "xyz987abc321",
+  "invitationLink": "https://app.alquemist.com/accept-invitation?token=xyz987abc321",
+  "expiresAt": 1700100000000,
+  "emailSent": true
+}
+```
+
+**Response Fields**:
+- `success` (yes/no) - Si el reenvío fue exitoso
+- `newToken` (text) - Nuevo token generado
+- `invitationLink` (text) - Nueva URL de invitación
+- `expiresAt` (number) - Nueva fecha de expiración
+- `emailSent` (yes/no) - Si el email fue enviado
+
+#### Bubble Usage
+
+**On Resend Button Click** (in users management page):
+1. Get `invitationId` from repeating group cell
+2. Call `resendInvitation`
+3. If `success` = yes:
+   - Show message: "Invitación reenviada"
+   - Update invitation timestamp in list
+4. Old token becomes invalid automatically
+
+#### Database Operations (Backend)
+
+**Reads from**:
+- `invitations` table - Get invitation details
+
+**Updates**:
+- `invitations` table
+  - Sets: token = new_token, expires_at = now() + 72 hours, updated_at = now()
+
+**Side Effects**:
+- Send new invitation email
+- Invalidate previous token
+
+---
+
+### Revoke Invitation
+
+**Endpoint**: `POST /invitations/revoke`
+**Convex Function**: `invitations.revoke`
+
+**Purpose**: Cancel pending invitation (user cannot accept anymore)
+
+#### Bubble API Connector Configuration
+
+**Name**: `revokeInvitation`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/invitations/revoke`
+**Data Type**: Single object (Return list = No)
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "invitationId": "<invitationId>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Current User session | a2g3YnI1M2RuazR5bWplNms... |
+| invitationId | text | No | Repeating group cell | inv789 |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "message": "Invitación revocada exitosamente"
+}
+```
+
+**Response Fields**:
+- `success` (yes/no) - Si la revocación fue exitosa
+- `message` (text) - Mensaje de confirmación
+
+#### Bubble Usage
+
+**On Revoke/Cancel Button Click** (in users management page):
+1. Show confirmation: "¿Cancelar invitación para [email]?"
+2. If confirmed, call `revokeInvitation`
+3. If `success` = yes:
+   - Remove invitation from list
+   - Show "Invitación cancelada"
+4. Token becomes invalid (user cannot accept)
+
+#### Database Operations (Backend)
+
+**Updates**:
+- `invitations` table
+  - Sets: status = "revoked", updated_at = now()
+
+---
+
+## MODULE 1B SUMMARY
+
+### Endpoints Created
+
+| Endpoint | Purpose | Authentication | Used In |
+|----------|---------|----------------|---------|
+| `POST /invitations/validate-token` | Validate invitation link | No | Accept Invitation page (load) |
+| `POST /invitations/accept` | Accept invitation & create account | No | Set Password page (submit) |
+| `POST /invitations/reject` | Reject invitation | No | Accept Invitation page (reject button) |
+| `POST /invitations/create` | Admin sends invitation | Yes (Bearer) | Phase 2 Module 17 (Invite User popup) |
+| `POST /invitations/resend` | Resend invitation email | Yes (Bearer) | Phase 2 Module 17 (Resend button) |
+| `POST /invitations/revoke` | Cancel pending invitation | Yes (Bearer) | Phase 2 Module 17 (Cancel button) |
+
+### Database Tables Used
+
+- **invitations** - Core table for invitation management
+- **users** - Create user accounts on acceptance
+- **facility_users** - Link users to facilities
+- **companies** - Validate company context
+- **roles** - Assign roles to invited users
+- **facilities** - Validate facility assignments
+
+### Related Documentation
+
+- **UI Flow**: [Phase 1, Module 5](../ui/bubble/PHASE-1-ONBOARDING.md#module-5-invited-user-acceptance) - Complete user screens and workflows
+- **Database Schema**: [Schema - invitations table](../database/SCHEMA.md) - Table structure (to be added)
+- **User Management**: [Phase 2, Module 17](../ui/bubble/PHASE-2-BASIC-SETUP.md#module-17-user-invitations--team-management) - Admin interface for managing invitations
 
 ---
 

@@ -18,15 +18,15 @@
 - **MODULE 8**: Area Management (Production zones)
 - **MODULE 15**: Cultivar Management (Plant varieties)
 - **MODULE 16**: Supplier Management (Vendor registry)
-- **MODULE 17**: Other Crops Management (Non-primary crops)
-- **MODULE 18**: Compliance Templates (Regulatory forms)
+- **MODULE 17**: User Invitations & Team Management (Invite users, manage roles)
+- **MODULE 18**: Facility Management & Switcher (Multi-facility operations)
 - **MODULE 19**: Inventory Management (Stock tracking)
 - **MODULE 20**: Facility Settings (Configuration)
 - **MODULE 21**: Account Settings (User preferences)
 
 **Estimated Pages**: 18-21 screens
 **Entry Point**: After completing Phase 1 onboarding
-**Pattern**: All modules follow standard CRUD pattern (List, Create, Detail, Edit)
+**Pattern**: Most modules follow standard CRUD pattern (List, Create, Detail, Edit)
 
 ---
 
@@ -914,22 +914,701 @@ Authorization: Bearer <token>
 
 ---
 
-## MODULE 17: Other Crops Management
+## MODULE 17: User Invitations & Team Management
 
-Track non-primary crops grown in facility (companion plants, experimental varieties, etc.)
+Admin functionality to invite team members and manage user roles. This module covers the **admin side** of invitations (sending, tracking, resending). For the **invited user side** (accepting invitations), see Phase 1 Module 1B.
 
-### Create Other Crop
+> **Cross-Reference**: Invited user acceptance endpoints are documented in [PHASE-1-ONBOARDING-ENDPOINTS.md - Module 1B](PHASE-1-ONBOARDING-ENDPOINTS.md#module-1b-invited-user-acceptance)
 
-**Endpoint**: `POST /other-crops/create`
+---
+
+### Get Users by Company
+
+**Endpoint**: `POST /users/get-by-company`
 **Status**: ⚠️ Not yet implemented
-**Convex Function**: `otherCrops.create` - TO BE CREATED
+**Convex Function**: `users.getByCompany` - TO BE CREATED
+
+Get all users (active, pending, deactivated) for the current company with their roles and invitation status.
 
 #### Bubble API Connector Configuration
 
-**Name**: `createOtherCrop`
+**Name**: `getUsersByCompany`
+**Use as**: Data
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/users/get-by-company`
+**Data Type**: List of objects (Return list = Yes)
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "companyId": "<companyId>",
+  "status": "<status>",
+  "roleId": "<roleId>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| companyId | text | No | Body | comp123... |
+| status | text | No | Body | active (optional filter) |
+| roleId | text | No | Body | role456... (optional filter) |
+
+**Complete Response**:
+```json
+[
+  {
+    "_id": "user123...",
+    "email": "juan@example.com",
+    "firstName": "Juan",
+    "lastName": "Manager",
+    "role": {
+      "_id": "role456",
+      "role_name": "FACILITY_MANAGER",
+      "display_name": "Manager"
+    },
+    "status": "active",
+    "email_verified": true,
+    "facilities": [
+      {
+        "_id": "fac001",
+        "name": "North Farm"
+      }
+    ],
+    "lastLogin": 1705320000000,
+    "createdAt": 1705000000000
+  },
+  {
+    "_id": "user789...",
+    "email": "luis@example.com",
+    "firstName": "Luis",
+    "lastName": "Pending",
+    "role": {
+      "_id": "role789",
+      "role_name": "WORKER",
+      "display_name": "Worker"
+    },
+    "status": "pending",
+    "email_verified": false,
+    "invitation": {
+      "_id": "inv456",
+      "status": "pending",
+      "expires_at": 1705580000000,
+      "created_at": 1705320000000
+    },
+    "facilities": [],
+    "createdAt": 1705320000000
+  }
+]
+```
+
+**Status Values**: `active`, `pending`, `deactivated`
+
+**Backend Processing**:
+1. Verify requester has ADMIN or FACILITY_MANAGER role
+2. Query `users` table filtering by `company_id`
+3. Join with `roles` table for role details
+4. Join with `invitations` table for pending users
+5. Join with facility access records
+6. Return sorted by status (pending first), then by name
+
+---
+
+### Invite User
+
+**Endpoint**: `POST /users/invite`
+**Status**: ⚠️ Not yet implemented
+**Convex Function**: `users.invite` - TO BE CREATED
+
+Send invitation email to new user with role and facility assignments.
+
+#### Bubble API Connector Configuration
+
+**Name**: `inviteUser`
 **Use as**: Action
 **Method**: POST
-**URL**: `https://handsome-jay-388.convex.site/other-crops/create`
+**URL**: `https://handsome-jay-388.convex.site/users/invite`
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "email": "<email>",
+  "firstName": "<firstName>",
+  "lastName": "<lastName>",
+  "roleId": "<roleId>",
+  "facilityIds": ["<facilityId1>", "<facilityId2>"]
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| email | text | No | Body | maria@example.com |
+| firstName | text | No | Body | María |
+| lastName | text | No | Body | Supervisor |
+| roleId | text | No | Body | role456... |
+| facilityIds | list | No | Body | ["fac001", "fac002"] |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "invitationId": "inv789...",
+  "message": "Invitación enviada a maria@example.com",
+  "expiresAt": 1705580000000,
+  "token": "abc123xyz..." // Only for testing, not sent to client in production
+}
+```
+
+**Error Responses**:
+```json
+{
+  "success": false,
+  "error": "User with this email already exists in company",
+  "code": "USER_ALREADY_EXISTS"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Pending invitation already exists for this email",
+  "code": "INVITATION_ALREADY_PENDING"
+}
+```
+
+**Backend Processing**:
+1. Verify requester has ADMIN or FACILITY_MANAGER role
+2. Check email doesn't already exist in company
+3. Check no pending invitation exists for this email
+4. Generate unique UUID v4 token
+5. Create record in `invitations` table:
+   - email, firstName, lastName
+   - inviter_user_id (requester)
+   - company_id (from requester)
+   - role_id
+   - facility_ids (array)
+   - token (UUID v4)
+   - status: "pending"
+   - expires_at: current time + 72 hours
+6. Send invitation email with link: `https://app.alquemist.com/accept-invitation?token={token}`
+7. Return invitation ID and expiration
+
+**Database Tables**:
+- **Creates**: `invitations` (1 record)
+- **Reads**: `users`, `invitations` (validation)
+
+---
+
+### Resend Invitation
+
+**Endpoint**: `POST /users/resend-invitation`
+**Status**: ⚠️ Not yet implemented
+**Convex Function**: `users.resendInvitation` - TO BE CREATED
+
+Resend invitation email with a new token (invalidates previous token).
+
+#### Bubble API Connector Configuration
+
+**Name**: `resendInvitation`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/users/resend-invitation`
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "invitationId": "<invitationId>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| invitationId | text | No | Body | inv789... |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "message": "Invitación reenviada",
+  "newToken": "xyz789abc...", // Only for testing
+  "expiresAt": 1705580000000
+}
+```
+
+**Backend Processing**:
+1. Verify requester has ADMIN or FACILITY_MANAGER role
+2. Verify invitation exists and belongs to requester's company
+3. Verify invitation status is "pending" or "expired"
+4. Generate new UUID v4 token
+5. Update `invitations` record:
+   - token: new token
+   - status: "pending"
+   - expires_at: current time + 72 hours
+   - updated_at: current time
+6. Send new invitation email with new link
+7. Return success
+
+**Database Tables**:
+- **Updates**: `invitations` (token, expires_at, status)
+
+---
+
+### Revoke Invitation
+
+**Endpoint**: `POST /users/revoke-invitation`
+**Status**: ⚠️ Not yet implemented
+**Convex Function**: `users.revokeInvitation` - TO BE CREATED
+
+Cancel a pending invitation (prevents user from accepting).
+
+#### Bubble API Connector Configuration
+
+**Name**: `revokeInvitation`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/users/revoke-invitation`
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "invitationId": "<invitationId>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| invitationId | text | No | Body | inv789... |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "message": "Invitación revocada"
+}
+```
+
+**Backend Processing**:
+1. Verify requester has ADMIN or FACILITY_MANAGER role
+2. Verify invitation exists and belongs to requester's company
+3. Verify invitation status is "pending"
+4. Update `invitations` record:
+   - status: "revoked"
+   - revoked_at: current time
+   - updated_at: current time
+5. Return success
+
+**Database Tables**:
+- **Updates**: `invitations` (status, revoked_at)
+
+---
+
+### Update User Role
+
+**Endpoint**: `POST /users/update-role`
+**Status**: ⚠️ Not yet implemented
+**Convex Function**: `users.updateRole` - TO BE CREATED
+
+Change a user's role assignment.
+
+#### Bubble API Connector Configuration
+
+**Name**: `updateUserRole`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/users/update-role`
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "userId": "<userId>",
+  "newRoleId": "<newRoleId>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| userId | text | No | Body | user123... |
+| newRoleId | text | No | Body | role789... |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "message": "Rol actualizado"
+}
+```
+
+**Error Responses**:
+```json
+{
+  "success": false,
+  "error": "Cannot change role of company owner",
+  "code": "CANNOT_CHANGE_OWNER_ROLE"
+}
+```
+
+**Backend Processing**:
+1. Verify requester has ADMIN role
+2. Verify user exists and belongs to same company
+3. Verify user is not the company owner (cannot change owner role)
+4. Verify new role exists
+5. Update `users` record:
+   - role_id: new role ID
+   - updated_at: current time
+6. Return success
+
+**Database Tables**:
+- **Updates**: `users` (role_id)
+- **Reads**: `users`, `roles` (validation)
+
+---
+
+### Deactivate User
+
+**Endpoint**: `POST /users/deactivate`
+**Status**: ⚠️ Not yet implemented
+**Convex Function**: `users.deactivate` - TO BE CREATED
+
+Deactivate a user account (prevents login, preserves data).
+
+#### Bubble API Connector Configuration
+
+**Name**: `deactivateUser`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/users/deactivate`
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "userId": "<userId>",
+  "reason": "<reason>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| userId | text | No | Body | user123... |
+| reason | text | No | Body | Employee left company (optional) |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "message": "Usuario desactivado"
+}
+```
+
+**Error Responses**:
+```json
+{
+  "success": false,
+  "error": "Cannot deactivate company owner",
+  "code": "CANNOT_DEACTIVATE_OWNER"
+}
+```
+
+**Backend Processing**:
+1. Verify requester has ADMIN or FACILITY_MANAGER role
+2. Verify user exists and belongs to same company
+3. Verify user is not the company owner
+4. Update `users` record:
+   - status: "deactivated"
+   - deactivated_at: current time
+   - deactivation_reason: reason (if provided)
+   - updated_at: current time
+5. Invalidate user's active sessions
+6. Return success
+
+**Database Tables**:
+- **Updates**: `users` (status, deactivated_at)
+
+---
+
+## MODULE 18: Facility Management & Switcher
+
+Multi-facility operations management. Enable companies to manage multiple cultivation sites and switch facility context. All data (areas, inventory, orders) is scoped to the active facility.
+
+---
+
+### Get Facilities by Company
+
+**Endpoint**: `POST /facilities/get-by-company`
+**Status**: ⚠️ Not yet implemented
+**Convex Function**: `facilities.getByCompany` - TO BE CREATED
+
+Get all facilities for the current company with stats (areas, users, active orders).
+
+#### Bubble API Connector Configuration
+
+**Name**: `getFacilitiesByCompany`
+**Use as**: Data
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/facilities/get-by-company`
+**Data Type**: List of objects (Return list = Yes)
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "companyId": "<companyId>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| companyId | text | No | Body | comp123... |
+
+**Complete Response**:
+```json
+[
+  {
+    "_id": "fac001...",
+    "name": "North Farm",
+    "license_number": "COL-CNB-2024-001",
+    "license_type": "commercial_growing",
+    "primary_crop_type_ids": ["crop_cannabis"],
+    "municipality_code": "05001",
+    "municipality_name": "Medellín",
+    "department_code": "05",
+    "department_name": "Antioquia",
+    "total_area_m2": 500,
+    "climate_zone": "tropical",
+    "status": "active",
+    "is_current": true,
+    "stats": {
+      "total_areas": 8,
+      "total_users": 12,
+      "active_production_orders": 5,
+      "total_batches": 23
+    },
+    "created_at": 1705000000000,
+    "updated_at": 1705320000000
+  },
+  {
+    "_id": "fac002...",
+    "name": "South Greenhouse",
+    "license_number": "COL-CNB-2024-002",
+    "license_type": "commercial_growing",
+    "primary_crop_type_ids": ["crop_cannabis"],
+    "municipality_code": "05615",
+    "municipality_name": "Rionegro",
+    "department_code": "05",
+    "department_name": "Antioquia",
+    "total_area_m2": 200,
+    "climate_zone": "subtropical",
+    "status": "active",
+    "is_current": false,
+    "stats": {
+      "total_areas": 4,
+      "total_users": 5,
+      "active_production_orders": 2,
+      "total_batches": 8
+    },
+    "created_at": 1705200000000,
+    "updated_at": 1705320000000
+  }
+]
+```
+
+**Backend Processing**:
+1. Verify requester has access to company
+2. Query `facilities` table filtering by `company_id`
+3. Join with `geographic_locations` for municipality/department names
+4. Calculate stats for each facility:
+   - Count `areas` where `facility_id` matches
+   - Count `users` with access to facility
+   - Count `production_orders` with status "en_proceso"
+   - Count `batches` with status "active"
+5. Mark current facility (`is_current: true`) based on user's `currentFacilityId`
+6. Return sorted by name
+
+**Database Tables**:
+- **Reads**: `facilities`, `geographic_locations`, `areas`, `users`, `production_orders`, `batches`
+
+---
+
+### Create Facility
+
+**Endpoint**: `POST /facilities/create`
+**Status**: ⚠️ Not yet implemented
+**Convex Function**: `facilities.create` - TO BE CREATED
+
+Create a new facility (subject to plan limits).
+
+#### Bubble API Connector Configuration
+
+**Name**: `createFacility`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/facilities/create`
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "companyId": "<companyId>",
+  "name": "<name>",
+  "license_number": "<license_number>",
+  "license_type": "<license_type>",
+  "primary_crop_type_ids": ["<cropTypeId>"],
+  "address": "<address>",
+  "municipality_code": "<municipality_code>",
+  "department_code": "<department_code>",
+  "latitude": <latitude>,
+  "longitude": <longitude>,
+  "total_area_m2": <total_area_m2>,
+  "climate_zone": "<climate_zone>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| companyId | text | No | Body | comp123... |
+| name | text | No | Body | Urban Facility |
+| license_number | text | No | Body | COL-CNB-2024-003 |
+| license_type | text | No | Body | commercial_growing |
+| primary_crop_type_ids | list | No | Body | ["crop_cannabis"] |
+| address | text | No | Body | Calle 50 #45-30 (optional) |
+| municipality_code | text | No | Body | 05001 |
+| department_code | text | No | Body | 05 |
+| latitude | number | No | Body | 6.2442 (optional) |
+| longitude | number | No | Body | -75.5812 (optional) |
+| total_area_m2 | number | No | Body | 1000 |
+| climate_zone | text | No | Body | tropical |
+
+**License Types**: `commercial_growing`, `research`, `processing`, `other`
+
+**Climate Zones**: `tropical`, `subtropical`, `temperate`
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "facilityId": "fac003...",
+  "message": "Instalación creada exitosamente"
+}
+```
+
+**Error Responses**:
+```json
+{
+  "success": false,
+  "error": "Facility limit reached for current plan (max: 5)",
+  "code": "FACILITY_LIMIT_REACHED",
+  "current_count": 5,
+  "max_allowed": 5
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "License number already exists",
+  "code": "LICENSE_NUMBER_EXISTS"
+}
+```
+
+**Backend Processing**:
+1. Verify requester has ADMIN or FACILITY_MANAGER role
+2. Verify company exists
+3. **Check plan limits**:
+   - Query company's `subscription_plan`
+   - Count existing facilities for company
+   - Compare with `max_facilities` for plan
+   - Return error if limit reached
+4. Validate license number is unique
+5. Create record in `facilities` table
+6. Grant facility access to creator (in user-facility access table)
+7. Return facility ID
+
+**Plan Limits**:
+- **Basic**: 1 facility
+- **Professional**: 5 facilities
+- **Enterprise**: Unlimited
+
+**Database Tables**:
+- **Creates**: `facilities` (1 record)
+- **Reads**: `companies` (plan validation)
+- **Updates**: User-facility access table
+
+---
+
+### Update Facility
+
+**Endpoint**: `POST /facilities/update`
+**Status**: ⚠️ Not yet implemented
+**Convex Function**: `facilities.update` - TO BE CREATED
+
+Update facility details (name, address, license, etc.).
+
+#### Bubble API Connector Configuration
+
+**Name**: `updateFacility`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/facilities/update`
 
 **Headers**:
 ```
@@ -942,9 +1621,14 @@ Authorization: Bearer <token>
 {
   "facilityId": "<facilityId>",
   "name": "<name>",
-  "category": "<category>",
-  "purpose": "<purpose>",
-  "notes": "<notes>"
+  "license_number": "<license_number>",
+  "license_type": "<license_type>",
+  "primary_crop_type_ids": ["<cropTypeId>"],
+  "address": "<address>",
+  "municipality_code": "<municipality_code>",
+  "total_area_m2": <total_area_m2>,
+  "climate_zone": "<climate_zone>",
+  "status": "<status>"
 }
 ```
 
@@ -952,107 +1636,54 @@ Authorization: Bearer <token>
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| facilityId | text | No | Body | f78ghi... |
-| name | text | No | Body | Basil |
-| category | text | No | Body | herbs |
-| purpose | text | No | Body | companion_planting |
-| notes | text | No | Body | Helps with pest control |
+| facilityId | text | No | Body | fac001... |
+| name | text | No | Body | North Farm - Updated |
+| license_number | text | No | Body | COL-CNB-2024-001-R |
+| license_type | text | No | Body | commercial_growing |
+| primary_crop_type_ids | list | No | Body | ["crop_cannabis", "crop_coffee"] |
+| address | text | No | Body | Updated address |
+| municipality_code | text | No | Body | 05001 |
+| total_area_m2 | number | No | Body | 750 |
+| climate_zone | text | No | Body | tropical |
+| status | text | No | Body | active |
+
+**Status Values**: `active`, `inactive`, `suspended`
 
 **Complete Response**:
 ```json
 {
   "success": true,
-  "otherCropId": "oc123...",
-  "message": "Otro cultivo creado",
-  "error": "Name already exists",
-  "code": "CROP_NAME_EXISTS"
+  "message": "Instalación actualizada"
 }
 ```
 
-**Categories**: herbs, vegetables, fruits, ornamental, experimental, other
+**Backend Processing**:
+1. Verify requester has ADMIN or FACILITY_MANAGER role
+2. Verify facility exists and belongs to requester's company
+3. Validate new license number is unique (if changed)
+4. Update `facilities` record with provided fields
+5. Set `updated_at` to current time
+6. Return success
 
-**Purpose**: companion_planting, pest_control, experimental, diversification, other
+**Database Tables**:
+- **Updates**: `facilities`
 
 ---
 
-### Get Other Crops by Facility
+### Switch Facility
 
-**Endpoint**: `POST /other-crops/get-by-facility`
+**Endpoint**: `POST /facilities/switch`
 **Status**: ⚠️ Not yet implemented
-**Convex Function**: `otherCrops.getByFacility` - TO BE CREATED
+**Convex Function**: `facilities.switch` - TO BE CREATED
+
+Switch user's current facility context. All subsequent operations will be scoped to the new facility.
 
 #### Bubble API Connector Configuration
 
-**Name**: `getOtherCropsByFacility`
-**Use as**: Data
-**Method**: POST
-**URL**: `https://handsome-jay-388.convex.site/other-crops/get-by-facility`
-**Data Type**: List of objects (Return list = Yes)
-
-**Headers**:
-```
-Content-Type: application/json
-Authorization: Bearer <token>
-```
-
-**Parameters**:
-| Parameter | Type | Private | Source | Example |
-|-----------|------|---------|--------|---------|
-| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| facilityId | text | No | Body | f78ghi... |
-
-**Complete Response**:
-```json
-[
-  {
-    "id": "oc123...",
-    "name": "Basil",
-    "category": "herbs",
-    "purpose": "companion_planting",
-    "status": "active",
-    "createdAt": "2025-01-15T10:30:00Z"
-  }
-]
-```
-
----
-
-### Update Other Crop
-
-**Endpoint**: `POST /other-crops/update`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `otherCrops.update` - TO BE CREATED
-
-Standard update endpoint (similar pattern to other modules)
-
----
-
-### Delete Other Crop
-
-**Endpoint**: `POST /other-crops/delete`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `otherCrops.delete` - TO BE CREATED
-
-Standard delete endpoint (soft delete)
-
----
-
-## MODULE 18: Compliance Templates
-
-Regulatory form templates (licenses, permits, quality checks, etc.)
-
-### Create Compliance Template
-
-**Endpoint**: `POST /compliance-templates/create`
-**Status**: ⚠️ Not yet implemented
-**Convex Function**: `complianceTemplates.create` - TO BE CREATED
-
-#### Bubble API Connector Configuration
-
-**Name**: `createComplianceTemplate`
+**Name**: `switchFacility`
 **Use as**: Action
 **Method**: POST
-**URL**: `https://handsome-jay-388.convex.site/compliance-templates/create`
+**URL**: `https://handsome-jay-388.convex.site/facilities/switch`
 
 **Headers**:
 ```
@@ -1063,19 +1694,8 @@ Authorization: Bearer <token>
 **Body**:
 ```json
 {
-  "facilityId": "<facilityId>",
-  "name": "<name>",
-  "templateType": "<templateType>",
-  "regulatoryBody": "<regulatoryBody>",
-  "frequency": "<frequency>",
-  "fields": [
-    {
-      "fieldName": "<fieldName>",
-      "fieldType": "<fieldType>",
-      "required": <required>,
-      "options": ["<option>"]
-    }
-  ]
+  "userId": "<userId>",
+  "newFacilityId": "<newFacilityId>"
 }
 ```
 
@@ -1083,45 +1703,65 @@ Authorization: Bearer <token>
 | Parameter | Type | Private | Source | Example |
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
-| facilityId | text | No | Body | f78ghi... |
-| name | text | No | Body | Monthly Quality Report |
-| templateType | text | No | Body | quality_check |
-| regulatoryBody | text | No | Body | ICA |
-| frequency | text | No | Body | monthly |
-| fields | list | No | Body | [{...}] |
-
-**Template Types**: license_renewal, quality_check, safety_inspection, inventory_report, waste_disposal, other
-
-**Field Types**: text, number, date, boolean, dropdown, file_upload
-
-**Frequency**: one_time, daily, weekly, monthly, quarterly, annual
+| userId | text | No | Body | user123... |
+| newFacilityId | text | No | Body | fac002... |
 
 **Complete Response**:
 ```json
 {
   "success": true,
-  "templateId": "ct456...",
-  "message": "Plantilla de compliance creada",
-  "error": "Invalid field configuration",
-  "code": "INVALID_FIELD_CONFIG"
+  "message": "Instalación cambiada a South Greenhouse",
+  "facility": {
+    "_id": "fac002...",
+    "name": "South Greenhouse"
+  }
 }
 ```
 
+**Error Responses**:
+```json
+{
+  "success": false,
+  "error": "User does not have access to this facility",
+  "code": "FACILITY_ACCESS_DENIED"
+}
+```
+
+**Backend Processing**:
+1. Verify requester is switching their own facility (userId matches token)
+2. Verify target facility exists
+3. Verify user has access to target facility
+4. Update `users` record:
+   - currentFacilityId: new facility ID
+   - updated_at: current time
+5. Return success with facility details
+
+**UI Impact**:
+After switching, Bubble should:
+1. Update `Current User > currentFacilityId`
+2. Refresh all repeating groups that use facility context
+3. Update facility switcher dropdown to show new selection
+
+**Database Tables**:
+- **Updates**: `users` (currentFacilityId)
+- **Reads**: `facilities`, user-facility access table
+
 ---
 
-### Get Compliance Templates by Facility
+### Get Facility by ID
 
-**Endpoint**: `POST /compliance-templates/get-by-facility`
+**Endpoint**: `POST /facilities/get-by-id`
 **Status**: ⚠️ Not yet implemented
-**Convex Function**: `complianceTemplates.getByFacility` - TO BE CREATED
+**Convex Function**: `facilities.getById` - TO BE CREATED
+
+Get full details for a specific facility (used for Facility Settings page).
 
 #### Bubble API Connector Configuration
 
-**Name**: `getComplianceTemplatesByFacility`
+**Name**: `getFacilityById`
 **Use as**: Data
 **Method**: POST
-**URL**: `https://handsome-jay-388.convex.site/compliance-templates/get-by-facility`
-**Data Type**: List of objects (Return list = Yes)
+**URL**: `https://handsome-jay-388.convex.site/facilities/get-by-id`
 
 **Headers**:
 ```
@@ -1129,38 +1769,55 @@ Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
-**Complete Response**:
+**Body**:
 ```json
-[
-  {
-    "id": "ct456...",
-    "name": "Monthly Quality Report",
-    "templateType": "quality_check",
-    "regulatoryBody": "ICA",
-    "frequency": "monthly",
-    "status": "active",
-    "lastUsed": "2025-01-10T00:00:00Z"
-  }
-]
+{
+  "facilityId": "<facilityId>"
+}
 ```
 
----
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| facilityId | text | No | Body | fac001... |
 
-### Get Compliance Template by ID
+**Complete Response**:
+```json
+{
+  "_id": "fac001...",
+  "company_id": "comp123...",
+  "name": "North Farm",
+  "license_number": "COL-CNB-2024-001",
+  "license_type": "commercial_growing",
+  "primary_crop_type_ids": ["crop_cannabis"],
+  "address": "Calle 50 #45-30",
+  "municipality_code": "05001",
+  "municipality": {
+    "code": "05001",
+    "name": "Medellín",
+    "department_code": "05",
+    "department_name": "Antioquia",
+    "timezone": "America/Bogota"
+  },
+  "latitude": 6.2442,
+  "longitude": -75.5812,
+  "total_area_m2": 500,
+  "climate_zone": "tropical",
+  "status": "active",
+  "created_at": 1705000000000,
+  "updated_at": 1705320000000
+}
+```
 
-Standard get-by-id endpoint with full field details
+**Backend Processing**:
+1. Verify requester has access to facility
+2. Query `facilities` table by ID
+3. Join with `geographic_locations` for full location details
+4. Return full facility record
 
----
-
-### Update Compliance Template
-
-Standard update endpoint
-
----
-
-### Delete Compliance Template
-
-**Validation**: Cannot delete if template has associated compliance records
+**Database Tables**:
+- **Reads**: `facilities`, `geographic_locations`
 
 ---
 

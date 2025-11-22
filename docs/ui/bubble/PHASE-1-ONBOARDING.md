@@ -8,12 +8,16 @@
 
 ## Overview
 
-Phase 1 is a guided onboarding wizard that takes users from signup → company with facility created. Users complete 4 modules to create their account, company, and first facility. Post-onboarding setup (Areas, Cultivars, Suppliers) happens in the operational dashboard (PHASE 2).
+Phase 1 handles two distinct onboarding flows:
+1. **First User (Modules 1-4)**: Complete signup → company → facility creation (7 screens)
+2. **Invited User (Module 5)**: Accept invitation → set password → join company (4 screens)
 
-**Total Pages**: 7 screens
-**Total Modules**: 4
-**User Flow**: Linear progression with back navigation
-**Entry**: Public landing page
+Post-onboarding setup (Areas, Cultivars, Suppliers) happens in the operational dashboard (PHASE 2).
+
+**Total Pages**: 11 screens (7 for first user + 4 for invited user)
+**Total Modules**: 5
+**User Flows**: Two separate paths (first user vs invited user)
+**Entry**: Public landing page (first user) or Email invitation link (invited user)
 **Exit**: Operational Dashboard (home page - facility context established)
 
 ---
@@ -576,6 +580,408 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 | Suppliers Item | • Proveedores (opcional) | • Suppliers (optional) | onboarding_next_suppliers |
 | Dashboard Message | Estos pueden gestionarse desde tu panel operacional. | These can be managed from your operational dashboard. | onboarding_dashboard_message |
 | Go to Dashboard Button | Ir al Panel de Control | Go to Dashboard | onboarding_complete_dashboard_btn |
+
+---
+
+## MODULE 5: Invited User Acceptance
+
+### Overview
+
+This module handles the onboarding flow for users who have been invited by an administrator to join an existing company. Unlike the first user (Module 1-4), invited users:
+- Do NOT create a company or facility
+- Receive an invitation email with a unique token
+- Set their password to activate their account
+- Are automatically assigned to the company and facilities specified in the invitation
+
+**Pages**: 3 screens (Accept Invitation, Set Password, Welcome)
+**Entry Point**: Email invitation link
+**Exit**: Operational Dashboard (facility context pre-set)
+
+---
+
+### Page 8: Accept Invitation Landing
+
+**URL**: `/accept-invitation?token=ABC123XYZ`
+
+**Visual Layout**:
+```
+┌─────────────────────────────────┐
+│     🌱 ALQUEMIST                │
+│     INVITACIÓN DE EQUIPO        │
+├─────────────────────────────────┤
+│                                 │
+│  Has sido invitado(a) a:        │
+│                                 │
+│  ┌───────────────────────────┐ │
+│  │ 🏢 AGRÍCOLA DEL VALLE SAS│ │
+│  │                           │ │
+│  │ Rol: Supervisor           │ │
+│  │ Invitado por: Juan Pérez  │ │
+│  │ Instalaciones: 2          │ │
+│  └───────────────────────────┘ │
+│                                 │
+│  Tu cuenta:                     │
+│  📧 maria@example.com           │
+│                                 │
+│  [Aceptar Invitación]          │
+│  [Rechazar]                     │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Bubble Elements**:
+
+| Element Name | Type | Value |
+|--------------|------|-------|
+| `text_invitation_header` | Text | "Has sido invitado(a) a:" |
+| `group_company_info` | Group | Container for company details |
+| `text_company_name` | Text | API: `invitation > company > name` |
+| `text_role` | Text | API: `invitation > role > display_name` |
+| `text_inviter` | Text | API: `invitation > inviter > firstName + lastName` |
+| `text_facility_count` | Text | API: `invitation > facilities:count` |
+| `text_email` | Text | API: `invitation > email` |
+| `btn_accept` | Button | "Aceptar Invitación" → show password form |
+| `btn_reject` | Button | "Rechazar" → show rejection confirmation |
+
+**Workflows**:
+
+**Workflow: Load Invitation on Page Load**
+- **Trigger**: Page is loaded
+- **Step 1**: Get `token` from URL parameter
+- **Step 2**: API Call `call_validateInvitationToken`
+  - Parameters: `{ "token": "..." }`
+  - Response: `{ "valid": true, "invitation": {...} }`
+- **Step 3**: If valid → Display invitation details
+- **Step 4**: If invalid → Navigate to "Invitation Invalid" page
+
+**Workflow: Accept Invitation**
+- **Trigger**: `btn_accept` is clicked
+- **Step 1**: Hide company info group
+- **Step 2**: Show password form group (Page 9)
+
+**Workflow: Reject Invitation**
+- **Trigger**: `btn_reject` is clicked
+- **Step 1**: Show confirmation popup "¿Estás seguro?"
+- **Step 2**: If confirmed → API Call `call_rejectInvitation`
+  - Parameters: `{ "token": "..." }`
+- **Step 3**: Show message "Invitación rechazada"
+- **Step 4**: Navigate to login page
+
+**Database Context**:
+- **Reads from**: `invitations` table
+  - Gets: email, role, company info, inviter info, facility list
+  - Validates: token not expired, status = "pending"
+- **No writes on this page** (just validation)
+
+**UI Translations**:
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Page Header | INVITACIÓN DE EQUIPO | TEAM INVITATION | invitation_page_header |
+| Invited To | Has sido invitado(a) a: | You've been invited to: | invitation_invited_to |
+| Role Label | Rol: | Role: | invitation_role_label |
+| Invited By | Invitado por: | Invited by: | invitation_invited_by |
+| Facilities Label | Instalaciones: | Facilities: | invitation_facilities_label |
+| Your Account | Tu cuenta: | Your account: | invitation_your_account |
+| Accept Button | Aceptar Invitación | Accept Invitation | invitation_accept_btn |
+| Reject Button | Rechazar | Reject | invitation_reject_btn |
+| Reject Confirmation | ¿Estás seguro que deseas rechazar esta invitación? | Are you sure you want to reject this invitation? | invitation_reject_confirm |
+| Rejected Message | Invitación rechazada | Invitation rejected | invitation_rejected_msg |
+
+---
+
+### Page 9: Set Password (Invitation Acceptance)
+
+**Same URL**: `/accept-invitation?token=ABC123XYZ` (form shown after accepting)
+
+**Visual Layout**:
+```
+┌─────────────────────────────────┐
+│     🌱 ALQUEMIST                │
+│     CONFIGURA TU CUENTA         │
+├─────────────────────────────────┤
+│                                 │
+│  Crea tu contraseña:            │
+│                                 │
+│  Contraseña *                   │
+│  [••••••••••••••]               │
+│                                 │
+│  Confirmar Contraseña *         │
+│  [••••••••••••••]               │
+│                                 │
+│  ✓ Mínimo 8 caracteres          │
+│  ✓ 1 mayúscula                  │
+│  ✓ 1 número                     │
+│  ✓ 1 carácter especial          │
+│                                 │
+│  ─────────────────────────      │
+│                                 │
+│  Información Opcional:          │
+│                                 │
+│  Teléfono                       │
+│  [________________]             │
+│                                 │
+│  Idioma Preferido               │
+│  [○ Español  ○ English]         │
+│                                 │
+│  [Volver] [Crear Cuenta]        │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Bubble Elements**:
+
+| Element Name | Type | Value |
+|--------------|------|-------|
+| `text_setup_header` | Text | "Configura tu Cuenta" |
+| `text_password_label` | Text | "Crea tu contraseña:" |
+| `input_password` | Input (password) | User's new password |
+| `input_confirm_password` | Input (password) | Password confirmation |
+| `group_password_requirements` | Group | Password validation checklist |
+| `text_req_length` | Text | "✓ Mínimo 8 caracteres" (green when met) |
+| `text_req_uppercase` | Text | "✓ 1 mayúscula" |
+| `text_req_number` | Text | "✓ 1 número" |
+| `text_req_special` | Text | "✓ 1 carácter especial" |
+| `text_optional_header` | Text | "Información Opcional:" |
+| `input_phone` | Input | Optional phone number |
+| `radio_language` | Radio Buttons | Español / English |
+| `btn_back` | Button | "Volver" → back to Page 8 |
+| `btn_submit` | Button | "Crear Cuenta" → accept invitation |
+
+**Workflows**:
+
+**Workflow: Validate Password on Input**
+- **Trigger**: `input_password` value is changed
+- **Step 1**: Check length ≥ 8 → update `text_req_length` color
+- **Step 2**: Check uppercase → update `text_req_uppercase` color
+- **Step 3**: Check number → update `text_req_number` color
+- **Step 4**: Check special char → update `text_req_special` color
+- **Step 5**: Enable `btn_submit` only if all requirements met
+
+**Workflow: Submit Accept Invitation**
+- **Trigger**: `btn_submit` is clicked
+- **Precondition**: All password requirements met, passwords match
+- **Step 1**: Show loading spinner
+- **Step 2**: API Call `call_acceptInvitation`
+  - Parameters:
+    - `token`: URL parameter
+    - `password`: `input_password's value`
+    - `phone`: `input_phone's value` (optional)
+    - `language`: `radio_language's value` (default: "es")
+  - Response: `{ "success": true, "userId": "...", "authToken": "..." }`
+- **Step 3**: If success:
+  - Store `authToken` in browser storage (login user)
+  - Set Current User data
+  - Navigate to Welcome page (Page 10)
+- **Step 4**: If error:
+  - Show error message (e.g., "Token expirado")
+  - Option to request new invitation
+
+**Database Context**:
+- **Writes to**: `users` table
+  - Creates: New user account with provided password
+  - Sets: email, firstName, lastName, phone, language, role_id, company_id
+- **Updates**: `invitations` table
+  - Sets: status = "accepted", accepted_at = now()
+- **Writes to**: `facility_users` table (if multi-facility)
+  - Links: user to assigned facilities
+
+**UI Translations**:
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Setup Header | CONFIGURA TU CUENTA | SET UP YOUR ACCOUNT | invitation_setup_header |
+| Create Password Label | Crea tu contraseña: | Create your password: | invitation_create_password |
+| Password Label | Contraseña | Password | invitation_password_label |
+| Confirm Password Label | Confirmar Contraseña | Confirm Password | invitation_confirm_password |
+| Requirement Length | Mínimo 8 caracteres | Minimum 8 characters | invitation_req_length |
+| Requirement Uppercase | 1 mayúscula | 1 uppercase letter | invitation_req_uppercase |
+| Requirement Number | 1 número | 1 number | invitation_req_number |
+| Requirement Special | 1 carácter especial | 1 special character | invitation_req_special |
+| Optional Info Header | Información Opcional: | Optional Information: | invitation_optional_info |
+| Phone Label | Teléfono | Phone | invitation_phone_label |
+| Language Label | Idioma Preferido | Preferred Language | invitation_language_label |
+| Spanish Option | Español | Spanish | invitation_lang_es |
+| English Option | English | English | invitation_lang_en |
+| Back Button | Volver | Back | invitation_back_btn |
+| Submit Button | Crear Cuenta | Create Account | invitation_submit_btn |
+| Passwords Mismatch | Las contraseñas no coinciden | Passwords do not match | invitation_password_mismatch |
+| Token Expired | El token de invitación ha expirado | Invitation token has expired | invitation_token_expired |
+| Request New Invitation | Solicitar nueva invitación | Request new invitation | invitation_request_new |
+
+---
+
+### Page 10: Welcome (Invited User)
+
+**URL**: `/welcome-invited`
+
+**Visual Layout**:
+```
+┌─────────────────────────────────┐
+│     🌱 ALQUEMIST                │
+│     ¡BIENVENIDO(A)!             │
+├─────────────────────────────────┤
+│                                 │
+│  ✓ ¡Cuenta Creada!              │
+│                                 │
+│  Has sido agregado(a) a:        │
+│  🏢 Agrícola del Valle SAS      │
+│                                 │
+│  Tu rol: Supervisor             │
+│  Instalaciones: 2               │
+│  - Instalación Norte            │
+│  - Instalación Sur              │
+│                                 │
+│  Puedes empezar a trabajar      │
+│  inmediatamente con tu equipo.  │
+│                                 │
+│  [Ir al Panel de Control]       │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Bubble Elements**:
+
+| Element Name | Type | Value |
+|--------------|------|-------|
+| `text_welcome_header` | Text | "¡BIENVENIDO(A)!" |
+| `text_account_created` | Text | "✓ ¡Cuenta Creada!" |
+| `text_added_to` | Text | "Has sido agregado(a) a:" |
+| `text_company_name` | Text | Current User's company name |
+| `text_role` | Text | "Tu rol: [role]" |
+| `text_facilities_label` | Text | "Instalaciones: [count]" |
+| `rg_facilities` | Repeating Group | List of assigned facilities |
+| `text_facility_name` | Text (in rg) | Facility name |
+| `text_start_working` | Text | "Puedes empezar..." |
+| `btn_go_to_dashboard` | Button | "Ir al Panel de Control" → Dashboard |
+
+**Workflows**:
+
+**Workflow: Initialize Dashboard on Page Load**
+- **Trigger**: Page is loaded
+- **Step 1**: Set Current User's `currentFacilityId` to first assigned facility
+- **Step 2**: Load user data (facilities, role)
+- **Step 3**: Display welcome message with company and role info
+
+**Workflow: Navigate to Dashboard**
+- **Trigger**: `btn_go_to_dashboard` is clicked
+- **Step 1**: Navigate to main dashboard (PHASE 2 home)
+- **Step 2**: User sees facility context already established
+
+**Database Context**:
+- **Reads from**: `users` table
+  - Gets: user's company, role, assigned facilities
+- **Reads from**: `facilities` table
+  - Gets: list of facilities user has access to
+- **Updates**: `users` table
+  - Sets: `currentFacilityId` (establishes global context for first login)
+
+**UI Translations**:
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Welcome Header | ¡BIENVENIDO(A)! | WELCOME! | invitation_welcome_header |
+| Account Created | ¡Cuenta Creada! | Account Created! | invitation_account_created |
+| Added To | Has sido agregado(a) a: | You've been added to: | invitation_added_to |
+| Your Role | Tu rol: | Your role: | invitation_your_role |
+| Facilities Count | Instalaciones: | Facilities: | invitation_facilities_count |
+| Start Working | Puedes empezar a trabajar inmediatamente con tu equipo. | You can start working immediately with your team. | invitation_start_working |
+| Go to Dashboard | Ir al Panel de Control | Go to Dashboard | invitation_go_to_dashboard |
+
+---
+
+### Page 11: Invitation Invalid
+
+**URL**: `/invitation-invalid`
+
+**Visual Layout**:
+```
+┌─────────────────────────────────┐
+│     🌱 ALQUEMIST                │
+│     INVITACIÓN NO VÁLIDA        │
+├─────────────────────────────────┤
+│                                 │
+│  ⚠️                              │
+│                                 │
+│  Esta invitación no es válida   │
+│  o ha expirado.                 │
+│                                 │
+│  Posibles razones:              │
+│  • El enlace ya fue usado       │
+│  • Han pasado más de 72 horas   │
+│  • La invitación fue revocada   │
+│                                 │
+│  Por favor contacta al          │
+│  administrador de tu empresa    │
+│  para recibir una nueva         │
+│  invitación.                    │
+│                                 │
+│  [Ir a Inicio de Sesión]        │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Bubble Elements**:
+
+| Element Name | Type | Value |
+|--------------|------|-------|
+| `text_invalid_header` | Text | "INVITACIÓN NO VÁLIDA" |
+| `text_invalid_message` | Text | "Esta invitación no es válida..." |
+| `text_reasons_label` | Text | "Posibles razones:" |
+| `text_reason_used` | Text | "• El enlace ya fue usado" |
+| `text_reason_expired` | Text | "• Han pasado más de 72 horas" |
+| `text_reason_revoked` | Text | "• La invitación fue revocada" |
+| `text_contact_admin` | Text | "Por favor contacta..." |
+| `btn_go_to_login` | Button | "Ir a Inicio de Sesión" → Login page |
+
+**Workflow**:
+- **On button click**: Navigate to login page
+
+**UI Translations**:
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Invalid Header | INVITACIÓN NO VÁLIDA | INVALID INVITATION | invitation_invalid_header |
+| Invalid Message | Esta invitación no es válida o ha expirado. | This invitation is not valid or has expired. | invitation_invalid_message |
+| Reasons Label | Posibles razones: | Possible reasons: | invitation_reasons_label |
+| Reason Used | El enlace ya fue usado | The link has already been used | invitation_reason_used |
+| Reason Expired | Han pasado más de 72 horas | More than 72 hours have passed | invitation_reason_expired |
+| Reason Revoked | La invitación fue revocada | The invitation was revoked | invitation_reason_revoked |
+| Contact Admin | Por favor contacta al administrador de tu empresa para recibir una nueva invitación. | Please contact your company administrator to receive a new invitation. | invitation_contact_admin |
+| Go to Login | Ir a Inicio de Sesión | Go to Login | invitation_go_to_login |
+
+---
+
+## MODULE 5 SUMMARY
+
+### Key Differences from First User Flow
+
+| Aspect | First User (Modules 1-4) | Invited User (Module 5) |
+|--------|-------------------------|-------------------------|
+| **Entry** | Public signup form | Email invitation link |
+| **Email Verification** | Required before proceeding | Pre-verified (invitation link = verification) |
+| **Company Creation** | Creates new company | Joins existing company |
+| **Facility Creation** | Creates first facility | Access granted to existing facilities |
+| **Role Assignment** | Auto-assigned "COMPANY_OWNER" | Pre-assigned by inviter (any role) |
+| **Dashboard Access** | After facility creation | Immediate after password setup |
+| **Pages** | 7 pages | 4 pages (faster flow) |
+
+### API Endpoints Used
+
+| Endpoint | Purpose |
+|----------|---------|
+| `call_validateInvitationToken` | Check if token is valid (Page 8) |
+| `call_acceptInvitation` | Create user account from invitation (Page 9) |
+| `call_rejectInvitation` | Reject invitation (Page 8) |
+
+**Note**: Invitation creation (`call_createInvitation`) is documented in Phase 2, Module 17 (User Management).
+
+### Database Tables
+
+- **Reads from**: `invitations` table (token validation, invitation details)
+- **Writes to**: `users` table (create user account)
+- **Updates**: `invitations` table (mark as accepted)
+- **Writes to**: `facility_users` table (link user to facilities)
 
 ---
 

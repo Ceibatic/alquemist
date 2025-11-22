@@ -546,6 +546,108 @@ Authorization: Bearer <token>
 
 ---
 
+### Complete Production Phase
+
+**Endpoint**: `POST /production-orders/complete-phase`
+**Status**: ⚠️ Not yet implemented
+**Convex Function**: `productionOrders.completePhase` - TO BE CREATED
+
+**Purpose**: Manager marks entire phase as complete, transitions production order to next phase
+
+**Role Required**: Manager or Owner
+
+#### Bubble API Connector Configuration
+
+**Name**: `completePhase`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/production-orders/complete-phase`
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "productionOrderId": "<productionOrderId>",
+  "phaseId": "<phaseId>",
+  "completedBy": "<userId>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| productionOrderId | text | No | Body | order123... |
+| phaseId | text | No | Body | phase2... |
+| completedBy | text | No | Body | user456... |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "message": "Fase completada exitosamente",
+  "newCurrentPhase": "Fase 3: Floración",
+  "newCurrentPhaseId": "phase3...",
+  "progressPercentage": 66,
+  "error": "Not all activities completed",
+  "code": "PHASE_INCOMPLETE"
+}
+```
+
+**Error Responses**:
+```json
+{
+  "success": false,
+  "error": "Not all activities in phase are completed",
+  "code": "PHASE_INCOMPLETE",
+  "pendingActivities": 3,
+  "totalActivities": 8
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Phase is not the current active phase",
+  "code": "INVALID_PHASE_TRANSITION"
+}
+```
+
+**Validation**:
+- User must have Manager or Owner role
+- All activities in phase must be completed
+- Phase must be current active phase (can't skip phases)
+- Production order must be in "en_proceso" status
+
+**Backend Processing**:
+1. Verify user has Manager/Owner role
+2. Verify all activities in phase have status="completed"
+3. Update production order:
+   - Mark phase as complete in `phaseProgress` array
+   - Increment to next phase
+   - Update `currentPhase` field
+   - Calculate new `progressPercentage`
+4. If final phase completed:
+   - Set order status to "completado"
+   - Set `actual_completion_date`
+5. Return new current phase info
+
+**Side Effects**:
+- Transitions order to next phase
+- Updates phase progress tracking
+- If final phase: marks entire order as complete
+
+**Database Tables**:
+- **Updates**: `production_orders` (currentPhase, phaseProgress, status)
+- **Reads**: `scheduled_activities` (to verify all complete)
+
+---
+
 ### Check Area Availability
 
 **Endpoint**: `POST /production-orders/check-area-availability`
@@ -812,6 +914,108 @@ Authorization: Bearer <token>
 
 ---
 
+### Start Activity
+
+**Endpoint**: `POST /activities/start`
+**Status**: ⚠️ Not yet implemented
+**Convex Function**: `activities.start` - TO BE CREATED
+
+**Purpose**: Mark activity as started, record actual start time, validate dependencies
+
+#### Bubble API Connector Configuration
+
+**Name**: `startActivity`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/activities/start`
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "activityId": "<activityId>",
+  "startedBy": "<userId>",
+  "actualStartTime": "<actualStartTime>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| activityId | text | No | Body | act123... |
+| startedBy | text | No | Body | user456... |
+| actualStartTime | text | No | Body | 2025-01-21T08:15:00Z |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "message": "Actividad iniciada",
+  "actualStartTime": "2025-01-21T08:15:00Z",
+  "error": "Dependencies not completed",
+  "code": "DEPENDENCIES_NOT_MET"
+}
+```
+
+**Error Responses**:
+```json
+{
+  "success": false,
+  "error": "Activity has dependencies that are not completed",
+  "code": "DEPENDENCIES_NOT_MET",
+  "pendingDependencies": [
+    {
+      "activityId": "act789...",
+      "activityName": "Trasplante",
+      "status": "pending"
+    }
+  ]
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Activity is already in progress or completed",
+  "code": "INVALID_STATUS_TRANSITION"
+}
+```
+
+**Validation**:
+- Activity must have status="pending"
+- All dependent activities must be completed
+- User must be assigned to activity (or have Manager role)
+
+**Backend Processing**:
+1. Verify activity exists and has status="pending"
+2. Check all dependencies completed
+3. Update `scheduled_activities` record:
+   - status: "in_progress"
+   - actual_start_time: current timestamp
+   - started_by: userId
+4. Log start event in `activities` log
+5. Return success
+
+**Side Effects**:
+- Activity status changes to "in_progress"
+- Actual start time recorded
+- Activity becomes editable in UI
+
+**Database Tables**:
+- **Updates**: `scheduled_activities` (status, actual_start_time, started_by)
+- **Creates**: `activities` log entry (audit trail)
+- **Reads**: `scheduled_activities` (dependency validation)
+
+**Note**: This endpoint provides a clear workflow separation from `update-progress`. Alternatively, the first call to `update-progress` with `status: "in_progress"` could handle starting.
+
+---
+
 ### Update Activity Progress
 
 **Endpoint**: `POST /activities/update-progress`
@@ -947,6 +1151,240 @@ Authorization: Bearer <token>
 
 ---
 
+### Reschedule Activity
+
+**Endpoint**: `POST /activities/reschedule`
+**Status**: ⚠️ Not yet implemented
+**Convex Function**: `activities.reschedule` - TO BE CREATED
+
+**Purpose**: Reschedule activity to new date/time with reason tracking
+
+**Role Required**: Manager or assigned user
+
+#### Bubble API Connector Configuration
+
+**Name**: `rescheduleActivity`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/activities/reschedule`
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "activityId": "<activityId>",
+  "newScheduledDate": "<newScheduledDate>",
+  "rescheduledBy": "<userId>",
+  "reason": "<reason>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| activityId | text | No | Body | act123... |
+| newScheduledDate | text | No | Body | 2025-03-22T10:00:00Z |
+| rescheduledBy | text | No | Body | user456... |
+| reason | text | No | Body | Equipment malfunction |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "message": "Actividad reprogramada",
+  "newScheduledDate": "2025-03-22T10:00:00Z",
+  "originalScheduledDate": "2025-03-20T10:00:00Z",
+  "affectedDependentActivities": 3
+}
+```
+
+**Error Responses**:
+```json
+{
+  "success": false,
+  "error": "Cannot reschedule completed activity",
+  "code": "INVALID_STATUS"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "New date conflicts with area availability",
+  "code": "AREA_CONFLICT"
+}
+```
+
+**Validation**:
+- Activity must have status="pending" or "in_progress"
+- New date must be in the future
+- User must be assigned to activity or have Manager role
+- Check area availability for new date
+
+**Backend Processing**:
+1. Verify activity can be rescheduled (not completed/cancelled)
+2. Verify user has permission (Manager or assigned user)
+3. Check area availability for new date/time
+4. Update `scheduled_activities` record:
+   - scheduled_date: new date
+   - rescheduled_by: userId
+   - reschedule_reason: reason
+   - reschedule_count: increment
+   - updated_at: current time
+5. If activity has dependent activities:
+   - Cascade reschedule to maintain dependencies
+   - Or notify that dependencies need review
+6. Log reschedule event in audit trail
+7. Return success with affected activities count
+
+**Side Effects**:
+- Activity scheduled_date updated
+- Dependent activities may be affected
+- Area capacity recalculated for affected dates
+- Audit log entry created
+
+**Database Tables**:
+- **Updates**: `scheduled_activities` (scheduled_date, reschedule_reason)
+- **Reads**: `areas` (availability check)
+- **Creates**: Audit log entry
+
+**UI Workflow**:
+```
+1. User clicks "Reschedule" on activity
+2. Modal popup: Select new date + reason
+3. Call rescheduleActivity API
+4. Show success message with new date
+5. Refresh activities list
+```
+
+---
+
+### Cancel Activity
+
+**Endpoint**: `POST /activities/cancel`
+**Status**: ⚠️ Not yet implemented
+**Convex Function**: `activities.cancel` - TO BE CREATED
+
+**Purpose**: Cancel pending or in-progress activity with reason tracking
+
+**Role Required**: Manager or Owner
+
+#### Bubble API Connector Configuration
+
+**Name**: `cancelActivity`
+**Use as**: Action
+**Method**: POST
+**URL**: `https://handsome-jay-388.convex.site/activities/cancel`
+
+**Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <token>
+```
+
+**Body**:
+```json
+{
+  "activityId": "<activityId>",
+  "cancelledBy": "<userId>",
+  "reason": "<reason>"
+}
+```
+
+**Parameters**:
+| Parameter | Type | Private | Source | Example |
+|-----------|------|---------|--------|---------|
+| token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
+| activityId | text | No | Body | act123... |
+| cancelledBy | text | No | Body | user456... |
+| reason | text | No | Body | Batch damaged, activity no longer needed |
+
+**Complete Response**:
+```json
+{
+  "success": true,
+  "message": "Actividad cancelada",
+  "affectedDependentActivities": 2,
+  "productionOrderImpact": "Phase progression may be affected"
+}
+```
+
+**Error Responses**:
+```json
+{
+  "success": false,
+  "error": "Cannot cancel completed activity",
+  "code": "INVALID_STATUS"
+}
+```
+
+```json
+{
+  "success": false,
+  "error": "Activity has dependent activities that must be cancelled first",
+  "code": "HAS_DEPENDENCIES"
+}
+```
+
+**Validation**:
+- Activity must have status="pending" or "in_progress"
+- User must have Manager or Owner role
+- Check if activity has dependent activities
+- Reason required (cannot be empty)
+
+**Backend Processing**:
+1. Verify user has Manager/Owner role
+2. Verify activity can be cancelled (not completed)
+3. Check for dependent activities:
+   - If dependencies exist, require confirmation or cascade cancel
+4. Update `scheduled_activities` record:
+   - status: "cancelled"
+   - cancelled_by: userId
+   - cancellation_reason: reason
+   - cancelled_at: current time
+5. Release any reserved inventory for this activity
+6. Update production order phase completion calculation
+7. Log cancellation in audit trail
+8. Return success with impact analysis
+
+**Side Effects**:
+- Activity status changes to "cancelled"
+- Reserved inventory released
+- Phase completion percentage recalculated
+- Dependent activities may need review
+- Audit log entry created
+
+**Database Tables**:
+- **Updates**: `scheduled_activities` (status, cancellation_reason)
+- **Updates**: `inventory_items` (release reserved quantities)
+- **Updates**: `production_orders` (recalculate completion rate)
+- **Creates**: Audit log entry
+
+**UI Workflow**:
+```
+1. User clicks "Cancel" on activity
+2. Confirmation modal: Enter reason
+3. If has dependencies: Show warning + option to cascade
+4. Call cancelActivity API
+5. Show success message
+6. Refresh activities list
+7. Update phase progress indicators
+```
+
+**Cascade Cancellation**:
+If activity has dependent activities, UI should offer:
+- **Option 1**: Cancel this activity only (dependencies become orphaned)
+- **Option 2**: Cancel this activity + all dependent activities (cascade)
+- **Option 3**: Reassign dependencies to different activity
+
+---
+
 ### Upload Activity Photo
 
 **Endpoint**: `POST /activities/upload-photo`
@@ -1008,22 +1446,29 @@ Authorization: Bearer <token>
 
 ---
 
-### Detect Pests and Diseases (AI)
+### Analyze Photos with AI (Batch Pest/Disease Detection)
 
-**Endpoint**: `POST /ai/detect-pests`
+**Endpoint**: `POST /ai/analyze-photos`
 **Status**: ⚠️ Not yet implemented
-**Convex Function**: `ai.detectPests` - TO BE CREATED
+**Convex Function**: `ai.analyzePhotos` - TO BE CREATED
 
-**Purpose**: AI analyzes photo for pests/diseases, suggests remediation
+**Purpose**: **Batch AI analysis** of multiple photos in single call. Uses Google Gemini Vision API to detect pests/diseases across all photos, enriches results with database matches for treatment protocols.
 
-**AI Service**: Computer Vision API (Google Cloud Vision or custom model)
+**AI Service**: Google Gemini Vision API (gemini-pro-vision model)
+
+**Key Features**:
+- ✅ **Single API call** for all photos (not per-photo)
+- ✅ Gemini analyzes all photos in one request
+- ✅ Backend enriches detections with pest/disease database matches
+- ✅ Returns consolidated results with confidence scores
+- ✅ Includes recommended treatments (MIPE/MIRFE protocols)
 
 #### Bubble API Connector Configuration
 
-**Name**: `detectPestsWithAI`
+**Name**: `analyzePhotosWithAI`
 **Use as**: Action
 **Method**: POST
-**URL**: `https://handsome-jay-388.convex.site/ai/detect-pests`
+**URL**: `https://handsome-jay-388.convex.site/ai/analyze-photos`
 
 **Headers**:
 ```
@@ -1035,8 +1480,9 @@ Authorization: Bearer <token>
 ```json
 {
   "activityId": "<activityId>",
-  "photoId": "<photoId>",
-  "photoUrl": "<photoUrl>"
+  "photoUrls": ["<photoUrl1>", "<photoUrl2>", "<photoUrl3>"],
+  "facilityId": "<facilityId>",
+  "cropType": "<cropType>"
 }
 ```
 
@@ -1045,75 +1491,206 @@ Authorization: Bearer <token>
 |-----------|------|---------|--------|---------|
 | token | text | Yes | Header | a2g3YnI1M2RuazR5bWplNms... |
 | activityId | text | No | Body | act123... |
-| photoId | text | No | Body | photo123... |
-| photoUrl | text | No | Body | https://cdn.../photo.jpg |
+| photoUrls | list | No | Body | ["https://cdn.../photo1.jpg", "https://cdn.../photo2.jpg"] |
+| facilityId | text | No | Body | fac001... |
+| cropType | text | No | Body | cannabis |
 
 **Complete Response**:
 ```json
 {
   "success": true,
+  "analysisId": "analysis123...",
+  "totalPhotos": 5,
+  "photosAnalyzed": 5,
   "detectionsFound": 2,
   "detections": [
     {
+      "photoUrl": "https://cdn.../photo3.jpg",
       "detectionId": "det456...",
-      "pestOrDiseaseId": "pest_spider_mite",
-      "pestOrDiseaseName": "Spider Mite (Ácaro rojo)",
+      "commonName": "Áfido / Aphid",
+      "scientificName": "Aphis gossypii",
+      "category": "pest",
+      "severity": "medium",
       "confidence": 0.87,
-      "severity": "moderate",
-      "description": "Pequeños ácaros rojos en hojas",
-      "recommendedTreatment": "Aceite de neem, control biológico",
-      "urgency": "medium",
-      "boundingBox": {
-        "x": 120,
-        "y": 80,
-        "width": 60,
-        "height": 45
+      "description": "Pequeños insectos verdes agrupados en brotes tiernos",
+      "dbMatch": {
+        "found": true,
+        "pestDiseaseId": "pest_aphid_gossypii",
+        "controlMethod": "Jabón potásico (MIPE) - Aplicar cada 3-5 días",
+        "urgency": "medium",
+        "affectedCrops": ["cannabis", "vegetables"],
+        "preventionMethods": ["Monitoreo regular", "Control biológico con mariquitas"]
+      }
+    },
+    {
+      "photoUrl": "https://cdn.../photo5.jpg",
+      "detectionId": "det789...",
+      "commonName": "Mildiu Polvoriento / Powdery Mildew",
+      "scientificName": "Podosphaera macularis",
+      "category": "disease",
+      "severity": "high",
+      "confidence": 0.92,
+      "description": "Manchas blancas polvorientas en hojas",
+      "dbMatch": {
+        "found": true,
+        "pestDiseaseId": "disease_powdery_mildew",
+        "controlMethod": "Bicarbonato de potasio + aceite vegetal (MIPE)",
+        "urgency": "high",
+        "affectedCrops": ["cannabis"],
+        "preventionMethods": ["Ventilación adecuada", "Evitar exceso humedad"]
       }
     }
   ],
-  "processingTime": 2.3,
-  "message": "Análisis completado",
-  "error": "AI service unavailable",
+  "photosWithoutDetections": [
+    "https://cdn.../photo1.jpg",
+    "https://cdn.../photo2.jpg",
+    "https://cdn.../photo4.jpg"
+  ],
+  "processingTime": 3.2,
+  "geminiTokensUsed": 1250,
+  "message": "Análisis completado exitosamente",
+  "error": null,
+  "code": null
+}
+```
+
+**Error Responses**:
+```json
+{
+  "success": false,
+  "error": "Google Gemini API unavailable",
   "code": "AI_SERVICE_ERROR"
 }
 ```
 
+```json
+{
+  "success": false,
+  "error": "Maximum 10 photos per analysis",
+  "code": "TOO_MANY_PHOTOS"
+}
+```
+
 **Response Fields**:
-- `detectionsFound` (number)
-- `detections` (list) - Each detection with:
-  - `detectionId` (text)
-  - `pestOrDiseaseId` (text) - Internal database ID
-  - `pestOrDiseaseName` (text)
-  - `confidence` (number) - 0-1 scale
-  - `severity` (text) - low, moderate, high, critical
-  - `description` (text)
-  - `recommendedTreatment` (text)
-  - `urgency` (text) - low, medium, high, critical
-  - `boundingBox` (object) - Location in image
-- `processingTime` (number) - seconds
+- `success` (boolean)
+- `analysisId` (text) - Unique ID for this batch analysis
+- `totalPhotos` (number) - Photos sent for analysis
+- `photosAnalyzed` (number) - Photos successfully analyzed
+- `detectionsFound` (number) - Total detections across all photos
+- `detections` (list) - **Array of all detections from all photos**:
+  - `photoUrl` (text) - Which photo this detection is from
+  - `detectionId` (text) - Unique detection ID
+  - `commonName` (text) - Common name (bilingual: Spanish / English)
+  - `scientificName` (text) - Scientific name
+  - `category` (text) - "pest" | "disease" | "deficiency"
+  - `severity` (text) - "low" | "medium" | "high" | "critical"
+  - `confidence` (number) - 0-1 confidence score from AI
+  - `description` (text) - AI-generated description
+  - `dbMatch` (object) - Database enrichment:
+    - `found` (boolean) - If match found in pest/disease DB
+    - `pestDiseaseId` (text) - Internal DB ID
+    - `controlMethod` (text) - MIPE/MIRFE protocol
+    - `urgency` (text) - Treatment urgency
+    - `affectedCrops` (list) - Crops commonly affected
+    - `preventionMethods` (list) - Prevention strategies
+- `photosWithoutDetections` (list) - URLs of clean photos
+- `processingTime` (number) - Total seconds
+- `geminiTokensUsed` (number) - Tokens consumed (for cost tracking)
 
 #### Bubble Workflow
 
-1. **Trigger**: Button "Analyze with AI" clicked (on photo)
-2. **Step 1**: Show loading "AI está analizando..."
-3. **Step 2**: Plugins → detectPestsWithAI
-4. **Step 3** (detections found): Show detections list with confidence
-5. **Step 4**: User reviews and confirms detections
-6. **Step 5**: Option to create remediation activities
+**Single-Click Batch Analysis**:
 
-**AI Processing**:
-1. Receive photo URL
-2. Call computer vision API
-3. Match detections against pest/disease database
-4. Calculate confidence and severity
-5. Lookup recommended treatments (MIPE/MIRFE protocols)
-6. Return structured results
+1. **Trigger**: Button "Analizar con Gemini AI" clicked
+2. **Step 1**: Collect all photo URLs from repeating group
+   - `photo_repeating_group's list of Photos' image`
+3. **Step 2**: Show loading overlay "Gemini está analizando 5 fotos..."
+4. **Step 3**: Plugins → analyzePhotosWithAI
+   - activityId = `Current Page Activity's _id`
+   - photoUrls = `photo_repeating_group's list of Photos' url`
+   - facilityId = `Current User's currentFacilityId`
+   - cropType = `Current Page Activity's cropType`
+5. **Step 4** (Only when `success = true`):
+   - Hide loading overlay
+   - Show `Result of Step 3's detectionsFound` detections
+   - Display detections in repeating group
+   - For each detection:
+     - Show photo thumbnail
+     - Show pest/disease name with confidence badge
+     - Show severity indicator (color-coded)
+     - Show recommended treatment
+     - Checkbox to confirm detection
+6. **Step 5**: User reviews detections and selects which to act on
+7. **Step 6**: Confirmed detections passed to `completeActivity` call
 
-**Database**:
-- Pre-populated pest/disease database
-- Common cannabis pests (spider mites, aphids, thrips, etc.)
-- Common diseases (powdery mildew, bud rot, etc.)
-- Treatment protocols
+**UI Display**:
+```
+┌─────────────────────────────────────────┐
+│ ✅ Gemini analizó 5 fotos en 3.2s      │
+│ 🐛 2 detecciones encontradas            │
+├─────────────────────────────────────────┤
+│ Photo 3 🖼️                             │
+│ 🐛 Áfido / Aphid                        │
+│ Confianza: 87% 🟡 Severidad: Media     │
+│ Control: Jabón potásico (MIPE)         │
+│ [☑️ Confirmar detección]                │
+├─────────────────────────────────────────┤
+│ Photo 5 🖼️                             │
+│ 🦠 Mildiu Polvoriento                   │
+│ Confianza: 92% 🔴 Severidad: Alta      │
+│ Control: Bicarbonato + aceite          │
+│ [☑️ Confirmar detección]                │
+└─────────────────────────────────────────┘
+```
+
+#### Backend Processing
+
+**Gemini API Integration**:
+
+1. **Receive Request**: Array of photoUrls, facilityId, cropType
+2. **Validate**:
+   - Max 10 photos per request (Gemini limit + cost control)
+   - Check photoUrls are accessible
+   - Validate cropType exists
+3. **Prepare Gemini Prompt**:
+   ```
+   Analyze these [N] photos of [cropType] plants for pests and diseases.
+   For each photo with issues, provide:
+   - Common name (Spanish/English)
+   - Scientific name
+   - Category (pest, disease, deficiency)
+   - Severity (low, medium, high, critical)
+   - Description of what you see
+   Return JSON array with photo index and detections.
+   ```
+4. **Call Gemini Vision API**:
+   - Model: `gemini-pro-vision`
+   - Send all photos in single request
+   - Parse JSON response
+5. **Enrich with Database**:
+   - For each Gemini detection:
+     - Match against `pest_diseases` table (fuzzy match on name)
+     - If match found, add:
+       - Control method (MIPE/MIRFE protocol)
+       - Urgency level
+       - Prevention methods
+       - Affected crops
+6. **Generate detectionIds**: Create unique IDs for tracking
+7. **Return Consolidated Response**: All detections with enrichment
+
+**Cost Tracking**:
+- Log Gemini API tokens used
+- Track per-facility AI usage
+- Alert if approaching monthly limits
+
+**Database Tables**:
+- **Reads**: `pest_diseases` (for enrichment matching)
+- **Writes**: `ai_analysis_logs` (for auditing and cost tracking)
+
+**Performance**:
+- Expected processing time: 3-10 seconds for 5 photos
+- Timeout: 30 seconds
+- Retry logic: 1 retry on Gemini API failure
 
 ---
 

@@ -34,7 +34,7 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 
 ---
 
-## MODULE 14: Compliance & Reporting
+## MODULE 26: Compliance & Reporting
 
 ### Page 1: Compliance Dashboard
 ```
@@ -137,7 +137,7 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 
 ---
 
-## MODULE 15: Analytics & Business Intelligence
+## MODULE 27: Analytics & Business Intelligence
 
 ### Page 2: Analytics Dashboard
 ```
@@ -233,7 +233,7 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 
 ---
 
-## MODULE 16: Mobile Experience
+## MODULE 28: Mobile Experience
 
 ### Mobile Page 1: Dashboard (PWA)
 ```
@@ -323,7 +323,7 @@ Phone Screen:
 
 ---
 
-## MODULE 17: Integrations & APIs
+## MODULE 29: Integrations & APIs
 
 ### Page 4: Integrations Dashboard
 ```
@@ -520,7 +520,7 @@ Integrations → Add integration
 
 ## Consolidated Translation Tables
 
-### Module 14: Compliance & Reporting
+### Module 26: Compliance & Reporting
 
 | Elemento | Español | English | Key |
 |----------|---------|---------|-----|
@@ -558,7 +558,7 @@ Integrations → Add integration
 | JSON Option | JSON (importación de sistema) | JSON (system import) | compliance_json |
 | Success Message | Reporte generado exitosamente | Report generated successfully | compliance_report_success |
 
-### Module 15: Analytics & Business Intelligence
+### Module 27: Analytics & Business Intelligence
 
 | Elemento | Español | English | Key |
 |----------|---------|---------|-----|
@@ -591,7 +591,7 @@ Integrations → Add integration
 | Download Report Button | Descargar Reporte | Download Report | analytics_download_report_btn |
 | Compare Button | Comparar | Compare | analytics_compare_btn |
 
-### Module 16: Mobile Experience
+### Module 28: Mobile Experience
 
 | Elemento | Español | English | Key |
 |----------|---------|---------|-----|
@@ -617,7 +617,7 @@ Integrations → Add integration
 | Offline Mode Text | (Modo offline: Se sincronizará cuando esté en línea) | (Offline mode: Will sync when online) | mobile_offline_mode |
 | Log Button | Registrar | Log | mobile_log_btn |
 
-### Module 17: Integrations & APIs
+### Module 29: Integrations & APIs
 
 | Elemento | Español | English | Key |
 |----------|---------|---------|-----|
