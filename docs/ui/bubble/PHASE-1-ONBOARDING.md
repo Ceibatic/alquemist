@@ -985,6 +985,273 @@ This module handles the onboarding flow for users who have been invited by an ad
 
 ---
 
+## MODULE 6: Login & Session Management
+
+### Overview
+
+This module handles user authentication for returning users, session validation, and logout functionality. It complements the registration flow (Module 1) by providing login capabilities for users who have already completed onboarding.
+
+**Pages**: 1 (Page 12: Login)
+**API Endpoints**: 3 (login, validateToken, logout)
+**Triggered by**: "Log In" link on signup page, session expiration, manual logout
+
+---
+
+### Page 12: Login
+
+**Route**: `/login`
+**Purpose**: Allow existing users to authenticate and access their account
+
+#### Layout
+
+```
+┌──────────────────────────────────────┐
+│         🌱 ALQUEMIST                 │
+│                                      │
+│    ┌──────────────────────────┐     │
+│    │  Bienvenido de Vuelta    │     │
+│    │                          │     │
+│    │  Email                   │     │
+│    │  [________________]      │     │
+│    │                          │     │
+│    │  Contraseña              │     │
+│    │  [________________] 👁    │     │
+│    │                          │     │
+│    │  [Olvidé mi contraseña]  │     │
+│    │                          │     │
+│    │  [  Iniciar Sesión   ]   │     │
+│    │                          │     │
+│    │  ¿No tienes cuenta?      │     │
+│    │  [Regístrate]            │     │
+│    └──────────────────────────┘     │
+└──────────────────────────────────────┘
+```
+
+#### Elements
+
+| Element | Type | Placeholder/Label | Required | Validation |
+|---------|------|-------------------|----------|------------|
+| **Email** | Input (email) | tu@email.com | Yes | Valid email format |
+| **Password** | Input (password) | ●●●●●●●● | Yes | Minimum 8 characters |
+| **Show/Hide Password** | Icon button | 👁 | No | Toggle password visibility |
+| **Forgot Password** | Link | Olvidé mi contraseña | No | Navigate to password reset |
+| **Log In Button** | Button | Iniciar Sesión | - | Trigger login workflow |
+| **Sign Up Link** | Link | Regístrate | No | Navigate to signup page |
+
+#### API Endpoints Used
+
+| Endpoint | Purpose | When Called |
+|----------|---------|-------------|
+| `call_login` | Authenticate user credentials | Button "Log In" clicked |
+
+#### Bubble Workflow: Login
+
+**Trigger**: Button "Log In" is clicked
+
+**Steps**:
+1. **Validation**: Check that email and password are not empty
+2. **API Call**: Plugins → `call_login`
+   - email = `Input email's value`
+   - password = `Input password's value`
+3. **Success Path** (Only when `success = true`):
+   - **Step 3a**: Log the user in
+     - Email = `Result of Step 2's user:email`
+     - Password = `Input password's value`
+   - **Step 3b**: Make changes to Current User
+     - `session_token` = `Result of Step 2's token`
+     - `backend_user_id` = `Result of Step 2's userId`
+     - `company_id` = `Result of Step 2's companyId`
+     - `company_name` = `Result of Step 2's company:name`
+     - `first_name` = `Result of Step 2's user:firstName`
+     - `last_name` = `Result of Step 2's user:lastName`
+     - `email_verified` = yes
+   - **Step 3c**: Navigate to "dashboard" page
+4. **Error Path** (Only when `success = false`):
+   - Show alert with `Result of Step 2's error`
+
+**Security Considerations**:
+- Password is never stored in Bubble, only sent to backend
+- Session token stored securely in private field
+- Rate limiting on backend (max 5 failed attempts)
+- Display generic error "Credenciales inválidas" for security
+
+#### Database Context
+
+**Read from Backend**:
+- `users` table → validate credentials
+- `companies` table → load company data
+- `sessions` table → create new session
+
+**Write to Bubble**:
+- Current User → session_token, backend_user_id, company_id, company_name, first_name, last_name
+
+---
+
+### Session Validation
+
+**Purpose**: Verify that the user's session token is still valid on protected pages
+
+**Implementation**: Reusable element "SessionValidator" on all protected pages
+
+#### Bubble Workflow: Validate Session
+
+**Trigger**: Page is loaded (protected pages only)
+
+**Steps**:
+1. **Check Token Exists**: If Current User's session_token is empty → Navigate to login
+2. **API Call**: Get data from API → `call_validateToken`
+   - token = `Current User's session_token`
+3. **Invalid Session** (Only when `valid = false`):
+   - Log the user out
+   - Navigate to "login" page
+   - Show alert "Tu sesión ha expirado. Por favor inicia sesión nuevamente."
+
+**Performance Optimization**:
+- Cache validation result in Custom State for 5 minutes
+- Only re-validate if cache expired
+- Avoids unnecessary API calls on every page navigation
+
+**Protected Pages**:
+- Dashboard
+- All operational pages (Phase 2+)
+- Settings
+- User management
+
+**Public Pages** (no validation needed):
+- Login
+- Signup
+- Email verification
+- Accept invitation
+
+---
+
+### Logout Functionality
+
+**Purpose**: Invalidate user session and clear authentication data
+
+**Implementation**: Logout button in navigation bar on all authenticated pages
+
+#### UI Location
+
+**Navigation Bar** (top-right corner):
+```
+┌─────────────────────────────────┐
+│ 🌱 ALQUEMIST    [≡ Menu] [User▼]│
+│                         ┌──────┐│
+│                         │Profile│
+│                         │Settings│
+│                         │Logout │ ← Logout option
+│                         └──────┘│
+└─────────────────────────────────┘
+```
+
+**Location**: User dropdown menu → "Cerrar Sesión" option
+
+#### Bubble Workflow: Logout
+
+**Trigger**: User dropdown menu → "Cerrar Sesión" is clicked
+
+**Steps**:
+1. **API Call**: Plugins → `call_logout`
+   - token = `Current User's session_token`
+2. **Step 2** (Always execute, even if Step 1 fails):
+   - Make changes to Current User:
+     - `session_token` = empty
+     - `backend_user_id` = empty
+     - `company_id` = empty
+     - `company_name` = empty
+3. **Step 3**: Log the user out (Bubble's built-in action)
+4. **Step 4**: Navigate to "login" page
+
+**Important**: Always execute Steps 2-4 even if API call fails, to ensure user is logged out from Bubble even if backend is unreachable.
+
+---
+
+### Translations
+
+#### Page 12: Login
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Page Title | Iniciar Sesión | Log In | login_page_title |
+| Header | Bienvenido de Vuelta | Welcome Back | login_header |
+| Email Label | Correo Electrónico | Email | login_email_label |
+| Email Placeholder | tu@email.com | your@email.com | login_email_placeholder |
+| Password Label | Contraseña | Password | login_password_label |
+| Password Placeholder | ●●●●●●●● | ●●●●●●●● | login_password_placeholder |
+| Forgot Password Link | Olvidé mi contraseña | Forgot password? | login_forgot_password |
+| Login Button | Iniciar Sesión | Log In | login_button |
+| No Account Text | ¿No tienes cuenta? | Don't have an account? | login_no_account |
+| Sign Up Link | Regístrate | Sign up | login_signup_link |
+| Invalid Credentials | Email o contraseña incorrectos | Invalid email or password | login_error_invalid |
+| Session Expired | Tu sesión ha expirado | Your session has expired | login_error_expired |
+| Please Login Again | Por favor inicia sesión nuevamente | Please log in again | login_please_login |
+
+#### Logout
+
+| Elemento | Español | English | Key |
+|----------|---------|---------|-----|
+| Logout Menu Item | Cerrar Sesión | Log Out | logout_menu_item |
+| Logout Confirm | ¿Estás seguro de cerrar sesión? | Are you sure you want to log out? | logout_confirm |
+| Logout Success | Sesión cerrada exitosamente | Logged out successfully | logout_success |
+
+---
+
+## MODULE 6 SUMMARY
+
+### Key Features
+
+| Feature | Implementation | API Endpoint |
+|---------|----------------|--------------|
+| **User Login** | Page 12: Login form | `call_login` |
+| **Session Validation** | Reusable element on protected pages | `call_validateToken` |
+| **Logout** | User dropdown menu option | `call_logout` |
+| **Password Visibility Toggle** | Icon button on password field | (Frontend only) |
+| **Forgot Password Link** | Navigate to password reset flow | (Future: Phase 2 or 3) |
+
+### API Endpoints Used
+
+| Endpoint | Purpose | Response |
+|----------|---------|----------|
+| `call_login` | Authenticate user and create session | session token, user data, company data |
+| `call_validateToken` | Check if session token is valid | valid (boolean), user data |
+| `call_logout` | Invalidate session token | success (boolean) |
+
+### Database Tables
+
+**Backend Operations**:
+- **Reads from**: `users` table (validate credentials)
+- **Reads from**: `companies` table (load company data)
+- **Writes to**: `sessions` table (create/invalidate session)
+
+**Bubble Operations**:
+- **Writes to**: Current User (session_token, backend_user_id, company_id, etc.)
+- **Reads from**: Current User (session_token for validation)
+
+### Security Considerations
+
+1. **Password Handling**:
+   - Never stored in Bubble
+   - Transmitted only via HTTPS
+   - Backend uses bcrypt hashing
+
+2. **Session Management**:
+   - Tokens expire after 30 days
+   - Stored in private field (not accessible to other users)
+   - Invalidated on logout
+
+3. **Rate Limiting**:
+   - Max 5 failed login attempts per hour
+   - Lockout after 5 failures
+   - Backend enforces limits
+
+4. **Session Validation**:
+   - Cached for 5 minutes to reduce API calls
+   - Auto-logout on token expiration
+   - Redirect to login on invalid token
+
+---
+
 ## BUBBLE COMPONENTS SUMMARY
 
 ### Reusable Components
