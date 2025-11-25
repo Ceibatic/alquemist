@@ -380,5 +380,101 @@ Step 2: Handle Success
 
 ---
 
-**Last Updated:** Based on Module 1 implementation (Registration + Email Verification)
+**Last Updated:** Updated for native email sending (Nov 2025)
 **Applies To:** All future Bubble.io guides for this project
+
+---
+
+## Email Sending Architecture (Native Bubble)
+
+### Migration from Resend to Bubble Native (Nov 2025)
+
+**Background**: Previously, the Convex backend made HTTP calls to Resend API to send emails. This created an external dependency and complexity. Now, Bubble's native "Send Email" action handles all email delivery.
+
+### How It Works Now
+
+```
+1. User Registration
+   └─> Convex creates token + generates HTML
+       └─> Returns emailHtml, emailText, emailSubject
+           └─> Bubble receives response
+               └─> Sends email (Native Bubble Action)
+                   └─> User receives email with verification link
+```
+
+### Implementing Email in Bubble
+
+#### 1. Registration Workflow (After API Call Success)
+
+**Step: Send Email (Native Bubble Action)**
+```
+Native Action: Send Email
+├─ To: Result of [API_Step]'s email
+├─ Subject: Result of [API_Step]'s emailSubject
+├─ Body: Result of [API_Step]'s emailHtml
+└─ Reply-to: support@ceibatic.com
+```
+
+#### 2. Email Configuration (Bubble Settings)
+
+**Option A: Shared SendGrid (Free)**
+- Already configured in Bubble
+- Default sender: app@bubbleapps.io
+- Max 50 recipients per email
+- Shared IP reputation
+
+**Option B: Custom SendGrid (Recommended for Production)**
+1. Create SendGrid account
+2. Verify your domain
+3. In Bubble → Settings → Email:
+   - Configure SendGrid API key
+   - Set custom sender: noreply@yourdomain.com
+
+#### 3. Email Customization
+
+The backend generates HTML with inline CSS and Tailwind classes. To customize:
+1. Modify `convex/email.ts` → `generateVerificationEmailHTML()`
+2. Redeploy Convex
+3. Bubble automatically uses new template on next registration
+
+#### 4. Testing Email Sending
+
+**In Bubble Preview:**
+1. Go through registration flow
+2. Check API response for `emailHtml`
+3. Verify "Send Email" action shows "Email sent"
+4. Check actual inbox for email delivery
+
+**Common Issues:**
+- Email not received: Check spam folder, verify domain reputation
+- Wrong sender: Verify SendGrid configuration in Bubble Settings
+- Malformed HTML: Check `emailHtml` in API response
+- Subject not showing: Ensure `emailSubject` is in response
+
+#### 5. Error Handling
+
+Add error handling for email send failures:
+
+```
+Workflow Step: Send Email
+├─ Success path: Show "Email sent" message
+└─ Error path:
+    ├─ Show error alert
+    ├─ Offer "Resend Email" button
+    └─ Call resendVerificationEmail endpoint
+```
+
+### Environment Setup
+
+**No Additional Configuration Needed:**
+- ❌ Don't need RESEND_API_KEY anymore
+- ✅ Use Bubble's native email (free or with custom SendGrid)
+- ✅ All email content comes from Convex API response
+
+### Security Notes
+
+- Email tokens are 32-character alphanumeric (secure)
+- Tokens expire after 24 hours
+- Tokens are one-time use
+- Verification links include token + email as URL parameters
+- HTTPS required for production (prevents token interception)

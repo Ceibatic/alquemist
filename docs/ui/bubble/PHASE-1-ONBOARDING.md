@@ -75,9 +75,18 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 
 **Workflow**:
 1. Validate inputs (password strength, email format, terms checked)
-2. Call API: Register user
-3. Show success message
-4. Navigate to Email Verification page
+2. Call API: Register user → receives emailHtml, emailSubject, verificationToken
+3. **Send Email** (Native Bubble Action) - uses emailHtml from API response
+   - To: user's email
+   - Subject: emailSubject from response
+   - Body: emailHtml from response (contains verification link with token)
+4. Show success message
+5. Navigate to Email Verification page
+
+**Important - Email Sending**:
+- The backend (Convex) returns the email content but does NOT send it
+- Bubble's native "Send Email" action handles the actual delivery
+- This gives you control over email timing, retries, and user feedback
 
 **Database Context**:
 - **Writes to**: `users` table

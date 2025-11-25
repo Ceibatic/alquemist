@@ -53,22 +53,39 @@ Alquemist uses **custom authentication** with session tokens. This system is des
 ```
 User fills form (email, password, name, phone)
          ↓
-POST /api/v1/auth/register-step1
+POST /registration/register-step-1 (Convex Backend)
          ↓
 Backend:
   - Validates email format
   - Checks password strength (8+ chars, letters + numbers)
   - Hashes password (SHA-256)
   - Creates user record
+  - Creates verification token (32-char random)
   - Generates 30-day session token
-  - Sends verification email
+  - Generates email HTML with verification link
          ↓
-Returns: { success, userId, token, email, verificationSent }
+Returns: {
+  success, userId, token, email,
+  emailHtml, emailText, emailSubject,
+  verificationToken
+}
          ↓
-Bubble saves: userId and token to custom state
+Bubble:
+  1. Sign user up (create Bubble user)
+  2. Save: session_token, backend_user_id
+  3. SEND EMAIL (Native Bubble Action)
+     - To: user's email
+     - Subject: emailSubject
+     - Body: emailHtml (contains verification link with token)
+  4. Navigate to verification page
          ↓
 User sees: "Check your email for verification link"
 ```
+
+**Important Change**: Email is now sent by Bubble, not by Convex backend. This gives you:
+- Better control over email timing and retries
+- User feedback during email sending
+- Ability to customize email behavior
 
 #### Step 2: Verify Email
 

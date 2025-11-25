@@ -168,7 +168,10 @@ Content-Type: application/json
   "token": "a2g3YnI1M2RuazR5bWplNms...",
   "email": "user@example.com",
   "message": "Cuenta creada. Por favor verifica tu correo electrónico.",
-  "verificationSent": true,
+  "verificationToken": "abc123xyz456...",
+  "emailHtml": "<html>...</html>",
+  "emailText": "Verification link: ...",
+  "emailSubject": "🌱 Verifica tu email - Alquemist",
   "error": "Email already exists",
   "code": "EMAIL_EXISTS"
 }
@@ -180,28 +183,48 @@ Content-Type: application/json
 - `token` (text) - Session token (30 días) para autenticación
 - `email` (text) - Email del usuario
 - `message` (text) - Mensaje descriptivo del resultado
-- `verificationSent` (boolean) - true si se envió email de verificación
+- `verificationToken` (text) - Token de verificación de email (para testing)
+- `emailHtml` (text) - HTML del email de verificación (para enviar por Bubble)
+- `emailText` (text) - Texto plano del email (fallback)
+- `emailSubject` (text) - Asunto del email
 - `error` (text) - Mensaje de error si success=false
 - `code` (text) - Código técnico del error
+
+**IMPORTANT - Email Sending Migration**:
+Esta API **ya NO envía el email automáticamente**. El backend retorna el contenido del email para que **Bubble lo envíe** usando la acción nativa "Send Email".
 
 #### Bubble Workflow
 
 1. **Trigger**: Button "Create Account" is clicked
-2. **Step 1**: Plugins → registerUserStep1
+
+2. **Step 1**: Plugins → registerUserStep1 (API Call)
    - email = `Input email's value`
    - password = `Input password's value`
    - firstName = `Input firstName's value`
    - lastName = `Input lastName's value`
    - phone = `Input phone's value`
+
 3. **Step 2** (Only when `success = true`): Sign the user up
    - Email = `Result of Step 1's email`
    - Password = `Input password's value`
-4. **Step 3**: Make changes to Current User
+
+4. **Step 3** (Only when `success = true`): Send Email (Native Bubble Action)
+   - **To**: `Result of Step 1's email`
+   - **Subject**: `Result of Step 1's emailSubject`
+   - **Body**: `Result of Step 1's emailHtml`
+   - **Reply-to**: `support@ceibatic.com`
+
+5. **Step 4**: Make changes to Current User
    - `session_token` = `Result of Step 1's token`
    - `backend_user_id` = `Result of Step 1's userId`
    - `email_verified` = no
-5. **Step 4**: Navigate to "email-verification" page
-6. **Step 5** (Only when `success = false`): Show alert with `Result of Step 1's error`
+   - `verification_token` = `Result of Step 1's verificationToken` (for testing)
+
+6. **Step 5**: Navigate to "email-verification" page
+
+7. **Step 6** (Only when `success = false`): Show alert with `Result of Step 1's error`
+
+**Important**: The email is now sent by Bubble using the native "Send Email" action, NOT by the backend. This gives you more control over the email delivery and user experience.
 
 ---
 
