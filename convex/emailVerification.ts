@@ -5,7 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { sendVerificationEmailWithResend } from "./email";
+import { api } from "./_generated/api";
 
 /**
  * Generate a random token
@@ -48,12 +48,12 @@ export const sendVerificationEmail = mutation({
       created_at: now,
     });
 
-    // Send verification email using Resend
-    const emailResult = await sendVerificationEmailWithResend(
-      args.email,
+    // Send verification email using Resend via action
+    const emailResult = await ctx.runAction(api.email.sendVerificationEmailWithResend, {
+      email: args.email,
       firstName,
-      token
-    );
+      token,
+    });
 
     if (!emailResult.success) {
       console.error("[EMAIL] Failed to send verification email:", emailResult.error);

@@ -3,6 +3,9 @@
  * Handles all email communications
  */
 
+import { action } from "./_generated/server";
+import { v } from "convex/values";
+
 /**
  * Email template for verification
  */
@@ -109,80 +112,87 @@ Para soporte: support@alquemist.com
 
 /**
  * Send verification email using Resend
+ * This is an action because it makes HTTP calls to Resend API
  */
-export async function sendVerificationEmailWithResend(
-  email: string,
-  firstName: string,
-  token: string
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  try {
-    // Check if Resend API key is configured
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      console.warn("[EMAIL] RESEND_API_KEY not configured. Email would be sent in production.");
+export const sendVerificationEmailWithResend = action({
+  args: {
+    email: v.string(),
+    firstName: v.string(),
+    token: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean; messageId?: string; error?: string }> => {
+    try {
+      // Check if Resend API key is configured
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        console.warn("[EMAIL] RESEND_API_KEY not configured. Email would be sent in production.");
+        return {
+          success: true,
+          messageId: "dev-mode-" + Date.now(),
+        };
+      }
+
+      const { html, text } = generateVerificationEmailHTML(args.firstName, args.email, args.token);
+
+      // Call Resend API
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          from: "noreply@ceibatic.com",
+          to: args.email,
+          subject: "🌱 Verifica tu email - Alquemist",
+          html,
+          text,
+          reply_to: "support@ceibatic.com",
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("[EMAIL] Resend API error:", error);
+        return {
+          success: false,
+          error: "Error al enviar correo de verificación",
+        };
+      }
+
+      const data = (await response.json()) as { id?: string };
       return {
         success: true,
-        messageId: "dev-mode-" + Date.now(),
+        messageId: data.id,
       };
-    }
-
-    const { html, text } = generateVerificationEmailHTML(firstName, email, token);
-
-    // Call Resend API
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        from: "noreply@ceibatic.com",
-        to: email,
-        subject: "🌱 Verifica tu email - Alquemist",
-        html,
-        text,
-        reply_to: "support@ceibatic.com",
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error("[EMAIL] Resend API error:", error);
+    } catch (error) {
+      console.error("[EMAIL] Error sending verification email:", error);
       return {
         success: false,
         error: "Error al enviar correo de verificación",
       };
     }
-
-    const data = (await response.json()) as { id?: string };
-    return {
-      success: true,
-      messageId: data.id,
-    };
-  } catch (error) {
-    console.error("[EMAIL] Error sending verification email:", error);
-    return {
-      success: false,
-      error: "Error al enviar correo de verificación",
-    };
-  }
-}
+  },
+});
 
 /**
  * Send welcome email
+ * This is an action because it makes HTTP calls to Resend API
  */
-export async function sendWelcomeEmail(
-  email: string,
-  firstName: string,
-  companyName: string
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  try {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      return { success: true, messageId: "dev-mode-" + Date.now() };
-    }
+export const sendWelcomeEmail = action({
+  args: {
+    email: v.string(),
+    firstName: v.string(),
+    companyName: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean; messageId?: string; error?: string }> => {
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      if (!apiKey) {
+        return { success: true, messageId: "dev-mode-" + Date.now() };
+      }
 
-    const html = `
+      const html = `
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -196,10 +206,10 @@ export async function sendWelcomeEmail(
     </div>
 
     <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px;">
-      <p>Hola ${firstName},</p>
+      <p>Hola ${args.firstName},</p>
       <p>
         Tu cuenta ha sido creada exitosamente.
-        <strong>${companyName}</strong> está lista para comenzar.
+        <strong>${args.companyName}</strong> está lista para comenzar.
       </p>
       <p>
         Los próximos pasos incluyen:
@@ -221,33 +231,34 @@ export async function sendWelcomeEmail(
   </div>
 </body>
 </html>
-    `.trim();
+      `.trim();
 
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        from: "noreply@ceibatic.com",
-        to: email,
-        subject: `¡Bienvenido a Alquemist, ${firstName}!`,
-        html,
-        reply_to: "support@ceibatic.com",
-      }),
-    });
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          from: "noreply@ceibatic.com",
+          to: args.email,
+          subject: `¡Bienvenido a Alquemist, ${args.firstName}!`,
+          html,
+          reply_to: "support@ceibatic.com",
+        }),
+      });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error("[EMAIL] Welcome email error:", error);
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("[EMAIL] Welcome email error:", error);
+        return { success: false, error: "Error sending welcome email" };
+      }
+
+      const data = (await response.json()) as { id?: string };
+      return { success: true, messageId: data.id };
+    } catch (error) {
+      console.error("[EMAIL] Error sending welcome email:", error);
       return { success: false, error: "Error sending welcome email" };
     }
-
-    const data = (await response.json()) as { id?: string };
-    return { success: true, messageId: data.id };
-  } catch (error) {
-    console.error("[EMAIL] Error sending welcome email:", error);
-    return { success: false, error: "Error sending welcome email" };
-  }
-}
+  },
+});
