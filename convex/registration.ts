@@ -13,8 +13,10 @@ import {
   formatColombianPhone,
   generateSessionToken,
   getSessionExpiration,
+  verifyPassword,
 } from "./auth";
 import { api } from "./_generated/api";
+import { generateVerificationEmailHTML } from "./email";
 
 // ============================================================================
 // STEP 1: USER REGISTRATION (Without Company)
@@ -121,9 +123,10 @@ export const createUserRecord = mutation({
 /**
  * Step 1: Register user only (no company yet)
  * - Create user record
+ * - Create verification token
  * - Send verification email
  * - Return userId for next step
- * This is an action because it calls other actions (sendVerificationEmail)
+ * This is an action because it makes HTTP calls to send emails
  */
 export const registerUserStep1 = action({
   args: {
@@ -147,12 +150,62 @@ export const registerUserStep1 = action({
       throw new Error("Failed to create user");
     }
 
-    // 2. Send verification email
-    const emailResult = await ctx.runAction(api.emailVerification.sendVerificationEmail, {
+    // 2. Create verification token
+    const tokenResult: any = await ctx.runMutation(api.emailVerification.createVerificationToken, {
       userId: userResult.userId,
       email: userResult.email,
       firstName: args.firstName,
     });
+
+    if (!tokenResult.success) {
+      throw new Error("Failed to create verification token");
+    }
+
+    // 3. Send verification email directly (actions can't call other actions)
+    let verificationSent = false;
+    let verificationToken = tokenResult.token;
+
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      if (apiKey) {
+        const { html, text } = generateVerificationEmailHTML(
+          tokenResult.firstName,
+          tokenResult.email,
+          tokenResult.token
+        );
+
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            from: "noreply@ceibatic.com",
+            to: tokenResult.email,
+            subject: "🌱 Verifica tu email - Alquemist",
+            html,
+            text,
+            reply_to: "support@ceibatic.com",
+          }),
+        });
+
+        if (response.ok) {
+          console.log(`[EMAIL] Verification email sent to ${tokenResult.email}`);
+          verificationSent = true;
+        } else {
+          const error = await response.text();
+          console.error(`[EMAIL] Failed to send verification email: ${error}`);
+          verificationSent = false;
+        }
+      } else {
+        console.warn("[EMAIL] RESEND_API_KEY not configured. Email would be sent in production.");
+        verificationSent = true; // Consider it sent in dev mode
+      }
+    } catch (error) {
+      console.error(`[EMAIL] Error sending verification email:`, error);
+      verificationSent = false;
+    }
 
     return {
       success: true,
@@ -160,9 +213,9 @@ export const registerUserStep1 = action({
       token: userResult.sessionToken, // Session token for API authentication
       email: userResult.email,
       message: "Cuenta creada. Por favor verifica tu correo electrónico.",
-      verificationSent: emailResult.success,
+      verificationSent,
       // For testing: include verification token
-      verificationToken: emailResult.token,
+      verificationToken,
     };
   },
 });
@@ -376,7 +429,6 @@ export const login = mutation({
     }
 
     // Verify password
-    const { verifyPassword } = await import("./auth");
     const isValid = await verifyPassword(args.password, user.password_hash);
 
     if (!isValid) {
