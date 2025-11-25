@@ -72,9 +72,9 @@ export const sendVerificationEmail = action({
     email: v.string(),
     firstName: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     // First, create the verification token in database
-    const tokenResult = await ctx.runMutation(api.emailVerification.createVerificationToken, {
+    const tokenResult: any = await ctx.runMutation(api.emailVerification.createVerificationToken, {
       userId: args.userId,
       email: args.email,
       firstName: args.firstName,
@@ -163,13 +163,14 @@ export const verifyEmailToken = mutation({
 });
 
 /**
- * Resend verification email (prevent spam with rate limiting)
+ * Create resend verification token (with rate limiting)
+ * Helper mutation for resendVerificationEmail action
  */
-export const resendVerificationEmail = mutation({
+const createResendToken = mutation({
   args: {
     email: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     const now = Date.now();
     const fiveMinutesAgo = now - 5 * 60 * 1000;
 
@@ -214,24 +215,51 @@ export const resendVerificationEmail = mutation({
       created_at: now,
     });
 
-    // Send verification email with new token using Resend
-    const emailResult = await sendVerificationEmailWithResend(
-      args.email,
-      user.first_name || "Usuario",
-      token
-    );
+    return {
+      success: true,
+      token,
+      firstName: user.first_name,
+      email: args.email.toLowerCase(),
+    };
+  },
+});
+
+/**
+ * Resend verification email (prevent spam with rate limiting)
+ * This is an action because it calls sendVerificationEmailWithResend action
+ */
+export const resendVerificationEmail = action({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args): Promise<any> => {
+    // Create new token with rate limiting checks
+    const tokenResult = await ctx.runMutation(api.emailVerification.createResendToken, {
+      email: args.email,
+    });
+
+    if (!tokenResult.success) {
+      throw new Error("Failed to create resend token");
+    }
+
+    // Send verification email with new token
+    const emailResult = await ctx.runAction(api.email.sendVerificationEmailWithResend, {
+      email: tokenResult.email,
+      firstName: tokenResult.firstName,
+      token: tokenResult.token,
+    });
 
     if (!emailResult.success) {
       console.error("[EMAIL] Failed to resend verification email:", emailResult.error);
       // Don't fail - token is created for manual entry
     }
 
-    console.log(`[EMAIL] Resent verification token for ${args.email}: ${token}`);
+    console.log(`[EMAIL] Resent verification token for ${args.email}: ${tokenResult.token}`);
 
     return {
       success: true,
-      token, // Only for testing
-      email: args.email.toLowerCase(),
+      token: tokenResult.token, // Only for testing
+      email: tokenResult.email,
       message: "Email de verificación reenviado",
     };
   },

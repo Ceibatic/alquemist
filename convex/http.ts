@@ -220,7 +220,7 @@ http.route({
     }
 
     try {
-      const result = await ctx.runMutation(api.registration.registerUserStep1, body);
+      const result = await ctx.runAction(api.registration.registerUserStep1, body);
 
       return new Response(JSON.stringify(result), {
         status: 200,
