@@ -166,7 +166,7 @@ export const verifyEmailToken = mutation({
  * Create resend verification token (with rate limiting)
  * Helper mutation for resendVerificationEmail action
  */
-const createResendToken = mutation({
+export const createResendToken = mutation({
   args: {
     email: v.string(),
   },

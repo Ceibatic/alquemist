@@ -24,7 +24,7 @@ import { api } from "./_generated/api";
  * Create user record in database
  * Helper mutation for registerUserStep1 action
  */
-const createUserRecord = mutation({
+export const createUserRecord = mutation({
   args: {
     email: v.string(),
     password: v.string(),
