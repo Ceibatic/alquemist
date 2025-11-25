@@ -6,6 +6,7 @@
 import { v } from "convex/values";
 import { mutation, query, action } from "./_generated/server";
 import { api } from "./_generated/api";
+import { generateVerificationEmailHTML } from "./email";
 
 /**
  * Generate a random token
@@ -87,16 +88,41 @@ export const sendVerificationEmail = action({
       };
     }
 
-    // Then, send the verification email
-    const emailResult = await ctx.runAction(api.email.sendVerificationEmailWithResend, {
-      email: tokenResult.email,
-      firstName: tokenResult.firstName,
-      token: tokenResult.token,
-    });
+    // Then, send the verification email directly (not via action, actions can't call actions)
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      if (apiKey) {
+        const { html, text } = generateVerificationEmailHTML(
+          tokenResult.firstName,
+          tokenResult.email,
+          tokenResult.token
+        );
 
-    if (!emailResult.success) {
-      console.error("[EMAIL] Failed to send verification email:", emailResult.error);
-      // Don't fail - token is still created for manual entry
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            from: "noreply@ceibatic.com",
+            to: tokenResult.email,
+            subject: "🌱 Verifica tu email - Alquemist",
+            html,
+            text,
+            reply_to: "support@ceibatic.com",
+          }),
+        });
+
+        if (response.ok) {
+          console.log(`[EMAIL] Verification email sent to ${tokenResult.email}`);
+        } else {
+          const error = await response.text();
+          console.error(`[EMAIL] Failed to send verification email: ${error}`);
+        }
+      }
+    } catch (error) {
+      console.error(`[EMAIL] Error sending verification email:`, error);
     }
 
     return {
@@ -242,16 +268,41 @@ export const resendVerificationEmail = action({
       throw new Error("Failed to create resend token");
     }
 
-    // Send verification email with new token
-    const emailResult = await ctx.runAction(api.email.sendVerificationEmailWithResend, {
-      email: tokenResult.email,
-      firstName: tokenResult.firstName,
-      token: tokenResult.token,
-    });
+    // Send verification email with new token directly (not via action, actions can't call actions)
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      if (apiKey) {
+        const { html, text } = generateVerificationEmailHTML(
+          tokenResult.firstName,
+          tokenResult.email,
+          tokenResult.token
+        );
 
-    if (!emailResult.success) {
-      console.error("[EMAIL] Failed to resend verification email:", emailResult.error);
-      // Don't fail - token is created for manual entry
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            from: "noreply@ceibatic.com",
+            to: tokenResult.email,
+            subject: "🌱 Verifica tu email - Alquemist",
+            html,
+            text,
+            reply_to: "support@ceibatic.com",
+          }),
+        });
+
+        if (response.ok) {
+          console.log(`[EMAIL] Resend verification email sent to ${tokenResult.email}`);
+        } else {
+          const error = await response.text();
+          console.error(`[EMAIL] Failed to resend verification email: ${error}`);
+        }
+      }
+    } catch (error) {
+      console.error(`[EMAIL] Error resending verification email:`, error);
     }
 
     console.log(`[EMAIL] Resent verification token for ${args.email}: ${tokenResult.token}`);

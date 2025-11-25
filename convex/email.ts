@@ -9,7 +9,7 @@ import { v } from "convex/values";
 /**
  * Email template for verification
  */
-function generateVerificationEmailHTML(
+export function generateVerificationEmailHTML(
   firstName: string,
   email: string,
   token: string,
