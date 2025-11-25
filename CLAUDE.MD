@@ -190,8 +190,7 @@ Bubble → Convex → External AI APIs
    - Ensures consistent, clear, non-redundant guides
 
 2. **Use API documentation** (referencia técnica general):
-   - [API-Integration.md](docs/core/API-Integration.md) - Guía general de integración
-   - [API-Bubble-Reference.md](docs/module-1/bubble/API-Bubble-Reference.md) - Referencia técnica de endpoints
+   - [API-Integration.md](docs/core/API-Integration.md) - Guía general de integración y referencia de endpoints
 
 2. **Convex HTTP Actions (Required for Bubble):**
    - ⚠️ NO existe plugin de Convex para Bubble
@@ -459,11 +458,10 @@ http.route({
 
 **Context Files (Load on demand):**
 - [Database SCHEMA.md](docs/database/SCHEMA.md) - Single source of truth for all 26 tables
-- [API Integration](docs/core/API-Integration.md) - REST API reference for Bubble
 - [i18n Strategy](docs/i18n/STRATEGY.md) - Bilingual implementation (Bubble Option Sets)
-- [Phase Documentation](docs/ui/bubble/) - UI requirements per phase (PHASE-1, PHASE-2, PHASE-3)
-- [API Endpoints](docs/api/) - Complete endpoint specs (PHASE-1, PHASE-2, PHASE-3)
-- [Implementation Status](docs/foundation/Implementation-Status.md) - Current progress
+- [Phase Documentation](docs/ui/bubble/) - UI requirements per phase (PHASE-1 through PHASE-5)
+- [API Endpoints](docs/api/) - Complete endpoint specs (PHASE-1 through PHASE-5)
+- [Testing Documentation](docs/testing/) - Test suites for all phases
 
 ---
 
@@ -667,17 +665,31 @@ docs/
 │
 ├── ui/
 │   ├── bubble/       # UI requirements (Bubble-focused)
-│   │   ├── PHASE-1-ONBOARDING.md    # Wireframes + DB context only
-│   │   ├── PHASE-2-OPERATIONS.md    # Wireframes + DB context only
-│   │   └── PHASE-3-ADVANCED.md      # Wireframes + DB context only
+│   │   ├── README.md                      # Bubble UI overview
+│   │   ├── CRUD-PATTERN.md                # CRUD pattern documentation
+│   │   ├── DASHBOARD-HOME.md              # Dashboard home page
+│   │   ├── PHASE-1-ONBOARDING.md          # Onboarding UI (registration, login)
+│   │   ├── PHASE-2-BASIC-SETUP.md         # Basic setup (company, facilities, etc.)
+│   │   ├── PHASE-3-TEMPLATES.md           # Templates management
+│   │   ├── PHASE-4-PRODUCTION.md          # Production workflows
+│   │   └── PHASE-5-ADVANCED.md            # Advanced features
 │   │
 │   └── archive/      # Archived old documentation
 │       └── PHASE-X-*.md (timestamped archives)
 │
 ├── api/              # API endpoint specifications
-│   ├── PHASE-1-ENDPOINTS.md         # Auth, company, geographic
-│   ├── PHASE-2-ENDPOINTS.md         # Inventory, templates, orders
-│   └── PHASE-3-ENDPOINTS.md         # Compliance, analytics, integrations
+│   ├── PHASE-1-ONBOARDING-ENDPOINTS.md    # Auth, company, geographic
+│   ├── PHASE-2-BASIC-SETUP-ENDPOINTS.md   # Facilities, areas, cultivars
+│   ├── PHASE-3-TEMPLATES-ENDPOINTS.md     # Production & quality templates
+│   ├── PHASE-4-PRODUCTION-ENDPOINTS.md    # Production orders & operations
+│   └── PHASE-5-ADVANCED-ENDPOINTS.md      # Compliance, analytics, integrations
+│
+├── testing/          # Testing documentation
+│   ├── 00-TESTING-OVERVIEW.md
+│   ├── 01-PHASE-1-ONBOARDING-TESTS.md
+│   ├── 02-PHASE-2-MASTER-DATA-TESTS.md
+│   ├── 03-PHASE-3-TEMPLATES-TESTS.md
+│   └── 04-PHASE-4-PRODUCTION-TESTS.md
 │
 ├── core/             # Legacy documentation (being phased out)
 │   ├── Product-Requirements.md
@@ -702,14 +714,26 @@ docs/
    - [docs/database/SCHEMA.md](docs/database/SCHEMA.md) - All tables, fields, relationships
 
 2. **UI Requirements (Bubble-Focused):**
-   - [docs/ui/bubble/PHASE-1-ONBOARDING.md](docs/ui/bubble/PHASE-1-ONBOARDING.md) - Pages, wireframes, workflows
-   - [docs/ui/bubble/PHASE-2-OPERATIONS.md](docs/ui/bubble/PHASE-2-OPERATIONS.md) - Operations UI
-   - [docs/ui/bubble/PHASE-3-ADVANCED.md](docs/ui/bubble/PHASE-3-ADVANCED.md) - Advanced UI
+   - [docs/ui/bubble/README.md](docs/ui/bubble/README.md) - Bubble UI overview
+   - [docs/ui/bubble/PHASE-1-ONBOARDING.md](docs/ui/bubble/PHASE-1-ONBOARDING.md) - Onboarding UI
+   - [docs/ui/bubble/PHASE-2-BASIC-SETUP.md](docs/ui/bubble/PHASE-2-BASIC-SETUP.md) - Basic setup UI
+   - [docs/ui/bubble/PHASE-3-TEMPLATES.md](docs/ui/bubble/PHASE-3-TEMPLATES.md) - Templates UI
+   - [docs/ui/bubble/PHASE-4-PRODUCTION.md](docs/ui/bubble/PHASE-4-PRODUCTION.md) - Production UI
+   - [docs/ui/bubble/PHASE-5-ADVANCED.md](docs/ui/bubble/PHASE-5-ADVANCED.md) - Advanced features UI
 
 3. **API Endpoint Specifications:**
-   - [docs/api/PHASE-1-ENDPOINTS.md](docs/api/PHASE-1-ENDPOINTS.md) - Auth & company endpoints
-   - [docs/api/PHASE-2-ENDPOINTS.md](docs/api/PHASE-2-ENDPOINTS.md) - Operations endpoints
-   - [docs/api/PHASE-3-ENDPOINTS.md](docs/api/PHASE-3-ENDPOINTS.md) - Advanced endpoints
+   - [docs/api/PHASE-1-ONBOARDING-ENDPOINTS.md](docs/api/PHASE-1-ONBOARDING-ENDPOINTS.md) - Auth & onboarding endpoints
+   - [docs/api/PHASE-2-BASIC-SETUP-ENDPOINTS.md](docs/api/PHASE-2-BASIC-SETUP-ENDPOINTS.md) - Setup endpoints
+   - [docs/api/PHASE-3-TEMPLATES-ENDPOINTS.md](docs/api/PHASE-3-TEMPLATES-ENDPOINTS.md) - Template endpoints
+   - [docs/api/PHASE-4-PRODUCTION-ENDPOINTS.md](docs/api/PHASE-4-PRODUCTION-ENDPOINTS.md) - Production endpoints
+   - [docs/api/PHASE-5-ADVANCED-ENDPOINTS.md](docs/api/PHASE-5-ADVANCED-ENDPOINTS.md) - Advanced endpoints
+
+4. **Testing Documentation:**
+   - [docs/testing/00-TESTING-OVERVIEW.md](docs/testing/00-TESTING-OVERVIEW.md) - Testing strategy overview
+   - [docs/testing/01-PHASE-1-ONBOARDING-TESTS.md](docs/testing/01-PHASE-1-ONBOARDING-TESTS.md) - Phase 1 tests
+   - [docs/testing/02-PHASE-2-MASTER-DATA-TESTS.md](docs/testing/02-PHASE-2-MASTER-DATA-TESTS.md) - Phase 2 tests
+   - [docs/testing/03-PHASE-3-TEMPLATES-TESTS.md](docs/testing/03-PHASE-3-TEMPLATES-TESTS.md) - Phase 3 tests
+   - [docs/testing/04-PHASE-4-PRODUCTION-TESTS.md](docs/testing/04-PHASE-4-PRODUCTION-TESTS.md) - Phase 4 tests
 
 **Documentation Philosophy:**
 
@@ -743,15 +767,15 @@ docs/
 **How to Use:**
 
 1. **Building Bubble Pages:**
-   - Read UI doc for phase (e.g., PHASE-1-ONBOARDING.md)
+   - Read UI doc for phase (e.g., PHASE-1-ONBOARDING.md, PHASE-2-BASIC-SETUP.md, etc.)
    - Follow wireframes and workflows
    - Check "Database Context" for simple field mapping
    - Reference SCHEMA.md for table details if needed
 
 2. **Implementing API Endpoints:**
-   - Read API doc for phase (e.g., PHASE-1-ENDPOINTS.md)
+   - Read API doc for phase (e.g., PHASE-1-ONBOARDING-ENDPOINTS.md)
    - Implement Convex functions as specified
-   - Test with curl/Postman
+   - Test with curl/Postman or test scripts in docs/testing/
    - Update implementation status in doc
 
 3. **Understanding Data Flow:**
@@ -759,6 +783,11 @@ docs/
    - UI docs tell you "what to store/query"
    - API docs tell you "how to store/query"
    - Database schema tells you "where and what format"
+
+4. **Testing Implementation:**
+   - Read testing overview at docs/testing/00-TESTING-OVERVIEW.md
+   - Follow phase-specific test suites for comprehensive validation
+   - Run automated test scripts provided in documentation
 
 ---
 
@@ -1109,9 +1138,14 @@ npm run build
 
 **Documentation:**
 - [docs/database/SCHEMA.md](docs/database/SCHEMA.md) - Complete database schema
-- [docs/api/PHASE-1-ENDPOINTS.md](docs/api/PHASE-1-ENDPOINTS.md) - Phase 1 API endpoints
+- [docs/api/PHASE-1-ONBOARDING-ENDPOINTS.md](docs/api/PHASE-1-ONBOARDING-ENDPOINTS.md) - Phase 1 API endpoints
+- [docs/api/PHASE-2-BASIC-SETUP-ENDPOINTS.md](docs/api/PHASE-2-BASIC-SETUP-ENDPOINTS.md) - Phase 2 API endpoints
+- [docs/api/PHASE-3-TEMPLATES-ENDPOINTS.md](docs/api/PHASE-3-TEMPLATES-ENDPOINTS.md) - Phase 3 API endpoints
+- [docs/api/PHASE-4-PRODUCTION-ENDPOINTS.md](docs/api/PHASE-4-PRODUCTION-ENDPOINTS.md) - Phase 4 API endpoints
+- [docs/api/PHASE-5-ADVANCED-ENDPOINTS.md](docs/api/PHASE-5-ADVANCED-ENDPOINTS.md) - Phase 5 API endpoints
 - [docs/i18n/STRATEGY.md](docs/i18n/STRATEGY.md) - Bilingual implementation
 - [docs/core/API-Integration.md](docs/core/API-Integration.md) - Integration guide
+- [docs/testing/00-TESTING-OVERVIEW.md](docs/testing/00-TESTING-OVERVIEW.md) - Testing strategy
 
 
 ### Module Implementation
