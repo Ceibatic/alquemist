@@ -111,154 +111,24 @@ Para soporte: support@alquemist.com
 }
 
 /**
- * Send verification email using Resend
- * This is an action because it makes HTTP calls to Resend API
+ * DEPRECATED: sendVerificationEmailWithResend removed in migration to Bubble native emails
+ *
+ * Migration to Bubble Native Email Sending:
+ * - Email verification is now handled by Bubble's native "Send Email" action
+ * - generateVerificationEmailHTML() generates the template
+ * - Bubble handles the actual delivery via SendGrid
+ * - No HTTP calls needed from Convex backend
  */
-export const sendVerificationEmailWithResend = action({
-  args: {
-    email: v.string(),
-    firstName: v.string(),
-    token: v.string(),
-  },
-  handler: async (ctx, args): Promise<{ success: boolean; messageId?: string; error?: string }> => {
-    try {
-      // Check if Resend API key is configured
-      const apiKey = process.env.RESEND_API_KEY;
-      if (!apiKey) {
-        console.warn("[EMAIL] RESEND_API_KEY not configured. Email would be sent in production.");
-        return {
-          success: true,
-          messageId: "dev-mode-" + Date.now(),
-        };
-      }
-
-      const { html, text } = generateVerificationEmailHTML(args.firstName, args.email, args.token);
-
-      // Call Resend API
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          from: "noreply@ceibatic.com",
-          to: args.email,
-          subject: "🌱 Verifica tu email - Alquemist",
-          html,
-          text,
-          reply_to: "support@ceibatic.com",
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        console.error("[EMAIL] Resend API error:", error);
-        return {
-          success: false,
-          error: "Error al enviar correo de verificación",
-        };
-      }
-
-      const data = (await response.json()) as { id?: string };
-      return {
-        success: true,
-        messageId: data.id,
-      };
-    } catch (error) {
-      console.error("[EMAIL] Error sending verification email:", error);
-      return {
-        success: false,
-        error: "Error al enviar correo de verificación",
-      };
-    }
-  },
-});
 
 /**
- * Send welcome email
- * This is an action because it makes HTTP calls to Resend API
+ * DEPRECATED: sendWelcomeEmail removed in migration to Bubble native emails
+ *
+ * Welcome email now sent by Bubble after company creation:
+ * 1. Convex: registerCompanyStep2 completes company setup
+ * 2. Bubble: Receives success response
+ * 3. Bubble: Sends welcome email via native "Send Email" action
+ * 4. User: Receives welcome message with next steps
+ *
+ * This approach integrates better with Bubble's workflow automation
+ * and gives frontend full control over email timing and behavior
  */
-export const sendWelcomeEmail = action({
-  args: {
-    email: v.string(),
-    firstName: v.string(),
-    companyName: v.string(),
-  },
-  handler: async (ctx, args): Promise<{ success: boolean; messageId?: string; error?: string }> => {
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      if (!apiKey) {
-        return { success: true, messageId: "dev-mode-" + Date.now() };
-      }
-
-      const html = `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>¡Bienvenido a Alquemist!</title>
-</head>
-<body style="font-family: 'Segoe UI', Arial, sans-serif; color: #333;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 5px;">
-      <h1 style="margin: 0;">🌱 ¡Bienvenido a Alquemist!</h1>
-    </div>
-
-    <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px;">
-      <p>Hola ${args.firstName},</p>
-      <p>
-        Tu cuenta ha sido creada exitosamente.
-        <strong>${args.companyName}</strong> está lista para comenzar.
-      </p>
-      <p>
-        Los próximos pasos incluyen:
-        <ul>
-          <li>Crear tu primera instalación</li>
-          <li>Configurar tipos de cultivos</li>
-          <li>Invitar a miembros del equipo</li>
-        </ul>
-      </p>
-      <p>
-        <a href="${process.env.BUBBLE_APP_URL || "https://app.alquemist.com"}/dashboard" style="background: #667eea; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
-          Ir al Dashboard
-        </a>
-      </p>
-      <p style="color: #999; font-size: 12px;">
-        ¿Preguntas? Contacta a support@alquemist.com
-      </p>
-    </div>
-  </div>
-</body>
-</html>
-      `.trim();
-
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          from: "noreply@ceibatic.com",
-          to: args.email,
-          subject: `¡Bienvenido a Alquemist, ${args.firstName}!`,
-          html,
-          reply_to: "support@ceibatic.com",
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        console.error("[EMAIL] Welcome email error:", error);
-        return { success: false, error: "Error sending welcome email" };
-      }
-
-      const data = (await response.json()) as { id?: string };
-      return { success: true, messageId: data.id };
-    } catch (error) {
-      console.error("[EMAIL] Error sending welcome email:", error);
-      return { success: false, error: "Error sending welcome email" };
-    }
-  },
-});

@@ -161,51 +161,14 @@ export const registerUserStep1 = action({
       throw new Error("Failed to create verification token");
     }
 
-    // 3. Send verification email directly (actions can't call other actions)
-    let verificationSent = false;
-    let verificationToken = tokenResult.token;
+    // 3. Generate email HTML for Bubble to send (Bubble will handle email sending)
+    const { html: emailHtml, text: emailText } = generateVerificationEmailHTML(
+      tokenResult.firstName,
+      tokenResult.email,
+      tokenResult.token
+    );
 
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      if (apiKey) {
-        const { html, text } = generateVerificationEmailHTML(
-          tokenResult.firstName,
-          tokenResult.email,
-          tokenResult.token
-        );
-
-        const response = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            from: "noreply@ceibatic.com",
-            to: tokenResult.email,
-            subject: "🌱 Verifica tu email - Alquemist",
-            html,
-            text,
-            reply_to: "support@ceibatic.com",
-          }),
-        });
-
-        if (response.ok) {
-          console.log(`[EMAIL] Verification email sent to ${tokenResult.email}`);
-          verificationSent = true;
-        } else {
-          const error = await response.text();
-          console.error(`[EMAIL] Failed to send verification email: ${error}`);
-          verificationSent = false;
-        }
-      } else {
-        console.warn("[EMAIL] RESEND_API_KEY not configured. Email would be sent in production.");
-        verificationSent = true; // Consider it sent in dev mode
-      }
-    } catch (error) {
-      console.error(`[EMAIL] Error sending verification email:`, error);
-      verificationSent = false;
-    }
+    console.log(`[EMAIL] Verification email prepared for ${tokenResult.email} (to be sent by Bubble)`);
 
     return {
       success: true,
@@ -213,9 +176,12 @@ export const registerUserStep1 = action({
       token: userResult.sessionToken, // Session token for API authentication
       email: userResult.email,
       message: "Cuenta creada. Por favor verifica tu correo electrónico.",
-      verificationSent,
       // For testing: include verification token
-      verificationToken,
+      verificationToken: tokenResult.token,
+      // Email content for Bubble to send
+      emailHtml,
+      emailText,
+      emailSubject: "🌱 Verifica tu email - Alquemist",
     };
   },
 });

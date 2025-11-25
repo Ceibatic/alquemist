@@ -4,9 +4,8 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query, action } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
-import { generateVerificationEmailHTML } from "./email";
 
 /**
  * Generate a random token
@@ -63,78 +62,20 @@ export const createVerificationToken = mutation({
 });
 
 /**
- * Send verification email
- * Action that creates the token and sends the email
- * This must be an action because it makes HTTP calls
+ * DEPRECATED: sendVerificationEmail action removed in migration to Bubble native emails
+ *
+ * New architecture (Bubble Native):
+ * 1. Convex: registerUserStep1 creates token + generates email HTML
+ * 2. Bubble: Receives response with emailHtml
+ * 3. Bubble: Sends email using native "Send Email" action
+ * 4. User: Clicks verification link, Bubble calls verifyEmailToken mutation
+ *
+ * This approach:
+ * - Eliminates Resend API dependency
+ * - Uses Bubble's built-in SendGrid integration
+ * - Simplifies Convex backend (no HTTP calls)
+ * - Gives Bubble full control over email delivery
  */
-export const sendVerificationEmail = action({
-  args: {
-    userId: v.id("users"),
-    email: v.string(),
-    firstName: v.optional(v.string()),
-  },
-  handler: async (ctx, args): Promise<any> => {
-    // First, create the verification token in database
-    const tokenResult: any = await ctx.runMutation(api.emailVerification.createVerificationToken, {
-      userId: args.userId,
-      email: args.email,
-      firstName: args.firstName,
-    });
-
-    if (!tokenResult.success) {
-      return {
-        success: false,
-        error: "Failed to create verification token",
-      };
-    }
-
-    // Then, send the verification email directly (not via action, actions can't call actions)
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      if (apiKey) {
-        const { html, text } = generateVerificationEmailHTML(
-          tokenResult.firstName,
-          tokenResult.email,
-          tokenResult.token
-        );
-
-        const response = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            from: "noreply@ceibatic.com",
-            to: tokenResult.email,
-            subject: "🌱 Verifica tu email - Alquemist",
-            html,
-            text,
-            reply_to: "support@ceibatic.com",
-          }),
-        });
-
-        if (response.ok) {
-          console.log(`[EMAIL] Verification email sent to ${tokenResult.email}`);
-        } else {
-          const error = await response.text();
-          console.error(`[EMAIL] Failed to send verification email: ${error}`);
-        }
-      }
-    } catch (error) {
-      console.error(`[EMAIL] Error sending verification email:`, error);
-    }
-
-    return {
-      success: true,
-      tokenId: tokenResult.tokenId,
-      token: tokenResult.token, // Included for testing in development mode
-      expiresAt: tokenResult.expiresAt,
-      email: tokenResult.email,
-      message: "Verification email sent. Check your inbox.",
-    };
-  },
-});
 
 /**
  * Verify email token and mark email as verified

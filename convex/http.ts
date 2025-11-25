@@ -188,10 +188,16 @@ http.route({
  * POST /registration/register-step-1
  * Step 1: Create user account only (no company yet)
  *
+ * IMPORTANT: Email is now sent by Bubble (not Convex)
+ * This endpoint returns email content for Bubble to send via native action
+ *
  * Body: {
  *   email, password, firstName, lastName, phone (optional)
  * }
- * Response: { success, userId, token, message }
+ * Response: {
+ *   success, userId, token, message, verificationToken,
+ *   emailHtml, emailText, emailSubject
+ * }
  */
 http.route({
   path: "/registration/register-step-1",
