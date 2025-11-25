@@ -5,7 +5,7 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
 import {
   hashPassword,
   validateEmail,
@@ -21,12 +21,10 @@ import { api } from "./_generated/api";
 // ============================================================================
 
 /**
- * Step 1: Register user only (no company yet)
- * - Create user record
- * - Send verification email
- * - Return userId for next step
+ * Create user record in database
+ * Helper mutation for registerUserStep1 action
  */
-export const registerUserStep1 = mutation({
+const createUserRecord = mutation({
   args: {
     email: v.string(),
     password: v.string(),
@@ -111,20 +109,56 @@ export const registerUserStep1 = mutation({
       created_at: now,
     });
 
-    // 6. Send verification email
-    const emailResult: any = await ctx.runMutation(
-      api.emailVerification.sendVerificationEmail,
-      {
-        userId,
-        email: args.email.toLowerCase(),
-      }
-    );
-
     return {
       success: true,
       userId,
-      token: sessionToken, // Session token for API authentication
+      sessionToken,
       email: args.email.toLowerCase(),
+    };
+  },
+});
+
+/**
+ * Step 1: Register user only (no company yet)
+ * - Create user record
+ * - Send verification email
+ * - Return userId for next step
+ * This is an action because it calls other actions (sendVerificationEmail)
+ */
+export const registerUserStep1 = action({
+  args: {
+    email: v.string(),
+    password: v.string(),
+    firstName: v.string(),
+    lastName: v.string(),
+    phone: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<any> => {
+    // 1. Create user record
+    const userResult = await ctx.runMutation(api.registration.createUserRecord, {
+      email: args.email,
+      password: args.password,
+      firstName: args.firstName,
+      lastName: args.lastName,
+      phone: args.phone,
+    });
+
+    if (!userResult.success) {
+      throw new Error("Failed to create user");
+    }
+
+    // 2. Send verification email
+    const emailResult = await ctx.runAction(api.emailVerification.sendVerificationEmail, {
+      userId: userResult.userId,
+      email: userResult.email,
+      firstName: args.firstName,
+    });
+
+    return {
+      success: true,
+      userId: userResult.userId,
+      token: userResult.sessionToken, // Session token for API authentication
+      email: userResult.email,
       message: "Cuenta creada. Por favor verifica tu correo electrónico.",
       verificationSent: emailResult.success,
       // For testing: include verification token

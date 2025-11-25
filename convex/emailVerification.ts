@@ -4,7 +4,7 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
 import { api } from "./_generated/api";
 
 /**
@@ -20,10 +20,10 @@ function generateVerificationToken(): string {
 }
 
 /**
- * Create and send email verification token
- * Called after user registers in step 1
+ * Create verification token record in database
+ * Helper mutation called by sendVerificationEmail action
  */
-export const sendVerificationEmail = mutation({
+export const createVerificationToken = mutation({
   args: {
     userId: v.id("users"),
     email: v.string(),
@@ -48,26 +48,63 @@ export const sendVerificationEmail = mutation({
       created_at: now,
     });
 
-    // Send verification email using Resend via action
-    const emailResult = await ctx.runAction(api.email.sendVerificationEmailWithResend, {
-      email: args.email,
-      firstName,
-      token,
-    });
-
-    if (!emailResult.success) {
-      console.error("[EMAIL] Failed to send verification email:", emailResult.error);
-      // Don't fail the mutation - token is still created for manual entry
-    }
-
     console.log(`[EMAIL] Verification token created for ${args.email}: ${token}`);
 
     return {
       success: true,
       tokenId,
-      token, // Included for testing in development mode
+      token,
+      firstName,
       expiresAt,
       email: args.email.toLowerCase(),
+    };
+  },
+});
+
+/**
+ * Send verification email
+ * Action that creates the token and sends the email
+ * This must be an action because it makes HTTP calls
+ */
+export const sendVerificationEmail = action({
+  args: {
+    userId: v.id("users"),
+    email: v.string(),
+    firstName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // First, create the verification token in database
+    const tokenResult = await ctx.runMutation(api.emailVerification.createVerificationToken, {
+      userId: args.userId,
+      email: args.email,
+      firstName: args.firstName,
+    });
+
+    if (!tokenResult.success) {
+      return {
+        success: false,
+        error: "Failed to create verification token",
+      };
+    }
+
+    // Then, send the verification email
+    const emailResult = await ctx.runAction(api.email.sendVerificationEmailWithResend, {
+      email: tokenResult.email,
+      firstName: tokenResult.firstName,
+      token: tokenResult.token,
+    });
+
+    if (!emailResult.success) {
+      console.error("[EMAIL] Failed to send verification email:", emailResult.error);
+      // Don't fail - token is still created for manual entry
+    }
+
+    return {
+      success: true,
+      tokenId: tokenResult.tokenId,
+      token: tokenResult.token, // Included for testing in development mode
+      expiresAt: tokenResult.expiresAt,
+      email: tokenResult.email,
       message: "Verification email sent. Check your inbox.",
     };
   },
