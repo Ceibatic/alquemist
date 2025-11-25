@@ -1,85 +1,16 @@
 /**
- * Email Verification System
+ * Email Verification System (Simplified)
  * 2-Step Registration: Verify email before completing company setup
  */
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { action, mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
+import { generateVerificationEmailHTML } from "./email";
 
 /**
- * Generate a random token
- */
-function generateVerificationToken(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let token = "";
-  for (let i = 0; i < 32; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
-}
-
-/**
- * Create verification token record in database
- * Helper mutation called by sendVerificationEmail action
- */
-export const createVerificationToken = mutation({
-  args: {
-    userId: v.id("users"),
-    email: v.string(),
-    firstName: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const now = Date.now();
-    const expiresAt = now + 24 * 60 * 60 * 1000; // 24 hours
-    const token = generateVerificationToken();
-
-    // Get user info for email template
-    const user = await ctx.db.get(args.userId);
-    const firstName = args.firstName || user?.first_name || "Usuario";
-
-    // Create verification token record
-    const tokenId = await ctx.db.insert("emailVerificationTokens", {
-      user_id: args.userId,
-      email: args.email.toLowerCase(),
-      token,
-      expires_at: expiresAt,
-      used: false,
-      created_at: now,
-    });
-
-    console.log(`[EMAIL] Verification token created for ${args.email}: ${token}`);
-
-    return {
-      success: true,
-      tokenId,
-      token,
-      firstName,
-      expiresAt,
-      email: args.email.toLowerCase(),
-    };
-  },
-});
-
-/**
- * DEPRECATED: sendVerificationEmail action removed in migration to Bubble native emails
- *
- * New architecture (Bubble Native):
- * 1. Convex: registerUserStep1 creates token + generates email HTML
- * 2. Bubble: Receives response with emailHtml
- * 3. Bubble: Sends email using native "Send Email" action
- * 4. User: Clicks verification link, Bubble calls verifyEmailToken mutation
- *
- * This approach:
- * - Eliminates Resend API dependency
- * - Uses Bubble's built-in SendGrid integration
- * - Simplifies Convex backend (no HTTP calls)
- * - Gives Bubble full control over email delivery
- */
-
-/**
- * Verify email token and mark email as verified
- * Token can only be used once within 24 hours
+ * Verify email token and mark email as verified (Simplified)
+ * Token validation: only checks expiration
  */
 export const verifyEmailToken = mutation({
   args: {
@@ -88,170 +19,89 @@ export const verifyEmailToken = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
 
-    // Find token
-    const tokenRecord = await ctx.db
-      .query("emailVerificationTokens")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
+    // Find user by token (no separate table)
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email_verification_token", (q) =>
+        q.eq("email_verification_token", args.token)
+      )
       .first();
 
-    if (!tokenRecord) {
-      throw new Error("Token no válido o expirado");
+    if (!user) {
+      throw new Error("Token no válido");
     }
 
-    // Check if already used
-    if (tokenRecord.used) {
-      throw new Error("Este token ya fue utilizado");
-    }
-
-    // Check if expired
-    if (tokenRecord.expires_at < now) {
+    // Check if expired (simplified - no "used" check)
+    if (user.token_expires_at && user.token_expires_at < now) {
       throw new Error("Token expirado. Solicita uno nuevo.");
     }
 
-    // Mark token as used
-    await ctx.db.patch(tokenRecord._id, {
-      used: true,
-      verified_at: now,
-    });
-
-    // Mark user email as verified
-    await ctx.db.patch(tokenRecord.user_id, {
+    // Mark user email as verified and clear token
+    await ctx.db.patch(user._id, {
       email_verified: true,
       email_verified_at: now,
+      email_verification_token: undefined, // Clear token
+      token_expires_at: undefined,
       updated_at: now,
     });
 
     return {
       success: true,
       message: "¡Email verificado exitosamente!",
-      userId: tokenRecord.user_id,
+      userId: user._id,
     };
   },
 });
 
 /**
- * Create resend verification token (with rate limiting)
- * Helper mutation for resendVerificationEmail action
- */
-export const createResendToken = mutation({
-  args: {
-    email: v.string(),
-  },
-  handler: async (ctx, args): Promise<any> => {
-    const now = Date.now();
-    const fiveMinutesAgo = now - 5 * 60 * 1000;
-
-    // Find user
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
-      .first();
-
-    if (!user) {
-      throw new Error("Correo no encontrado");
-    }
-
-    // Check if already verified
-    if (user.email_verified) {
-      throw new Error("Este email ya está verificado");
-    }
-
-    // Check rate limiting - max 5 resends, 5 min between each
-    const recentTokens = await ctx.db
-      .query("emailVerificationTokens")
-      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
-      .filter((q) => q.gt(q.field("created_at"), fiveMinutesAgo))
-      .collect();
-
-    if (recentTokens.length >= 5) {
-      throw new Error(
-        "Demasiados intentos. Espera 5 minutos antes de reenviar."
-      );
-    }
-
-    // Create new verification token
-    const expiresAt = now + 24 * 60 * 60 * 1000;
-    const token = generateVerificationToken();
-
-    await ctx.db.insert("emailVerificationTokens", {
-      user_id: user._id,
-      email: args.email.toLowerCase(),
-      token,
-      expires_at: expiresAt,
-      used: false,
-      created_at: now,
-    });
-
-    return {
-      success: true,
-      token,
-      firstName: user.first_name,
-      email: args.email.toLowerCase(),
-    };
-  },
-});
-
-/**
- * Resend verification email (prevent spam with rate limiting)
- * This is an action because it calls sendVerificationEmailWithResend action
+ * Resend verification email (Simplified - no rate limiting)
+ * Returns email HTML for Bubble to send
  */
 export const resendVerificationEmail = action({
   args: {
     email: v.string(),
   },
   handler: async (ctx, args): Promise<any> => {
-    // Create new token with rate limiting checks
-    const tokenResult = await ctx.runMutation(api.emailVerification.createResendToken, {
+    // Find user
+    const user = await ctx.runQuery(api.registration.getUserByEmail, {
       email: args.email,
     });
 
-    if (!tokenResult.success) {
-      throw new Error("Failed to create resend token");
+    if (!user) {
+      throw new Error("Correo no encontrado");
     }
 
-    // Send verification email with new token directly (not via action, actions can't call actions)
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      if (apiKey) {
-        const { html, text } = generateVerificationEmailHTML(
-          tokenResult.firstName,
-          tokenResult.email,
-          tokenResult.token
-        );
-
-        const response = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            from: "noreply@ceibatic.com",
-            to: tokenResult.email,
-            subject: "🌱 Verifica tu email - Alquemist",
-            html,
-            text,
-            reply_to: "support@ceibatic.com",
-          }),
-        });
-
-        if (response.ok) {
-          console.log(`[EMAIL] Resend verification email sent to ${tokenResult.email}`);
-        } else {
-          const error = await response.text();
-          console.error(`[EMAIL] Failed to resend verification email: ${error}`);
-        }
-      }
-    } catch (error) {
-      console.error(`[EMAIL] Error resending verification email:`, error);
+    if (user.email_verified) {
+      throw new Error("Este email ya está verificado");
     }
 
-    console.log(`[EMAIL] Resent verification token for ${args.email}: ${tokenResult.token}`);
+    // Generate new simple token (8 digits)
+    const verificationToken = Math.floor(10000000 + Math.random() * 90000000).toString();
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+
+    // Update user directly
+    await ctx.runMutation(api.registration.updateUserVerificationToken, {
+      userId: user._id,
+      token: verificationToken,
+      expiresAt: expiresAt,
+    });
+
+    // Generate email HTML for Bubble to send
+    const { html: emailHtml, text: emailText } = generateVerificationEmailHTML(
+      user.first_name || "Usuario",
+      user.email,
+      verificationToken
+    );
+
+    console.log(`[EMAIL] Resent verification token for ${args.email}: ${verificationToken}`);
 
     return {
       success: true,
-      token: tokenResult.token, // Only for testing
-      email: tokenResult.email,
+      token: verificationToken, // For testing
+      email: user.email,
+      emailHtml,
+      emailText,
+      emailSubject: "🌱 Verifica tu email - Alquemist (Reenvío)",
       message: "Email de verificación reenviado",
     };
   },
@@ -282,57 +132,6 @@ export const checkEmailVerificationStatus = query({
       verified: user.email_verified,
       userId: user._id,
       message: user.email_verified ? "Email verificado" : "Pendiente de verificación",
-    };
-  },
-});
-
-/**
- * Get verification token (for testing/development only)
- * Remove this in production
- */
-export const getVerificationToken = query({
-  args: {
-    email: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const tokens = await ctx.db
-      .query("emailVerificationTokens")
-      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
-      .filter((q) => q.eq(q.field("used"), false))
-      .collect();
-
-    if (tokens.length === 0) {
-      return null;
-    }
-
-    // Return most recent token
-    return tokens.sort((a, b) => b.created_at - a.created_at)[0];
-  },
-});
-
-/**
- * Cleanup expired tokens (internal mutation)
- * Call periodically to clean up old tokens
- */
-export const cleanupExpiredTokens = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const now = Date.now();
-
-    const expiredTokens = await ctx.db
-      .query("emailVerificationTokens")
-      .withIndex("by_expires", (q) => q.lt("expires_at", now))
-      .collect();
-
-    let deletedCount = 0;
-    for (const token of expiredTokens) {
-      await ctx.db.delete(token._id);
-      deletedCount++;
-    }
-
-    return {
-      deleted: deletedCount,
-      message: `Cleaned up ${deletedCount} expired tokens`,
     };
   },
 });

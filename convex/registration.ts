@@ -33,6 +33,8 @@ export const createUserRecord = mutation({
     firstName: v.string(),
     lastName: v.string(),
     phone: v.optional(v.string()),
+    verificationToken: v.string(), // 8-digit token
+    tokenExpiresAt: v.number(), // 24-hour expiration
   },
   handler: async (ctx, args): Promise<any> => {
     const now = Date.now();
@@ -77,6 +79,10 @@ export const createUserRecord = mutation({
       password_hash: passwordHash,
       email_verified: false,
       email_verified_at: undefined,
+
+      // Email verification (simplified)
+      email_verification_token: args.verificationToken,
+      token_expires_at: args.tokenExpiresAt,
 
       first_name: args.firstName,
       last_name: args.lastName,
@@ -137,38 +143,33 @@ export const registerUserStep1 = action({
     phone: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<any> => {
-    // 1. Create user record
+    // 1. Generate simple 8-digit verification token
+    const verificationToken = Math.floor(10000000 + Math.random() * 90000000).toString();
+    const tokenExpiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+
+    // 2. Create user record with token
     const userResult = await ctx.runMutation(api.registration.createUserRecord, {
       email: args.email,
       password: args.password,
       firstName: args.firstName,
       lastName: args.lastName,
       phone: args.phone,
+      verificationToken,
+      tokenExpiresAt,
     });
 
     if (!userResult.success) {
       throw new Error("Failed to create user");
     }
 
-    // 2. Create verification token
-    const tokenResult: any = await ctx.runMutation(api.emailVerification.createVerificationToken, {
-      userId: userResult.userId,
-      email: userResult.email,
-      firstName: args.firstName,
-    });
-
-    if (!tokenResult.success) {
-      throw new Error("Failed to create verification token");
-    }
-
     // 3. Generate email HTML for Bubble to send (Bubble will handle email sending)
     const { html: emailHtml, text: emailText } = generateVerificationEmailHTML(
-      tokenResult.firstName,
-      tokenResult.email,
-      tokenResult.token
+      args.firstName,
+      userResult.email,
+      verificationToken
     );
 
-    console.log(`[EMAIL] Verification email prepared for ${tokenResult.email} (to be sent by Bubble)`);
+    console.log(`[EMAIL] Verification email prepared for ${userResult.email} (to be sent by Bubble)`);
 
     return {
       success: true,
@@ -177,7 +178,7 @@ export const registerUserStep1 = action({
       email: userResult.email,
       message: "Cuenta creada. Por favor verifica tu correo electrónico.",
       // For testing: include verification token
-      verificationToken: tokenResult.token,
+      verificationToken,
       // Email content for Bubble to send
       emailHtml,
       emailText,
@@ -592,6 +593,29 @@ export const logout = mutation({
       success: true,
       message: "Sesión cerrada exitosamente",
     };
+  },
+});
+
+// ============================================================================
+// EMAIL VERIFICATION HELPERS
+// ============================================================================
+
+/**
+ * Update user verification token
+ * Helper mutation for resend verification email flow
+ */
+export const updateUserVerificationToken = mutation({
+  args: {
+    userId: v.id("users"),
+    token: v.string(),
+    expiresAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      email_verification_token: args.token,
+      token_expires_at: args.expiresAt,
+      updated_at: Date.now(),
+    });
   },
 });
 

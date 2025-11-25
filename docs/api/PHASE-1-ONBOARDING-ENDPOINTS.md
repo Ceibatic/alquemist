@@ -183,7 +183,7 @@ Content-Type: application/json
 - `token` (text) - Session token (30 días) para autenticación
 - `email` (text) - Email del usuario
 - `message` (text) - Mensaje descriptivo del resultado
-- `verificationToken` (text) - Token de verificación de email (para testing)
+- `verificationToken` (text) - Token de verificación de 8 dígitos (para testing)
 - `emailHtml` (text) - HTML del email de verificación (para enviar por Bubble)
 - `emailText` (text) - Texto plano del email (fallback)
 - `emailSubject` (text) - Asunto del email
@@ -299,7 +299,7 @@ Content-Type: application/json
 **Endpoint**: `POST /registration/resend-verification`
 **Convex Function**: `emailVerification.resendVerificationEmail`
 
-**Rate Limiting**: Max 5 resends, 5 minutos entre cada reenvío
+**Simplified**: Sin rate limiting (simplificado)
 
 #### Bubble API Connector Configuration
 
@@ -2492,7 +2492,7 @@ Content-Type: application/json
 5. **Step 4**: Navigate to "dashboard" page
 6. **Step 5** (Only when `success = false`): Show alert with `Result of Step 1's error`
 
-**Security**: Siempre usar HTTPS. No logear ni mostrar el token. Rate limiting: max 5 intentos.
+**Security**: Siempre usar HTTPS. No logear ni mostrar el token. Simplificado: sin rate limiting.
 
 ---
 

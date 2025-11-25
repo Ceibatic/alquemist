@@ -2362,9 +2362,7 @@ http.route({
       // Get full user info
       const user = await ctx.runQuery(api.registration.getUserInfo, { userId: userDoc._id });
 
-      // Delete email verification tokens
-      await ctx.runMutation(api.emailVerification.cleanupExpiredTokens);
-
+      // Note: Email verification tokens are now stored in user record and auto-cleaned on verification
       // Note: Full user deletion requires additional implementation
       // For now, return user info for manual deletion
       return new Response(

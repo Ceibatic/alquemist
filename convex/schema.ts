@@ -90,6 +90,10 @@ export default defineSchema({
     email_verified: v.boolean(), // Default: false
     email_verified_at: v.optional(v.number()), // Timestamp when verified
 
+    // Email Verification (Simplified)
+    email_verification_token: v.optional(v.string()), // 8-digit token
+    token_expires_at: v.optional(v.number()), // 24-hour expiration
+
     // Personal Information
     first_name: v.optional(v.string()),
     last_name: v.optional(v.string()),
@@ -129,24 +133,8 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_company", ["company_id"])
     .index("by_role", ["role_id"])
-    .index("by_status", ["status"]),
-
-  emailVerificationTokens: defineTable({
-    // Email Verification Token Management
-    user_id: v.id("users"),
-    email: v.string(),
-    token: v.string(), // Random token sent in email link
-    expires_at: v.number(), // 24 hours from creation
-    verified_at: v.optional(v.number()), // When token was used
-    used: v.boolean(), // Default: false - prevent reuse
-
-    // Metadata
-    created_at: v.number(),
-  })
-    .index("by_token", ["token"])
-    .index("by_email", ["email"])
-    .index("by_user", ["user_id"])
-    .index("by_expires", ["expires_at"]),
+    .index("by_status", ["status"])
+    .index("by_email_verification_token", ["email_verification_token"]),
 
   sessions: defineTable({
     // Session Token Management (for Bubble.io API authentication)

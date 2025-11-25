@@ -92,8 +92,7 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 - **Writes to**: `users` table
   - Stores: email, password_hash, firstName, lastName, phone
   - Sets: email_verified = false
-- **Writes to**: `emailVerificationTokens` table
-  - Generates token for email verification
+  - Stores: email_verification_token (8-digit), token_expires_at (24h)
 
 **UI Translations**:
 
@@ -129,13 +128,11 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 │    ✉️  VERIFY YOUR EMAIL        │
 ├─────────────────────────────────┤
 │                                 │
-│  We sent a verification link to:│
+│  We sent a verification code to:│
 │  user@example.com               │
 │                                 │
-│  Click the link in your email   │
-│  or enter the code below:       │
-│                                 │
-│  [___] [___] [___] [___]       │
+│  Enter your 8-digit code:       │
+│  [________________]             │
 │                                 │
 │  Expires in: 23:45              │
 │                                 │
@@ -147,24 +144,24 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 
 **Bubble Elements**:
 - Text: Display user's email
-- Input fields: 4 code boxes (single digit each)
+- Input field: Single input for 8-digit code
 - Countdown timer: Shows remaining time
 - Button: "Verify" → triggers verification workflow
 - Button: "Resend Email" → triggers resend workflow
 
 **Workflow**:
-1. User enters 4-digit code OR clicks email link (auto-fills code)
+1. User enters 8-digit code OR clicks email link (auto-fills code)
 2. Call API: Verify email token
 3. On success → Navigate to Company Setup page
 4. On fail → Show error, allow retry
 
-**Database Context**:
-- **Reads from**: `emailVerificationTokens` table
+**Database Context (Simplified)**:
+- **Reads from**: `users` table
+  - Finds user by email_verification_token
   - Checks: token validity, expiration
 - **Updates**: `users` table
   - Sets: email_verified = true, email_verified_at = timestamp
-- **Updates**: `emailVerificationTokens` table
-  - Sets: used = true, verified_at = timestamp
+  - Clears: email_verification_token, token_expires_at
 
 **UI Translations**:
 
