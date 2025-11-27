@@ -287,10 +287,20 @@ export const registerCompanyStep2 = mutation({
       updated_at: now,
     });
 
+    // 6. Retrieve updated user with all details
+    const updatedUser = await ctx.db.get(args.userId);
+
     return {
       success: true,
       userId: args.userId,
       companyId,
+      user: {
+        firstName: updatedUser?.first_name || "",
+        lastName: updatedUser?.last_name || "",
+        email: updatedUser?.email || "",
+        roleId: updatedUser?.role_id || "",
+        locale: updatedUser?.locale || "es",
+      },
       message:
         "¡Bienvenido! Tu empresa ha sido creada exitosamente. Acceso a plataforma.",
     };

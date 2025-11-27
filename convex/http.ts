@@ -313,6 +313,66 @@ http.route({
 });
 
 /**
+ * POST /registration/resend-verification
+ * Resend verification email with new token
+ *
+ * Body: { email }
+ * Response: { success, email, token, emailHtml, emailText, emailSubject, message }
+ */
+http.route({
+  path: "/registration/resend-verification",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const body = await request.json();
+    const { email } = body;
+
+    if (!email) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Email es requerido"
+        }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+
+    try {
+      const result = await ctx.runAction(api.emailVerification.resendVerificationEmail, {
+        email,
+      });
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: error.message
+        }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+/**
  * POST /registration/register-step-2
  * Step 2: Create company and complete registration
  *

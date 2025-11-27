@@ -329,17 +329,25 @@ Content-Type: application/json
 ```json
 {
   "success": true,
+  "email": "user@example.com",
+  "token": "12345678",
+  "emailHtml": "<html>...</html>",
+  "emailText": "Verification link: ...",
+  "emailSubject": "🌱 Verifica tu email - Alquemist (Reenvío)",
   "message": "Email de verificación reenviado",
-  "token": "xyz123...",
-  "error": "Rate limit exceeded",
-  "code": "RATE_LIMIT_EXCEEDED"
+  "error": "Correo no encontrado",
+  "code": "EMAIL_NOT_FOUND"
 }
 ```
 
 **Response Fields**:
 - `success` (boolean) - true si se envió el email correctamente
+- `email` (text) - Email del usuario
+- `token` (text) - Nuevo token de verificación generado (8 dígitos, para testing)
+- `emailHtml` (text) - HTML del email de verificación (para enviar por Bubble)
+- `emailText` (text) - Texto plano del email (fallback)
+- `emailSubject` (text) - Asunto del email
 - `message` (text) - Mensaje descriptivo del resultado
-- `token` (text) - Nuevo token de verificación generado
 - `error` (text) - Mensaje de error si success=false
 - `code` (text) - Código técnico del error
 
@@ -348,9 +356,14 @@ Content-Type: application/json
 1. **Trigger**: Button "Resend Verification Email" is clicked
 2. **Step 1**: Plugins → resendVerificationEmail
    - email = `Current User's email`
-3. **Step 2** (Only when `success = true`): Show alert "Email reenviado. Revisa tu bandeja."
-4. **Step 3** (Only when `success = true`): Disable button for 5 minutes (Custom State)
-5. **Step 4** (Only when `success = false`): Show alert with `Result of Step 1's error`
+3. **Step 2** (Only when `success = true`): Send Email (Native Bubble Action)
+   - **To**: `Result of Step 1's email`
+   - **Subject**: `Result of Step 1's emailSubject`
+   - **Body**: `Result of Step 1's emailHtml`
+   - **Reply-to**: `support@ceibatic.com`
+4. **Step 3** (Only when `success = true`): Show alert "Email reenviado. Revisa tu bandeja."
+5. **Step 4** (Only when `success = true`): Disable button for 5 minutes (Custom State)
+6. **Step 5** (Only when `success = false`): Show alert with `Result of Step 1's error`
 
 ---
 
@@ -1349,8 +1362,14 @@ Content-Type: application/json
   "success": true,
   "userId": "j97abc...",
   "companyId": "k12def...",
-  "roleId": "role_owner",
-  "message": "¡Bienvenido! Tu empresa ha sido creada exitosamente.",
+  "user": {
+    "firstName": "Juan",
+    "lastName": "Pérez",
+    "email": "juan@example.com",
+    "roleId": "role_123abc...",
+    "locale": "es"
+  },
+  "message": "¡Bienvenido! Tu empresa ha sido creada exitosamente. Acceso a plataforma.",
   "error": "Email not verified",
   "code": "EMAIL_NOT_VERIFIED"
 }
@@ -1360,7 +1379,12 @@ Content-Type: application/json
 - `success` (boolean) - true si la empresa se creó exitosamente
 - `userId` (text) - ID del usuario
 - `companyId` (text) - ID de la empresa creada
-- `roleId` (text) - ID del rol asignado automáticamente (siempre "role_owner" para el creador de la empresa)
+- `user` (object) - Objeto con datos del usuario:
+  - `user.firstName` (text) - Nombre del usuario
+  - `user.lastName` (text) - Apellido del usuario
+  - `user.email` (text) - Email del usuario
+  - `user.roleId` (text) - ID del rol asignado automáticamente (COMPANY_OWNER - referencia a tabla roles)
+  - `user.locale` (text) - Locale/idioma del usuario (ej: "es")
 - `message` (text) - Mensaje descriptivo del resultado
 - `error` (text) - Mensaje de error si success=false
 - `code` (text) - Código técnico del error
@@ -1379,11 +1403,13 @@ Content-Type: application/json
 3. **Step 2** (Only when `success = true`): Make changes to Current User
    - `company_id` = `Result of Step 1's companyId`
    - `company_name` = `Input companyName's value`
-   - `role_id` = `Result of Step 1's roleId` (automáticamente "role_owner")
+   - `first_name` = `Result of Step 1's user.firstName`
+   - `last_name` = `Result of Step 1's user.lastName`
+   - `role_id` = `Result of Step 1's user.roleId`
 4. **Step 3**: Navigate to "facility-setup" page
 5. **Step 4** (Only when `success = false`): Show alert with `Result of Step 1's error`
 
-**Nota importante**: Este endpoint asigna automáticamente el rol de "COMPANY_OWNER" al usuario que crea la empresa. No es necesario llamar al endpoint `assignUserRole` después de este paso.
+**Nota importante**: Este endpoint asigna automáticamente el rol de "COMPANY_OWNER" al usuario que crea la empresa. El `user.roleId` contiene el ID real de la tabla roles. No es necesario llamar al endpoint `assignUserRole` después de este paso.
 
 **Option Sets requeridos**:
 - `businessEntityType`: S.A.S, S.A., Ltda, E.U.
