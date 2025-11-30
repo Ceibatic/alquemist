@@ -1,10 +1,7 @@
 /**
- * Email Service with Resend Integration
- * Handles all email communications
+ * Email Service
+ * Handles email template generation for Bubble native email sending
  */
-
-import { action } from "./_generated/server";
-import { v } from "convex/values";
 
 /**
  * Email template for verification (Rich Text format for Bubble)
@@ -19,7 +16,7 @@ export function generateVerificationEmailHTML(
   const verificationLink = `${process.env.BUBBLE_APP_URL || "https://app.alquemist.com"}/email-verification?token=${token}&email=${encodeURIComponent(email)}`;
 
   // Rich text format (plain text with line breaks for Bubble to render)
-  const richText = `🌱 VERIFICA TU EMAIL
+  const richText = `VERIFICA TU EMAIL - ALQUEMIST
 
 ¡Hola ${firstName || "Usuario"}!
 
@@ -39,7 +36,7 @@ ${token}
 ⏰ Código válido por ${expiresInHours} horas
 ❌ Si no solicitaste esta verificación, ignora este correo.
 
-© 2024 Alquemist`;
+© 2025 Alquemist - Trazabilidad Agrícola`;
 
   return { html: richText, text: richText };
 }

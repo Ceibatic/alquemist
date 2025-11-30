@@ -143,8 +143,8 @@ export const registerUserStep1 = action({
     phone: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<any> => {
-    // 1. Generate simple 8-digit verification token
-    const verificationToken = Math.floor(10000000 + Math.random() * 90000000).toString();
+    // 1. Generate simple 6-digit verification token
+    const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
     const tokenExpiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
     // 2. Create user record with token
@@ -628,4 +628,5 @@ export const updateUserVerificationToken = mutation({
     });
   },
 });
+
 

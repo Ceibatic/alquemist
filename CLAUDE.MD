@@ -1,951 +1,525 @@
-# CLAUDE.MD - Context Engineering Agent
+# CLAUDE.MD - Alquemist Development Guide
 
-**Alquemist Development Assistant**
-**Version**: 1.0
-**Target Context**: ~1500 tokens active
+**Alquemist - Next.js Frontend Development**
+**Version**: 2.0
+**Last Updated**: 2025-11-28
 
 ---
 
 ## Project Identity
 
-**Alquemist** - Multi-region agricultural management SaaS platform for Cannabis, Coffee, Cocoa, and Flowers.
+**Alquemist** - Multi-region agricultural traceability SaaS platform for Cannabis, Coffee, Cocoa, and Flowers.
 
-**Tech Stack (Current):**
-- Frontend: Bubble.io (Primary - 100% UI implementation)
-- Backend: Convex HTTP Actions (serverless, real-time)
-- Auth: Custom session tokens (30-day validity, stored in sessions table)
-- Email: Resend (verification, password reset, notifications)
-- API: RESTful HTTP API (v1) at https://handsome-jay-388.convex.site
-- Deployment: Bubble + Convex Cloud (auto-deploy via GitHub Actions)
-- i18n: Bilingual ES/EN via Bubble Option Sets (frontend-only translation)
+### Tech Stack
 
-**Available But Not Used (Future-Ready):**
-- Next.js 14 (code exists, configured with next-intl, ready if needed)
-- messages/es.json (450+ Spanish translations for Next.js future use)
+**Frontend (Primary):**
+- **Next.js 15** with App Router and Turbopack
+- **React 19** with Server Components
+- **Tailwind CSS** for styling
+- **shadcn/ui** component library
+- **TypeScript** strict mode
 
-**Frontend Architecture:**
-- **Bubble.io:** Primary and ONLY frontend in use - 100% de la UI y orquestación
-  - Connects directly to Convex HTTP Actions
-  - Custom session token authentication
-  - Bilingual UI via Option Sets (ES/EN)
-- **Next.js:** Available but NOT currently used
-  - Code exists in repo (configured with next-intl)
-  - Ready for future if complexity requires
-  - Would connect via same Convex backend
-- **Strategy:** Bubble-only for now, Next.js available if needed later
+**Backend:**
+- **Convex** serverless database and HTTP Actions
+- **Deployment**: https://handsome-jay-388.convex.site
+- **Auth**: Custom session tokens (30-day validity)
+- **Email**: Resend integration
+
+**Design Reference:**
+- **Bubble.io** wireframes as visual guide and UX patterns
+- Located in `docs/ui/bubble/PHASE-*.md`
 
 **Core Requirements:**
 - Multi-tenant (company-based isolation)
 - Batch-first tracking (50-1000 plants per batch)
 - Regulatory compliance (configurable by region)
-- Mobile PWA with offline capability
-- Real-time updates via WebSocket
+- Mobile-first responsive design
+- Real-time updates via Convex subscriptions
 
 ---
 
-## Frontend Architecture
+## Phased Development Methodology
 
 ### Overview
 
-Alquemist usa **arquitectura simplificada** - Bubble conecta directamente a Convex:
+Alquemist Next.js frontend development follows a structured phase-by-phase approach that ensures quality, consistency, and maintainability.
+
+### Development Workflow Per Phase
 
 ```
-┌─────────────────────────────────────────┐
-│          BUBBLE.IO APP                  │
-│      (Primary & Only Frontend)          │
-│                                         │
-│  • No-code UI builder                   │
-│  • Custom session token auth            │
-│  • Bilingual via Option Sets (ES/EN)   │
-│  • Workflows + API Connector            │
-└────────┬────────────────────────────────┘
-         │
-         │ HTTPS (Authorization: Bearer {token})
-         │
-         ▼
-┌─────────────────────────────────────────┐
-│      CONVEX HTTP ACTIONS                │
-│   https://handsome-jay-388.convex.site  │
-│                                         │
-│  • POST /api/v1/auth/*                  │
-│  • POST /api/v1/companies/*             │
-│  • POST /api/v1/facilities/*            │
-│  • POST /api/v1/batches/*               │
-│  • Validates session tokens             │
-│  • Multi-tenant isolation (company_id)  │
-└────────┬────────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────────────────┐
-│       CONVEX DATABASE                   │
-│  (26 tables, serverless, real-time)     │
-│                                         │
-│  • users, sessions, companies           │
-│  • facilities, batches, activities      │
-│  • compliance, inventory, reports       │
-└─────────────────────────────────────────┘
+PHASE X DEVELOPMENT FLOW
+========================
 
-┌─────────────────────────────────────────┐
-│           RESEND EMAIL                  │
-│     (Email delivery service)            │
-│                                         │
-│  • Email verification                   │
-│  • Password reset                       │
-│  • Activity notifications               │
-└─────────────────────────────────────────┘
-
-┌─────────────────────────────────────────┐
-│   NEXT.JS 14 (Available, Not Used)      │
-│   • Code exists in repo                 │
-│   • Configured with next-intl           │
-│   • messages/es.json ready (450+ keys)  │
-│   • Ready for future if needed          │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────┐
+│  BUBBLE REFERENCE (Input)           │
+│  docs/ui/bubble/PHASE-X-*.md        │
+│                                     │
+│  • Visual design patterns           │
+│  • Screen flows                     │
+│  • UX interactions                  │
+└──────────────┬──────────────────────┘
+               │
+               │ (Adapt to Next.js)
+               ▼
+┌─────────────────────────────────────┐
+│  NEXT.JS WIREFRAMES (Output)        │
+│  docs/ui/nextjs/PHASE-X-WIREFRAMES  │
+│                                     │
+│  • ASCII wireframes (desktop+mobile)│
+│  • Component structure              │
+│  • Data flow                        │
+│  • Next.js patterns                 │
+└──────────────┬──────────────────────┘
+               │
+               │ (Plan implementation)
+               ▼
+┌─────────────────────────────────────┐
+│  IMPLEMENTATION PLAN (Output)       │
+│  docs/dev-plans/PHASE-X-PLAN.md     │
+│                                     │
+│  • Module breakdown                 │
+│  • Task dependencies                │
+│  • Parallel streams                 │
+│  • Testing strategy                 │
+└──────────────┬──────────────────────┘
+               │
+               │ (Execute)
+               ▼
+┌─────────────────────────────────────┐
+│  DEVELOPMENT                        │
+│  app/(phase-x)/*                    │
+│                                     │
+│  • Implement pages                  │
+│  • Create components                │
+│  • Integrate backend                │
+│  • Add tests                        │
+└──────────────┬──────────────────────┘
+               │
+               │ (Validate)
+               ▼
+┌─────────────────────────────────────┐
+│  TESTING & REVIEW                   │
+│                                     │
+│  • Unit tests                       │
+│  • Integration tests                │
+│  • E2E tests                        │
+│  • Visual regression                │
+└──────────────┬──────────────────────┘
+               │
+               │ (Complete)
+               ▼
+┌─────────────────────────────────────┐
+│  PHASE COMPLETE → NEXT PHASE        │
+└─────────────────────────────────────┘
 ```
 
-**Filosofía:** START SIMPLE → Solo Bubble + Convex + Resend
+### Phase Development Steps
 
-### Backend Components
+#### Step 1: Wireframe Creation
+- **Input**: Bubble wireframes from `docs/ui/bubble/PHASE-X-*.md`
+- **Output**: Next.js wireframes in `docs/ui/nextjs/PHASE-X-WIREFRAMES.md`
+- **Process**:
+  1. Review Bubble phase documentation (visual reference)
+  2. Adapt to Next.js patterns (App Router, Server Components)
+  3. Create ASCII wireframes for desktop + mobile
+  4. Document component structure and data flow
+  5. Identify shared components needed
 
-**Convex HTTP Actions (Primary Backend):**
-- **Deployment URL:** https://handsome-jay-388.convex.site
-- **Schema:** `convex/schema.ts` - 26 tables with multi-tenant architecture
-- **HTTP Router:** `convex/http.ts` - RESTful endpoints via httpAction()
-- **Core Modules:**
-  - `convex/auth.ts` - Custom session token authentication
-  - `convex/users.ts` - User management
-  - `convex/companies.ts` - Company CRUD with company_id isolation
-  - `convex/facilities.ts` - Facility management
-  - `convex/batches.ts` - Batch tracking
-  - `convex/activities.ts` - Activity logging
-  - `convex/compliance.ts` - Compliance events
-  - `convex/inventory.ts` - Inventory management
-  - `convex/geographic.ts` - Countries, departments, cities
+#### Step 2: Implementation Plan Creation
+- **Input**: Next.js wireframes + phase requirements
+- **Output**: Implementation plan in `docs/dev-plans/PHASE-X-DEVELOPMENT-PLAN.md`
+- **Process**:
+  1. Break down phase into modules
+  2. Identify task dependencies
+  3. Define parallel development streams
+  4. Create detailed task checklists
+  5. Document testing requirements
+  6. Set success criteria
 
-**Email Service (Resend):**
-- Email verification (sign-up flow)
-- Password reset
-- Activity notifications
-- Configured in Convex environment variables
+#### Step 3: Development
+- **Input**: Wireframes + implementation plan
+- **Output**: Working Next.js application for the phase
+- **Process**:
+  1. Set up shared components (if first phase)
+  2. Implement pages following wireframes
+  3. Integrate with Convex backend
+  4. Add form validation (Zod + React Hook Form)
+  5. Implement responsive design (Tailwind)
+  6. Add loading/error states
+  7. Unit + integration testing
 
-**Next.js (Available But Not Used):**
-- Code exists in `/app`, `/lib`, `/components`
-- `lib/validations/schemas.ts` - Shared Zod schemas (can be used by Convex)
-- `messages/es.json` - 450+ Spanish translations
-- Ready for future if needed, no deployment currently
+#### Step 4: Review & Testing
+- **Input**: Completed phase implementation
+- **Output**: Tested, production-ready code
+- **Process**:
+  1. Unit tests (Jest + React Testing Library)
+  2. Integration tests (API mocking with MSW)
+  3. E2E tests (Playwright)
+  4. Visual regression tests (Percy/Chromatic)
+  5. Performance testing (Lighthouse)
+  6. Accessibility audit (a11y)
 
-### Implementation Strategy
-
-**CURRENT IMPLEMENTATION (Simple & Direct):**
-```
-Bubble.io → Convex HTTP Actions (https://handsome-jay-388.convex.site)
-         │
-         └→ Resend (email service)
-```
-
-**Architecture Details:**
-- **Authentication:** Custom session tokens (30-day validity)
-  - Registration: POST /api/v1/auth/register-step1 (creates user + sends verification email)
-  - Verification: POST /api/v1/auth/verify-email (validates token)
-  - Login: POST /api/v1/auth/login (returns session token)
-  - All requests: Authorization: Bearer {session_token}
-
-- **Data Operations:** Direct Convex HTTP Actions
-  - All endpoints use POST method
-  - Request body contains operation parameters
-  - Multi-tenant isolation via company_id in session
-  - Example: POST /api/v1/companies/create
-
-- **Email:** Resend integration in Convex
-  - Email verification on registration
-  - Password reset emails
-  - Activity notifications
-
-**FUTURE OPTIONS (If Needed):**
-
-**Option 1: Add Next.js Layer (for complex business logic):**
-```
-Bubble → Next.js API (Vercel) → Convex
-```
-- Use when: Multi-step workflows, complex transformations, rate limiting
-- Next.js code already exists and is configured
-- Decision made per feature/module
-
-**Option 2: Add AI Features (future modules):**
-```
-Bubble → Convex → External AI APIs
-```
-- Potential modules: Quality Check Templates (AI vision), Intelligent Services
-- Decision based on actual module requirements
-- AI integration would be done via Convex actions calling external services
-
-### Development Workflow
-
-**For Bubble Development (Principal):**
-
-1. **Follow Bubble Implementation Guidelines:**
-   - [BUBBLE-IMPLEMENTATION-GUIDE.md](docs/BUBBLE-IMPLEMENTATION-GUIDE.md) - **Core guidelines for all Bubble implementations**
-   - Read this FIRST before creating any Bubble documentation
-   - Contains patterns, best practices, and what NOT to do
-   - Ensures consistent, clear, non-redundant guides
-
-2. **Use API documentation** (referencia técnica general):
-   - [API-Integration.md](docs/core/API-Integration.md) - Guía general de integración y referencia de endpoints
-
-2. **Convex HTTP Actions (Required for Bubble):**
-   - ⚠️ NO existe plugin de Convex para Bubble
-   - Bubble requiere HTTP Actions (NO puede usar Convex SDK)
-   - **Configuración correcta:**
-     ```
-     Base URL: https://[your-deployment].convex.site
-     Método: POST para todos los endpoints
-     Headers:
-       - Content-Type: application/json
-       - Authorization: Bearer [clerk-jwt-token] (cuando se agregue auth)
-     ```
-   - ⚠️ **IMPORTANTE:** Usar `.convex.site` NO `.convex.cloud`
-     - `.convex.cloud` = WebSocket SDK (NO funciona con Bubble)
-     - `.convex.site` = HTTP Actions (SÍ funciona con Bubble)
-
-   - **Implementación:**
-     - Crear `convex/http.ts` con `httpRouter()` y `httpAction()`
-     - Definir rutas custom (ej: `/geographic/departments`, `/registration/register`)
-     - Los HTTP Actions llaman internamente a queries/mutations de Convex
-
-   - **Ejemplo de HTTP Action:**
-     ```typescript
-     // convex/http.ts
-     import { httpRouter } from "convex/server";
-     import { httpAction } from "./_generated/server";
-     import { api } from "./_generated/api";
-
-     const http = httpRouter();
-
-     http.route({
-       path: "/geographic/departments",
-       method: "POST",
-       handler: httpAction(async (ctx, request) => {
-         const { countryCode } = await request.json();
-         const departments = await ctx.runQuery(api.geographic.getDepartments, {
-           countryCode,
-         });
-         return new Response(JSON.stringify(departments), {
-           status: 200,
-           headers: { "Content-Type": "application/json" },
-         });
-       }),
-     });
-
-     export default http;
-     ```
-
-   - **Llamadas desde Bubble:**
-     - Endpoint: `POST https://[deployment].convex.site/geographic/departments`
-     - Body: `{"countryCode": "CO"}`
-     - Response: Array de departments
-
-3. **Autenticación Clerk:**
-   - ⚠️ NO existe plugin de Clerk para Bubble
-   - Implementar autenticación manualmente:
-     ```
-     Clerk Frontend API: https://[your-frontend-api].clerk.accounts.dev
-
-     Sign In: POST /v1/client/sign_ins
-     Sign Up: POST /v1/client/sign_ups
-     Get Session: GET /v1/client/sessions/[session_id]
-     ```
-   - Obtener JWT token de Clerk session
-   - Pasar token en header `Authorization: Bearer [token]` a Convex
-   - Token se valida automáticamente en Convex functions
-
-4. **API Connector Setup en Bubble:**
-   - Configurar 2 API connectors principales:
-     - **Clerk API** - Autenticación (sign in, sign up, user management)
-     - **Convex API** - Database operations (queries + mutations)
-   - Para cada endpoint, configurar manualmente en Bubble API Connector
-   - Almacenar JWT token en Bubble's custom state
-   - Incluir token en todos los requests a Convex
-
-5. **Código e Implementación:**
-   - Los archivos de documentación son **solo referencia técnica**
-   - El **código real y llamados API específicos** se proporcionan durante la implementación de cada módulo
-   - Cada módulo generará sus propios archivos de documentación en `docs/module-X/bubble/`
-   - Ejemplos de configuración de API Connector se proporcionan por módulo
-
-6. **Bubble Documentation Standards:**
-   - **MUST READ FIRST:** [BUBBLE-IMPLEMENTATION-GUIDE.md](docs/BUBBLE-IMPLEMENTATION-GUIDE.md)
-   - **Key Principles:**
-     - ✅ Test backend APIs before documenting
-     - ✅ Use URL parameters, NOT custom states (unless justified)
-     - ✅ Show exact Bubble syntax (e.g., `dropdown_name's value`)
-     - ✅ Document real API responses (copy actual JSON)
-     - ✅ Keep workflows minimal - let Bubble's built-in features work
-     - ❌ Don't assume functionality that doesn't exist
-     - ❌ Don't create custom states for every piece of data
-     - ❌ Don't add workflows for automatic Bubble features
-     - ❌ Don't use vague instructions
-   - **Before Writing Any Bubble Guide:**
-     1. Read BUBBLE-IMPLEMENTATION-GUIDE.md
-     2. Test all API endpoints with curl
-     3. Follow the documented patterns
-     4. Use the provided checklist
-
-**UI Language Strategy (Bilingual ES/EN):**
-- **Current Implementation:** Bubble Option Sets for frontend-only translation
-  - Backend sends technical codes: "indoor", "active", "greenhouse"
-  - Bubble translates via Option Sets: "indoor" → "Interior" (ES) / "Indoor" (EN)
-  - Custom State: `current_language` (es | en)
-  - UI_Texts Option Set: key, text_es, text_en attributes
-  - Enum Option Sets: value, display_es, display_en
-  - Language switcher component in Bubble header
-  - User preference stored in `users.preferred_language`
-- **Future Ready:** Next.js with next-intl
-  - `messages/es.json` - 450+ Spanish translations ready
-  - `i18n.ts` - Configured for Spanish (Colombia)
-  - Available if Next.js deployment is needed
-- **See:** [docs/i18n/STRATEGY.md](docs/i18n/STRATEGY.md) for complete details
-
-**For Next.js Development (Solo si es necesario):**
-- Se decide por módulo si complejidad técnica requiere Next.js
-- Agregar capa intermedia: Bubble → Next.js API → Convex
-- Usar para: business logic compleja, multi-step operations, rate limiting
-- Server Components para SEO, Client Components para interactivity
+#### Step 5: Next Phase Preparation
+- **Process**:
+  1. Document learnings and patterns
+  2. Update shared component library
+  3. Refactor if needed
+  4. Begin next phase wireframes
 
 ---
 
-## Authentication Strategy
+## Reference Documentation
 
-### Custom Session Token Authentication
+### Setup & Configuration
 
-**Architecture Flow:**
+- **[FRONTEND-DESARROLLO-LOCAL.md](docs/setup-reference/FRONTEND-DESARROLLO-LOCAL.md)**
+  - Next.js 15 setup instructions
+  - Dependencies (Convex, Tailwind, shadcn/ui, Resend)
+  - Development workflow
+  - Common issues and solutions
+  - Testing strategies
+
+- **[FRONTEND-DESIGN-SYSTEM.md](docs/setup-reference/FRONTEND-DESIGN-SYSTEM.md)**
+  - Color palette (based on Bubble reference images)
+  - Typography (Inter font)
+  - Component patterns (Sidebar, Header, Cards, Forms)
+  - Spacing and grid system (4px base)
+  - Responsive breakpoints
+  - Accessibility standards (WCAG AA)
+
+### Phase Documentation
+
+#### Input: Bubble Reference (Visual Guide)
+
+Located in `docs/ui/bubble/`:
+- **PHASE-1-ONBOARDING.md** - Bubble onboarding UI
+- **PHASE-2-BASIC-SETUP.md** - Bubble setup screens
+- **PHASE-3-TEMPLATES.md** - Bubble template management
+- **PHASE-4-PRODUCTION.md** - Bubble production workflows
+- **PHASE-5-ADVANCED.md** - Bubble advanced features
+
+**Usage**: Visual reference and UX patterns (NOT implementation)
+
+#### Output: Next.js Implementation
+
+**Wireframes:**
+- `docs/ui/nextjs/PHASE-1-ONBOARDING-WIREFRAMES.md` ✅
+- `docs/ui/nextjs/PHASE-2-WIREFRAMES.md` (to be created)
+- `docs/ui/nextjs/PHASE-3-WIREFRAMES.md` (to be created)
+- `docs/ui/nextjs/PHASE-4-WIREFRAMES.md` (to be created)
+- `docs/ui/nextjs/PHASE-5-WIREFRAMES.md` (to be created)
+
+**Implementation Plans:**
+- `docs/dev-plans/PHASE-1-DEVELOPMENT-PLAN.md` ✅
+- `docs/dev-plans/PHASE-2-DEVELOPMENT-PLAN.md` (to be created)
+- `docs/dev-plans/PHASE-3-DEVELOPMENT-PLAN.md` (to be created)
+- `docs/dev-plans/PHASE-4-DEVELOPMENT-PLAN.md` (to be created)
+- `docs/dev-plans/PHASE-5-DEVELOPMENT-PLAN.md` (to be created)
+
+### Backend API Reference
+
+- **[docs/api/PHASE-1-ENDPOINTS.md](docs/api/PHASE-1-ENDPOINTS.md)** - Auth & onboarding
+- **[docs/api/PHASE-2-ENDPOINTS.md](docs/api/PHASE-2-ENDPOINTS.md)** - Basic setup
+- **[docs/api/PHASE-3-ENDPOINTS.md](docs/api/PHASE-3-ENDPOINTS.md)** - Templates
+- **[docs/api/PHASE-4-ENDPOINTS.md](docs/api/PHASE-4-ENDPOINTS.md)** - Production
+- **[docs/api/PHASE-5-ENDPOINTS.md](docs/api/PHASE-5-ENDPOINTS.md)** - Advanced
+
+### Database Schema
+
+- **[docs/database/SCHEMA.md](docs/database/SCHEMA.md)** - Single source of truth for all 26 tables
+
+---
+
+## Development Workflow
+
+### Starting a New Phase
+
+**Command**: `@phase-start <phase-number>`
+
+**Process**:
+1. Load Bubble reference: `docs/ui/bubble/PHASE-X-*.md`
+2. Review existing wireframes (if any): `docs/ui/nextjs/PHASE-X-WIREFRAMES.md`
+3. Review existing plan (if any): `docs/dev-plans/PHASE-X-DEVELOPMENT-PLAN.md`
+4. Ask: "Create wireframes or start implementation?"
+
+**Example**:
 ```
+User: @phase-start 1
+
+Claude:
+Loading Phase 1 context...
+✓ Bubble reference: docs/ui/bubble/PHASE-1-ONBOARDING.md
+✓ Next.js wireframes: docs/ui/nextjs/PHASE-1-ONBOARDING-WIREFRAMES.md ✅
+✓ Implementation plan: docs/dev-plans/PHASE-1-DEVELOPMENT-PLAN.md ✅
+
+Phase 1 is ready to implement!
+
+Options:
+1. Review wireframes
+2. Review implementation plan
+3. Start development
+4. Modify wireframes/plan
+
+What would you like to do?
+```
+
+### Creating Wireframes
+
+**Command**: `@wireframes create <phase-number>`
+
+**Process**:
+1. Read Bubble reference documentation
+2. Adapt to Next.js patterns
+3. Create ASCII wireframes (desktop + mobile)
+4. Document component hierarchy
+5. Save to `docs/ui/nextjs/PHASE-X-WIREFRAMES.md`
+
+**Example**:
+```
+User: @wireframes create 2
+
+Claude:
+Creating Phase 2 wireframes...
+✓ Reading: docs/ui/bubble/PHASE-2-BASIC-SETUP.md
+✓ Analyzing screens (7 pages identified)
+✓ Adapting to Next.js App Router patterns
+✓ Creating wireframes...
+
+Wireframes created:
+- docs/ui/nextjs/PHASE-2-WIREFRAMES.md
+  - Page 1: Dashboard Overview
+  - Page 2: Areas Management
+  - Page 3: Cultivars Setup
+  - ... (7 total)
+
+Next step: Create implementation plan
+@plan create 2
+```
+
+### Creating Implementation Plan
+
+**Command**: `@plan create <phase-number>`
+
+**Process**:
+1. Read wireframes for the phase
+2. Break down into modules and tasks
+3. Identify dependencies
+4. Create parallel development streams
+5. Define testing strategy
+6. Save to `docs/dev-plans/PHASE-X-DEVELOPMENT-PLAN.md`
+
+**Example**:
+```
+User: @plan create 2
+
+Claude:
+Creating Phase 2 implementation plan...
+✓ Reading: docs/ui/nextjs/PHASE-2-WIREFRAMES.md
+✓ Analyzing modules (3 modules, 15 tasks)
+✓ Identifying dependencies
+✓ Planning parallel streams (2 streams possible)
+✓ Defining testing requirements
+
+Plan created:
+- docs/dev-plans/PHASE-2-DEVELOPMENT-PLAN.md
+  - Module 1: Dashboard & Navigation (5 tasks)
+  - Module 2: Areas Management (6 tasks)
+  - Module 3: Master Data Setup (4 tasks)
+  - Testing strategy defined
+  - Success metrics defined
+
+Next step: Start implementation
+@implement phase-2
+```
+
+### Implementing a Phase
+
+**Command**: `@implement phase-<number>` or `@implement <module>`
+
+**Process**:
+1. Load wireframes + implementation plan
+2. Set up required dependencies
+3. Create shared components
+4. Implement pages/modules
+5. Integrate with backend
+6. Add tests
+7. Track progress with TodoWrite
+
+**Example**:
+```
+User: @implement phase-1
+
+Claude:
+Implementing Phase 1...
+✓ Loading wireframes
+✓ Loading implementation plan
+✓ Installing dependencies
+
+Creating todo list:
+1. [ ] Set up shared components
+2. [ ] Implement Signup Form (Page 1)
+3. [ ] Implement Email Verification (Page 2)
+... (11 total tasks)
+
+Starting with shared components...
+```
+
+---
+
+## Phase Status
+
+### Phase 1: Onboarding & Authentication
+
+- **Wireframes**: ✅ Complete (11 screens, 2 flows)
+- **Implementation Plan**: ✅ Complete (6 modules, 50+ tasks)
+- **Development Status**: 🔴 Not Started (ready to begin)
+- **Testing**: ⚪ Pending
+
+**Documentation:**
+- Wireframes: [docs/ui/nextjs/PHASE-1-ONBOARDING-WIREFRAMES.md](docs/ui/nextjs/PHASE-1-ONBOARDING-WIREFRAMES.md)
+- Plan: [docs/dev-plans/PHASE-1-DEVELOPMENT-PLAN.md](docs/dev-plans/PHASE-1-DEVELOPMENT-PLAN.md)
+- Bubble Reference: [docs/ui/bubble/PHASE-1-ONBOARDING.md](docs/ui/bubble/PHASE-1-ONBOARDING.md)
+
+**Scope:**
+- First User Flow (7 screens): Signup → Email Verify → Company → Facility → Complete
+- Invited User Flow (4 screens): Accept → Set Password → Welcome
+- Login & Session Management
+
+---
+
+### Phase 2: Basic Operations Setup
+
+- **Wireframes**: 🔴 Not Started
+- **Implementation Plan**: 🔴 Not Started
+- **Development Status**: ⚪ Blocked (needs wireframes)
+- **Testing**: ⚪ Pending
+
+**Bubble Reference:** [docs/ui/bubble/PHASE-2-BASIC-SETUP.md](docs/ui/bubble/PHASE-2-BASIC-SETUP.md)
+
+**Planned Scope:**
+- Dashboard home
+- Areas management
+- Cultivars setup
+- Suppliers management
+- User management & roles
+
+---
+
+### Phase 3: Templates Management
+
+- **Wireframes**: 🔴 Not Started
+- **Implementation Plan**: 🔴 Not Started
+- **Development Status**: ⚪ Blocked (needs Phase 2)
+- **Testing**: ⚪ Pending
+
+**Bubble Reference:** [docs/ui/bubble/PHASE-3-TEMPLATES.md](docs/ui/bubble/PHASE-3-TEMPLATES.md)
+
+**Planned Scope:**
+- Production templates
+- Quality check templates
+- Template library
+
+---
+
+### Phase 4: Production Workflows
+
+- **Wireframes**: 🔴 Not Started
+- **Implementation Plan**: 🔴 Not Started
+- **Development Status**: ⚪ Blocked (needs Phase 3)
+- **Testing**: ⚪ Pending
+
+**Bubble Reference:** [docs/ui/bubble/PHASE-4-PRODUCTION.md](docs/ui/bubble/PHASE-4-PRODUCTION.md)
+
+**Planned Scope:**
+- Batch creation & tracking
+- Activity scheduling
+- Quality checks
+- Inventory management
+
+---
+
+### Phase 5: Advanced Features
+
+- **Wireframes**: 🔴 Not Started
+- **Implementation Plan**: 🔴 Not Started
+- **Development Status**: ⚪ Blocked (needs Phase 4)
+- **Testing**: ⚪ Pending
+
+**Bubble Reference:** [docs/ui/bubble/PHASE-5-ADVANCED.md](docs/ui/bubble/PHASE-5-ADVANCED.md)
+
+**Planned Scope:**
+- Compliance & reporting
+- Analytics & BI
+- Integrations & APIs
+- Mobile enhancements
+
+---
+
+## Development Principles
+
+### 1. Bubble as Visual Reference, Not Implementation
+
+- ✅ Use Bubble docs for UX patterns and screen flows
+- ✅ Extract visual design elements (colors, spacing, layouts)
+- ✅ Understand user workflows and interactions
+- ❌ Don't copy Bubble implementation details
+- ❌ Don't use Bubble-specific concepts (workflows, custom states)
+- ✅ Adapt to Next.js patterns (Server Components, Server Actions, Route Handlers)
+
+### 2. Phase-by-Phase Progression
+
+- ✅ Complete wireframes before implementation
+- ✅ Create detailed plan before coding
+- ✅ One phase at a time (no jumping ahead)
+- ✅ Document learnings for next phase
+- ❌ Don't skip planning steps
+
+### 3. Documentation-Driven Development
+
+- ✅ Wireframes define UI structure (ASCII diagrams)
+- ✅ Implementation plan defines execution (tasks, dependencies)
+- ✅ Code follows documented patterns (design system)
+- ✅ Tests validate requirements (unit, integration, E2E)
+
+### 4. Iterative Refinement
+
+- ✅ Review wireframes before finalizing
+- ✅ Refine plan based on technical discoveries
+- ✅ Refactor code between phases
+- ✅ Update documentation as patterns emerge
+
+---
+
+## Backend Architecture
+
+### Convex HTTP Actions
+
+**Deployment URL:** https://handsome-jay-388.convex.site
+
+**Core Modules:**
+- `convex/auth.ts` - Custom session token authentication
+- `convex/users.ts` - User management
+- `convex/companies.ts` - Company CRUD with isolation
+- `convex/facilities.ts` - Facility management
+- `convex/batches.ts` - Batch tracking
+- `convex/geographic.ts` - Countries, departments, municipalities
+
+**Authentication Flow:**
 1. User signs up → POST /api/v1/auth/register-step1
-   - Creates user in database
-   - Generates email verification token (6 chars, 24h expiry)
-   - Sends verification email via Resend
-
-2. User verifies email → POST /api/v1/auth/verify-email
-   - Validates verification token
-   - Marks user as email_verified: true
-   - Can now complete company setup
-
-3. User completes company setup → POST /api/v1/auth/register-step2
-   - Creates company record
-   - Links user to company (company_id)
-
-4. User logs in → POST /api/v1/auth/login
-   - Validates email + password (bcrypt)
-   - Creates session token (URL-safe base64, 32 bytes)
-   - Stores in sessions table (30-day expiry)
-   - Returns: { session_token, user_id, company_id, email }
-
-5. All subsequent requests → Authorization: Bearer {session_token}
-   - Convex validates token from sessions table
-   - Checks expiry (last_activity_at + 30 days)
-   - Extracts company_id for multi-tenant isolation
-   - Updates last_activity_at
-```
-
-**Session Token Structure:**
-- Format: URL-safe base64 encoded random bytes
-- Length: 32 bytes → 43 character string
-- Validity: 30 days from last activity
-- Storage: `sessions` table with user_id, company_id, expiry
-- Example: `7xK9mP2wQvLnR8zY4hTcF6jG1sN5bV3xD8eM0oU4iA`
-
-**Convex Auth Helper (`convex/auth.ts`):**
-
-```typescript
-import { query, mutation } from "./_generated/server";
-
-// Helper to get authenticated user from session token
-export async function getAuthenticatedUser(ctx: any, authHeader?: string) {
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    throw new Error("Missing or invalid Authorization header");
-  }
-
-  const token = authHeader.substring(7); // Remove "Bearer "
-
-  // Look up session
-  const session = await ctx.db
-    .query("sessions")
-    .withIndex("by_token", (q: any) => q.eq("token", token))
-    .first();
-
-  if (!session) {
-    throw new Error("Invalid or expired session");
-  }
-
-  // Check expiry (30 days from last activity)
-  const now = Date.now();
-  const expiryTime = session.last_activity_at + (30 * 24 * 60 * 60 * 1000);
-
-  if (now > expiryTime) {
-    throw new Error("Session expired");
-  }
-
-  // Update last activity
-  await ctx.db.patch(session._id, { last_activity_at: now });
-
-  // Return user and company info
-  return {
-    user_id: session.user_id,
-    company_id: session.company_id,
-    session_id: session._id
-  };
-}
-```
-
-**Protected Endpoint Example:**
-
-```typescript
-// convex/http.ts
-import { httpAction } from "./_generated/server";
-import { api } from "./_generated/api";
-import { getAuthenticatedUser } from "./auth";
-
-// Protected endpoint - requires valid session token
-http.route({
-  path: "/api/v1/companies/get",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    // 1. Authenticate
-    const authHeader = request.headers.get("Authorization");
-    const { user_id, company_id } = await getAuthenticatedUser(ctx, authHeader);
-
-    // 2. Execute query with company isolation
-    const company = await ctx.runQuery(api.companies.get, { company_id });
-
-    // 3. Return response
-    return new Response(JSON.stringify(company), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-  })
-});
-```
-
-**Key Features:**
-- ✅ Custom session tokens (no third-party auth service)
-- ✅ 30-day expiry with activity-based renewal
-- ✅ Multi-tenant isolation via company_id in session
-- ✅ Stored in Convex database (sessions table)
-- ✅ Password hashing with bcrypt
-- ✅ Email verification via Resend
-- ✅ Token refresh on each request (updates last_activity_at)
-
-**Bubble Implementation:**
-1. **Sign Up:** Call POST /api/v1/auth/register-step1
-   - Display "Check your email" message
-2. **Verify Email:** Call POST /api/v1/auth/verify-email with token from email
-3. **Complete Setup:** Call POST /api/v1/auth/register-step2 with company details
-4. **Login:** Call POST /api/v1/auth/login
-   - Store `session_token` in Bubble custom state
-5. **All API Calls:** Include Authorization header
-   - Header: `Authorization`
-   - Value: `Bearer <session_token>` (from custom state)
-6. **Handle 401:** Redirect to login page, clear session token
-
-**See:** [docs/core/API-Integration.md](docs/core/API-Integration.md) for complete API documentation
-
----
-
-## Active Context
-
-**Current Phase**: API Foundation Complete
-**Active Module**: Ready to begin Module implementation
-**Strategy**: Bubble-first frontend, backend API ready
-
-**Context Files (Load on demand):**
-- [Database SCHEMA.md](docs/database/SCHEMA.md) - Single source of truth for all 26 tables
-- [i18n Strategy](docs/i18n/STRATEGY.md) - Bilingual implementation (Bubble Option Sets)
-- [Phase Documentation](docs/ui/bubble/) - UI requirements per phase (PHASE-1 through PHASE-5)
-- [API Endpoints](docs/api/) - Complete endpoint specs (PHASE-1 through PHASE-5)
-- [Testing Documentation](docs/testing/) - Test suites for all phases
-
----
-
-## Commands
-
-### `@state current`
-Show current project state, active module, and next steps.
-
-**Output:**
-- Git status (branch, uncommitted changes)
-- Active module implementation progress
-- Blockers or pending decisions
-- Suggested next actions
-
----
-
-### `@implement <feature>`
-Load feature context and implement functionality.
-
-**Process:**
-1. Load relevant sections from Product-Requirements.md
-2. Load relevant tables from Database-Schema.md
-3. Apply patterns from Technical-Specification.md
-4. Implement feature with regional requirements (default: Colombia)
-5. For frontend features, decide: Bubble or Next.js implementation
-6. **For Bubble guides:** Follow [BUBBLE-IMPLEMENTATION-GUIDE.md](docs/BUBBLE-IMPLEMENTATION-GUIDE.md)
-7. Update Active Context with progress
-
-**Example:**
-```
-@implement authentication
-```
-
-**Loads:**
-- Product-Requirements.md → MODULE 1 specs
-- Database-Schema.md → users, companies, roles tables
-- Technical-Specification.md → Clerk setup, multi-tenancy
-
----
-
-### `@api <endpoint>`
-Create or update API endpoint for frontend-agnostic access.
-
-**Process:**
-1. Load API-Integration.md for patterns
-2. Create/update route handler in app/api/v1/
-3. Add validation schemas in lib/validations/
-4. Update API documentation
-5. Test endpoint
-
-**Example:**
-```
-@api batches
-```
-
-**Creates:**
-- app/api/v1/batches/route.ts
-- Updates API-Integration.md with endpoint docs
-
----
-
-### `@review`
-Review current implementation against requirements.
-
-**Checks:**
-- ✓ Feature matches Product Requirements
-- ✓ Database schema matches Database-Schema.md
-- ✓ Tech stack follows Technical-Specification.md
-- ✓ Regional requirements implemented (i18n, multi-currency, regional codes)
-- ✓ Multi-tenancy enforced (companyId filtering)
-- ✓ Type safety (TypeScript end-to-end)
-
-**Output:**
-- Issues found with line numbers
-- Compliance gaps
-- Performance concerns
-- Suggested fixes
-
----
-
-### `@pr create <module>`
-Generate comprehensive pull request for completed module.
-
-**Process:**
-1. Review all changes (git diff)
-2. Verify module completion against Product-Requirements.md
-3. Create PR with:
-   - **Title**: `feat: implement MODULE X - <name>`
-   - **Summary**: Feature overview (3-5 bullet points)
-   - **Implementation Details**: Key technical decisions
-   - **Regional Requirements**: Compliance implemented
-   - **Database Changes**: Schema updates (if any)
-   - **Testing**: Manual test checklist
-   - **Screenshots**: UI changes (if applicable)
-
-**Example:**
-```
-@pr create module-1
-```
-
-**Generates PR:**
-```markdown
-feat: implement MODULE 1 - Authentication & Company Setup
-
-## Summary
-- Clerk authentication with email/password + OAuth
-- Company registration with regional business types
-- Multi-tenant isolation via Clerk Organizations
-- Multilingual UI with next-intl (default: Spanish)
-
-## Implementation Details
-- Convex schema: users, companies, roles tables
-- Clerk Organizations mapped to companyId
-- Row-level security in all queries
-- Regional business entity types configurable
-
-## Regional Requirements (Colombia Default)
-✓ Multi-language support (default: Spanish)
-✓ Business entity types (S.A.S, S.A., Ltda, etc.)
-✓ Tax ID validation pattern
-✓ Regional administrative codes (DANE for Colombia)
-✓ Timezone configurable (default: America/Bogota)
-
-## Database Changes
-Added 3 tables: companies, roles, users
-See Database-Schema.md for full definitions
-
-## Testing
-- [ ] User registration with company
-- [ ] Email verification flow
-- [ ] Login with email/password
-- [ ] OAuth login (Google)
-- [ ] Multi-tenant isolation verified
-
-## Next Module
-MODULE 2 - Email Verification
-```
-
----
-
-## Workflow
-
-**Simple 3-Step Process:**
-
-### 1. Plan
-- User specifies module/feature to implement
-- Claude loads relevant context from core docs
-- Confirms understanding and approach
-
-### 2. Implement
-- Claude implements feature following Technical-Specification.md
-- Uses database schema from Database-Schema.md
-- Applies regional requirements throughout (default: Colombia)
-- Updates git commits incrementally
-
-### 3. PR
-- User requests PR creation with `@pr create <module>`
-- Claude reviews completeness against Product-Requirements.md
-- Generates comprehensive PR description
-- Archives context in PR (no separate doc files needed)
-
-**Archive Strategy:**
-- PR descriptions document feature implementation
-- Git commits track incremental progress
-- No separate "planning docs" or "specs" needed
-- Core docs (3 files) remain single source of truth
-
----
-
-## Context Rules
-
-**Keep Active Context Minimal:**
-- Active module context only (~2000 tokens)
-- Load feature specs on demand
-- Use git history for completed work
-- PR descriptions archive decisions
-
-**When to Load Context:**
-- `@implement` → Load feature specs from Product-Requirements.md
-- Schema changes → Load relevant tables from Database-Schema.md
-- Architecture questions → Reference Technical-Specification.md
-- Don't load entire docs, only relevant sections
-
-**Git as Archive:**
-- Each commit documents incremental progress
-- PR descriptions capture full feature context
-- Git history is queryable archive
-- No need for separate "implementation logs"
-
----
-
-## Documentation Organization
-
-**NEW STRUCTURE (2025-11-06)** - Optimized for Bubble Development
-
-**Folder Structure:**
-```
-docs/
-├── database/          # Single source of truth for schema
-│   └── SCHEMA.md     # All tables, fields, relationships
-│
-├── ui/
-│   ├── bubble/       # UI requirements (Bubble-focused)
-│   │   ├── README.md                      # Bubble UI overview
-│   │   ├── CRUD-PATTERN.md                # CRUD pattern documentation
-│   │   ├── DASHBOARD-HOME.md              # Dashboard home page
-│   │   ├── PHASE-1-ONBOARDING.md          # Onboarding UI (registration, login)
-│   │   ├── PHASE-2-BASIC-SETUP.md         # Basic setup (company, facilities, etc.)
-│   │   ├── PHASE-3-TEMPLATES.md           # Templates management
-│   │   ├── PHASE-4-PRODUCTION.md          # Production workflows
-│   │   └── PHASE-5-ADVANCED.md            # Advanced features
-│   │
-│   └── archive/      # Archived old documentation
-│       └── PHASE-X-*.md (timestamped archives)
-│
-├── api/              # API endpoint specifications
-│   ├── PHASE-1-ONBOARDING-ENDPOINTS.md    # Auth, company, geographic
-│   ├── PHASE-2-BASIC-SETUP-ENDPOINTS.md   # Facilities, areas, cultivars
-│   ├── PHASE-3-TEMPLATES-ENDPOINTS.md     # Production & quality templates
-│   ├── PHASE-4-PRODUCTION-ENDPOINTS.md    # Production orders & operations
-│   └── PHASE-5-ADVANCED-ENDPOINTS.md      # Compliance, analytics, integrations
-│
-├── testing/          # Testing documentation
-│   ├── 00-TESTING-OVERVIEW.md
-│   ├── 01-PHASE-1-ONBOARDING-TESTS.md
-│   ├── 02-PHASE-2-MASTER-DATA-TESTS.md
-│   ├── 03-PHASE-3-TEMPLATES-TESTS.md
-│   └── 04-PHASE-4-PRODUCTION-TESTS.md
-│
-├── core/             # Legacy documentation (being phased out)
-│   ├── Product-Requirements.md
-│   ├── Technical-Specification.md
-│   └── API-Integration.md
-│
-├── foundation/       # Setup and configuration
-│   ├── Authentication-Guide.md
-│   ├── Browser-API-Testing.md
-│   └── Implementation-Status.md
-│
-├── dev/              # Development standards
-│   └── Tech-Stack-Standard.md
-│
-└── sessions/         # Session summaries
-    └── Session-Summary-*.md
-```
-
-**Key Documentation Files:**
-
-1. **Database Schema (Single Source of Truth):**
-   - [docs/database/SCHEMA.md](docs/database/SCHEMA.md) - All tables, fields, relationships
-
-2. **UI Requirements (Bubble-Focused):**
-   - [docs/ui/bubble/README.md](docs/ui/bubble/README.md) - Bubble UI overview
-   - [docs/ui/bubble/PHASE-1-ONBOARDING.md](docs/ui/bubble/PHASE-1-ONBOARDING.md) - Onboarding UI
-   - [docs/ui/bubble/PHASE-2-BASIC-SETUP.md](docs/ui/bubble/PHASE-2-BASIC-SETUP.md) - Basic setup UI
-   - [docs/ui/bubble/PHASE-3-TEMPLATES.md](docs/ui/bubble/PHASE-3-TEMPLATES.md) - Templates UI
-   - [docs/ui/bubble/PHASE-4-PRODUCTION.md](docs/ui/bubble/PHASE-4-PRODUCTION.md) - Production UI
-   - [docs/ui/bubble/PHASE-5-ADVANCED.md](docs/ui/bubble/PHASE-5-ADVANCED.md) - Advanced features UI
-
-3. **API Endpoint Specifications:**
-   - [docs/api/PHASE-1-ONBOARDING-ENDPOINTS.md](docs/api/PHASE-1-ONBOARDING-ENDPOINTS.md) - Auth & onboarding endpoints
-   - [docs/api/PHASE-2-BASIC-SETUP-ENDPOINTS.md](docs/api/PHASE-2-BASIC-SETUP-ENDPOINTS.md) - Setup endpoints
-   - [docs/api/PHASE-3-TEMPLATES-ENDPOINTS.md](docs/api/PHASE-3-TEMPLATES-ENDPOINTS.md) - Template endpoints
-   - [docs/api/PHASE-4-PRODUCTION-ENDPOINTS.md](docs/api/PHASE-4-PRODUCTION-ENDPOINTS.md) - Production endpoints
-   - [docs/api/PHASE-5-ADVANCED-ENDPOINTS.md](docs/api/PHASE-5-ADVANCED-ENDPOINTS.md) - Advanced endpoints
-
-4. **Testing Documentation:**
-   - [docs/testing/00-TESTING-OVERVIEW.md](docs/testing/00-TESTING-OVERVIEW.md) - Testing strategy overview
-   - [docs/testing/01-PHASE-1-ONBOARDING-TESTS.md](docs/testing/01-PHASE-1-ONBOARDING-TESTS.md) - Phase 1 tests
-   - [docs/testing/02-PHASE-2-MASTER-DATA-TESTS.md](docs/testing/02-PHASE-2-MASTER-DATA-TESTS.md) - Phase 2 tests
-   - [docs/testing/03-PHASE-3-TEMPLATES-TESTS.md](docs/testing/03-PHASE-3-TEMPLATES-TESTS.md) - Phase 3 tests
-   - [docs/testing/04-PHASE-4-PRODUCTION-TESTS.md](docs/testing/04-PHASE-4-PRODUCTION-TESTS.md) - Phase 4 tests
-
-**Documentation Philosophy:**
-
-**SEPARATION OF CONCERNS:**
-- 🎨 **UI Docs** → Bubble pages, wireframes, visual elements, workflows
-  - NO API calls, NO code snippets
-  - Simple DB context: "Stores X in Y table"
-  - ASCII wireframes for visual reference
-  - Focus: What user sees and does
-
-- 🔌 **API Docs** → HTTP endpoints, request/response, triggered by which Bubble element
-  - Method, URL, body, response
-  - Which Bubble button/workflow triggers it
-  - Database operations described
-  - Focus: Backend integration
-
-- 🗄️ **Database Schema** → Single source of truth
-  - All tables, fields, types
-  - Relationships clearly defined
-  - Referenced by both UI and API docs
-  - Focus: Data structure
-
-**Benefits:**
-- ✅ Easy iteration: Change UI without touching API docs
-- ✅ Bubble-friendly: UI docs speak Bubble's language
-- ✅ Backend-agnostic: API docs work for any implementation
-- ✅ Single source: Database schema eliminates duplication
-- ✅ Context optimization: Load only what you need
-- ✅ Clear separation: UI designers vs. backend developers
-
-**How to Use:**
-
-1. **Building Bubble Pages:**
-   - Read UI doc for phase (e.g., PHASE-1-ONBOARDING.md, PHASE-2-BASIC-SETUP.md, etc.)
-   - Follow wireframes and workflows
-   - Check "Database Context" for simple field mapping
-   - Reference SCHEMA.md for table details if needed
-
-2. **Implementing API Endpoints:**
-   - Read API doc for phase (e.g., PHASE-1-ONBOARDING-ENDPOINTS.md)
-   - Implement Convex functions as specified
-   - Test with curl/Postman or test scripts in docs/testing/
-   - Update implementation status in doc
-
-3. **Understanding Data Flow:**
-   - Start with SCHEMA.md to see all tables
-   - UI docs tell you "what to store/query"
-   - API docs tell you "how to store/query"
-   - Database schema tells you "where and what format"
-
-4. **Testing Implementation:**
-   - Read testing overview at docs/testing/00-TESTING-OVERVIEW.md
-   - Follow phase-specific test suites for comprehensive validation
-   - Run automated test scripts provided in documentation
-
----
-
-## Tech Constraints
-
-**Internationalization Strategy:**
-- **UI Language:** 100% español - todos los textos visibles al usuario
-- **Database Values:** Inglés técnico (indoor, active, greenhouse) para compatibilidad API
-- **User Display:** Traducciones automáticas desde messages/es.json
-- **Example:** BD guarda "indoor", usuario ve "Interior"
-
-**Regional Configuration (Colombia as Default):**
-- Default locale: `es` (Spanish) - configurable per region
-- Default currency: `COP` (format: $290.000) - multi-currency support
-- Timezone: `America/Bogota` - configurable
-- Regional administrative codes (e.g., DANE in Colombia)
-- Coordinate systems configurable (MAGNA-SIRGAS for Colombia)
-- Altitude units configurable (MSNM default)
-
-**Business Types (Colombia Example):**
-- S.A.S (Sociedad por Acciones Simplificada)
-- S.A. (Sociedad Anónima)
-- Ltda (Limitada)
-- E.U. (Empresa Unipersonal)
-- Persona Natural
-- *Extensible for other regions*
-
-**Compliance (Configurable by Region):**
-- Cannabis: Regulatory tracking (e.g., INVIMA in Colombia)
-- Agricultural chemicals: Registration validation (e.g., ICA in Colombia)
-- Coffee: Quality standards (e.g., FNC in Colombia)
-- Municipal: Business registration, permits
-- *Architecture supports adding new regulatory frameworks*
-
-**Data Architecture:**
-- Multi-tenancy: Every record has `companyId`
-- Batch-first: Default tracking unit (50-1000 plants)
-- Individual plants: Optional for INVIMA compliance
-- Audit trail: Immutable activity logs
-- 5-year retention: Regulatory requirement
-
-**Type Safety:**
-- TypeScript strict mode
-- Convex auto-generates types
-- Zod validation for forms
-- Server Actions type-safe by default
-
----
-
-## Implementation Order
-
-**Phase 1: Onboarding (Modules 1-8)**
-1. Authentication & Company Setup
-2. Email Verification
-3. Subscription & Payments
-4. Company Profile Completion
-5. Facility Creation
-6. Crop Type Selection
-7. Area Setup with Sample Data
-8. Cultivars & Suppliers Setup
-
-**Phase 2: Core Operations (Modules 9-13)**
-9. Inventory Management
-10. Production Templates
-11. Quality Check Templates + AI
-12. Production Orders & Operations
-13. AI Engine & Intelligent Services
-
-**Phase 3: Advanced Features (Modules 14-17)**
-14. Compliance & Reporting
-15. Analytics & Business Intelligence
-16. Mobile Experience & Media Management
-17. Integrations & APIs
-
-**Dependencies:**
-- Each module builds on previous modules
-- Cannot skip modules within a phase
-- Cross-phase dependencies documented in Product-Requirements.md
-
----
-
-## Example Session
-
-```
-User: @state current
-
-Claude:
-**Current State:**
-- Branch: main
-- Active Module: None (project not initialized)
-- Next Steps:
-  1. Initialize Next.js 14 project
-  2. Set up Convex database
-  3. Configure Clerk authentication
-  4. Implement MODULE 1
-
-**Suggested Command:**
-@implement module-1
-
----
-
-User: @implement module-1
-
-Claude:
-Loading MODULE 1 context...
-✓ Product-Requirements.md → MODULE 1: Authentication & Company Setup
-✓ Database-Schema.md → users, companies, roles tables
-✓ Technical-Specification.md → Clerk setup, multi-tenancy patterns
-
-Implementing MODULE 1...
-
-[Creates files, implements features]
-
-✓ MODULE 1 complete
-
-Test with:
-npm run dev
-
-Then request PR:
-@pr create module-1
-
----
-
-User: @pr create module-1
-
-Claude:
-Reviewing MODULE 1 implementation...
-✓ All features from Product-Requirements.md implemented
-✓ Database schema matches Database-Schema.md
-✓ Colombian requirements applied
-
-Creating pull request...
-
-[Generates comprehensive PR as shown in @pr create command above]
-
-PR ready to create. Run:
-git push origin feature/module-1
-```
-
----
-
-## Success Metrics
-
-**Context Efficiency:**
-- Active context: <2000 tokens (vs 8000+ in complex systems)
-- Core docs: 3 files (vs 15+ in complex systems)
-- PR-based archive (vs separate planning docs)
-
-**Development Velocity:**
-- Module implementation: 1-3 days per module
-- PR review: <1 hour with comprehensive descriptions
-- Context switching: <5 minutes (load on demand)
-
-**Quality Indicators:**
-- Type safety: 100% (TypeScript end-to-end)
-- Colombian compliance: All requirements met
-- Multi-tenancy: Enforced in all queries
-- Real-time updates: WebSocket subscriptions
+2. Email verification → POST /api/v1/auth/verify-email
+3. Company setup → POST /api/v1/auth/register-step2
+4. Login → POST /api/v1/auth/login (returns session_token)
+5. All requests → Authorization: Bearer {session_token}
+
+**Multi-Tenant Isolation:**
+- Every record has `companyId`
+- Session token includes `company_id`
+- All queries filtered by company
+
+**Email Service:**
+- Resend integration for verification emails
+- Password reset
+- Notifications
 
 ---
 
@@ -953,234 +527,179 @@ git push origin feature/module-1
 
 ### Initial Setup (One-Time)
 
-**1. Clone Repository**
+**1. Clone & Install**
 ```bash
 git clone <repository-url>
 cd alquemist
 npm install
 ```
 
-**2. Set Up Convex**
-```bash
-# Initialize Convex (creates project if needed)
-npx convex dev
-```
-- Creates a Convex account at [convex.dev](https://convex.dev)
-- Sets up project: `alquemist`
-- Generates `.env.local` with `CONVEX_DEPLOYMENT` and `NEXT_PUBLIC_CONVEX_URL`
-- Press `Ctrl+C` after setup completes
+**2. Environment Variables**
 
-**3. Set Up Resend (Email Service)**
-- Visit [resend.com](https://resend.com) and create account
-- Create API key
-- Add to Convex environment variables:
-  ```bash
-  npx convex env set RESEND_API_KEY re_...
-  ```
-- Configure sender email in Resend dashboard
-
-**4. Deploy Convex Schema and Functions**
-```bash
-# Deploy to production (auto-deploys via GitHub Actions)
-npx convex deploy
-```
-- Deployment URL: https://handsome-jay-388.convex.site
-- All HTTP endpoints available at /api/v1/*
-
-### Environment Variables
-
-**Convex Environment Variables (via `npx convex env`):**
-```bash
-# Set in Convex dashboard or via CLI
-npx convex env set RESEND_API_KEY re_your_api_key_here
-
-# Auto-generated by Convex
-CONVEX_DEPLOYMENT=prod:handsome-jay-388
-CONVEX_URL=https://handsome-jay-388.convex.site
-```
-
-**Local Development (`.env.local`):**
+Create `.env.local`:
 ```bash
 # Convex (auto-generated by `npx convex dev`)
 CONVEX_DEPLOYMENT=dev:your-deployment
 NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
 
-# Note: Next.js not currently used, but env file maintained for future
+# Development
+NODE_ENV=development
 ```
 
-**Bubble Configuration:**
-- **Convex API Base URL:** https://handsome-jay-388.convex.site
-- **Session Token:** Stored in Bubble custom state after login
-- **Authorization Header:** Added dynamically to all API calls
+**3. Start Development Servers**
 
-### Development Workflow
-
-**For Backend Development:**
-```bash
-# Watch and sync Convex schema/functions
-npx convex dev
-```
-
-**For Next.js Development (if needed in future):**
 ```bash
 # Terminal 1: Next.js dev server
 npm run dev
 
-# Terminal 2: Convex dev server
+# Terminal 2: Convex dev server (optional, for backend changes)
 npx convex dev
 ```
 
-**Access Application:**
-- **Bubble App:** https://[your-bubble-app].bubbleapps.io (Primary and ONLY frontend)
-- **Convex HTTP API:** https://handsome-jay-388.convex.site
-  - All endpoints: POST /api/v1/*
-  - Auth: POST /api/v1/auth/login, register-step1, verify-email, etc.
-  - Companies: POST /api/v1/companies/create, get, update
-  - Facilities: POST /api/v1/facilities/create, list, update
-  - Geographic: POST /api/v1/geographic/departments, cities
-- **Dashboards:**
-  - Convex Dashboard: https://dashboard.convex.dev
-  - Resend Dashboard: https://resend.com/emails
-- **Next.js (Available but NOT used):** http://localhost:3000 (if run locally)
+**4. Access Application**
+- Next.js App: http://localhost:3000
+- Convex Dashboard: https://dashboard.convex.dev
+- Convex API: https://handsome-jay-388.convex.site
 
-### CI/CD Pipeline
+### Development Commands
 
-**Automatic Deployments:**
-- **Convex Production**: Push to `main` auto-deploys via GitHub Actions
-- **Deployment URL**: https://handsome-jay-388.convex.site
-- **No Vercel deployment** (Next.js not used currently)
-
-**Workflows:**
-- `.github/workflows/convex-deploy.yml` - Convex schema and function deployment
-- Triggered on push to `main` branch
-
-**Required GitHub Secrets:**
-```
-CONVEX_DEPLOY_KEY  # From Convex dashboard
-```
-
-### Deployment
-
-**Bubble Deployment:**
-- Bubble app deployed via Bubble.io platform
-- Configure API Connector to point to: https://handsome-jay-388.convex.site
-- No git-based deployment (Bubble handles this internally)
-
-**Convex Production Deployment:**
 ```bash
-# Manual deployment (or via GitHub Actions)
-npx convex deploy
+# Development
+npm run dev              # Next.js dev server with Turbopack
+npx convex dev          # Convex backend dev (if modifying backend)
 
-# Set production environment variables
-npx convex env set RESEND_API_KEY re_your_prod_key --prod
-```
+# Building
+npm run build           # Production build
+npm run start           # Production server
 
-**Future: Vercel Deployment (if Next.js is used):**
-1. Connect GitHub repo to [vercel.com](https://vercel.com)
-2. Add environment variables (Convex URL)
-3. Deploy: Automatic on `git push origin main`
+# Code Quality
+npm run lint            # ESLint check
+npm run lint:fix        # ESLint auto-fix
+npm run type-check      # TypeScript check
 
-### Testing
-
-**Run Linter:**
-```bash
-npm run lint
-```
-
-**Type Check:**
-```bash
-npx tsc --noEmit
-```
-
-**Build Test:**
-```bash
-npm run build
+# Testing
+npm test                # Run tests (when configured)
 ```
 
 ---
 
-## Implementation Status
+## Testing Strategy
 
-### Phase 1: Backend Foundation ✅ (100% COMPLETE)
+### Unit Testing
+- **Tool**: Jest + React Testing Library
+- **Coverage Target**: 80%+
+- **Focus**: Component logic, hooks, utilities
 
-**Completed (November 2025):**
-1. ✅ Convex database schema deployed (26 tables, multi-tenant architecture)
-2. ✅ Custom authentication system (session tokens, bcrypt passwords)
-3. ✅ Resend email integration (verification, password reset)
-4. ✅ HTTP Actions API (RESTful endpoints at https://handsome-jay-388.convex.site)
-5. ✅ Core backend modules:
-   - ✅ auth.ts - Custom session token authentication
-   - ✅ users.ts - User management
-   - ✅ companies.ts - Company CRUD with isolation
-   - ✅ facilities.ts - Facility management
-   - ✅ batches.ts - Batch tracking
-   - ✅ geographic.ts - Countries, departments, cities
-6. ✅ Multi-tenant isolation via company_id
-7. ✅ API documentation (PHASE-1, PHASE-2, PHASE-3 endpoints)
-8. ✅ Database schema documentation
-9. ✅ i18n strategy documented (Bubble Option Sets)
-10. ✅ Deployment pipeline (GitHub Actions → Convex)
+### Integration Testing
+- **Tool**: Jest + MSW (API mocking)
+- **Coverage Target**: 70%+
+- **Focus**: Form submissions, API integration
 
-**Current Stack:**
-- ✅ Frontend: Bubble.io (primary and only UI)
-- ✅ Backend: Convex HTTP Actions
-- ✅ Auth: Custom session tokens (30-day validity)
-- ✅ Email: Resend
-- ✅ Database: Convex (26 tables)
-- ✅ i18n: Bubble Option Sets (ES/EN)
-- ✅ Deployment: https://handsome-jay-388.convex.site
+### E2E Testing
+- **Tool**: Playwright
+- **Coverage**: Critical user paths
+- **Focus**: Complete workflows (signup → dashboard)
 
-**Next.js Status:**
-- Code exists and is configured (Next.js 14 + next-intl)
-- messages/es.json ready (450+ translations)
-- Available for future use if needed
-- NOT currently deployed or used
+### Visual Regression
+- **Tool**: Percy or Chromatic
+- **Coverage**: All pages
+- **Breakpoints**: Mobile (375px), Tablet (768px), Desktop (1280px)
 
-**Documentation:**
-- [docs/database/SCHEMA.md](docs/database/SCHEMA.md) - Complete database schema
-- [docs/api/PHASE-1-ONBOARDING-ENDPOINTS.md](docs/api/PHASE-1-ONBOARDING-ENDPOINTS.md) - Phase 1 API endpoints
-- [docs/api/PHASE-2-BASIC-SETUP-ENDPOINTS.md](docs/api/PHASE-2-BASIC-SETUP-ENDPOINTS.md) - Phase 2 API endpoints
-- [docs/api/PHASE-3-TEMPLATES-ENDPOINTS.md](docs/api/PHASE-3-TEMPLATES-ENDPOINTS.md) - Phase 3 API endpoints
-- [docs/api/PHASE-4-PRODUCTION-ENDPOINTS.md](docs/api/PHASE-4-PRODUCTION-ENDPOINTS.md) - Phase 4 API endpoints
-- [docs/api/PHASE-5-ADVANCED-ENDPOINTS.md](docs/api/PHASE-5-ADVANCED-ENDPOINTS.md) - Phase 5 API endpoints
-- [docs/i18n/STRATEGY.md](docs/i18n/STRATEGY.md) - Bilingual implementation
-- [docs/core/API-Integration.md](docs/core/API-Integration.md) - Integration guide
-- [docs/testing/00-TESTING-OVERVIEW.md](docs/testing/00-TESTING-OVERVIEW.md) - Testing strategy
+---
 
+## Example Session
 
-### Module Implementation
+```
+User: @phase-start 1
 
-**Current Status:** Foundation complete, ready to implement modules
+Claude:
+Loading Phase 1 context...
+✓ Bubble reference: docs/ui/bubble/PHASE-1-ONBOARDING.md
+✓ Next.js wireframes: docs/ui/nextjs/PHASE-1-ONBOARDING-WIREFRAMES.md ✅
+✓ Implementation plan: docs/dev-plans/PHASE-1-DEVELOPMENT-PLAN.md ✅
 
-**When Implementing a Module:**
+Phase 1 is ready to implement!
 
-1. **Check module documentation:**
-   - Review `docs/module-X/README.md` for module overview
-   - Read `docs/module-X/Module-X-Planning.md` for requirements
+Next steps:
+1. Install Next.js 15 and dependencies
+2. Set up design system (Tailwind + shadcn/ui)
+3. Implement shared components
+4. Build authentication flow
 
-2. **For Bubble implementation (Default):**
-   - Reference `docs/module-X/bubble/` for module-specific guides
-   - Use general API reference: [API-Integration.md](docs/core/API-Integration.md)
-   - Follow wireframes in `docs/module-X/bubble/Bubble-UI-Wireframes.md` if available
-   - Los archivos de documentación son **referencia técnica**
-   - El código real y llamados API se proporcionan durante implementación
+Start implementation? (@implement phase-1)
 
-3. **Implementation approach:**
-   - **Default:** Build in Bubble
-   - **If technical complexity requires:** Discuss Next.js option
-   - Code and API calls provided during module implementation
-   - Cada módulo genera su documentación en `docs/module-X/bubble/`
+---
 
-**Available Modules:**
+User: @implement phase-1
 
+Claude:
+Starting Phase 1 implementation...
 
-**To Start a Module:**
-```bash
-@implement module-X  # e.g., @implement module-1
+Installing dependencies:
+✓ Next.js 15
+✓ React 19
+✓ Tailwind CSS
+✓ shadcn/ui
+✓ React Hook Form + Zod
+✓ Convex client
+
+Creating shared components:
+✓ PasswordInput (with strength indicator)
+✓ PhoneInput (Colombian format)
+✓ CodeInput (8-digit auto-advance)
+✓ ProgressIndicator
+✓ CountdownTimer
+
+Implementing Signup Form (Page 1)...
+[Creates /app/(auth)/signup/page.tsx]
+✓ Form validation with Zod
+✓ Email availability check
+✓ Password strength indicator
+✓ Server Action integration
+
+Test at: http://localhost:3000/signup
 ```
 
-This will:
-- Load module context from `docs/module-X/`
-- Provide implementation guidance for Bubble
-- Generate specific API calls and code for the module
-- Create or update module-specific documentation
+---
+
+## Success Criteria
+
+**Per Phase:**
+- ✅ Wireframes complete and reviewed
+- ✅ Implementation plan detailed and approved
+- ✅ All screens implemented per wireframes
+- ✅ Backend integration working
+- ✅ Unit tests passing (80%+ coverage)
+- ✅ Integration tests passing
+- ✅ E2E tests for critical paths
+- ✅ Responsive on mobile, tablet, desktop
+- ✅ Accessibility audit passed (WCAG AA)
+- ✅ Performance benchmarks met (LCP < 2s)
+
+**Project Complete:**
+- ✅ All 5 phases implemented
+- ✅ Production deployment successful
+- ✅ User acceptance testing passed
+- ✅ Monitoring and alerts configured
+
+---
+
+## Next Steps
+
+**Ready to Start:**
+1. Phase 1 wireframes and plan are complete
+2. Run `@implement phase-1` to begin development
+3. Follow the phased development workflow
+4. Create Phase 2 wireframes when Phase 1 is done
+
+**Commands Available:**
+- `@phase-start 1` - Review Phase 1 status and options
+- `@implement phase-1` - Start Phase 1 development
+- `@wireframes create 2` - Create Phase 2 wireframes (after Phase 1)
+- `@plan create 2` - Create Phase 2 plan (after wireframes)
+
+---
+
+**Document Owner**: Development Team
+**Last Updated**: 2025-11-28
+**Version**: 2.0 - Phased Next.js Development Methodology

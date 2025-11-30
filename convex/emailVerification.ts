@@ -75,8 +75,8 @@ export const resendVerificationEmail = action({
       throw new Error("Este email ya está verificado");
     }
 
-    // Generate new simple token (8 digits)
-    const verificationToken = Math.floor(10000000 + Math.random() * 90000000).toString();
+    // Generate new simple token (6 digits)
+    const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
     // Update user directly
