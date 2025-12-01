@@ -157,7 +157,7 @@ Total: 11 pantallas (7 first user + 4 invited user)
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │ Haz clic en el enlace de tu correo o ingresa el código:     │  │
 │  │                                                              │  │
-│  │ Código de 8 dígitos:                                        │  │
+│  │ Código de 6 dígitos:                                        │  │
 │  │                                                              │  │
 │  │    [___] [___] [___] [___] [___] [___] [___] [___]         │  │
 │  │                                                              │  │
