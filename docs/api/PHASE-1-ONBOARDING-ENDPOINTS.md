@@ -1,15 +1,27 @@
 # PHASE 1: ONBOARDING & FOUNDATION - API ENDPOINTS
 
+**For Next.js 15 Frontend Integration**
+
 **Base URL**: `https://handsome-jay-388.convex.site`
+
+**Implementation Stack**:
+- **Frontend**: Next.js 15 (App Router) + React 19
+- **Backend**: Convex HTTP Actions
+- **Auth**: Custom session tokens (30-day validity)
+- **Validation**: Zod + React Hook Form
+- **Email**: Resend (triggered by frontend)
 
 **Related Documentation**:
 - **Database Schema**: [../database/SCHEMA.md](../database/SCHEMA.md)
-- **UI Requirements**: [../ui/bubble/PHASE-1-ONBOARDING.md](../ui/bubble/PHASE-1-ONBOARDING.md)
-- **Restructure Plan**: [../TEMP-API-RESTRUCTURE-PLAN.md](../TEMP-API-RESTRUCTURE-PLAN.md)
+- **Development Methodology**: [../dev/CLAUDE.md](../dev/CLAUDE.md)
+- **Tech Stack**: [../dev/Tech-Stack-Standard.md](../dev/Tech-Stack-Standard.md)
+- **Bubble Reference** (Visual Guide Only): [../ui/bubble/PHASE-1-ONBOARDING.md](../ui/bubble/PHASE-1-ONBOARDING.md)
 
 ---
 
 ## PHASE 1 OVERVIEW
+
+**Status**: ✅ Wireframes Complete | ✅ Plan Complete | 🔴 Implementation Pending
 
 **Purpose**: User authentication, company setup, initial facility configuration, and dashboard access
 
@@ -29,54 +41,369 @@
 **Estimated Pages**: 11 screens total (7 for first user + 4 for invited user)
 **Exit Point**: Operational Dashboard with facility context established
 
+**Total Endpoints**: 23 endpoints across 6 modules
+
 ---
 
-## BUBBLE API CONNECTOR SETUP
+## IMPLEMENTATION APPROACH
 
-### Initial Configuration
+### Development Methodology
 
-1. **Add Plugin**: Install "API Connector" plugin in Bubble
-2. **Create API**: Name it "Alquemist Backend"
-3. **Authentication**: None (we use custom Bearer tokens)
-4. **Base URL**: Leave empty (use full URLs per call)
+**Bubble's Role**: Bubble documentation serves as a **visual reference and UX guide** for Next.js implementation. Do NOT implement in Bubble - this is a Next.js project.
 
-### Common Settings
+**Implementation Pattern**:
+1. Review Bubble wireframes for UX flow and screen structure
+2. Implement in Next.js 15 using Server Components and Server Actions
+3. Use React Hook Form + Zod for form validation
+4. Store session tokens in HTTP-only cookies
+5. Use Next.js middleware for route protection
 
-**Content-Type**: All calls use `application/json`
+**Key Differences from Bubble Approach**:
+- ❌ No Bubble workflows → ✅ Next.js Server Actions
+- ❌ No Bubble custom states → ✅ React useState/Server Components
+- ❌ No Bubble API Connector → ✅ Direct fetch in Server Actions
+- ❌ No Clerk OAuth → ✅ Custom session tokens (30-day expiry)
 
-**Authentication Header** (for authenticated endpoints):
-- Key: `Authorization`
-- Value: `Bearer <token>` where `<token>` is dynamic from User's session_token field
+---
 
-### Call Types in Bubble
+## AUTHENTICATION PATTERN
 
-- **Data Call**: Use when you need to display/retrieve information (GET-like operations)
-- **Action Call**: Use when you're creating/updating/deleting data (POST operations)
+### Custom Session Tokens (30-Day Validity)
 
-### Dynamic Values Setup
+**Convex Endpoints**:
+- `POST /registration/register-step-1` → Returns session token
+- `POST /registration/login` → Returns session token
+- `POST /registration/validate-token` → Validates session token
 
-When configuring each call:
-1. Click "Add parameter" for each dynamic field
-2. Set as "Private" if it contains sensitive data (passwords, tokens)
-3. Set as "Shared" for non-sensitive data (email, names)
-4. Choose "Taken from URL" for query parameters
-5. Choose "Taken from body" for request body fields
+**Token Lifecycle**:
+1. User registers/logs in → Convex returns `token` (30-day expiry)
+2. Store token in HTTP-only cookie via Next.js Server Action
+3. Include in all authenticated requests: `Authorization: Bearer {token}`
+4. Validate on protected page loads via middleware
+5. Token expires after 30 days or explicit logout
+
+**Next.js Implementation**:
+
+```typescript
+// middleware.ts
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export async function middleware(request: NextRequest) {
+  const token = request.cookies.get('session_token')?.value
+
+  if (!token) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // Validate token with Convex
+  const response = await fetch(
+    'https://handsome-jay-388.convex.site/registration/validate-token',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    }
+  )
+
+  const result = await response.json()
+
+  if (!result.valid) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/company-setup/:path*', '/facility-setup/:path*']
+}
+```
+
+```typescript
+// lib/auth.ts - Cookie management
+'use server'
+
+import { cookies } from 'next/headers'
+
+export async function setSessionToken(token: string) {
+  cookies().set('session_token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 30 * 24 * 60 * 60 // 30 days
+  })
+}
+
+export async function getSessionToken() {
+  return cookies().get('session_token')?.value
+}
+
+export async function clearSessionToken() {
+  cookies().delete('session_token')
+}
+```
+
+---
+
+## NEXT.JS INTEGRATION PATTERNS
+
+### Server Actions for Mutations
+
+All data mutations (POST operations) use Next.js Server Actions:
+
+```typescript
+// app/actions/registration.ts
+'use server'
+
+import { z } from 'zod'
+import { setSessionToken } from '@/lib/auth'
+
+const registerSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Must contain uppercase letter')
+    .regex(/[0-9]/, 'Must contain number')
+    .regex(/[^A-Za-z0-9]/, 'Must contain special character'),
+  firstName: z.string().min(1, 'First name required'),
+  lastName: z.string().min(1, 'Last name required'),
+  phone: z.string().regex(/^[0-9]{10}$/, 'Invalid Colombian phone number')
+})
+
+export async function registerUser(data: z.infer<typeof registerSchema>) {
+  // Validate input
+  const validated = registerSchema.parse(data)
+
+  // Call Convex endpoint
+  const response = await fetch(
+    'https://handsome-jay-388.convex.site/registration/register-step-1',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(validated)
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error('Registration failed')
+  }
+
+  const result = await response.json()
+
+  if (result.success) {
+    // Store session token in HTTP-only cookie
+    await setSessionToken(result.token)
+  }
+
+  return result
+}
+```
+
+### Client Component with Form
+
+```typescript
+// app/(auth)/signup/page.tsx
+'use client'
+
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { registerUser } from '@/actions/registration'
+import { useRouter } from 'next/navigation'
+
+export default function SignupPage() {
+  const router = useRouter()
+  const form = useForm({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      phone: ''
+    }
+  })
+
+  const onSubmit = async (data) => {
+    try {
+      const result = await registerUser(data)
+
+      if (result.success) {
+        // Send verification email using Resend
+        await sendVerificationEmail(result.emailHtml, result.email)
+        router.push('/verify-email')
+      } else {
+        form.setError('root', { message: result.error })
+      }
+    } catch (error) {
+      form.setError('root', { message: 'Registration failed' })
+    }
+  }
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      {/* Form fields with shadcn/ui components */}
+    </form>
+  )
+}
+```
+
+### Protected Route Pattern
+
+```typescript
+// app/(dashboard)/layout.tsx
+import { getSessionToken } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const token = await getSessionToken()
+
+  if (!token) {
+    redirect('/login')
+  }
+
+  // Optionally validate token
+  const response = await fetch(
+    'https://handsome-jay-388.convex.site/registration/validate-token',
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }
+  )
+
+  const result = await response.json()
+
+  if (!result.valid) {
+    redirect('/login')
+  }
+
+  return <div>{children}</div>
+}
+```
+
+---
+
+## VALIDATION SCHEMAS (ZOD)
+
+All endpoint inputs are validated with Zod schemas shared between frontend forms and server actions:
+
+```typescript
+// lib/validations/auth.ts
+import { z } from 'zod'
+
+export const signupSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Must contain uppercase letter')
+    .regex(/[0-9]/, 'Must contain number')
+    .regex(/[^A-Za-z0-9]/, 'Must contain special character'),
+  firstName: z.string().min(1, 'First name required'),
+  lastName: z.string().min(1, 'Last name required'),
+  phone: z.string().regex(/^[0-9]{10}$/, 'Invalid Colombian phone number')
+})
+
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1, 'Password required')
+})
+
+export const companySchema = z.object({
+  companyName: z.string().min(1),
+  businessEntityType: z.enum(['S.A.S', 'S.A.', 'Ltda', 'E.U.', 'Persona Natural']),
+  companyType: z.enum(['cannabis', 'coffee', 'cocoa', 'flowers']),
+  country: z.literal('CO'),
+  departmentCode: z.string(),
+  municipalityCode: z.string()
+})
+
+export const facilitySchema = z.object({
+  facilityName: z.string().min(1),
+  facilityType: z.enum(['greenhouse', 'outdoor', 'indoor', 'nursery', 'processing']),
+  address: z.string().min(1),
+  departmentCode: z.string(),
+  municipalityCode: z.string(),
+  gpsLatitude: z.number().optional(),
+  gpsLongitude: z.number().optional()
+})
+```
+
+---
+
+## TYPESCRIPT RESPONSE TYPES
+
+```typescript
+// types/api.ts
+
+export interface ApiResponse<T> {
+  success: boolean
+  data?: T
+  error?: string
+  code?: string
+  message?: string
+}
+
+export interface CheckEmailResponse {
+  available: boolean
+  email: string
+  error?: string
+  code?: string
+}
+
+export interface RegisterResponse {
+  success: boolean
+  userId: string
+  token: string
+  email: string
+  message: string
+  verificationToken: string
+  emailHtml: string
+  emailText: string
+  emailSubject: string
+  error?: string
+  code?: string
+}
+
+export interface VerifyEmailResponse {
+  success: boolean
+  message: string
+  userId: string
+  error?: string
+  code?: string
+}
+
+export interface LoginResponse {
+  success: boolean
+  token: string
+  userId: string
+  email: string
+  firstName: string
+  lastName: string
+  hasCompany: boolean
+  companyId?: string
+  error?: string
+  code?: string
+}
+```
 
 ---
 
 ## MODULE 1: Authentication & Account Creation
 
-### Check Email Availability
+### 1.1 Check Email Availability
 
 **Endpoint**: `POST /registration/check-email`
+**URL**: `https://handsome-jay-388.convex.site/registration/check-email`
 **Convex Function**: `registration.checkEmailAvailability`
 
-#### Bubble API Connector Configuration
+**Purpose**: Validate email format and check if email is already registered
 
-**Name**: `checkEmailAvailability`
-**Use as**: Action
-**Method**: POST
-**URL**: `https://handsome-jay-388.convex.site/registration/check-email`
+#### Request
 
 **Headers**:
 ```
@@ -86,38 +413,118 @@ Content-Type: application/json
 **Body**:
 ```json
 {
-  "email": "<email>"
+  "email": "user@example.com"
 }
 ```
 
-**Parameters**:
-| Parameter | Type | Private | Source | Example |
-|-----------|------|---------|--------|---------|
-| email | text | No | Body | user@example.com |
+**TypeScript Type**:
+```typescript
+interface CheckEmailRequest {
+  email: string
+}
+```
 
-**Complete Response** (inicializar TODOS estos campos en Bubble):
+#### Response
+
+**Success**:
 ```json
 {
   "available": true,
-  "email": "user@example.com",
-  "error": "Email format invalid",
-  "code": "INVALID_EMAIL"
+  "email": "user@example.com"
 }
 ```
 
-**Response Fields**:
-- `available` (boolean) - true si el email está disponible, false si ya existe
-- `email` (text) - Email verificado
-- `error` (text) - Mensaje de error si ocurre
-- `code` (text) - Código de error técnico
+**Error**:
+```json
+{
+  "available": false,
+  "email": "user@example.com",
+  "error": "Email already exists",
+  "code": "EMAIL_EXISTS"
+}
+```
 
-#### Bubble Workflow
+**TypeScript Type**:
+```typescript
+interface CheckEmailResponse {
+  available: boolean
+  email: string
+  error?: string
+  code?: string
+}
+```
 
-1. **Trigger**: Input "email"'s value is changed → value is not empty
-2. **Step 1**: Plugins → checkEmailAvailability
-   - email = `Input email's value`
-3. **Step 2** (Only when `available is "false"`): Show alert "Este email ya está registrado"
-4. **Step 3** (Only when `available is "true"`): Enable "Create Account" button
+#### Next.js Implementation
+
+**Server Action** (`app/actions/auth.ts`):
+```typescript
+'use server'
+
+import { z } from 'zod'
+
+const checkEmailSchema = z.object({
+  email: z.string().email('Invalid email format')
+})
+
+export async function checkEmailAvailability(email: string) {
+  const validated = checkEmailSchema.parse({ email })
+
+  const response = await fetch(
+    'https://handsome-jay-388.convex.site/registration/check-email',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: validated.email })
+    }
+  )
+
+  return await response.json() as CheckEmailResponse
+}
+```
+
+**Component Usage** (`app/(auth)/signup/page.tsx`):
+```typescript
+'use client'
+
+import { checkEmailAvailability } from '@/actions/auth'
+import { useForm } from 'react-hook-form'
+
+export default function SignupPage() {
+  const form = useForm()
+
+  const handleEmailBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+    const email = e.target.value
+
+    if (!email) return
+
+    const result = await checkEmailAvailability(email)
+
+    if (!result.available) {
+      form.setError('email', {
+        message: 'Este email ya está registrado'
+      })
+    } else {
+      form.clearErrors('email')
+    }
+  }
+
+  return (
+    <form>
+      <input
+        {...form.register('email')}
+        onBlur={handleEmailBlur}
+        type="email"
+        placeholder="tu@email.com"
+      />
+      {form.formState.errors.email && (
+        <p className="text-red-500">{form.formState.errors.email.message}</p>
+      )}
+    </form>
+  )
+}
+```
+
+---
 
 ---
 
@@ -2983,6 +3390,39 @@ Changes you make in other parts of the app will appear on the dashboard:
 
 ---
 
+## APPENDIX: BUBBLE INTEGRATION REFERENCE
+
+**Important**: Throughout this document, you'll find "Bubble API Connector Configuration" and "Bubble Workflow" sections. These are included as **reference material only** for teams using Bubble as a visual prototyping tool.
+
+### Bubble's Role in This Project
+
+According to the [development methodology](../dev/CLAUDE.md), Bubble serves as:
+- ✅ **Visual reference** for UX patterns and screen flows
+- ✅ **Prototyping tool** for rapid wireframing
+- ❌ **NOT the implementation platform** (use Next.js 15 instead)
+
+### For Bubble Users
+
+If you're using Bubble for prototyping or as a secondary interface:
+
+1. **API Connector Setup**: Follow the "Bubble API Connector Configuration" sections for each endpoint
+2. **Workflows**: The "Bubble Workflow" sections show how to wire up the API calls
+3. **Field Mapping**: Response field descriptions help you initialize Bubble data types
+4. **Transition to Next.js**: Use Bubble as a visual guide when building the actual Next.js components
+
+### For Next.js Developers
+
+**Skip the Bubble sections** and focus on:
+- Request/Response specifications
+- TypeScript type definitions
+- Next.js implementation examples (Server Actions, components)
+- Validation schemas (Zod)
+- Authentication patterns (middleware, cookies)
+
+All Bubble-specific content (API Connector configs, workflows, dropdown setups) can be safely ignored for Next.js-only implementation.
+
+---
+
 ### Testing Checklist
 
 **Phase 1 Onboarding** (23/23 endpoints ✅ COMPLETE):
@@ -3024,28 +3464,51 @@ Changes you make in other parts of the app will appear on the dashboard:
 
 ---
 
-**Status**: ✅ Phase 1 COMPLETE - All endpoints implemented and production-ready
-**Ready Endpoints**: 23/23 (100% complete)
-**Implementation Status**:
+## IMPLEMENTATION STATUS
+
+**Backend Status**: ✅ Phase 1 Backend COMPLETE - All 23 endpoints implemented and production-ready
+
+**Frontend Status**: 🔴 Implementation Pending
+- Next.js 15 implementation to be completed following wireframes
+- Use this document for API integration reference
+- Follow [CLAUDE.md](../dev/CLAUDE.md) methodology for development approach
+
+**Endpoint Coverage**: 23/23 (100% backend complete)
+
+**Backend Implementation** ✅:
 - ✅ All authentication endpoints functional with email verification
+- ✅ Custom session tokens (30-day expiry) instead of Clerk
 - ✅ Company creation and management fully implemented
 - ✅ Facility creation with license validation working
-- ✅ User role assignment with access control NEWLY ADDED
-- ✅ Dashboard with alerts and activity tracking NEWLY ADDED
+- ✅ User role assignment with access control
+- ✅ Dashboard with alerts and activity tracking
 - ✅ Geographic data (departments/municipalities) integrated
 - ✅ Session management and token validation complete
 
-**Recent Changes (2025-01-20)**:
-- Added MODULE 4 HTTP endpoints for user role assignment (4 endpoints)
-- Added MODULE 5 HTTP endpoints for dashboard (3 endpoints)
-- All 23 Phase 1 endpoints now exposed via HTTP for Bubble integration
+**Frontend TODO** 🔴:
+- 🔴 Implement Next.js 15 App Router pages
+- 🔴 Create Server Actions for all mutations
+- 🔴 Build forms with React Hook Form + Zod validation
+- 🔴 Implement middleware for route protection
+- 🔴 Add shadcn/ui components following design system
+- 🔴 Configure email sending with Resend
+- 🔴 Set up HTTP-only cookie session management
+
+**Recent Changes (2025-01-30)**:
+- Updated documentation to Next.js-first approach
+- Added comprehensive TypeScript interfaces and Zod validation schemas
+- Added Next.js implementation patterns (Server Actions, middleware, cookie auth)
+- Clarified Bubble as visual reference only, not implementation platform
+- Added authentication pattern documentation for custom session tokens
+- Reorganized introduction to emphasize Next.js 15 as primary implementation
 
 **Next Steps**:
-1. ✅ Phase 1 backend COMPLETE - Move to Phase 2 (Basic Setup & Master Data)
-2. Implement PHASE 2 endpoints (Areas, Cultivars, Suppliers, Inventory, Settings)
-3. Continue with Phase 3-5 as per project roadmap
+1. 🔴 Begin Next.js 15 frontend implementation for Phase 1
+2. Follow wireframes and implement using Server Actions pattern
+3. After Phase 1 frontend complete, move to Phase 2 backend endpoints
+4. Continue with Phase 3-5 as per project roadmap
 
 ---
 
-**Last Updated**: 2025-01-20
-**Version**: 2.1 (Phase 1 fully complete with all HTTP endpoints)
+**Last Updated**: 2025-01-30
+**Version**: 3.0 (Updated for Next.js-first methodology)

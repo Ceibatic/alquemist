@@ -1,17 +1,30 @@
 # PHASE 3: PRODUCTION TEMPLATES & AI - API ENDPOINTS
 
+**For Next.js 15 Frontend Integration**
+
 **Base URL**: `https://handsome-jay-388.convex.site`
+
+**Implementation Stack**:
+- **Frontend**: Next.js 15 (App Router) + React 19
+- **Backend**: Convex HTTP Actions
+- **Auth**: Custom session tokens (30-day validity)
+- **Validation**: Zod + React Hook Form
+- **AI Integration**: Google Gemini API
+- **Visualization**: React Flow / Timeline libraries
 
 **Related Documentation**:
 - **Database Schema**: [../database/SCHEMA.md](../database/SCHEMA.md)
-- **UI Requirements**: [../ui/bubble/PHASE-3-TEMPLATES.md](../ui/bubble/PHASE-3-TEMPLATES.md)
+- **Development Methodology**: [../dev/CLAUDE.md](../dev/CLAUDE.md)
+- **Phase 1 Auth**: [PHASE-1-ONBOARDING-ENDPOINTS.md](PHASE-1-ONBOARDING-ENDPOINTS.md)
 - **Activity Scheduling Logic**: [../ACTIVITY-SCHEDULING-LOGIC.md](../ACTIVITY-SCHEDULING-LOGIC.md)
 - **AI Quality Checks**: [../AI-QUALITY-CHECKS.md](../AI-QUALITY-CHECKS.md)
-- **Restructure Plan**: [../TEMP-API-RESTRUCTURE-PLAN.md](../TEMP-API-RESTRUCTURE-PLAN.md)
+- **Bubble Reference** (Visual Guide Only): [../ui/bubble/PHASE-3-TEMPLATES.md](../ui/bubble/PHASE-3-TEMPLATES.md)
 
 ---
 
 ## PHASE 3 OVERVIEW
+
+**Status**: 🔴 Backend & Frontend Implementation Pending
 
 **Purpose**: Create reusable production workflows and AI-powered quality check templates
 
@@ -21,25 +34,337 @@
 
 **Estimated Pages**: 15 screens
 **Entry Point**: After completing Phase 2 master data setup
+
 **Key Features**:
 - Complex activity scheduling (one-time, recurring, dependent)
 - Template versioning and duplication
 - AI form generation from PDF/images
 - Timeline visualization
+- Drag-and-drop activity builder
 
 ---
 
 ## AUTHENTICATION
 
-All Phase 3 endpoints require authentication via Bearer token.
+All Phase 3 endpoints require authentication via Bearer token (session token from Phase 1).
 
-**Headers**:
-```
-Content-Type: application/json
-Authorization: Bearer <token>
+**Next.js Implementation**:
+```typescript
+// All Phase 3 requests use same auth pattern as Phase 2
+import { getSessionToken } from '@/lib/auth'
+
+const token = await getSessionToken()
+
+const response = await fetch(
+  'https://handsome-jay-388.convex.site/production-templates/create',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(templateData)
+  }
+)
 ```
 
-**Token Source**: `Current User's session_token` in Bubble
+---
+
+## NEXT.JS PATTERNS FOR COMPLEX FEATURES
+
+### Timeline Visualization
+
+```typescript
+// app/(dashboard)/templates/[id]/timeline/page.tsx
+'use client'
+
+import ReactFlow from 'reactflow'
+import 'reactflow/dist/style.css'
+
+export default function TemplateTimelinePage({ params }: { params: { id: string } }) {
+  const template = useTemplateData(params.id)
+
+  // Convert template phases/activities to timeline nodes
+  const nodes = template.phases.flatMap((phase, phaseIndex) =>
+    phase.activities.map((activity, actIndex) => ({
+      id: `activity-${phaseIndex}-${actIndex}`,
+      type: 'activity',
+      position: { x: activity.dayOffset * 20, y: phaseIndex * 100 },
+      data: { activity, phase }
+    }))
+  )
+
+  return (
+    <div className="h-screen">
+      <ReactFlow nodes={nodes} edges={edges} />
+    </div>
+  )
+}
+```
+
+### AI Form Generation Component
+
+```typescript
+// app/(dashboard)/qc-templates/new/ai-generate/page.tsx
+'use client'
+
+import { useState } from 'react'
+import { generateQCTemplateFromAI } from '@/actions/ai'
+
+export default function AIGenerateQCTemplate() {
+  const [file, setFile] = useState<File | null>(null)
+  const [generating, setGenerating] = useState(false)
+
+  const handleGenerate = async () => {
+    if (!file) return
+
+    setGenerating(true)
+
+    // Upload file to Convex storage
+    const storageId = await uploadFile(file)
+
+    // Call AI endpoint
+    const result = await generateQCTemplateFromAI(storageId)
+
+    if (result.success) {
+      // Populate form with AI-generated fields
+      router.push(`/qc-templates/new?fields=${result.generatedFields}`)
+    }
+
+    setGenerating(false)
+  }
+
+  return (
+    <div>
+      <h1>Generate Quality Check Template from PDF</h1>
+      <input
+        type="file"
+        accept="application/pdf,image/*"
+        onChange={(e) => setFile(e.files?.[0] || null)}
+      />
+      <Button onClick={handleGenerate} disabled={!file || generating}>
+        {generating ? 'Generating...' : 'Generate with AI'}
+      </Button>
+    </div>
+  )
+}
+```
+
+### Activity Scheduling Builder
+
+```typescript
+// components/ActivitySchedulingBuilder.tsx
+'use client'
+
+import { useFieldArray, useForm } from 'react-hook-form'
+
+export function ActivitySchedulingBuilder() {
+  const { control, watch } = useForm()
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'activities'
+  })
+
+  const schedulingType = watch('schedulingType')
+
+  return (
+    <div>
+      <Select name="schedulingType">
+        <option value="one-time">One-time</option>
+        <option value="recurring">Recurring</option>
+        <option value="dependent">Dependent</option>
+      </Select>
+
+      {schedulingType === 'one-time' && (
+        <Input name="dayOffset" type="number" label="Day Offset" />
+      )}
+
+      {schedulingType === 'recurring' && (
+        <div>
+          <Select name="frequency">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="every-n-days">Every N Days</option>
+            <option value="specific-days">Specific Days of Week</option>
+          </Select>
+          <Input name="startDay" type="number" label="Start Day" />
+          <Input name="endDay" type="number" label="End Day" />
+        </div>
+      )}
+
+      {schedulingType === 'dependent' && (
+        <div>
+          <Select name="dependsOnActivityId" label="Depends on Activity">
+            {/* List of previous activities */}
+          </Select>
+          <Input name="daysAfterCompletion" type="number" label="Days After Completion" />
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+---
+
+## TYPESCRIPT TYPE DEFINITIONS
+
+```typescript
+// types/phase3.ts
+
+export type SchedulingType = 'one-time' | 'recurring' | 'dependent'
+export type RecurringFrequency = 'daily' | 'weekly' | 'every-n-days' | 'specific-days'
+
+export interface OneTimeSchedule {
+  dayOffset: number
+}
+
+export interface RecurringPattern {
+  frequency: RecurringFrequency
+  startDay: number
+  endDay: number
+  intervalDays?: number // for 'every-n-days'
+  daysOfWeek?: number[] // for 'specific-days' (0=Sunday, 6=Saturday)
+}
+
+export interface DependentSchedule {
+  dependsOnActivityId: string
+  daysAfterCompletion: number
+}
+
+export interface TemplateActivity {
+  activityName: string
+  description: string
+  schedulingType: SchedulingType
+  oneTimeSchedule?: OneTimeSchedule
+  recurringPattern?: RecurringPattern
+  dependentSchedule?: DependentSchedule
+  estimatedDurationMinutes: number
+  assignedRoleId: string
+  requiredInventoryItems: Array<{
+    inventoryId: string
+    quantityPerExecution: number
+  }>
+  qcTemplateId?: string
+}
+
+export interface ProductionPhase {
+  phaseName: string
+  durationDays: number
+  activities: TemplateActivity[]
+}
+
+export interface ProductionTemplate {
+  id: string
+  facilityId: string
+  name: string
+  cropTypeId: string
+  cultivarId: string
+  phases: ProductionPhase[]
+  projectedYieldPerPlant: number
+  targetPlantCount: number
+  totalDurationDays: number
+  status: 'draft' | 'active' | 'archived'
+  version: number
+  notes?: string
+}
+
+export interface QCTemplateField {
+  fieldName: string
+  fieldType: 'text' | 'number' | 'boolean' | 'select' | 'multiselect' | 'photo' | 'signature'
+  required: boolean
+  options?: string[] // for select/multiselect
+  unit?: string // for number fields
+  min?: number
+  max?: number
+  defaultValue?: any
+}
+
+export interface QCTemplate {
+  id: string
+  facilityId: string
+  name: string
+  description: string
+  category: 'plant_health' | 'environmental' | 'compliance' | 'harvest'
+  fields: QCTemplateField[]
+  aiGenerated: boolean
+  status: 'active' | 'archived'
+}
+```
+
+---
+
+## VALIDATION SCHEMAS (ZOD)
+
+```typescript
+// lib/validations/templates.ts
+import { z } from 'zod'
+
+const oneTimeScheduleSchema = z.object({
+  dayOffset: z.number().int().min(0)
+})
+
+const recurringPatternSchema = z.object({
+  frequency: z.enum(['daily', 'weekly', 'every-n-days', 'specific-days']),
+  startDay: z.number().int().min(0),
+  endDay: z.number().int().min(0),
+  intervalDays: z.number().int().min(1).optional(),
+  daysOfWeek: z.array(z.number().int().min(0).max(6)).optional()
+})
+
+const dependentScheduleSchema = z.object({
+  dependsOnActivityId: z.string(),
+  daysAfterCompletion: z.number().int().min(0)
+})
+
+const templateActivitySchema = z.object({
+  activityName: z.string().min(1),
+  description: z.string(),
+  schedulingType: z.enum(['one-time', 'recurring', 'dependent']),
+  oneTimeSchedule: oneTimeScheduleSchema.optional(),
+  recurringPattern: recurringPatternSchema.optional(),
+  dependentSchedule: dependentScheduleSchema.optional(),
+  estimatedDurationMinutes: z.number().int().positive(),
+  assignedRoleId: z.string(),
+  requiredInventoryItems: z.array(z.object({
+    inventoryId: z.string(),
+    quantityPerExecution: z.number().positive()
+  })),
+  qcTemplateId: z.string().optional()
+})
+
+export const createProductionTemplateSchema = z.object({
+  facilityId: z.string(),
+  name: z.string().min(1),
+  cropTypeId: z.string(),
+  cultivarId: z.string(),
+  phases: z.array(z.object({
+    phaseName: z.string().min(1),
+    durationDays: z.number().int().positive(),
+    activities: z.array(templateActivitySchema)
+  })),
+  projectedYieldPerPlant: z.number().positive(),
+  targetPlantCount: z.number().int().positive(),
+  notes: z.string().optional()
+})
+
+export const createQCTemplateSchema = z.object({
+  facilityId: z.string(),
+  name: z.string().min(1),
+  description: z.string(),
+  category: z.enum(['plant_health', 'environmental', 'compliance', 'harvest']),
+  fields: z.array(z.object({
+    fieldName: z.string().min(1),
+    fieldType: z.enum(['text', 'number', 'boolean', 'select', 'multiselect', 'photo', 'signature']),
+    required: z.boolean(),
+    options: z.array(z.string()).optional(),
+    unit: z.string().optional(),
+    min: z.number().optional(),
+    max: z.number().optional(),
+    defaultValue: z.any().optional()
+  }))
+})
+```
 
 ---
 
@@ -1444,17 +1769,56 @@ Phase 3 Templates & AI (0/12 endpoints ready):
 
 ---
 
-**Status**: Phase 3 specification complete
-**Ready Endpoints**: 0/12 (0% complete)
-**Next Steps**:
-1. Implement scheduling algorithm in Convex
-2. Integrate Google Gemini API
-3. Test activity generation with various patterns
-4. Test AI form extraction with sample documents
-5. Implement Bubble UI with multi-step forms
-6. Move to Phase 4 (Production Execution)
+## APPENDIX: BUBBLE INTEGRATION REFERENCE
+
+**Important**: Bubble documentation serves as **visual reference only**. Implement all features in Next.js 15.
+
+### For Next.js Developers
+
+**Focus on**:
+- Complex UI patterns (timeline visualization, drag-and-drop activity builder)
+- AI integration with Google Gemini API
+- Activity scheduling algorithm implementation
+- React Flow for timeline visualization
+- File upload to Convex storage for AI processing
+
+All Bubble-specific content (workflows, custom states) can be ignored. Use the Next.js patterns and TypeScript types shown above.
 
 ---
 
-**Last Updated**: 2025-01-19
-**Version**: 2.0 (New - part of 5-phase restructure)
+## IMPLEMENTATION STATUS
+
+**Backend Status**: 🔴 Phase 3 Backend NOT STARTED
+- 12 Convex endpoints need implementation
+- Activity scheduling algorithm to be developed
+- Google Gemini API integration required
+- Depends on Phase 1 & 2 completion
+
+**Frontend Status**: 🔴 Implementation Pending
+- Complex UI components: Timeline visualization, Activity builder
+- AI-powered form generation UI
+- Template versioning and duplication features
+- React Flow for visual timeline
+- File upload for AI processing
+
+**Endpoint Coverage**: 0/12 (0% backend complete)
+
+**AI Integration Requirements**:
+- Google Gemini API key configuration
+- PDF/image processing for QC template generation
+- Form field extraction from documents
+- Error handling for AI service failures
+
+**Next Steps**:
+1. 🔴 Complete Phase 1 & 2 implementation first
+2. 🔴 Implement activity scheduling algorithm in Convex
+3. 🔴 Integrate Google Gemini API for AI features
+4. 🔴 Build timeline visualization with React Flow
+5. 🔴 Create activity builder with drag-and-drop
+6. 🔴 Test activity generation with various scheduling patterns
+7. Move to Phase 4 (Production Execution)
+
+---
+
+**Last Updated**: 2025-01-30
+**Version**: 3.0 (Updated for Next.js-first methodology)

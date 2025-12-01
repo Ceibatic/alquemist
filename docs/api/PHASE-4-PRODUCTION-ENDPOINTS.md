@@ -1,17 +1,30 @@
 # PHASE 4: PRODUCTION EXECUTION - API ENDPOINTS
 
+**For Next.js 15 Frontend Integration**
+
 **Base URL**: `https://handsome-jay-388.convex.site`
+
+**Implementation Stack**:
+- **Frontend**: Next.js 15 (App Router) + React 19
+- **Backend**: Convex HTTP Actions
+- **Auth**: Custom session tokens (30-day validity)
+- **Real-time**: Convex subscriptions for live updates
+- **AI**: Google Gemini Vision API for pest/disease detection
+- **Mobile**: PWA with QR code scanning
 
 **Related Documentation**:
 - **Database Schema**: [../database/SCHEMA.md](../database/SCHEMA.md)
-- **UI Requirements**: [../ui/bubble/PHASE-4-PRODUCTION.md](../ui/bubble/PHASE-4-PRODUCTION.md)
+- **Development Methodology**: [../dev/CLAUDE.md](../dev/CLAUDE.md)
+- **Phase 1 Auth**: [PHASE-1-ONBOARDING-ENDPOINTS.md](PHASE-1-ONBOARDING-ENDPOINTS.md)
 - **Activity Scheduling Logic**: [../ACTIVITY-SCHEDULING-LOGIC.md](../ACTIVITY-SCHEDULING-LOGIC.md)
 - **AI Quality Checks**: [../AI-QUALITY-CHECKS.md](../AI-QUALITY-CHECKS.md)
-- **Restructure Plan**: [../TEMP-API-RESTRUCTURE-PLAN.md](../TEMP-API-RESTRUCTURE-PLAN.md)
+- **Bubble Reference** (Visual Guide Only): [../ui/bubble/PHASE-4-PRODUCTION.md](../ui/bubble/PHASE-4-PRODUCTION.md)
 
 ---
 
 ## PHASE 4 OVERVIEW
+
+**Status**: 🔴 Backend & Frontend Implementation Pending
 
 **Purpose**: Create and execute production orders with real-time tracking and AI-powered monitoring
 
@@ -21,27 +34,284 @@
 
 **Estimated Pages**: 18 screens
 **Entry Point**: After creating production templates (Phase 3)
+
 **Key Features**:
-- Create orders from templates
+- Create orders from templates with auto-scheduling
 - Manager approval workflow
-- Auto-schedule all activities
-- Real-time progress tracking
-- AI pest/disease detection
-- Automatic remediation activities
+- Real-time progress tracking with Convex subscriptions
+- Mobile-friendly activity execution (PWA)
+- QR code scanning for batch/plant identification
+- AI pest/disease detection from photos
+- Automatic remediation activity generation
+- Photo upload and storage
 
 ---
 
 ## AUTHENTICATION
 
-All Phase 4 endpoints require authentication via Bearer token.
+All Phase 4 endpoints require authentication via Bearer token (session token from Phase 1).
 
-**Headers**:
-```
-Content-Type: application/json
-Authorization: Bearer <token>
+**Next.js Implementation**: Same auth pattern as Phase 2 & 3
+
+---
+
+## REAL-TIME FEATURES WITH CONVEX
+
+Phase 4 uses Convex subscriptions for real-time updates:
+
+```typescript
+// app/(dashboard)/orders/[id]/page.tsx
+'use client'
+
+import { useQuery } from 'convex/react'
+import { api } from '@/convex/_generated/api'
+
+export default function ProductionOrderPage({ params }: { params: { id: string } }) {
+  // Real-time subscription to order data
+  const order = useQuery(api.productionOrders.getById, { orderId: params.id })
+
+  // Real-time subscription to scheduled activities
+  const activities = useQuery(api.scheduledActivities.getByOrder, { orderId: params.id })
+
+  if (order === undefined) return <Loading />
+
+  return (
+    <div>
+      <h1>{order.orderName}</h1>
+      <ProgressBar current={order.completedActivities} total={order.totalActivities} />
+
+      <ActivityTimeline activities={activities} />
+    </div>
+  )
+}
 ```
 
-**Token Source**: `Current User's session_token` in Bubble
+---
+
+## MOBILE PWA PATTERNS
+
+### QR Code Scanning
+
+```typescript
+// app/(mobile)/scan/page.tsx
+'use client'
+
+import { Html5QrcodeScanner } from 'html5-qrcode'
+import { useEffect, useState } from 'react'
+
+export default function QRScanPage() {
+  const [batchId, setBatchId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const scanner = new Html5QrcodeScanner('qr-reader', {
+      qrbox: 250,
+      fps: 10
+    }, false)
+
+    scanner.render(
+      (decodedText) => {
+        // Extract batch ID from QR code
+        const id = extractBatchId(decodedText)
+        setBatchId(id)
+        scanner.clear()
+      },
+      (error) => console.error(error)
+    )
+
+    return () => scanner.clear()
+  }, [])
+
+  if (batchId) {
+    return <ActivityExecutionForm batchId={batchId} />
+  }
+
+  return <div id="qr-reader" />
+}
+```
+
+### Photo Upload with AI Detection
+
+```typescript
+// components/PestDetectionCamera.tsx
+'use client'
+
+import { useState } from 'react'
+import { detectPestFromImage } from '@/actions/ai'
+
+export function PestDetectionCamera({ activityId }: { activityId: string }) {
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [detecting, setDetecting] = useState(false)
+  const [result, setResult] = useState(null)
+
+  const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setPhoto(file)
+    setDetecting(true)
+
+    // Upload to Convex storage
+    const storageId = await uploadFile(file)
+
+    // Call AI detection endpoint
+    const detection = await detectPestFromImage(storageId)
+
+    setResult(detection)
+    setDetecting(false)
+
+    // If pest detected, suggest remediation
+    if (detection.pestDetected) {
+      // Auto-create remediation activity
+      await createRemediationActivity({
+        pestId: detection.pestId,
+        severity: detection.severity,
+        batchId: activityId
+      })
+    }
+  }
+
+  return (
+    <div>
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleCapture}
+      />
+
+      {detecting && <p>Analyzing image...</p>}
+
+      {result?.pestDetected && (
+        <div className="alert alert-warning">
+          <h3>Pest Detected: {result.pestName}</h3>
+          <p>Severity: {result.severity}</p>
+          <p>Recommended treatment: {result.recommendedTreatment}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+---
+
+## TYPESCRIPT TYPE DEFINITIONS
+
+```typescript
+// types/phase4.ts
+
+export interface ProductionOrder {
+  id: string
+  facilityId: string
+  templateId: string
+  orderName: string
+  areaId: string
+  startDate: string
+  plantCount: number
+  status: 'draft' | 'pending_approval' | 'approved' | 'in_progress' | 'completed' | 'cancelled'
+  approvedBy?: string
+  approvedAt?: string
+  totalActivities: number
+  completedActivities: number
+  progressPercentage: number
+  estimatedCompletionDate: string
+  notes?: string
+}
+
+export interface ScheduledActivity {
+  id: string
+  productionOrderId: string
+  activityName: string
+  description: string
+  scheduledDate: string
+  status: 'pending' | 'in_progress' | 'completed' | 'skipped'
+  assignedRoleId: string
+  assignedUserId?: string
+  estimatedDurationMinutes: number
+  actualStartTime?: string
+  actualEndTime?: string
+  qcTemplateId?: string
+  photos: string[] // Convex storage IDs
+  notes?: string
+}
+
+export interface ActivityExecution {
+  activityId: string
+  startTime: string
+  endTime?: string
+  executedBy: string
+  status: 'in_progress' | 'completed'
+  qcData?: Record<string, any>
+  photos: string[]
+  notes: string
+  inventoryUsed: Array<{
+    inventoryId: string
+    quantityUsed: number
+  }>
+}
+
+export interface PestDetectionResult {
+  pestDetected: boolean
+  pestId?: string
+  pestName?: string
+  scientificName?: string
+  confidence: number
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  affectedArea: string
+  recommendedTreatment: string
+  imageStorageId: string
+}
+
+export interface RemediationActivity {
+  id: string
+  productionOrderId: string
+  batchId: string
+  pestId: string
+  severity: string
+  createdAutomatic: true
+  activityName: string
+  scheduledDate: string
+  status: 'pending' | 'in_progress' | 'completed'
+}
+```
+
+---
+
+## VALIDATION SCHEMAS (ZOD)
+
+```typescript
+// lib/validations/production.ts
+import { z } from 'zod'
+
+export const createProductionOrderSchema = z.object({
+  facilityId: z.string(),
+  templateId: z.string(),
+  orderName: z.string().min(1),
+  areaId: z.string(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  plantCount: z.number().int().positive(),
+  notes: z.string().optional()
+})
+
+export const executeActivitySchema = z.object({
+  activityId: z.string(),
+  startTime: z.string(),
+  endTime: z.string().optional(),
+  qcData: z.record(z.any()).optional(),
+  photos: z.array(z.string()),
+  notes: z.string(),
+  inventoryUsed: z.array(z.object({
+    inventoryId: z.string(),
+    quantityUsed: z.number().positive()
+  }))
+})
+
+export const pestDetectionSchema = z.object({
+  imageStorageId: z.string(),
+  batchId: z.string(),
+  activityId: z.string()
+})
+```
 
 ---
 
@@ -2464,17 +2734,60 @@ Phase 4 Production Execution (0/18 endpoints ready):
 
 ---
 
-**Status**: Phase 4 specification complete
-**Ready Endpoints**: 0/18 (0% complete)
-**Next Steps**:
-1. Implement auto-scheduling algorithm (complex)
-2. Integrate computer vision API for pest detection
-3. Implement PDF generation
-4. Test activity execution workflows
-5. Implement Bubble UI with multi-tab activity execution
-6. Move to Phase 5 (Advanced Features)
+## APPENDIX: BUBBLE INTEGRATION REFERENCE
+
+**Important**: Bubble documentation serves as **visual reference only**. Implement all features in Next.js 15.
+
+### For Next.js Developers
+
+**Focus on**:
+- Real-time features using Convex subscriptions
+- Mobile PWA patterns (QR scanning, photo capture)
+- AI integration with Google Gemini Vision API
+- Activity execution workflows
+- Progress tracking and visualization
+
+All Bubble-specific content can be ignored. Use the Next.js patterns, real-time subscriptions, and PWA examples shown above.
 
 ---
 
-**Last Updated**: 2025-01-19
-**Version**: 2.0 (New - part of 5-phase restructure)
+## IMPLEMENTATION STATUS
+
+**Backend Status**: 🔴 Phase 4 Backend NOT STARTED
+- 18 Convex endpoints need implementation
+- Auto-scheduling algorithm to be developed
+- Google Gemini Vision API integration required
+- Real-time subscriptions for progress tracking
+- Depends on Phase 1, 2, & 3 completion
+
+**Frontend Status**: 🔴 Implementation Pending
+- Real-time dashboards with Convex subscriptions
+- Mobile PWA for field workers
+- QR code scanning implementation
+- Photo upload with AI detection
+- Activity execution forms
+- Progress visualization
+
+**Endpoint Coverage**: 0/18 (0% backend complete)
+
+**Special Requirements**:
+- PWA configuration for offline-capable app
+- QR code library integration (html5-qrcode)
+- Camera access for mobile devices
+- Google Gemini Vision API key
+- Convex file storage for photos
+- Real-time sync for multi-user collaboration
+
+**Next Steps**:
+1. 🔴 Complete Phase 1, 2, & 3 implementation first
+2. 🔴 Implement auto-scheduling algorithm in Convex
+3. 🔴 Integrate Google Gemini Vision API for pest detection
+4. 🔴 Build real-time dashboards with Convex subscriptions
+5. 🔴 Create mobile PWA with QR scanning
+6. 🔴 Implement photo upload and AI detection
+7. Move to Phase 5 (Advanced Features)
+
+---
+
+**Last Updated**: 2025-01-30
+**Version**: 3.0 (Updated for Next.js-first methodology)

@@ -1,16 +1,27 @@
 # PHASE 2: BASIC SETUP & MASTER DATA - API ENDPOINTS
 
+**For Next.js 15 Frontend Integration**
+
 **Base URL**: `https://handsome-jay-388.convex.site`
+
+**Implementation Stack**:
+- **Frontend**: Next.js 15 (App Router) + React 19
+- **Backend**: Convex HTTP Actions
+- **Auth**: Custom session tokens (30-day validity)
+- **Validation**: Zod + React Hook Form
+- **Pattern**: Standard CRUD operations
 
 **Related Documentation**:
 - **Database Schema**: [../database/SCHEMA.md](../database/SCHEMA.md)
-- **UI Requirements**: [../ui/bubble/PHASE-2-BASIC-SETUP.md](../ui/bubble/PHASE-2-BASIC-SETUP.md)
-- **CRUD Pattern**: [../ui/bubble/CRUD-PATTERN.md](../ui/bubble/CRUD-PATTERN.md)
-- **Restructure Plan**: [../TEMP-API-RESTRUCTURE-PLAN.md](../TEMP-API-RESTRUCTURE-PLAN.md)
+- **Development Methodology**: [../dev/CLAUDE.md](../dev/CLAUDE.md)
+- **Phase 1 Auth**: [PHASE-1-ONBOARDING-ENDPOINTS.md](PHASE-1-ONBOARDING-ENDPOINTS.md)
+- **Bubble Reference** (Visual Guide Only): [../ui/bubble/PHASE-2-BASIC-SETUP.md](../ui/bubble/PHASE-2-BASIC-SETUP.md)
 
 ---
 
 ## PHASE 2 OVERVIEW
+
+**Status**: 🔴 Backend & Frontend Implementation Pending
 
 **Purpose**: Configure essential master data required for operations
 
@@ -32,15 +43,287 @@
 
 ## AUTHENTICATION
 
-All Phase 2 endpoints require authentication via Bearer token.
+All Phase 2 endpoints require authentication via Bearer token (session token from Phase 1).
 
-**Headers**:
-```
-Content-Type: application/json
-Authorization: Bearer <token>
+### Next.js Authentication Pattern
+
+**Middleware Protection** (already configured in Phase 1):
+```typescript
+// middleware.ts - Already handles Phase 2 routes
+export const config = {
+  matcher: [
+    '/dashboard/:path*',
+    '/areas/:path*',
+    '/cultivars/:path*',
+    '/suppliers/:path*',
+    '/inventory/:path*',
+    '/settings/:path*'
+  ]
+}
 ```
 
-**Token Source**: `Current User's session_token` in Bubble
+**Request Headers**:
+```typescript
+// All Phase 2 Server Actions include auth header
+const token = await getSessionToken() // From lib/auth.ts
+
+const response = await fetch(
+  'https://handsome-jay-388.convex.site/areas/create',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  }
+)
+```
+
+**Protected Server Components**:
+```typescript
+// app/(dashboard)/areas/page.tsx
+import { getSessionToken } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+
+export default async function AreasPage() {
+  const token = await getSessionToken()
+  if (!token) redirect('/login')
+
+  // Fetch areas with authenticated token
+  const areas = await getAreasByFacility(token, facilityId)
+
+  return <AreasList areas={areas} />
+}
+```
+
+---
+
+## NEXT.JS CRUD PATTERN
+
+Phase 2 modules follow a standard CRUD pattern. Here's the implementation structure:
+
+### Standard CRUD Structure
+
+```
+app/(dashboard)/
+├── areas/
+│   ├── page.tsx              # List view (Server Component)
+│   ├── new/page.tsx           # Create form (Client Component)
+│   ├── [id]/page.tsx          # Detail view (Server Component)
+│   └── [id]/edit/page.tsx     # Edit form (Client Component)
+├── cultivars/
+│   └── ... (same pattern)
+└── suppliers/
+    └── ... (same pattern)
+```
+
+### Server Actions Pattern
+
+```typescript
+// app/actions/areas.ts
+'use server'
+
+import { z } from 'zod'
+import { getSessionToken } from '@/lib/auth'
+import { revalidatePath } from 'next/cache'
+
+const createAreaSchema = z.object({
+  facilityId: z.string(),
+  name: z.string().min(1),
+  areaType: z.enum(['propagation', 'vegetative', 'flowering', 'drying', 'curing', 'storage', 'processing', 'quarantine']),
+  totalAreaM2: z.number().positive(),
+  capacity: z.number().int().positive(),
+  climateControlled: z.boolean(),
+  environmentalSpecs: z.object({
+    tempMin: z.number().optional(),
+    tempMax: z.number().optional(),
+    humidityMin: z.number().optional(),
+    humidityMax: z.number().optional()
+  }).optional()
+})
+
+export async function createArea(data: z.infer<typeof createAreaSchema>) {
+  const token = await getSessionToken()
+  const validated = createAreaSchema.parse(data)
+
+  const response = await fetch(
+    'https://handsome-jay-388.convex.site/areas/create',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(validated)
+    }
+  )
+
+  const result = await response.json()
+
+  if (result.success) {
+    revalidatePath('/areas') // Refresh areas list
+  }
+
+  return result
+}
+
+export async function getAreasByFacility(facilityId: string) {
+  const token = await getSessionToken()
+
+  const response = await fetch(
+    'https://handsome-jay-388.convex.site/areas/get-by-facility',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ facilityId })
+    }
+  )
+
+  return await response.json()
+}
+```
+
+### List View Pattern (Server Component)
+
+```typescript
+// app/(dashboard)/areas/page.tsx
+import { getAreasByFacility } from '@/actions/areas'
+import { getSessionToken } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+
+export default async function AreasPage() {
+  const token = await getSessionToken()
+  if (!token) redirect('/login')
+
+  // Get current facility from context/session
+  const facilityId = await getCurrentFacilityId()
+  const areas = await getAreasByFacility(facilityId)
+
+  return (
+    <div>
+      <h1>Production Areas</h1>
+      <Link href="/areas/new">
+        <Button>Add New Area</Button>
+      </Link>
+
+      <div className="grid gap-4">
+        {areas.map(area => (
+          <AreaCard key={area.id} area={area} />
+        ))}
+      </div>
+    </div>
+  )
+}
+```
+
+### Create/Edit Form Pattern (Client Component)
+
+```typescript
+// app/(dashboard)/areas/new/page.tsx
+'use client'
+
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { createArea } from '@/actions/areas'
+import { useRouter } from 'next/navigation'
+
+export default function NewAreaPage() {
+  const router = useRouter()
+  const form = useForm({
+    resolver: zodResolver(createAreaSchema),
+    defaultValues: {
+      name: '',
+      areaType: 'propagation',
+      totalAreaM2: 0,
+      capacity: 0,
+      climateControlled: false
+    }
+  })
+
+  const onSubmit = async (data) => {
+    try {
+      const result = await createArea(data)
+
+      if (result.success) {
+        router.push('/areas')
+        router.refresh()
+      } else {
+        form.setError('root', { message: result.error })
+      }
+    } catch (error) {
+      form.setError('root', { message: 'Failed to create area' })
+    }
+  }
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)}>
+      {/* Form fields using shadcn/ui components */}
+    </form>
+  )
+}
+```
+
+---
+
+## TYPESCRIPT TYPE DEFINITIONS
+
+```typescript
+// types/phase2.ts
+
+export interface Area {
+  id: string
+  name: string
+  areaType: 'propagation' | 'vegetative' | 'flowering' | 'drying' | 'curing' | 'storage' | 'processing' | 'quarantine'
+  totalAreaM2: number
+  capacity: number
+  climateControlled: boolean
+  status: 'active' | 'inactive' | 'maintenance'
+  currentOccupancy: number
+  occupancyRate: number
+  environmentalSpecs?: {
+    tempMin?: number
+    tempMax?: number
+    humidityMin?: number
+    humidityMax?: number
+  }
+}
+
+export interface Cultivar {
+  id: string
+  name: string
+  cropTypeId: string
+  geneticLineage: string
+  thcRange?: { min: number; max: number }
+  cbdRange?: { min: number; max: number }
+  floweringTimeDays: number
+  status: 'active' | 'discontinued'
+}
+
+export interface Supplier {
+  id: string
+  name: string
+  taxId: string
+  supplierType: 'seeds' | 'nutrients' | 'equipment' | 'packaging' | 'services'
+  contactEmail: string
+  contactPhone: string
+  status: 'active' | 'inactive'
+}
+
+export interface InventoryItem {
+  id: string
+  productId: string
+  facilityId: string
+  quantity: number
+  unit: string
+  location: string
+  expirationDate?: string
+  batchNumber?: string
+}
+```
 
 ---
 
@@ -2779,15 +3062,54 @@ Phase 2 Master Data Setup (0/43 endpoints ready):
 
 ---
 
-**Status**: Phase 2 specification complete
-**Ready Endpoints**: 0/43 (0% complete)
-**Next Steps**:
-1. Implement all Convex functions for Phase 2
-2. Test each module systematically
-3. Implement Bubble UI following CRUD pattern
-4. Move to Phase 3 (Production Templates & AI)
+## APPENDIX: BUBBLE INTEGRATION REFERENCE
+
+**Important**: Throughout this document, you'll find "Bubble API Connector Configuration" and "Bubble Workflow" sections. These are included as **reference material only** for teams using Bubble as a visual prototyping tool.
+
+### Bubble's Role in This Project
+
+According to the [development methodology](../dev/CLAUDE.md), Bubble serves as:
+- ✅ **Visual reference** for UX patterns and CRUD flows
+- ✅ **Prototyping tool** for rapid wireframing
+- ❌ **NOT the implementation platform** (use Next.js 15 instead)
+
+### For Next.js Developers
+
+**Skip all Bubble sections** and focus on:
+- Request/Response specifications for each endpoint
+- TypeScript type definitions above
+- Next.js CRUD pattern examples (Server Actions, revalidatePath)
+- Standard CRUD structure (List, Create, Detail, Edit pages)
+- Authentication via session tokens from Phase 1
+
+All Bubble-specific content can be safely ignored for Next.js-only implementation. Use the CRUD patterns shown in the introduction as your implementation guide.
 
 ---
 
-**Last Updated**: 2025-01-19
-**Version**: 2.0 (New - part of 5-phase restructure)
+## IMPLEMENTATION STATUS
+
+**Backend Status**: 🔴 Phase 2 Backend NOT STARTED
+- All 43 Convex endpoints need implementation
+- Areas, Cultivars, Suppliers, Inventory, Settings modules pending
+- Depends on Phase 1 auth foundation
+
+**Frontend Status**: 🔴 Implementation Pending
+- Next.js 15 CRUD pages to be created
+- Follow standard CRUD pattern shown above
+- Use Server Actions for mutations
+- Server Components for data fetching
+- shadcn/ui for forms and UI components
+
+**Endpoint Coverage**: 0/43 (0% backend complete)
+
+**Next Steps**:
+1. 🔴 Complete Phase 1 frontend implementation first
+2. 🔴 Implement all 43 Convex functions for Phase 2 backend
+3. 🔴 Create Next.js CRUD pages following standard pattern
+4. 🔴 Test each module systematically
+5. Move to Phase 3 (Production Templates & AI)
+
+---
+
+**Last Updated**: 2025-01-30
+**Version**: 3.0 (Updated for Next.js-first methodology)

@@ -1,43 +1,343 @@
 # PHASE 5: ADVANCED FEATURES - API ENDPOINTS
 
+**For Next.js 15 Frontend Integration**
+
 **Base URL**: `https://handsome-jay-388.convex.site`
+
+**Implementation Stack**:
+- **Frontend**: Next.js 15 (App Router) + React 19
+- **Backend**: Convex HTTP Actions
+- **Auth**: Custom session tokens (30-day validity)
+- **Analytics**: Recharts / Chart.js for visualizations
+- **Reporting**: PDF generation with jsPDF or server-side rendering
+- **PWA**: Service workers, offline sync, push notifications
+- **Integrations**: REST APIs, webhooks, OAuth
 
 **Related Documentation**:
 - **Database Schema**: [../database/SCHEMA.md](../database/SCHEMA.md)
-- **UI Requirements**: [../ui/bubble/PHASE-5-ADVANCED.md](../ui/bubble/PHASE-5-ADVANCED.md)
-- **Restructure Plan**: [../TEMP-API-RESTRUCTURE-PLAN.md](../TEMP-API-RESTRUCTURE-PLAN.md)
+- **Development Methodology**: [../dev/CLAUDE.md](../dev/CLAUDE.md)
+- **Phase 1 Auth**: [PHASE-1-ONBOARDING-ENDPOINTS.md](PHASE-1-ONBOARDING-ENDPOINTS.md)
+- **Bubble Reference** (Visual Guide Only): [../ui/bubble/PHASE-5-ADVANCED.md](../ui/bubble/PHASE-5-ADVANCED.md)
 
 ---
 
 ## PHASE 5 OVERVIEW
 
+**Status**: 📋 Planned for Future Implementation
+
 **Purpose**: Analytics, compliance, reporting, mobile optimization, and integrations
 
 **Modules**:
-- **MODULE 14**: Compliance & Reporting
-- **MODULE 26**: Analytics Dashboard
-- **MODULE 27**: Mobile App Interface (PWA)
-- **MODULE 28**: Third-Party Integrations
+- **MODULE 14**: Compliance & Reporting (PDF generation, audit trails)
+- **MODULE 26**: Analytics Dashboard (Charts, KPIs, trends)
+- **MODULE 27**: Mobile App Interface (PWA enhancements, offline mode)
+- **MODULE 28**: Third-Party Integrations (APIs, webhooks)
 
 **Estimated Pages**: 18 screens
 **Entry Point**: After production operations are running (Phase 4)
-**Status**: 📋 Planned for future implementation
 
-**Note**: Phase 5 specifications are placeholders for future development. Detailed endpoint specifications will be added once Phase 1-4 are implemented and requirements are validated.
+**Key Features**:
+- Regulatory compliance reports (ICA, INVIMA)
+- Advanced analytics with interactive charts
+- PDF/Excel export capabilities
+- Offline-first PWA with background sync
+- Push notifications for alerts
+- Third-party API integrations
+- Webhook support for external systems
+
+**Note**: Detailed endpoint specifications will be added once Phase 1-4 are implemented and requirements are validated through production use.
 
 ---
 
 ## AUTHENTICATION
 
-All Phase 5 endpoints require authentication via Bearer token.
+All Phase 5 endpoints require authentication via Bearer token (session token from Phase 1).
 
-**Headers**:
-```
-Content-Type: application/json
-Authorization: Bearer <token>
+**Next.js Implementation**: Same auth pattern as Phase 2-4
+
+---
+
+## NEXT.JS PATTERNS FOR ADVANCED FEATURES
+
+### Analytics Dashboard with Charts
+
+```typescript
+// app/(dashboard)/analytics/page.tsx
+'use client'
+
+import { useQuery } from 'convex/react'
+import { api } from '@/convex/_generated/api'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
+
+export default function AnalyticsDashboardPage() {
+  // Real-time analytics data
+  const productionMetrics = useQuery(api.analytics.getProductionMetrics, {
+    facilityId,
+    startDate,
+    endDate
+  })
+
+  const yieldTrends = useQuery(api.analytics.getYieldTrends, {
+    facilityId,
+    period: 'monthly'
+  })
+
+  if (!productionMetrics || !yieldTrends) return <Loading />
+
+  return (
+    <div className="grid grid-cols-2 gap-6">
+      <div>
+        <h2>Production Over Time</h2>
+        <LineChart width={600} height={300} data={productionMetrics}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="date" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Line type="monotone" dataKey="completed" stroke="#8884d8" />
+          <Line type="monotone" dataKey="inProgress" stroke="#82ca9d" />
+        </LineChart>
+      </div>
+
+      <div>
+        <h2>Yield by Cultivar</h2>
+        <BarChart width={600} height={300} data={yieldTrends}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="cultivar" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="averageYield" fill="#8884d8" />
+        </BarChart>
+      </div>
+    </div>
+  )
+}
 ```
 
-**Token Source**: `Current User's session_token` in Bubble
+### PDF Report Generation
+
+```typescript
+// app/actions/reporting.ts
+'use server'
+
+import { getSessionToken } from '@/lib/auth'
+import jsPDF from 'jspdf'
+
+export async function generateComplianceReport(params: {
+  facilityId: string
+  startDate: string
+  endDate: string
+  templateId: string
+}) {
+  const token = await getSessionToken()
+
+  // Fetch data from Convex
+  const response = await fetch(
+    'https://handsome-jay-388.convex.site/compliance/get-report-data',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(params)
+    }
+  )
+
+  const data = await response.json()
+
+  // Generate PDF
+  const doc = new jsPDF()
+
+  doc.setFontSize(20)
+  doc.text('Compliance Report', 20, 20)
+
+  doc.setFontSize(12)
+  doc.text(`Facility: ${data.facilityName}`, 20, 40)
+  doc.text(`Period: ${params.startDate} to ${params.endDate}`, 20, 50)
+
+  // Add tables, charts, signatures
+  // ... (detailed PDF generation logic)
+
+  // Save to Convex storage
+  const pdfBlob = doc.output('blob')
+  const storageId = await uploadPDF(pdfBlob)
+
+  return {
+    success: true,
+    reportUrl: await getStorageUrl(storageId),
+    reportId: data.reportId
+  }
+}
+```
+
+### PWA Offline Sync
+
+```typescript
+// app/lib/offline-sync.ts
+'use client'
+
+import { useEffect } from 'react'
+
+export function useOfflineSync() {
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+    }
+
+    // Listen for online/offline events
+    window.addEventListener('online', () => {
+      console.log('Back online, syncing...')
+      syncPendingData()
+    })
+
+    window.addEventListener('offline', () => {
+      console.log('Offline mode activated')
+    })
+  }, [])
+
+  async function syncPendingData() {
+    // Get pending data from IndexedDB
+    const pendingActivities = await getPendingActivities()
+
+    // Sync each activity
+    for (const activity of pendingActivities) {
+      await executeActivityOnline(activity)
+      await removePendingActivity(activity.id)
+    }
+  }
+}
+```
+
+### Third-Party Integration (Webhook)
+
+```typescript
+// app/api/webhooks/external-system/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { verifyWebhookSignature } from '@/lib/webhooks'
+
+export async function POST(request: NextRequest) {
+  const signature = request.headers.get('x-webhook-signature')
+  const body = await request.text()
+
+  // Verify webhook signature
+  if (!verifyWebhookSignature(body, signature)) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+  }
+
+  const data = JSON.parse(body)
+
+  // Process webhook data
+  switch (data.event) {
+    case 'inventory.updated':
+      await handleInventoryUpdate(data.payload)
+      break
+    case 'compliance.submitted':
+      await handleComplianceSubmission(data.payload)
+      break
+    default:
+      console.warn('Unknown webhook event:', data.event)
+  }
+
+  return NextResponse.json({ success: true })
+}
+```
+
+---
+
+## TYPESCRIPT TYPE DEFINITIONS
+
+```typescript
+// types/phase5.ts
+
+export interface AnalyticsMetrics {
+  totalOrders: number
+  completedOrders: number
+  inProgressOrders: number
+  totalYield: number
+  averageYieldPerPlant: number
+  complianceRate: number
+  onTimeCompletion: number
+  activeWorkers: number
+}
+
+export interface YieldTrend {
+  cultivar: string
+  period: string
+  averageYield: number
+  plantCount: number
+  batchCount: number
+}
+
+export interface ComplianceReport {
+  id: string
+  facilityId: string
+  templateId: string
+  reportType: 'ICA' | 'INVIMA' | 'CUSTOM'
+  startDate: string
+  endDate: string
+  generatedAt: string
+  generatedBy: string
+  status: 'draft' | 'submitted' | 'approved'
+  pdfUrl: string
+  data: Record<string, any>
+}
+
+export interface WebhookEvent {
+  id: string
+  event: string
+  payload: Record<string, any>
+  timestamp: string
+  source: string
+}
+
+export interface ThirdPartyIntegration {
+  id: string
+  name: string
+  type: 'api' | 'webhook' | 'oauth'
+  status: 'active' | 'inactive'
+  config: {
+    apiKey?: string
+    webhookUrl?: string
+    oauthClientId?: string
+  }
+  lastSyncAt?: string
+}
+```
+
+---
+
+## VALIDATION SCHEMAS (ZOD)
+
+```typescript
+// lib/validations/advanced.ts
+import { z } from 'zod'
+
+export const generateReportSchema = z.object({
+  facilityId: z.string(),
+  reportTemplateId: z.string(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  includePhotos: z.boolean().default(false),
+  includeSignatures: z.boolean().default(false)
+})
+
+export const analyticsQuerySchema = z.object({
+  facilityId: z.string(),
+  metricType: z.enum(['production', 'yield', 'compliance', 'inventory']),
+  period: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+})
+
+export const webhookConfigSchema = z.object({
+  url: z.string().url(),
+  events: z.array(z.string()),
+  secret: z.string().min(32),
+  active: z.boolean().default(true)
+})
+```
 
 ---
 
@@ -1436,18 +1736,61 @@ Phase 5 Advanced Features (0/~40 endpoints ready):
 
 ---
 
-**Status**: Phase 5 placeholder specification
-**Ready Endpoints**: 0/~40 (0% complete)
-**Priority**: After Phase 1-4 complete
-**Next Steps**:
-1. Complete Phase 1-4 implementation
-2. Gather user feedback and requirements
-3. Validate Phase 5 specifications
-4. Prioritize Phase 5A (Compliance) features
-5. Detailed design for highest-priority features
-6. Begin incremental Phase 5 implementation
+## APPENDIX: BUBBLE INTEGRATION REFERENCE
+
+**Important**: Bubble documentation serves as **visual reference only**. Implement all features in Next.js 15.
+
+### For Next.js Developers
+
+**Focus on**:
+- Advanced analytics with interactive charts (Recharts/Chart.js)
+- PDF report generation (jsPDF or server-side rendering)
+- PWA enhancements (offline sync, push notifications)
+- Third-party integrations (REST APIs, webhooks, OAuth)
+- Dashboard optimization for real-time data
+
+All Bubble-specific content can be ignored. Use the Next.js patterns, chart libraries, and PWA examples shown above.
 
 ---
 
-**Last Updated**: 2025-01-19
-**Version**: 2.0 (New - placeholder for future development)
+## IMPLEMENTATION STATUS
+
+**Backend Status**: 📋 Phase 5 Backend PLANNED
+- ~40 Convex endpoints to be designed
+- Advanced analytics queries
+- PDF generation backend logic
+- Webhook infrastructure
+- Third-party API integration
+- Depends on Phase 1-4 completion and user feedback
+
+**Frontend Status**: 📋 Implementation Planned
+- Analytics dashboards with charts
+- PDF viewer and download functionality
+- PWA service worker and offline sync
+- Push notification setup
+- Integration configuration UI
+- Advanced reporting interfaces
+
+**Endpoint Coverage**: 0/~40 (0% - specifications pending)
+
+**Special Requirements**:
+- Chart library integration (Recharts or Chart.js)
+- PDF generation library (jsPDF or React-PDF)
+- Service worker for offline capabilities
+- Push notification infrastructure
+- Webhook signature verification
+- OAuth provider configuration
+- Multi-currency and i18n support
+
+**Next Steps**:
+1. 📋 Complete Phase 1-4 implementation first
+2. 📋 Gather user feedback from production use
+3. 📋 Validate Phase 5 feature requirements
+4. 📋 Prioritize Phase 5 modules based on user needs
+5. 📋 Design detailed specifications for priority features
+6. 📋 Begin incremental Phase 5 implementation
+
+---
+
+**Last Updated**: 2025-01-30
+**Version**: 3.0 (Updated for Next.js-first methodology)
