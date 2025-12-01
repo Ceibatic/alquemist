@@ -366,6 +366,326 @@ Starting with shared components...
 
 ---
 
+## Sub-Agent Development Method
+
+### Overview
+
+Alquemist uses **Claude Code Sub-Agents** - specialized AI assistants with dedicated expertise for different aspects of development. Each sub-agent has its own context window, specific tools, and domain knowledge.
+
+### Why Sub-Agents?
+
+- **Specialized Expertise**: Each agent is an expert in their domain (frontend, backend, testing, etc.)
+- **Focused Context**: Keeps the main conversation clean and organized
+- **Faster Development**: Agents work in parallel when possible
+- **Quality Assurance**: Built-in code review and testing specialists
+- **Team Consistency**: Shared agents ensure consistent patterns
+
+### Available Sub-Agents
+
+All sub-agents are located in `.claude/agents/` and version-controlled with the project.
+
+#### 1. Frontend Developer (`frontend-dev`)
+
+**Expertise**: React 19, Next.js 15, Tailwind CSS, Radix UI, React Hook Form
+
+**Use For**:
+- Creating UI components and pages
+- Building forms with validation
+- Implementing responsive designs
+- Working with Server/Client Components
+- Accessibility implementations
+
+**Example**:
+```
+Create a responsive user profile form with Radix UI components
+and Zod validation
+```
+
+#### 2. Backend Developer (`backend-dev`)
+
+**Expertise**: Convex queries/mutations/actions, schema design, Resend emails
+
+**Use For**:
+- Convex function development
+- Database schema design
+- Email workflow implementation
+- API endpoint creation
+- Backend optimization
+
+**Example**:
+```
+Use backend-dev to create a Convex mutation for batch creation
+with proper validation and company isolation
+```
+
+#### 3. Code Reviewer (`code-reviewer`)
+
+**Expertise**: Security, quality assurance, best practices
+
+**Use For**:
+- Pull request reviews
+- Security audits
+- Code quality checks
+- Finding bugs and vulnerabilities
+- Ensuring TypeScript best practices
+
+**Example**:
+```
+Review my recent changes for security issues and code quality
+```
+
+#### 4. TypeScript Expert (`typescript-expert`)
+
+**Expertise**: Advanced TypeScript, generics, Zod schemas, type safety
+
+**Use For**:
+- Fixing type errors
+- Designing type-safe APIs
+- Creating complex types
+- Type inference optimization
+- Zod schema design
+
+**Example**:
+```
+Help fix the type errors in the batch tracking module
+```
+
+#### 5. Test Engineer (`test-engineer`)
+
+**Expertise**: Jest, React Testing Library, Convex testing, integration tests
+
+**Use For**:
+- Writing unit tests
+- Creating integration tests
+- Testing Convex functions
+- Test coverage analysis
+- Setting up test infrastructure
+
+**Example**:
+```
+Write comprehensive tests for the user registration flow
+```
+
+### Sub-Agent Workflow
+
+#### Automatic Invocation (Recommended)
+
+Claude automatically selects the right sub-agent based on your request:
+
+```
+User: "Create a login form with email and password"
+→ Claude uses frontend-dev automatically
+
+User: "Review my latest PR"
+→ Claude uses code-reviewer automatically
+```
+
+#### Explicit Invocation
+
+Request a specific sub-agent:
+
+```
+User: "Use backend-dev to create the facility management API"
+User: "Ask typescript-expert to help with these type errors"
+User: "Have test-engineer write tests for this component"
+```
+
+#### Chaining Sub-Agents
+
+Combine multiple sub-agents for complex workflows:
+
+```
+User: "Use backend-dev for the API, frontend-dev for the UI,
+and test-engineer to write comprehensive tests"
+```
+
+### Integration with Phased Development
+
+Sub-agents work seamlessly with the phased development methodology:
+
+#### Phase Development Workflow with Sub-Agents
+
+```
+PHASE X IMPLEMENTATION WITH SUB-AGENTS
+======================================
+
+Step 1: WIREFRAME CREATION
+→ General-purpose agent or Plan agent
+
+Step 2: IMPLEMENTATION PLANNING
+→ General-purpose agent or Plan agent
+
+Step 3: DEVELOPMENT
+┌─────────────────────────────────┐
+│ Frontend Tasks                  │
+│ → frontend-dev agent            │
+│   • Components                  │
+│   • Pages                       │
+│   • Forms                       │
+└─────────────────────────────────┘
+        ↓ (parallel)
+┌─────────────────────────────────┐
+│ Backend Tasks                   │
+│ → backend-dev agent             │
+│   • Queries/Mutations           │
+│   • Schema updates              │
+│   • Email workflows             │
+└─────────────────────────────────┘
+        ↓ (parallel)
+┌─────────────────────────────────┐
+│ Type Safety                     │
+│ → typescript-expert agent       │
+│   • Type definitions            │
+│   • Zod schemas                 │
+│   • Fix type errors             │
+└─────────────────────────────────┘
+        ↓ (sequential)
+┌─────────────────────────────────┐
+│ Testing                         │
+│ → test-engineer agent           │
+│   • Unit tests                  │
+│   • Integration tests           │
+│   • Coverage analysis           │
+└─────────────────────────────────┘
+        ↓ (final)
+┌─────────────────────────────────┐
+│ Code Review                     │
+│ → code-reviewer agent           │
+│   • Security audit              │
+│   • Quality check               │
+│   • Best practices              │
+└─────────────────────────────────┘
+```
+
+### Recommended Workflows
+
+#### New Feature Development
+
+```
+User: I need to add batch tracking functionality
+
+Process:
+1. backend-dev: Create Convex schema and mutations
+2. frontend-dev: Build the UI components and forms
+3. typescript-expert: Ensure type safety across stack
+4. test-engineer: Write comprehensive tests
+5. code-reviewer: Final security and quality review
+```
+
+#### Bug Fix
+
+```
+User: Fix authentication bug in login flow
+
+Process:
+1. code-reviewer: Analyze the issue
+2. backend-dev or frontend-dev: Implement fix
+3. test-engineer: Add regression tests
+4. code-reviewer: Verify the fix
+```
+
+#### Code Refactoring
+
+```
+User: Refactor the facility management module
+
+Process:
+1. code-reviewer: Identify refactoring opportunities
+2. typescript-expert: Update types and interfaces
+3. frontend-dev/backend-dev: Refactor code
+4. test-engineer: Update and add tests
+5. code-reviewer: Validate improvements
+```
+
+### Sub-Agent Commands
+
+```bash
+# View all available sub-agents
+ls .claude/agents/
+
+# Edit a sub-agent's behavior
+# Edit: .claude/agents/frontend-dev.md
+
+# Documentation
+# Read: docs/dev/SUBAGENTS-GUIDE.md
+```
+
+### Best Practices
+
+1. **Let Claude Choose**: For most tasks, let Claude automatically select the right sub-agent
+2. **Be Specific**: Provide clear requirements and context
+3. **Chain Intelligently**: Plan multi-step workflows that leverage multiple agents
+4. **Review Output**: Always review sub-agent work and iterate if needed
+5. **Use Proactively**: Use code-reviewer before every PR
+
+### Sub-Agent + Phase Example
+
+```
+User: @implement phase-1
+
+Claude:
+Starting Phase 1 implementation...
+
+Loading implementation plan...
+✓ 50+ tasks identified across 6 modules
+
+Delegating to sub-agents:
+
+[frontend-dev] Creating shared components...
+→ PasswordInput (with strength indicator)
+→ PhoneInput (Colombian format)
+→ CodeInput (8-digit auto-advance)
+
+[backend-dev] Setting up Convex auth...
+→ Registration mutation
+→ Email verification flow
+→ Session token generation
+
+[typescript-expert] Ensuring type safety...
+→ Form validation schemas (Zod)
+→ API type definitions
+→ Component prop interfaces
+
+[test-engineer] Writing tests...
+→ Component unit tests
+→ Form validation tests
+→ API integration tests
+
+[code-reviewer] Final review...
+→ Security audit (no exposed secrets)
+→ Accessibility check (WCAG AA)
+→ Performance analysis
+
+Phase 1 implementation complete!
+```
+
+### Customizing Sub-Agents
+
+Each sub-agent can be customized by editing their markdown file:
+
+```markdown
+---
+name: custom-agent
+description: When this agent should be invoked
+tools: Read, Write, Edit, Bash
+model: sonnet
+---
+
+You are a specialized agent for [domain]...
+
+[Detailed instructions]
+```
+
+**Location**: `.claude/agents/custom-agent.md`
+
+### Documentation
+
+- **Full Guide**: [docs/dev/SUBAGENTS-GUIDE.md](docs/dev/SUBAGENTS-GUIDE.md)
+- **Agent Files**: `.claude/agents/`
+- **Official Docs**: https://code.claude.com/docs/en/sub-agents
+
+---
+
 ## Phase Status
 
 ### Phase 1: Onboarding & Authentication
