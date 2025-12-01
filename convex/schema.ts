@@ -91,7 +91,7 @@ export default defineSchema({
     email_verified_at: v.optional(v.number()), // Timestamp when verified
 
     // Email Verification (Simplified)
-    email_verification_token: v.optional(v.string()), // 8-digit token
+    email_verification_token: v.optional(v.string()), // 6-digit token
     token_expires_at: v.optional(v.number()), // 24-hour expiration
 
     // Personal Information

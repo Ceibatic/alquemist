@@ -92,7 +92,7 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 - **Writes to**: `users` table
   - Stores: email, password_hash, firstName, lastName, phone
   - Sets: email_verified = false
-  - Stores: email_verification_token (8-digit), token_expires_at (24h)
+  - Stores: email_verification_token (6-digit), token_expires_at (24h)
 
 **UI Translations**:
 
@@ -131,7 +131,7 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 │  We sent a verification code to:│
 │  user@example.com               │
 │                                 │
-│  Enter your 8-digit code:       │
+│  Enter your 6-digit code:       │
 │  [________________]             │
 │                                 │
 │  Expires in: 23:45              │
@@ -144,13 +144,13 @@ For implementation details, see [../../i18n/BUBBLE-IMPLEMENTATION.md](../../i18n
 
 **Bubble Elements**:
 - Text: Display user's email
-- Input field: Single input for 8-digit code
+- Input field: Single input for 6-digit code
 - Countdown timer: Shows remaining time
 - Button: "Verify" → triggers verification workflow
 - Button: "Resend Email" → triggers resend workflow
 
 **Workflow**:
-1. User enters 8-digit code OR clicks email link (auto-fills code)
+1. User enters 6-digit code OR clicks email link (auto-fills code)
 2. Call API: Verify email token
 3. On success → Navigate to Company Setup page
 4. On fail → Show error, allow retry

@@ -33,7 +33,7 @@ export const createUserRecord = mutation({
     firstName: v.string(),
     lastName: v.string(),
     phone: v.optional(v.string()),
-    verificationToken: v.string(), // 8-digit token
+    verificationToken: v.string(), // 6-digit token
     tokenExpiresAt: v.number(), // 24-hour expiration
   },
   handler: async (ctx, args): Promise<any> => {

@@ -58,7 +58,7 @@ This document tracks the implementation and testing of Phase 1 (Onboarding & Aut
 - [ ] **Wireframe**: Page 2 - Email Verification (Desktop & Mobile)
 - [ ] **Dependencies**: Task 1.1 (for integration testing)
 - [ ] **Deliverables**:
-  - [ ] Create 8-digit code input component with auto-advance
+  - [ ] Create 6-digit code input component with auto-advance
   - [ ] Implement countdown timer (24 hours) with visual progress
   - [ ] Add manual code verification
   - [ ] Add auto-verification from email link (token in URL)
@@ -371,7 +371,7 @@ This document tracks the implementation and testing of Phase 1 (Onboarding & Aut
   - [ ] Create PasswordInput component with toggle
   - [ ] Create PhoneInput component with formatting
   - [ ] Create CascadingSelect component
-  - [ ] Create CodeInput component (8 digits, auto-advance)
+  - [ ] Create CodeInput component (6 digits, auto-advance)
   - [ ] Create ProgressIndicator component
   - [ ] Create CountdownTimer component
 - [ ] **Testing Requirements**:

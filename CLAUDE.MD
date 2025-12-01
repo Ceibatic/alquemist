@@ -634,7 +634,7 @@ Delegating to sub-agents:
 [frontend-dev] Creating shared components...
 → PasswordInput (with strength indicator)
 → PhoneInput (Colombian format)
-→ CodeInput (8-digit auto-advance)
+→ CodeInput (6-digit auto-advance)
 
 [backend-dev] Setting up Convex auth...
 → Registration mutation
@@ -966,7 +966,7 @@ Installing dependencies:
 Creating shared components:
 ✓ PasswordInput (with strength indicator)
 ✓ PhoneInput (Colombian format)
-✓ CodeInput (8-digit auto-advance)
+✓ CodeInput (6-digit auto-advance)
 ✓ ProgressIndicator
 ✓ CountdownTimer
 
