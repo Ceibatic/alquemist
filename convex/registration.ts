@@ -16,7 +16,7 @@ import {
   verifyPassword,
 } from "./auth";
 import { api } from "./_generated/api";
-import { generateVerificationEmailHTML } from "./email";
+import { generateVerificationEmailHTML, sendEmailViaResend } from "./email";
 
 // ============================================================================
 // STEP 1: USER REGISTRATION (Without Company)
@@ -162,14 +162,31 @@ export const registerUserStep1 = action({
       throw new Error("Failed to create user");
     }
 
-    // 3. Generate email HTML for Bubble to send (Bubble will handle email sending)
+    // 3. Generate email HTML
     const { html: emailHtml, text: emailText } = generateVerificationEmailHTML(
       args.firstName,
       userResult.email,
       verificationToken
     );
 
-    console.log(`[EMAIL] Verification email prepared for ${userResult.email} (to be sent by Bubble)`);
+    // 4. Send verification email via Resend
+    const emailSubject = "🌱 Verifica tu email - Alquemist";
+    const emailResult = await sendEmailViaResend({
+      to: userResult.email,
+      subject: emailSubject,
+      html: emailHtml,
+      text: emailText,
+    });
+
+    if (!emailResult.success) {
+      console.warn(`[EMAIL] Failed to send verification email: ${emailResult.error}`);
+      // Still log the token so user can verify manually
+      console.log('==============================================');
+      console.log(`Verification code for ${userResult.email}: ${verificationToken}`);
+      console.log('==============================================');
+    } else {
+      console.log(`[EMAIL] ✓ Verification email sent to ${userResult.email}`);
+    }
 
     return {
       success: true,
@@ -177,12 +194,13 @@ export const registerUserStep1 = action({
       token: userResult.sessionToken, // Session token for API authentication
       email: userResult.email,
       message: "Cuenta creada. Por favor verifica tu correo electrónico.",
+      emailSent: emailResult.success,
       // For testing: include verification token
       verificationToken,
-      // Email content for Bubble to send
+      // Email content for backward compatibility
       emailHtml,
       emailText,
-      emailSubject: "🌱 Verifica tu email - Alquemist",
+      emailSubject,
     };
   },
 });
