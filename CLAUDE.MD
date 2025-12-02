@@ -218,11 +218,11 @@ Located in `docs/ui/bubble/`:
 
 ### Backend API Reference
 
-- **[docs/api/PHASE-1-ENDPOINTS.md](docs/api/PHASE-1-ENDPOINTS.md)** - Auth & onboarding
-- **[docs/api/PHASE-2-ENDPOINTS.md](docs/api/PHASE-2-ENDPOINTS.md)** - Basic setup
-- **[docs/api/PHASE-3-ENDPOINTS.md](docs/api/PHASE-3-ENDPOINTS.md)** - Templates
-- **[docs/api/PHASE-4-ENDPOINTS.md](docs/api/PHASE-4-ENDPOINTS.md)** - Production
-- **[docs/api/PHASE-5-ENDPOINTS.md](docs/api/PHASE-5-ENDPOINTS.md)** - Advanced
+- **[docs/api/PHASE-1-ONBOARDING-ENDPOINTS.md](docs/api/PHASE-1-ONBOARDING-ENDPOINTS.md)** - Auth & onboarding
+- **[docs/api/PHASE-2-BASIC-SETUP-ENDPOINTS.md](docs/api/PHASE-2-BASIC-SETUP-ENDPOINTS.md)** - Basic setup
+- **[docs/api/PHASE-3-TEMPLATES-ENDPOINTS.md](docs/api/PHASE-3-TEMPLATES-ENDPOINTS.md)** - Templates
+- **[docs/api/PHASE-4-PRODUCTION-ENDPOINTS.md](docs/api/PHASE-4-PRODUCTION-ENDPOINTS.md)** - Production
+- **[docs/api/PHASE-5-ADVANCED-ENDPOINTS.md](docs/api/PHASE-5-ADVANCED-ENDPOINTS.md)** - Advanced
 
 ### Database Schema
 
