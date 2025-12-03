@@ -477,12 +477,14 @@ export const login = mutation({
       token: sessionToken, // Session token for API authentication
       userId: user._id,
       companyId: company._id,
+      primaryFacilityId: user.primary_facility_id,
       user: {
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
         locale: user.locale,
         preferredLanguage: user.preferred_language || "es",
+        role_id: user.role_id,
       },
       company: {
         name: company.name,
@@ -627,6 +629,56 @@ export const logout = mutation({
 // ============================================================================
 // EMAIL VERIFICATION HELPERS
 // ============================================================================
+
+/**
+ * Create session for user after completing onboarding
+ * Used to establish authentication after company/facility setup
+ */
+export const createOnboardingSession = mutation({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Get user
+    const user = await ctx.db.get(args.userId);
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Verify user has completed onboarding
+    if (!user.email_verified) {
+      throw new Error("Email no verificado");
+    }
+
+    if (!user.company_id) {
+      throw new Error("Usuario no tiene empresa asignada");
+    }
+
+    // Generate session token
+    const sessionToken = generateSessionToken();
+    const sessionExpiration = getSessionExpiration(30);
+
+    await ctx.db.insert("sessions", {
+      user_id: user._id,
+      token: sessionToken,
+      expires_at: sessionExpiration,
+      is_active: true,
+      created_at: now,
+    });
+
+    return {
+      success: true,
+      sessionToken,
+      userId: user._id,
+      email: user.email,
+      companyId: user.company_id,
+      roleId: user.role_id,
+    };
+  },
+});
 
 /**
  * Update user verification token

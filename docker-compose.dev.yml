@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # ===========================================
+  # Alquemist Next.js Application (Development)
+  # ===========================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: alquemist-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot-reload
+      - .:/app
+      # Preserve node_modules from container (avoid host override)
+      - /app/node_modules
+      # Preserve .next build cache
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true
+    env_file:
+      - .env.local
+    networks:
+      - alquemist-dev-network
+
+networks:
+  alquemist-dev-network:
+    driver: bridge

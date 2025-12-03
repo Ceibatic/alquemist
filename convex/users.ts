@@ -256,23 +256,134 @@ export const getUserById = query({
     const company = user.company_id ? await ctx.db.get(user.company_id) : null;
 
     return {
+      _id: user._id,
       id: user._id,
       email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
       firstName: user.first_name,
       lastName: user.last_name,
       phone: user.phone,
+      identification_type: user.identification_type,
+      identification_number: user.identification_number,
       emailVerified: user.email_verified,
       roleId: user.role_id,
       roleName: role?.display_name_es || "Sin rol",
       companyId: user.company_id,
+      company_id: user.company_id,
       companyName: company?.name || null,
+      primary_facility_id: user.primary_facility_id,
       accessibleFacilityIds: user.accessible_facility_ids,
       locale: user.locale,
       timezone: user.timezone,
+      date_format: user.date_format,
+      time_format: user.time_format,
+      theme: user.theme,
+      email_notifications: user.email_notifications,
+      sms_notifications: user.sms_notifications,
+      notification_types: user.notification_types,
+      notification_delivery: user.notification_delivery,
+      quiet_hours_enabled: user.quiet_hours_enabled,
+      quiet_hours_start: user.quiet_hours_start,
+      quiet_hours_end: user.quiet_hours_end,
       status: user.status,
       lastLogin: user.last_login,
       createdAt: user.created_at,
     };
+  },
+});
+
+// ============================================================================
+// PHASE 2: USER INVITATION MANAGEMENT (MODULE 18)
+// ============================================================================
+
+/**
+ * List users and pending invitations by company
+ * Phase 2 Module 18
+ */
+export const listByCompany = query({
+  args: {
+    companyId: v.id("companies"),
+  },
+  handler: async (ctx, args) => {
+    // Get all active users
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .collect();
+
+    // Get user details with roles
+    const usersWithRoles = await Promise.all(
+      users.map(async (user) => {
+        const role = user.role_id ? await ctx.db.get(user.role_id) : null;
+
+        return {
+          id: user._id,
+          type: "user" as const,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          roleId: user.role_id,
+          roleName: role?.display_name_es || "Sin rol",
+          status: user.status,
+          lastLogin: user.last_login,
+          createdAt: user.created_at,
+        };
+      })
+    );
+
+    return usersWithRoles;
+  },
+});
+
+/**
+ * Get pending invitations for a company
+ * Phase 2 Module 18
+ */
+export const getPendingInvitations = query({
+  args: {
+    companyId: v.id("companies"),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const invitations = await ctx.db
+      .query("invitations")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+
+    // Filter out expired ones
+    const activeInvitations = invitations.filter(
+      (inv) => inv.expires_at > now
+    );
+
+    // Get details
+    const invitationsWithDetails = await Promise.all(
+      activeInvitations.map(async (inv) => {
+        const role = await ctx.db.get(inv.role_id);
+        const inviter = await ctx.db.get(inv.invited_by);
+        const facilities = await Promise.all(
+          inv.facility_ids.map((id) => ctx.db.get(id))
+        );
+
+        return {
+          id: inv._id,
+          type: "invitation" as const,
+          email: inv.email,
+          roleName: role?.display_name_es || "Desconocido",
+          facilityNames: facilities.filter((f) => f !== null).map((f) => f!.name),
+          inviterName: inviter
+            ? `${inviter.first_name || ""} ${inviter.last_name || ""}`.trim()
+            : "Desconocido",
+          status: inv.status,
+          expiresAt: inv.expires_at,
+          createdAt: inv.created_at,
+        };
+      })
+    );
+
+    return invitationsWithDetails;
   },
 });
 
@@ -303,6 +414,55 @@ export const getSettings = query({
       emailNotifications: user.email_notifications ?? true,
       smsNotifications: user.sms_notifications ?? false,
       theme: user.theme || "light",
+    };
+  },
+});
+
+/**
+ * Set user's current/primary facility
+ * Used after facility creation during onboarding
+ */
+export const setCurrentFacility = mutation({
+  args: {
+    userId: v.id("users"),
+    facilityId: v.id("facilities"),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Verify user exists
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Verify facility exists
+    const facility = await ctx.db.get(args.facilityId);
+    if (!facility) {
+      throw new Error("Instalación no encontrada");
+    }
+
+    // Verify facility belongs to user's company
+    if (facility.company_id !== user.company_id) {
+      throw new Error("La instalación no pertenece a la empresa del usuario");
+    }
+
+    // Update user's primary facility and accessible facilities
+    const accessibleFacilities = user.accessible_facility_ids || [];
+    if (!accessibleFacilities.includes(args.facilityId)) {
+      accessibleFacilities.push(args.facilityId);
+    }
+
+    await ctx.db.patch(args.userId, {
+      primary_facility_id: args.facilityId,
+      accessible_facility_ids: accessibleFacilities,
+      updated_at: now,
+    });
+
+    return {
+      success: true,
+      userId: args.userId,
+      facilityId: args.facilityId,
     };
   },
 });
@@ -381,5 +541,101 @@ export const updateSettings = mutation({
       success: true,
       message: "Account settings updated successfully",
     };
+  },
+});
+
+/**
+ * Update user profile information
+ * Phase 2 Module 21 - Account Settings
+ */
+export const updateProfile = mutation({
+  args: {
+    userId: v.id("users"),
+    first_name: v.optional(v.string()),
+    last_name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    identification_type: v.optional(v.string()),
+    identification_number: v.optional(v.string()),
+    locale: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    date_format: v.optional(v.string()),
+    time_format: v.optional(v.string()),
+    theme: v.optional(v.string()),
+    email_notifications: v.optional(v.boolean()),
+    sms_notifications: v.optional(v.boolean()),
+    notification_types: v.optional(v.any()),
+    notification_delivery: v.optional(v.any()),
+    quiet_hours_enabled: v.optional(v.boolean()),
+    quiet_hours_start: v.optional(v.string()),
+    quiet_hours_end: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Verify user exists
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const updates: any = {
+      updated_at: now,
+    };
+
+    // Update fields if provided
+    if (args.first_name !== undefined) updates.first_name = args.first_name;
+    if (args.last_name !== undefined) updates.last_name = args.last_name;
+    if (args.phone !== undefined) updates.phone = args.phone;
+    if (args.identification_type !== undefined) updates.identification_type = args.identification_type;
+    if (args.identification_number !== undefined) updates.identification_number = args.identification_number;
+    if (args.locale !== undefined) updates.locale = args.locale;
+    if (args.timezone !== undefined) updates.timezone = args.timezone;
+    if (args.date_format !== undefined) updates.date_format = args.date_format;
+    if (args.time_format !== undefined) updates.time_format = args.time_format;
+    if (args.theme !== undefined) updates.theme = args.theme;
+    if (args.email_notifications !== undefined) updates.email_notifications = args.email_notifications;
+    if (args.sms_notifications !== undefined) updates.sms_notifications = args.sms_notifications;
+    if (args.notification_types !== undefined) updates.notification_types = args.notification_types;
+    if (args.notification_delivery !== undefined) updates.notification_delivery = args.notification_delivery;
+    if (args.quiet_hours_enabled !== undefined) updates.quiet_hours_enabled = args.quiet_hours_enabled;
+    if (args.quiet_hours_start !== undefined) updates.quiet_hours_start = args.quiet_hours_start;
+    if (args.quiet_hours_end !== undefined) updates.quiet_hours_end = args.quiet_hours_end;
+
+    await ctx.db.patch(args.userId, updates);
+
+    return {
+      success: true,
+      message: "Profile updated successfully",
+    };
+  },
+});
+
+/**
+ * Change user password
+ * Phase 2 Module 21 - Security Settings
+ */
+export const changePassword = mutation({
+  args: {
+    userId: v.id("users"),
+    currentPassword: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Verify user exists
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Note: In a real implementation, you would verify the current password
+    // against a hashed version stored in the database. For now, we'll just
+    // update the password (this is a placeholder for the actual authentication logic)
+
+    // TODO: Implement proper password hashing and verification
+    // This should integrate with your authentication provider (Clerk, Auth0, etc.)
+
+    throw new Error("Password change must be handled through the authentication provider");
   },
 });

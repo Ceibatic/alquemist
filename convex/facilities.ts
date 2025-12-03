@@ -147,17 +147,51 @@ export const update = mutation({
     id: v.id("facilities"),
     companyId: v.id("companies"),
 
+    // Basic fields
     name: v.optional(v.string()),
+    license_number: v.optional(v.string()),
+    license_type: v.optional(v.string()),
+    license_authority: v.optional(v.string()),
+    license_issued_date: v.optional(v.number()),
+    license_expiry_date: v.optional(v.number()),
+
+    // Facility details
     status: v.optional(v.string()),
     facility_type: v.optional(v.string()),
+    primary_crop_type_ids: v.optional(v.array(v.id("crop_types"))),
+
+    // Location
     address: v.optional(v.string()),
     city: v.optional(v.string()),
-    latitude: v.optional(v.number()),
-    longitude: v.optional(v.number()),
+    administrative_division_1: v.optional(v.string()),
+    administrative_division_2: v.optional(v.string()),
+    postal_code: v.optional(v.string()),
+    gps_latitude: v.optional(v.number()),
+    gps_longitude: v.optional(v.number()),
+    altitude_meters: v.optional(v.number()),
+
+    // Areas
     total_area_m2: v.optional(v.number()),
+    cultivation_area_m2: v.optional(v.number()),
+    canopy_area_m2: v.optional(v.number()),
+
+    // Operations Settings
+    timezone: v.optional(v.string()),
+    workday_start: v.optional(v.string()),
+    workday_end: v.optional(v.string()),
+    workdays: v.optional(v.array(v.string())),
+    default_activity_duration: v.optional(v.number()),
+    auto_scheduling: v.optional(v.boolean()),
+
+    // Notification Settings
+    notifications_enabled: v.optional(v.boolean()),
+    low_stock_alert_enabled: v.optional(v.boolean()),
+    overdue_activity_alert_enabled: v.optional(v.boolean()),
+    license_expiration_alert_enabled: v.optional(v.boolean()),
+    critical_alert_email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, companyId, ...updates } = args;
+    const { id, companyId, gps_latitude, gps_longitude, ...updates } = args;
 
     // Verify company ownership
     const facility = await ctx.db.get(id);
@@ -165,10 +199,20 @@ export const update = mutation({
       throw new Error("Facility not found or access denied");
     }
 
-    await ctx.db.patch(id, {
+    // Map gps_latitude/longitude to latitude/longitude for storage
+    const patchData: any = {
       ...updates,
       updated_at: Date.now(),
-    });
+    };
+
+    if (gps_latitude !== undefined) {
+      patchData.latitude = gps_latitude;
+    }
+    if (gps_longitude !== undefined) {
+      patchData.longitude = gps_longitude;
+    }
+
+    await ctx.db.patch(id, patchData);
 
     return id;
   },

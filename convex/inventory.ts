@@ -161,13 +161,17 @@ export const getByFacility = query({
     // Filter by areas belonging to this facility
     let items = allItems.filter((item) => item.area_id && areaIds.includes(item.area_id));
 
-    // Enrich with product data for category filtering
+    // Enrich with product and supplier data
     const itemsWithProducts = await Promise.all(
       items.map(async (item) => {
         const product = await ctx.db.get(item.product_id);
+        const supplier = item.supplier_id ? await ctx.db.get(item.supplier_id) : null;
         return {
           ...item,
+          productName: product?.name,
+          productSku: product?.sku,
           productCategory: product?.category,
+          supplierName: supplier?.name,
         };
       })
     );
@@ -241,6 +245,7 @@ export const getById = query({
     }
 
     // Get related data
+    const product = await ctx.db.get(item.product_id);
     const area = item.area_id ? await ctx.db.get(item.area_id) : null;
     const supplier = item.supplier_id ? await ctx.db.get(item.supplier_id) : null;
 
@@ -261,6 +266,9 @@ export const getById = query({
 
     return {
       ...item,
+      productName: product?.name || null,
+      productSku: product?.sku || null,
+      productCategory: product?.category || null,
       areaName: area?.name || null,
       supplierName: supplier?.name || null,
       stockStatus,

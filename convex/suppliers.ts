@@ -8,7 +8,8 @@ import { mutation, query } from "./_generated/server";
 import { validateEmail, formatColombianPhone } from "./auth";
 
 /**
- * Get suppliers by company
+ * Get suppliers by company (alias for list)
+ * Legacy compatibility
  */
 export const getByCompany = query({
   args: {
@@ -31,6 +32,38 @@ export const getByCompany = query({
 
     if (args.isApproved !== undefined) {
       suppliers = suppliers.filter((s) => s.is_approved === args.isApproved);
+    }
+
+    if (args.productCategory) {
+      suppliers = suppliers.filter((s) =>
+        s.product_categories.includes(args.productCategory!)
+      );
+    }
+
+    return suppliers;
+  },
+});
+
+/**
+ * List suppliers with filters
+ * Phase 2 Module 16
+ */
+export const list = query({
+  args: {
+    companyId: v.id("companies"),
+    isActive: v.optional(v.boolean()),
+    productCategory: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let suppliersQuery = ctx.db
+      .query("suppliers")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId));
+
+    let suppliers = await suppliersQuery.collect();
+
+    // Apply filters
+    if (args.isActive !== undefined) {
+      suppliers = suppliers.filter((s) => s.is_active === args.isActive);
     }
 
     if (args.productCategory) {
@@ -305,6 +338,41 @@ export const update = mutation({
     await ctx.db.patch(id, updateData);
 
     return id;
+  },
+});
+
+/**
+ * Toggle supplier active status
+ * Phase 2 Module 16
+ */
+export const toggleStatus = mutation({
+  args: {
+    supplierId: v.id("suppliers"),
+    companyId: v.id("companies"),
+  },
+  handler: async (ctx, args) => {
+    // Verify company ownership
+    const supplier = await ctx.db.get(args.supplierId);
+    if (!supplier || supplier.company_id !== args.companyId) {
+      throw new Error("Proveedor no encontrado o acceso denegado");
+    }
+
+    // Toggle the status
+    const newStatus = !supplier.is_active;
+
+    await ctx.db.patch(args.supplierId, {
+      is_active: newStatus,
+      updated_at: Date.now(),
+    });
+
+    return {
+      success: true,
+      supplierId: args.supplierId,
+      isActive: newStatus,
+      message: newStatus
+        ? "Proveedor activado exitosamente"
+        : "Proveedor desactivado exitosamente",
+    };
   },
 });
 

@@ -1,1025 +1,173 @@
 # CLAUDE.MD - Alquemist Development Guide
 
-**Alquemist - Next.js Frontend Development**
-**Version**: 2.0
-**Last Updated**: 2025-11-28
+**Version**: 3.0 | **Last Updated**: 2025-12-02
 
 ---
 
 ## Project Identity
 
-**Alquemist** - Multi-region agricultural traceability SaaS platform for Cannabis, Coffee, Cocoa, and Flowers.
+**Alquemist** - Multi-region agricultural traceability SaaS for Cannabis, Coffee, Cocoa, and Flowers.
 
 ### Tech Stack
 
-**Frontend (Primary):**
-- **Next.js 15** with App Router and Turbopack
-- **React 19** with Server Components
-- **Tailwind CSS** for styling
-- **shadcn/ui** component library
-- **TypeScript** strict mode
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 15, React 19, TypeScript |
+| Styling | Tailwind CSS, shadcn/ui |
+| Backend | Convex (serverless) |
+| Auth | Custom session tokens (30-day) |
+| Email | Resend |
 
-**Backend:**
-- **Convex** serverless database and HTTP Actions
-- **Deployment**: https://handsome-jay-388.convex.site
-- **Auth**: Custom session tokens (30-day validity)
-- **Email**: Resend integration
-
-**Design Reference:**
-- **Bubble.io** wireframes as visual guide and UX patterns
-- Located in `docs/ui/bubble/PHASE-*.md`
-
-**Core Requirements:**
-- Multi-tenant (company-based isolation)
-- Batch-first tracking (50-1000 plants per batch)
-- Regulatory compliance (configurable by region)
-- Mobile-first responsive design
-- Real-time updates via Convex subscriptions
+### Core Requirements
+- Multi-tenant (company isolation)
+- Batch-first tracking (50-1000 plants/batch)
+- Mobile-first responsive
+- Real-time updates (Convex subscriptions)
 
 ---
 
-## Phased Development Methodology
-
-### Overview
-
-Alquemist Next.js frontend development follows a structured phase-by-phase approach that ensures quality, consistency, and maintainability.
-
-### Development Workflow Per Phase
-
-```
-PHASE X DEVELOPMENT FLOW
-========================
-
-┌─────────────────────────────────────┐
-│  BUBBLE REFERENCE (Input)           │
-│  docs/ui/bubble/PHASE-X-*.md        │
-│                                     │
-│  • Visual design patterns           │
-│  • Screen flows                     │
-│  • UX interactions                  │
-└──────────────┬──────────────────────┘
-               │
-               │ (Adapt to Next.js)
-               ▼
-┌─────────────────────────────────────┐
-│  NEXT.JS WIREFRAMES (Output)        │
-│  docs/ui/nextjs/PHASE-X-WIREFRAMES  │
-│                                     │
-│  • ASCII wireframes (desktop+mobile)│
-│  • Component structure              │
-│  • Data flow                        │
-│  • Next.js patterns                 │
-└──────────────┬──────────────────────┘
-               │
-               │ (Plan implementation)
-               ▼
-┌─────────────────────────────────────┐
-│  IMPLEMENTATION PLAN (Output)       │
-│  docs/dev-plans/PHASE-X-PLAN.md     │
-│                                     │
-│  • Module breakdown                 │
-│  • Task dependencies                │
-│  • Parallel streams                 │
-│  • Testing strategy                 │
-└──────────────┬──────────────────────┘
-               │
-               │ (Execute)
-               ▼
-┌─────────────────────────────────────┐
-│  DEVELOPMENT                        │
-│  app/(phase-x)/*                    │
-│                                     │
-│  • Implement pages                  │
-│  • Create components                │
-│  • Integrate backend                │
-│  • Add tests                        │
-└──────────────┬──────────────────────┘
-               │
-               │ (Validate)
-               ▼
-┌─────────────────────────────────────┐
-│  TESTING & REVIEW                   │
-│                                     │
-│  • Unit tests                       │
-│  • Integration tests                │
-│  • E2E tests                        │
-│  • Visual regression                │
-└──────────────┬──────────────────────┘
-               │
-               │ (Complete)
-               ▼
-┌─────────────────────────────────────┐
-│  PHASE COMPLETE → NEXT PHASE        │
-└─────────────────────────────────────┘
-```
-
-### Phase Development Steps
-
-#### Step 1: Wireframe Creation
-- **Input**: Bubble wireframes from `docs/ui/bubble/PHASE-X-*.md`
-- **Output**: Next.js wireframes in `docs/ui/nextjs/PHASE-X-WIREFRAMES.md`
-- **Process**:
-  1. Review Bubble phase documentation (visual reference)
-  2. Adapt to Next.js patterns (App Router, Server Components)
-  3. Create ASCII wireframes for desktop + mobile
-  4. Document component structure and data flow
-  5. Identify shared components needed
-
-#### Step 2: Implementation Plan Creation
-- **Input**: Next.js wireframes + phase requirements
-- **Output**: Implementation plan in `docs/dev-plans/PHASE-X-DEVELOPMENT-PLAN.md`
-- **Process**:
-  1. Break down phase into modules
-  2. Identify task dependencies
-  3. Define parallel development streams
-  4. Create detailed task checklists
-  5. Document testing requirements
-  6. Set success criteria
-
-#### Step 3: Development
-- **Input**: Wireframes + implementation plan
-- **Output**: Working Next.js application for the phase
-- **Process**:
-  1. Set up shared components (if first phase)
-  2. Implement pages following wireframes
-  3. Integrate with Convex backend
-  4. Add form validation (Zod + React Hook Form)
-  5. Implement responsive design (Tailwind)
-  6. Add loading/error states
-  7. Unit + integration testing
-
-#### Step 4: Review & Testing
-- **Input**: Completed phase implementation
-- **Output**: Tested, production-ready code
-- **Process**:
-  1. Unit tests (Jest + React Testing Library)
-  2. Integration tests (API mocking with MSW)
-  3. E2E tests (Playwright)
-  4. Visual regression tests (Percy/Chromatic)
-  5. Performance testing (Lighthouse)
-  6. Accessibility audit (a11y)
-
-#### Step 5: Next Phase Preparation
-- **Process**:
-  1. Document learnings and patterns
-  2. Update shared component library
-  3. Refactor if needed
-  4. Begin next phase wireframes
-
----
-
-## Reference Documentation
-
-### Setup & Configuration
-
-- **[FRONTEND-DESARROLLO-LOCAL.md](docs/setup-reference/FRONTEND-DESARROLLO-LOCAL.md)**
-  - Next.js 15 setup instructions
-  - Dependencies (Convex, Tailwind, shadcn/ui, Resend)
-  - Development workflow
-  - Common issues and solutions
-  - Testing strategies
-
-- **[FRONTEND-DESIGN-SYSTEM.md](docs/setup-reference/FRONTEND-DESIGN-SYSTEM.md)**
-  - Color palette (based on Bubble reference images)
-  - Typography (Inter font)
-  - Component patterns (Sidebar, Header, Cards, Forms)
-  - Spacing and grid system (4px base)
-  - Responsive breakpoints
-  - Accessibility standards (WCAG AA)
-
-### Phase Documentation
-
-#### Input: Bubble Reference (Visual Guide)
-
-Located in `docs/ui/bubble/`:
-- **PHASE-1-ONBOARDING.md** - Bubble onboarding UI
-- **PHASE-2-BASIC-SETUP.md** - Bubble setup screens
-- **PHASE-3-TEMPLATES.md** - Bubble template management
-- **PHASE-4-PRODUCTION.md** - Bubble production workflows
-- **PHASE-5-ADVANCED.md** - Bubble advanced features
-
-**Usage**: Visual reference and UX patterns (NOT implementation)
-
-#### Output: Next.js Implementation
-
-**Wireframes:**
-- `docs/ui/nextjs/PHASE-1-ONBOARDING-WIREFRAMES.md` ✅
-- `docs/ui/nextjs/PHASE-2-WIREFRAMES.md` (to be created)
-- `docs/ui/nextjs/PHASE-3-WIREFRAMES.md` (to be created)
-- `docs/ui/nextjs/PHASE-4-WIREFRAMES.md` (to be created)
-- `docs/ui/nextjs/PHASE-5-WIREFRAMES.md` (to be created)
-
-**Implementation Plans:**
-- `docs/dev-plans/PHASE-1-DEVELOPMENT-PLAN.md` ✅
-- `docs/dev-plans/PHASE-2-DEVELOPMENT-PLAN.md` (to be created)
-- `docs/dev-plans/PHASE-3-DEVELOPMENT-PLAN.md` (to be created)
-- `docs/dev-plans/PHASE-4-DEVELOPMENT-PLAN.md` (to be created)
-- `docs/dev-plans/PHASE-5-DEVELOPMENT-PLAN.md` (to be created)
-
-### Backend API Reference
-
-- **[docs/api/PHASE-1-ONBOARDING-ENDPOINTS.md](docs/api/PHASE-1-ONBOARDING-ENDPOINTS.md)** - Auth & onboarding
-- **[docs/api/PHASE-2-BASIC-SETUP-ENDPOINTS.md](docs/api/PHASE-2-BASIC-SETUP-ENDPOINTS.md)** - Basic setup
-- **[docs/api/PHASE-3-TEMPLATES-ENDPOINTS.md](docs/api/PHASE-3-TEMPLATES-ENDPOINTS.md)** - Templates
-- **[docs/api/PHASE-4-PRODUCTION-ENDPOINTS.md](docs/api/PHASE-4-PRODUCTION-ENDPOINTS.md)** - Production
-- **[docs/api/PHASE-5-ADVANCED-ENDPOINTS.md](docs/api/PHASE-5-ADVANCED-ENDPOINTS.md)** - Advanced
-
-### Database Schema
-
-- **[docs/database/SCHEMA.md](docs/database/SCHEMA.md)** - Single source of truth for all 26 tables
-
----
-
-## Development Workflow
-
-### Starting a New Phase
-
-**Command**: `@phase-start <phase-number>`
-
-**Process**:
-1. Load Bubble reference: `docs/ui/bubble/PHASE-X-*.md`
-2. Review existing wireframes (if any): `docs/ui/nextjs/PHASE-X-WIREFRAMES.md`
-3. Review existing plan (if any): `docs/dev-plans/PHASE-X-DEVELOPMENT-PLAN.md`
-4. Ask: "Create wireframes or start implementation?"
-
-**Example**:
-```
-User: @phase-start 1
-
-Claude:
-Loading Phase 1 context...
-✓ Bubble reference: docs/ui/bubble/PHASE-1-ONBOARDING.md
-✓ Next.js wireframes: docs/ui/nextjs/PHASE-1-ONBOARDING-WIREFRAMES.md ✅
-✓ Implementation plan: docs/dev-plans/PHASE-1-DEVELOPMENT-PLAN.md ✅
-
-Phase 1 is ready to implement!
-
-Options:
-1. Review wireframes
-2. Review implementation plan
-3. Start development
-4. Modify wireframes/plan
-
-What would you like to do?
-```
-
-### Creating Wireframes
-
-**Command**: `@wireframes create <phase-number>`
-
-**Process**:
-1. Read Bubble reference documentation
-2. Adapt to Next.js patterns
-3. Create ASCII wireframes (desktop + mobile)
-4. Document component hierarchy
-5. Save to `docs/ui/nextjs/PHASE-X-WIREFRAMES.md`
-
-**Example**:
-```
-User: @wireframes create 2
-
-Claude:
-Creating Phase 2 wireframes...
-✓ Reading: docs/ui/bubble/PHASE-2-BASIC-SETUP.md
-✓ Analyzing screens (7 pages identified)
-✓ Adapting to Next.js App Router patterns
-✓ Creating wireframes...
-
-Wireframes created:
-- docs/ui/nextjs/PHASE-2-WIREFRAMES.md
-  - Page 1: Dashboard Overview
-  - Page 2: Areas Management
-  - Page 3: Cultivars Setup
-  - ... (7 total)
-
-Next step: Create implementation plan
-@plan create 2
-```
-
-### Creating Implementation Plan
-
-**Command**: `@plan create <phase-number>`
-
-**Process**:
-1. Read wireframes for the phase
-2. Break down into modules and tasks
-3. Identify dependencies
-4. Create parallel development streams
-5. Define testing strategy
-6. Save to `docs/dev-plans/PHASE-X-DEVELOPMENT-PLAN.md`
-
-**Example**:
-```
-User: @plan create 2
-
-Claude:
-Creating Phase 2 implementation plan...
-✓ Reading: docs/ui/nextjs/PHASE-2-WIREFRAMES.md
-✓ Analyzing modules (3 modules, 15 tasks)
-✓ Identifying dependencies
-✓ Planning parallel streams (2 streams possible)
-✓ Defining testing requirements
-
-Plan created:
-- docs/dev-plans/PHASE-2-DEVELOPMENT-PLAN.md
-  - Module 1: Dashboard & Navigation (5 tasks)
-  - Module 2: Areas Management (6 tasks)
-  - Module 3: Master Data Setup (4 tasks)
-  - Testing strategy defined
-  - Success metrics defined
-
-Next step: Start implementation
-@implement phase-2
-```
-
-### Implementing a Phase
-
-**Command**: `@implement phase-<number>` or `@implement <module>`
-
-**Process**:
-1. Load wireframes + implementation plan
-2. Set up required dependencies
-3. Create shared components
-4. Implement pages/modules
-5. Integrate with backend
-6. Add tests
-7. Track progress with TodoWrite
-
-**Example**:
-```
-User: @implement phase-1
-
-Claude:
-Implementing Phase 1...
-✓ Loading wireframes
-✓ Loading implementation plan
-✓ Installing dependencies
-
-Creating todo list:
-1. [ ] Set up shared components
-2. [ ] Implement Signup Form (Page 1)
-3. [ ] Implement Email Verification (Page 2)
-... (11 total tasks)
-
-Starting with shared components...
-```
-
----
-
-## Sub-Agent Development Method
-
-### Overview
-
-Alquemist uses **Claude Code Sub-Agents** - specialized AI assistants with dedicated expertise for different aspects of development. Each sub-agent has its own context window, specific tools, and domain knowledge.
-
-### Why Sub-Agents?
-
-- **Specialized Expertise**: Each agent is an expert in their domain (frontend, backend, testing, etc.)
-- **Focused Context**: Keeps the main conversation clean and organized
-- **Faster Development**: Agents work in parallel when possible
-- **Quality Assurance**: Built-in code review and testing specialists
-- **Team Consistency**: Shared agents ensure consistent patterns
-
-### Available Sub-Agents
-
-All sub-agents are located in `.claude/agents/` and version-controlled with the project.
-
-#### 1. Frontend Developer (`frontend-dev`)
-
-**Expertise**: React 19, Next.js 15, Tailwind CSS, Radix UI, React Hook Form
-
-**Use For**:
-- Creating UI components and pages
-- Building forms with validation
-- Implementing responsive designs
-- Working with Server/Client Components
-- Accessibility implementations
-
-**Example**:
-```
-Create a responsive user profile form with Radix UI components
-and Zod validation
-```
-
-#### 2. Backend Developer (`backend-dev`)
-
-**Expertise**: Convex queries/mutations/actions, schema design, Resend emails
-
-**Use For**:
-- Convex function development
-- Database schema design
-- Email workflow implementation
-- API endpoint creation
-- Backend optimization
-
-**Example**:
-```
-Use backend-dev to create a Convex mutation for batch creation
-with proper validation and company isolation
-```
-
-#### 3. Code Reviewer (`code-reviewer`)
-
-**Expertise**: Security, quality assurance, best practices
-
-**Use For**:
-- Pull request reviews
-- Security audits
-- Code quality checks
-- Finding bugs and vulnerabilities
-- Ensuring TypeScript best practices
-
-**Example**:
-```
-Review my recent changes for security issues and code quality
-```
-
-#### 4. TypeScript Expert (`typescript-expert`)
-
-**Expertise**: Advanced TypeScript, generics, Zod schemas, type safety
-
-**Use For**:
-- Fixing type errors
-- Designing type-safe APIs
-- Creating complex types
-- Type inference optimization
-- Zod schema design
-
-**Example**:
-```
-Help fix the type errors in the batch tracking module
-```
-
-#### 5. Test Engineer (`test-engineer`)
-
-**Expertise**: Jest, React Testing Library, Convex testing, integration tests
-
-**Use For**:
-- Writing unit tests
-- Creating integration tests
-- Testing Convex functions
-- Test coverage analysis
-- Setting up test infrastructure
-
-**Example**:
-```
-Write comprehensive tests for the user registration flow
-```
-
-### Sub-Agent Workflow
-
-#### Automatic Invocation (Recommended)
-
-Claude automatically selects the right sub-agent based on your request:
-
-```
-User: "Create a login form with email and password"
-→ Claude uses frontend-dev automatically
-
-User: "Review my latest PR"
-→ Claude uses code-reviewer automatically
-```
-
-#### Explicit Invocation
-
-Request a specific sub-agent:
-
-```
-User: "Use backend-dev to create the facility management API"
-User: "Ask typescript-expert to help with these type errors"
-User: "Have test-engineer write tests for this component"
-```
-
-#### Chaining Sub-Agents
-
-Combine multiple sub-agents for complex workflows:
-
-```
-User: "Use backend-dev for the API, frontend-dev for the UI,
-and test-engineer to write comprehensive tests"
-```
-
-### Integration with Phased Development
-
-Sub-agents work seamlessly with the phased development methodology:
-
-#### Phase Development Workflow with Sub-Agents
-
-```
-PHASE X IMPLEMENTATION WITH SUB-AGENTS
-======================================
-
-Step 1: WIREFRAME CREATION
-→ General-purpose agent or Plan agent
-
-Step 2: IMPLEMENTATION PLANNING
-→ General-purpose agent or Plan agent
-
-Step 3: DEVELOPMENT
-┌─────────────────────────────────┐
-│ Frontend Tasks                  │
-│ → frontend-dev agent            │
-│   • Components                  │
-│   • Pages                       │
-│   • Forms                       │
-└─────────────────────────────────┘
-        ↓ (parallel)
-┌─────────────────────────────────┐
-│ Backend Tasks                   │
-│ → backend-dev agent             │
-│   • Queries/Mutations           │
-│   • Schema updates              │
-│   • Email workflows             │
-└─────────────────────────────────┘
-        ↓ (parallel)
-┌─────────────────────────────────┐
-│ Type Safety                     │
-│ → typescript-expert agent       │
-│   • Type definitions            │
-│   • Zod schemas                 │
-│   • Fix type errors             │
-└─────────────────────────────────┘
-        ↓ (sequential)
-┌─────────────────────────────────┐
-│ Testing                         │
-│ → test-engineer agent           │
-│   • Unit tests                  │
-│   • Integration tests           │
-│   • Coverage analysis           │
-└─────────────────────────────────┘
-        ↓ (final)
-┌─────────────────────────────────┐
-│ Code Review                     │
-│ → code-reviewer agent           │
-│   • Security audit              │
-│   • Quality check               │
-│   • Best practices              │
-└─────────────────────────────────┘
-```
-
-### Recommended Workflows
-
-#### New Feature Development
-
-```
-User: I need to add batch tracking functionality
-
-Process:
-1. backend-dev: Create Convex schema and mutations
-2. frontend-dev: Build the UI components and forms
-3. typescript-expert: Ensure type safety across stack
-4. test-engineer: Write comprehensive tests
-5. code-reviewer: Final security and quality review
-```
-
-#### Bug Fix
-
-```
-User: Fix authentication bug in login flow
-
-Process:
-1. code-reviewer: Analyze the issue
-2. backend-dev or frontend-dev: Implement fix
-3. test-engineer: Add regression tests
-4. code-reviewer: Verify the fix
-```
-
-#### Code Refactoring
-
-```
-User: Refactor the facility management module
-
-Process:
-1. code-reviewer: Identify refactoring opportunities
-2. typescript-expert: Update types and interfaces
-3. frontend-dev/backend-dev: Refactor code
-4. test-engineer: Update and add tests
-5. code-reviewer: Validate improvements
-```
-
-### Sub-Agent Commands
-
-```bash
-# View all available sub-agents
-ls .claude/agents/
-
-# Edit a sub-agent's behavior
-# Edit: .claude/agents/frontend-dev.md
-
-# Documentation
-# Read: docs/dev/SUBAGENTS-GUIDE.md
-```
-
-### Best Practices
-
-1. **Let Claude Choose**: For most tasks, let Claude automatically select the right sub-agent
-2. **Be Specific**: Provide clear requirements and context
-3. **Chain Intelligently**: Plan multi-step workflows that leverage multiple agents
-4. **Review Output**: Always review sub-agent work and iterate if needed
-5. **Use Proactively**: Use code-reviewer before every PR
-
-### Sub-Agent + Phase Example
-
-```
-User: @implement phase-1
-
-Claude:
-Starting Phase 1 implementation...
-
-Loading implementation plan...
-✓ 50+ tasks identified across 6 modules
-
-Delegating to sub-agents:
-
-[frontend-dev] Creating shared components...
-→ PasswordInput (with strength indicator)
-→ PhoneInput (Colombian format)
-→ CodeInput (6-digit auto-advance)
-
-[backend-dev] Setting up Convex auth...
-→ Registration mutation
-→ Email verification flow
-→ Session token generation
-
-[typescript-expert] Ensuring type safety...
-→ Form validation schemas (Zod)
-→ API type definitions
-→ Component prop interfaces
-
-[test-engineer] Writing tests...
-→ Component unit tests
-→ Form validation tests
-→ API integration tests
-
-[code-reviewer] Final review...
-→ Security audit (no exposed secrets)
-→ Accessibility check (WCAG AA)
-→ Performance analysis
-
-Phase 1 implementation complete!
-```
-
-### Customizing Sub-Agents
-
-Each sub-agent can be customized by editing their markdown file:
-
-```markdown
----
-name: custom-agent
-description: When this agent should be invoked
-tools: Read, Write, Edit, Bash
-model: sonnet
----
-
-You are a specialized agent for [domain]...
-
-[Detailed instructions]
-```
-
-**Location**: `.claude/agents/custom-agent.md`
-
-### Documentation
-
-- **Full Guide**: [docs/dev/SUBAGENTS-GUIDE.md](docs/dev/SUBAGENTS-GUIDE.md)
-- **Agent Files**: `.claude/agents/`
-- **Official Docs**: https://code.claude.com/docs/en/sub-agents
+## Documentation Context
+
+### Para planear/implementar un modulo:
+
+| Documento | Proposito |
+|-----------|-----------|
+| `docs/testing/0X-PHASE-X-*.md` | Funcionalidades y casos de prueba |
+| `docs/UI-PATTERNS.md` | Patrones de layout y UX |
+| `convex/schema.ts` | Estructura de datos |
+| `docs/ui/reference-images/` | Imagenes de referencia visual |
+
+### Archivos de Testing por Fase:
+- `docs/testing/01-PHASE-1-ONBOARDING-TESTS.md`
+- `docs/testing/02-PHASE-2-MASTER-DATA-TESTS.md`
+- `docs/testing/03-PHASE-3-TEMPLATES-TESTS.md`
+- `docs/testing/04-PHASE-4-PRODUCTION-TESTS.md`
 
 ---
 
 ## Phase Status
 
-### Phase 1: Onboarding & Authentication
+| Phase | Descripcion | Status |
+|-------|-------------|--------|
+| 1 | Onboarding & Auth | ✅ Completada |
+| 2 | Master Data (Areas, Cultivars, Suppliers, Users, Inventory) | 🟡 En progreso |
+| 3 | Templates Management | ⚪ Pendiente |
+| 4 | Production Workflows | ⚪ Pendiente |
 
-- **Wireframes**: ✅ Complete (11 screens, 2 flows)
-- **Implementation Plan**: ✅ Complete (6 modules, 50+ tasks)
-- **Development Status**: 🔴 Not Started (ready to begin)
-- **Testing**: ⚪ Pending
-
-**Documentation:**
-- Wireframes: [docs/ui/nextjs/PHASE-1-ONBOARDING-WIREFRAMES.md](docs/ui/nextjs/PHASE-1-ONBOARDING-WIREFRAMES.md)
-- Plan: [docs/dev-plans/PHASE-1-DEVELOPMENT-PLAN.md](docs/dev-plans/PHASE-1-DEVELOPMENT-PLAN.md)
-- Bubble Reference: [docs/ui/bubble/PHASE-1-ONBOARDING.md](docs/ui/bubble/PHASE-1-ONBOARDING.md)
-
-**Scope:**
-- First User Flow (7 screens): Signup → Email Verify → Company → Facility → Complete
-- Invited User Flow (4 screens): Accept → Set Password → Welcome
-- Login & Session Management
-
----
-
-### Phase 2: Basic Operations Setup
-
-- **Wireframes**: 🔴 Not Started
-- **Implementation Plan**: 🔴 Not Started
-- **Development Status**: ⚪ Blocked (needs wireframes)
-- **Testing**: ⚪ Pending
-
-**Bubble Reference:** [docs/ui/bubble/PHASE-2-BASIC-SETUP.md](docs/ui/bubble/PHASE-2-BASIC-SETUP.md)
-
-**Planned Scope:**
-- Dashboard home
-- Areas management
-- Cultivars setup
-- Suppliers management
-- User management & roles
+### Phase 2 Modules:
+- Module 8: Areas ✅
+- Module 15: Cultivars ✅
+- Module 16: Suppliers ✅
+- Module 17: Users ✅
+- Module 18: Facilities ✅
+- Module 19: Inventory ✅
+- Module 20: Facility Settings
+- Module 21: Account Settings
 
 ---
 
-### Phase 3: Templates Management
+## UI/UX Principles
 
-- **Wireframes**: 🔴 Not Started
-- **Implementation Plan**: 🔴 Not Started
-- **Development Status**: ⚪ Blocked (needs Phase 2)
-- **Testing**: ⚪ Pending
+Ver `docs/UI-PATTERNS.md` para patrones detallados.
 
-**Bubble Reference:** [docs/ui/bubble/PHASE-3-TEMPLATES.md](docs/ui/bubble/PHASE-3-TEMPLATES.md)
+### Colores
+- **CTAs (Crear/Guardar)**: `bg-amber-500 hover:bg-amber-600`
+- **Estados activos**: `bg-green-700 hover:bg-green-800`
+- **Status badges**: green/yellow/red segun estado
 
-**Planned Scope:**
-- Production templates
-- Quality check templates
-- Template library
+### Patrones de Pagina
+- **Lista**: Dropdown filtro + Search + Boton crear (una linea)
+- **Detalle**: Tabs con iconos (Detalle, Lotes, Actividades, Inventario)
+- **Cards**: Clickeables → navegan a detalle
+- **Formularios**: Modal max-w-4xl con validacion Zod
 
----
-
-### Phase 4: Production Workflows
-
-- **Wireframes**: 🔴 Not Started
-- **Implementation Plan**: 🔴 Not Started
-- **Development Status**: ⚪ Blocked (needs Phase 3)
-- **Testing**: ⚪ Pending
-
-**Bubble Reference:** [docs/ui/bubble/PHASE-4-PRODUCTION.md](docs/ui/bubble/PHASE-4-PRODUCTION.md)
-
-**Planned Scope:**
-- Batch creation & tracking
-- Activity scheduling
-- Quality checks
-- Inventory management
+### Responsive
+- Mobile-first
+- Grid: `lg:grid-cols-3 md:grid-cols-2`
+- Botones: solo icono en mobile, texto en desktop
 
 ---
 
-### Phase 5: Advanced Features
+## Convex Backend
 
-- **Wireframes**: 🔴 Not Started
-- **Implementation Plan**: 🔴 Not Started
-- **Development Status**: ⚪ Blocked (needs Phase 4)
-- **Testing**: ⚪ Pending
+**Deployment**: https://handsome-jay-388.convex.site
 
-**Bubble Reference:** [docs/ui/bubble/PHASE-5-ADVANCED.md](docs/ui/bubble/PHASE-5-ADVANCED.md)
+### Auth Flow
+1. Register → Email verification → Company setup → Facility setup
+2. Login → Session token (30 days)
+3. All requests: `Authorization: Bearer {token}`
 
-**Planned Scope:**
-- Compliance & reporting
-- Analytics & BI
-- Integrations & APIs
-- Mobile enhancements
-
----
-
-## Development Principles
-
-### 1. Bubble as Visual Reference, Not Implementation
-
-- ✅ Use Bubble docs for UX patterns and screen flows
-- ✅ Extract visual design elements (colors, spacing, layouts)
-- ✅ Understand user workflows and interactions
-- ❌ Don't copy Bubble implementation details
-- ❌ Don't use Bubble-specific concepts (workflows, custom states)
-- ✅ Adapt to Next.js patterns (Server Components, Server Actions, Route Handlers)
-
-### 2. Phase-by-Phase Progression
-
-- ✅ Complete wireframes before implementation
-- ✅ Create detailed plan before coding
-- ✅ One phase at a time (no jumping ahead)
-- ✅ Document learnings for next phase
-- ❌ Don't skip planning steps
-
-### 3. Documentation-Driven Development
-
-- ✅ Wireframes define UI structure (ASCII diagrams)
-- ✅ Implementation plan defines execution (tasks, dependencies)
-- ✅ Code follows documented patterns (design system)
-- ✅ Tests validate requirements (unit, integration, E2E)
-
-### 4. Iterative Refinement
-
-- ✅ Review wireframes before finalizing
-- ✅ Refine plan based on technical discoveries
-- ✅ Refactor code between phases
-- ✅ Update documentation as patterns emerge
+### Multi-Tenant
+- Cada registro tiene `company_id`
+- Queries filtrados por company
+- Session incluye company context
 
 ---
 
-## Backend Architecture
+## Development Workflow
 
-### Convex HTTP Actions
+### Iniciar desarrollo de un modulo:
 
-**Deployment URL:** https://handsome-jay-388.convex.site
+1. **Revisar funcionalidades**: Leer `docs/testing/0X-PHASE-X-*.md`
+2. **Revisar patrones**: Leer `docs/UI-PATTERNS.md`
+3. **Revisar schema**: Leer `convex/schema.ts` (tabla relevante)
+4. **Implementar**: Seguir patrones establecidos
+5. **Probar**: Ejecutar casos de prueba del documento
 
-**Core Modules:**
-- `convex/auth.ts` - Custom session token authentication
-- `convex/users.ts` - User management
-- `convex/companies.ts` - Company CRUD with isolation
-- `convex/facilities.ts` - Facility management
-- `convex/batches.ts` - Batch tracking
-- `convex/geographic.ts` - Countries, departments, municipalities
+### Estructura de archivos por modulo:
+```
+app/(dashboard)/[module]/
+├── page.tsx              # Lista principal
+└── [id]/
+    ├── page.tsx          # Detalle con tabs
+    └── edit/page.tsx     # Formulario edicion
 
-**Authentication Flow:**
-1. User signs up → POST /api/v1/auth/register-step1
-2. Email verification → POST /api/v1/auth/verify-email
-3. Company setup → POST /api/v1/auth/register-step2
-4. Login → POST /api/v1/auth/login (returns session_token)
-5. All requests → Authorization: Bearer {session_token}
-
-**Multi-Tenant Isolation:**
-- Every record has `companyId`
-- Session token includes `company_id`
-- All queries filtered by company
-
-**Email Service:**
-- Resend integration for verification emails
-- Password reset
-- Notifications
+components/[module]/
+├── [module]-list.tsx     # Componente de lista
+├── [module]-card.tsx     # Card individual
+├── [module]-create-modal.tsx
+└── [module]-*-tab.tsx    # Tabs de detalle
+```
 
 ---
 
 ## Setup Instructions
 
-### Initial Setup (One-Time)
-
-**1. Clone & Install**
+### Development
 ```bash
-git clone <repository-url>
-cd alquemist
 npm install
+npm run dev          # Next.js en http://localhost:3000
+npx convex dev       # Solo si modificas backend
 ```
 
-**2. Environment Variables**
-
-Create `.env.local`:
+### Build & Deploy
 ```bash
-# Convex (auto-generated by `npx convex dev`)
-CONVEX_DEPLOYMENT=dev:your-deployment
-NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
-
-# Development
-NODE_ENV=development
+npm run build
+npm run start
 ```
 
-**3. Start Development Servers**
-
+### Code Quality
 ```bash
-# Terminal 1: Next.js dev server
-npm run dev
-
-# Terminal 2: Convex dev server (optional, for backend changes)
-npx convex dev
-```
-
-**4. Access Application**
-- Next.js App: http://localhost:3000
-- Convex Dashboard: https://dashboard.convex.dev
-- Convex API: https://handsome-jay-388.convex.site
-
-### Development Commands
-
-```bash
-# Development
-npm run dev              # Next.js dev server with Turbopack
-npx convex dev          # Convex backend dev (if modifying backend)
-
-# Building
-npm run build           # Production build
-npm run start           # Production server
-
-# Code Quality
-npm run lint            # ESLint check
-npm run lint:fix        # ESLint auto-fix
-npm run type-check      # TypeScript check
-
-# Testing
-npm test                # Run tests (when configured)
+npm run lint
+npx tsc --noEmit     # Type check
 ```
 
 ---
 
-## Testing Strategy
+## Work Rules
 
-### Unit Testing
-- **Tool**: Jest + React Testing Library
-- **Coverage Target**: 80%+
-- **Focus**: Component logic, hooks, utilities
+### Principios
+- **Simplicidad**: Cambios minimos necesarios
+- **No scope creep**: Solo lo pedido
+- **Root cause**: Arreglar el problema real
+- **Production-ready**: Cada cambio debe ser deployable
 
-### Integration Testing
-- **Tool**: Jest + MSW (API mocking)
-- **Coverage Target**: 70%+
-- **Focus**: Form submissions, API integration
+### Antes de implementar
+1. Leer codigo existente
+2. Entender patrones establecidos
+3. Planificar cambios minimos
 
-### E2E Testing
-- **Tool**: Playwright
-- **Coverage**: Critical user paths
-- **Focus**: Complete workflows (signup → dashboard)
-
-### Visual Regression
-- **Tool**: Percy or Chromatic
-- **Coverage**: All pages
-- **Breakpoints**: Mobile (375px), Tablet (768px), Desktop (1280px)
-
----
-
-## Example Session
-
-```
-User: @phase-start 1
-
-Claude:
-Loading Phase 1 context...
-✓ Bubble reference: docs/ui/bubble/PHASE-1-ONBOARDING.md
-✓ Next.js wireframes: docs/ui/nextjs/PHASE-1-ONBOARDING-WIREFRAMES.md ✅
-✓ Implementation plan: docs/dev-plans/PHASE-1-DEVELOPMENT-PLAN.md ✅
-
-Phase 1 is ready to implement!
-
-Next steps:
-1. Install Next.js 15 and dependencies
-2. Set up design system (Tailwind + shadcn/ui)
-3. Implement shared components
-4. Build authentication flow
-
-Start implementation? (@implement phase-1)
-
----
-
-User: @implement phase-1
-
-Claude:
-Starting Phase 1 implementation...
-
-Installing dependencies:
-✓ Next.js 15
-✓ React 19
-✓ Tailwind CSS
-✓ shadcn/ui
-✓ React Hook Form + Zod
-✓ Convex client
-
-Creating shared components:
-✓ PasswordInput (with strength indicator)
-✓ PhoneInput (Colombian format)
-✓ CodeInput (6-digit auto-advance)
-✓ ProgressIndicator
-✓ CountdownTimer
-
-Implementing Signup Form (Page 1)...
-[Creates /app/(auth)/signup/page.tsx]
-✓ Form validation with Zod
-✓ Email availability check
-✓ Password strength indicator
-✓ Server Action integration
-
-Test at: http://localhost:3000/signup
-```
-
----
-
-## Success Criteria
-
-**Per Phase:**
-- ✅ Wireframes complete and reviewed
-- ✅ Implementation plan detailed and approved
-- ✅ All screens implemented per wireframes
-- ✅ Backend integration working
-- ✅ Unit tests passing (80%+ coverage)
-- ✅ Integration tests passing
-- ✅ E2E tests for critical paths
-- ✅ Responsive on mobile, tablet, desktop
-- ✅ Accessibility audit passed (WCAG AA)
-- ✅ Performance benchmarks met (LCP < 2s)
-
-**Project Complete:**
-- ✅ All 5 phases implemented
-- ✅ Production deployment successful
-- ✅ User acceptance testing passed
-- ✅ Monitoring and alerts configured
-
----
-
-## Next Steps
-
-**Ready to Start:**
-1. Phase 1 wireframes and plan are complete
-2. Run `@implement phase-1` to begin development
-3. Follow the phased development workflow
-4. Create Phase 2 wireframes when Phase 1 is done
-
-**Commands Available:**
-- `@phase-start 1` - Review Phase 1 status and options
-- `@implement phase-1` - Start Phase 1 development
-- `@wireframes create 2` - Create Phase 2 wireframes (after Phase 1)
-- `@plan create 2` - Create Phase 2 plan (after wireframes)
-
----
-
-**Document Owner**: Development Team
-**Last Updated**: 2025-11-28
-**Version**: 2.0 - Phased Next.js Development Methodology
+### Despues de implementar
+- Verificar TypeScript: `npx tsc --noEmit`
+- Probar funcionalidad manualmente
+- Seguir casos de prueba del doc de testing

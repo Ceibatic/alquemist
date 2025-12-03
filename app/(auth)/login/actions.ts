@@ -1,9 +1,50 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { loginSchema } from '@/lib/validations';
 import { convex, getConvexErrorMessage } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
+
+/**
+ * Set HTTP-only session cookies for authentication
+ */
+export async function setSessionCookies(data: {
+  sessionToken: string;
+  userId: string;
+  email: string;
+  companyId?: string;
+  roleId: string;
+  primaryFacilityId?: string;
+}) {
+  const cookieStore = await cookies();
+
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge: 60 * 60 * 24 * 7, // 7 días
+  };
+
+  // Session token cookie
+  cookieStore.set('session_token', data.sessionToken, cookieOptions);
+
+  // User data cookie for server components
+  cookieStore.set(
+    'user_data',
+    JSON.stringify({
+      userId: data.userId,
+      email: data.email,
+      companyId: data.companyId,
+      roleId: data.roleId,
+      primaryFacilityId: data.primaryFacilityId,
+    }),
+    cookieOptions
+  );
+
+  return { success: true };
+}
 
 export async function authenticateUser(
   data: z.infer<typeof loginSchema>,
@@ -37,6 +78,7 @@ export async function authenticateUser(
       sessionToken: result.token,
       userId: result.userId,
       companyId: result.companyId,
+      primaryFacilityId: result.primaryFacilityId,
       user: result.user,
       company: result.company,
     };

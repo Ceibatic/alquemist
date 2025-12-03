@@ -43,6 +43,113 @@ export const get = query({
 });
 
 /**
+ * List areas with filters
+ * Phase 2 Module 14
+ */
+export const list = query({
+  args: {
+    facilityId: v.id("facilities"),
+    areaType: v.optional(v.string()),
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let areasQuery = ctx.db
+      .query("areas")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId));
+
+    const allAreas = await areasQuery.collect();
+
+    // Apply filters
+    let areas = allAreas;
+
+    if (args.areaType) {
+      areas = areas.filter((area) => area.area_type === args.areaType);
+    }
+
+    if (args.status) {
+      areas = areas.filter((area) => area.status === args.status);
+    }
+
+    return areas;
+  },
+});
+
+/**
+ * Get area by ID with occupancy info
+ * Phase 2 Module 14
+ */
+export const getById = query({
+  args: {
+    areaId: v.id("areas"),
+  },
+  handler: async (ctx, args) => {
+    const area = await ctx.db.get(args.areaId);
+    if (!area) {
+      return null;
+    }
+
+    // Calculate occupancy percentage
+    let occupancyPercentage = 0;
+    if (area.capacity_configurations) {
+      const config = area.capacity_configurations as any;
+      const maxCapacity = config.max_capacity || 0;
+      if (maxCapacity > 0) {
+        occupancyPercentage = Math.round(
+          (area.current_occupancy / maxCapacity) * 100
+        );
+      }
+    }
+
+    return {
+      ...area,
+      occupancyPercentage,
+    };
+  },
+});
+
+/**
+ * Get area statistics for a facility
+ * Phase 2 Module 14
+ */
+export const getStats = query({
+  args: {
+    facilityId: v.id("facilities"),
+  },
+  handler: async (ctx, args) => {
+    const areas = await ctx.db
+      .query("areas")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    const total = areas.length;
+    const active = areas.filter((a) => a.status === "active").length;
+    const maintenance = areas.filter((a) => a.status === "maintenance").length;
+    const inactive = areas.filter((a) => a.status === "inactive").length;
+
+    // Count by area type
+    const byType: Record<string, number> = {};
+    areas.forEach((area) => {
+      byType[area.area_type] = (byType[area.area_type] || 0) + 1;
+    });
+
+    // Calculate total area
+    const totalAreaM2 = areas.reduce(
+      (sum, area) => sum + (area.total_area_m2 || 0),
+      0
+    );
+
+    return {
+      total,
+      active,
+      maintenance,
+      inactive,
+      byType,
+      totalAreaM2,
+    };
+  },
+});
+
+/**
  * Create a new area
  */
 export const create = mutation({
@@ -126,6 +233,41 @@ export const create = mutation({
     });
 
     return areaId;
+  },
+});
+
+/**
+ * Update area status
+ * Phase 2 Module 14
+ */
+export const updateStatus = mutation({
+  args: {
+    areaId: v.id("areas"),
+    status: v.string(), // active/maintenance/inactive
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Verify area exists
+    const area = await ctx.db.get(args.areaId);
+    if (!area) {
+      throw new Error("Área no encontrada");
+    }
+
+    // Validate status
+    const validStatuses = ["active", "maintenance", "inactive"];
+    if (!validStatuses.includes(args.status)) {
+      throw new Error(
+        `Estado inválido. Debe ser uno de: ${validStatuses.join(", ")}`
+      );
+    }
+
+    await ctx.db.patch(args.areaId, {
+      status: args.status,
+      updated_at: now,
+    });
+
+    return args.areaId;
   },
 });
 

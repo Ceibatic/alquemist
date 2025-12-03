@@ -168,6 +168,200 @@ ${verificationLink}
  */
 
 /**
+ * Email template for team member invitation (HTML format with Alquemist branding)
+ * Returns professional HTML email for inviting users to join a company
+ */
+export function generateInvitationEmailHTML(params: {
+  inviteeEmail: string;
+  companyName: string;
+  inviterName: string;
+  roleName: string;
+  facilities: string[];
+  token: string;
+  expiresInHours?: number;
+}): { html: string; text: string } {
+  const {
+    inviteeEmail,
+    companyName,
+    inviterName,
+    roleName,
+    facilities,
+    token,
+    expiresInHours = 72,
+  } = params;
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const acceptLink = `${baseUrl}/accept-invitation?token=${token}`;
+  const logoUrl = `${baseUrl}/logo.svg`;
+
+  // Format facilities list
+  const facilitiesText = facilities.length > 0
+    ? facilities.join(", ")
+    : "Sin instalaciones asignadas";
+
+  // HTML email with Alquemist design system
+  const html = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invitación a ${companyName} - Alquemist</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F5F5F5; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F5F5F5; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <!-- Main Container -->
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); max-width: 600px;">
+
+          <!-- Header with Logo -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%); padding: 32px 24px; text-align: center;">
+              <img src="${logoUrl}" alt="Alquemist" width="160" height="36" style="display: block; margin: 0 auto; max-width: 160px; height: auto;" />
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 48px 32px;">
+              <h1 style="margin: 0 0 24px; color: #212121; font-size: 28px; font-weight: 700; line-height: 1.3;">
+                Te han invitado a ${companyName}
+              </h1>
+
+              <p style="margin: 0 0 16px; color: #424242; font-size: 18px; line-height: 1.5;">
+                ¡Hola!
+              </p>
+
+              <p style="margin: 0 0 32px; color: #616161; font-size: 16px; line-height: 1.6;">
+                <strong>${inviterName}</strong> te ha invitado a unirte al equipo de <strong>${companyName}</strong> en Alquemist, la plataforma de trazabilidad agrícola.
+              </p>
+
+              <!-- Invitation Details Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F5F5F5; border-radius: 12px; margin: 0 0 32px;">
+                <tr>
+                  <td style="padding: 24px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="padding: 8px 0;">
+                          <p style="margin: 0; color: #757575; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            Empresa
+                          </p>
+                          <p style="margin: 4px 0 0; color: #212121; font-size: 16px; font-weight: 600;">
+                            ${companyName}
+                          </p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0;">
+                          <p style="margin: 0; color: #757575; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            Rol asignado
+                          </p>
+                          <p style="margin: 4px 0 0; color: #212121; font-size: 16px; font-weight: 600;">
+                            ${roleName}
+                          </p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0;">
+                          <p style="margin: 0; color: #757575; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            Instalaciones
+                          </p>
+                          <p style="margin: 4px 0 0; color: #212121; font-size: 16px; font-weight: 600;">
+                            ${facilitiesText}
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 24px; color: #616161; font-size: 16px; line-height: 1.6;">
+                Para aceptar esta invitación y crear tu cuenta, haz clic en el botón a continuación:
+              </p>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="padding: 0 0 32px;">
+                    <a href="${acceptLink}" style="display: inline-block; background-color: #FFC107; color: #212121; text-decoration: none; padding: 16px 48px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);">
+                      Aceptar Invitación
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 8px; color: #757575; font-size: 14px; line-height: 1.5;">
+                O copia este enlace en tu navegador:
+              </p>
+              <p style="margin: 0 0 32px; word-break: break-all;">
+                <a href="${acceptLink}" style="color: #1B5E20; font-size: 13px; text-decoration: underline;">
+                  ${acceptLink}
+                </a>
+              </p>
+
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top: 1px solid #E0E0E0; padding-top: 24px;">
+                <tr>
+                  <td>
+                    <p style="margin: 0; color: #9E9E9E; font-size: 13px; line-height: 1.6;">
+                      ⏰ Esta invitación expira en ${expiresInHours} horas<br>
+                      🔒 Si no esperabas esta invitación, puedes ignorar este correo<br>
+                      📧 Esta invitación fue enviada a: ${inviteeEmail}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #FAFAFA; padding: 32px; text-align: center; border-top: 1px solid #E0E0E0;">
+              <p style="margin: 0 0 8px; color: #757575; font-size: 14px;">
+                🌱 Alquemist - Trazabilidad Agrícola
+              </p>
+              <p style="margin: 0; color: #9E9E9E; font-size: 12px;">
+                © 2025 Alquemist. Todos los derechos reservados.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  // Plain text version for fallback
+  const text = `INVITACIÓN A ${companyName.toUpperCase()} - ALQUEMIST
+
+¡Hola!
+
+${inviterName} te ha invitado a unirte al equipo de ${companyName} en Alquemist, la plataforma de trazabilidad agrícola.
+
+DETALLES DE LA INVITACIÓN:
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+Empresa: ${companyName}
+Rol asignado: ${roleName}
+Instalaciones: ${facilitiesText}
+
+Para aceptar esta invitación y crear tu cuenta, haz clic en el siguiente enlace:
+${acceptLink}
+
+⏰ Esta invitación expira en ${expiresInHours} horas
+🔒 Si no esperabas esta invitación, ignora este correo
+📧 Esta invitación fue enviada a: ${inviteeEmail}
+
+---
+© 2025 Alquemist - Trazabilidad Agrícola`;
+
+  return { html, text };
+}
+
+/**
  * Send email via Resend API
  * This function is compatible with Convex actions (uses fetch)
  */

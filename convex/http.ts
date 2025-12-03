@@ -2574,4 +2574,60 @@ http.route({
   }),
 });
 
+// ============================================================================
+// USER ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /users/set-current-facility
+ * Set the user's current/primary facility
+ * Body: { userId, facilityId }
+ */
+http.route({
+  path: "/users/set-current-facility",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const { userId, facilityId } = await request.json();
+
+      if (!userId || !facilityId) {
+        return new Response(
+          JSON.stringify({ success: false, error: "userId and facilityId are required" }),
+          {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+            },
+          }
+        );
+      }
+
+      const result = await ctx.runMutation(api.users.setCurrentFacility, {
+        userId,
+        facilityId,
+      });
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    } catch (error: any) {
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
 export default http;

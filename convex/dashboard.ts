@@ -11,6 +11,100 @@ import { query } from "./_generated/server";
 // ============================================================================
 
 /**
+ * Get dashboard metrics
+ * Phase 2 Module 5
+ */
+export const getMetrics = query({
+  args: {
+    facilityId: v.id("facilities"),
+  },
+  handler: async (ctx, args) => {
+    // Verify facility exists
+    const facility = await ctx.db.get(args.facilityId);
+    if (!facility) {
+      throw new Error("Instalación no encontrada");
+    }
+
+    // Count areas
+    const areas = await ctx.db
+      .query("areas")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    const activeAreas = areas.filter((a) => a.status === "active").length;
+
+    // Count cultivars (from batches)
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    const uniqueCultivarIds = new Set(
+      batches.map((b) => b.cultivar_id).filter((id) => id !== undefined)
+    );
+
+    // Count inventory items
+    const areaIds = areas.map((a) => a._id);
+    const allInventory = await ctx.db.query("inventory_items").collect();
+    const facilityInventory = allInventory.filter(
+      (item) => item.area_id && areaIds.includes(item.area_id)
+    );
+
+    // Count low stock items
+    const lowStockItems = facilityInventory.filter((item) => {
+      const reorderPoint = item.reorder_point || 0;
+      return item.quantity_available <= reorderPoint;
+    });
+
+    // Count active alerts
+    const alerts: any[] = [];
+
+    // License expiry check
+    if (facility.license_expiry_date) {
+      const now = Date.now();
+      const daysUntilExpiry = Math.floor(
+        (facility.license_expiry_date - now) / (1000 * 60 * 60 * 24)
+      );
+
+      if (daysUntilExpiry <= 30 && daysUntilExpiry > 0) {
+        alerts.push({ type: "license_expiry", severity: "warning" });
+      } else if (daysUntilExpiry <= 0) {
+        alerts.push({ type: "license_expired", severity: "critical" });
+      }
+    }
+
+    // Low stock alerts
+    if (lowStockItems.length > 0) {
+      alerts.push({ type: "low_stock", severity: "warning" });
+    }
+
+    // No areas configured
+    if (areas.length === 0) {
+      alerts.push({ type: "no_areas", severity: "warning" });
+    }
+
+    return {
+      areas: {
+        total: areas.length,
+        active: activeAreas,
+      },
+      cultivars: {
+        total: uniqueCultivarIds.size,
+      },
+      inventory: {
+        total: facilityInventory.length,
+        lowStock: lowStockItems.length,
+      },
+      alerts: {
+        total: alerts.length,
+        critical: alerts.filter((a) => a.severity === "critical").length,
+        warnings: alerts.filter((a) => a.severity === "warning").length,
+      },
+    };
+  },
+});
+
+/**
  * Get dashboard summary metrics
  * Key metrics for facility dashboard home page
  */
@@ -235,6 +329,69 @@ export const getFacilityOverview = query({
         activeOrders: 0, // Phase 4
         pendingActivities: 0, // Phase 4
       },
+    };
+  },
+});
+
+/**
+ * Get onboarding status
+ * Check which setup steps are completed
+ * Phase 2 Module 5
+ */
+export const getOnboardingStatus = query({
+  args: {
+    facilityId: v.id("facilities"),
+    companyId: v.id("companies"),
+  },
+  handler: async (ctx, args) => {
+    // Check areas
+    const areas = await ctx.db
+      .query("areas")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    const hasAreas = areas.length > 0;
+
+    // Check cultivars (via batches)
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    const hasCultivars = batches.some((b) => b.cultivar_id !== undefined);
+
+    // Check suppliers
+    const suppliers = await ctx.db
+      .query("suppliers")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .collect();
+
+    const hasSuppliers = suppliers.length > 0;
+
+    // Check inventory
+    const areaIds = areas.map((a) => a._id);
+    const allInventory = await ctx.db.query("inventory_items").collect();
+    const hasInventory = allInventory.some(
+      (item) => item.area_id && areaIds.includes(item.area_id)
+    );
+
+    // Check team members (beyond the owner)
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .collect();
+
+    const hasTeamMembers = users.length > 1;
+
+    return {
+      areasConfigured: hasAreas,
+      cultivarsLinked: hasCultivars,
+      suppliersAdded: hasSuppliers,
+      inventorySetup: hasInventory,
+      teamMembersInvited: hasTeamMembers,
+      completionPercentage: Math.round(
+        ([hasAreas, hasCultivars, hasSuppliers, hasInventory, hasTeamMembers].filter(Boolean).length / 5) * 100
+      ),
     };
   },
 });

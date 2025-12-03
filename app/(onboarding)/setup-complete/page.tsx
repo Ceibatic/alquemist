@@ -1,32 +1,58 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, ArrowRight, Building2, Factory } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Building2, Factory, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { establishSession } from './actions';
 
 export default function SetupCompletePage() {
   const router = useRouter();
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     // Verify that setup was actually completed
     const companyId = sessionStorage.getItem('companyId');
     const facilityId = sessionStorage.getItem('facilityId');
+    const storedUserId = sessionStorage.getItem('signupUserId');
 
-    if (!companyId || !facilityId) {
+    if (!companyId || !facilityId || !storedUserId) {
       // If setup not complete, redirect to start
       router.push('/company-setup');
+      return;
     }
+
+    setUserId(storedUserId);
   }, [router]);
 
-  const handleContinue = () => {
-    // Clear any remaining session data
-    sessionStorage.removeItem('companyId');
-    sessionStorage.removeItem('facilityId');
+  const handleContinue = async () => {
+    if (!userId) return;
 
-    // Navigate to dashboard
-    router.push('/dashboard');
+    setIsNavigating(true);
+
+    try {
+      // Establish session with HTTP-only cookies
+      const result = await establishSession(userId);
+
+      if (!result.success) {
+        console.error('Failed to establish session:', result.error);
+        // Still try to navigate, login page will handle re-auth
+      }
+
+      // Clear onboarding session data
+      sessionStorage.removeItem('companyId');
+      sessionStorage.removeItem('facilityId');
+      sessionStorage.removeItem('signupUserId');
+      sessionStorage.removeItem('signupEmail');
+
+      // Navigate to dashboard
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Error navigating to dashboard:', error);
+      setIsNavigating(false);
+    }
   };
 
   return (
@@ -87,20 +113,20 @@ export default function SetupCompletePage() {
         <h3 className="font-semibold">Próximos Pasos</h3>
         <ul className="space-y-2 text-sm text-muted-foreground">
           <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">•</span>
-            <span>Invita a miembros de tu equipo para colaborar</span>
+            <span className="text-primary mt-0.5">1.</span>
+            <span>Crea tus áreas de cultivo (propagación, vegetativo, floración, etc.)</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">•</span>
-            <span>Registra tu primer lote de producción</span>
+            <span className="text-primary mt-0.5">2.</span>
+            <span>Agrega los cultivares que produces (variedades, genéticas)</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">•</span>
-            <span>Configura tus productos y variedades</span>
+            <span className="text-primary mt-0.5">3.</span>
+            <span>Registra tu inventario inicial (plantas madre, semillas, nutrientes)</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">•</span>
-            <span>Explora el panel de trazabilidad</span>
+            <span className="text-primary mt-0.5">4.</span>
+            <span>Invita a tu equipo para comenzar a colaborar</span>
           </li>
         </ul>
       </div>
@@ -111,9 +137,19 @@ export default function SetupCompletePage() {
           onClick={handleContinue}
           className="w-full"
           size="lg"
+          disabled={isNavigating || !userId}
         >
-          Ir al Dashboard
-          <ArrowRight className="ml-2 h-4 w-4" />
+          {isNavigating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Preparando dashboard...
+            </>
+          ) : (
+            <>
+              Ir al Dashboard
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
         </Button>
 
         <p className="text-xs text-center text-muted-foreground">

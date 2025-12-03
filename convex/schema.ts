@@ -118,6 +118,13 @@ export default defineSchema({
     sms_notifications: v.optional(v.boolean()), // Default: false
     preferred_language: v.optional(v.string()), // "es" | "en" - for Bubble UI language preference
 
+    // Notification Settings (Module 21)
+    notification_types: v.optional(v.any()), // Object with notification type preferences
+    notification_delivery: v.optional(v.any()), // Object with delivery preferences
+    quiet_hours_enabled: v.optional(v.boolean()), // Default: false
+    quiet_hours_start: v.optional(v.string()), // Default: "20:00"
+    quiet_hours_end: v.optional(v.string()), // Default: "08:00"
+
     // Security
     mfa_enabled: v.boolean(), // Default: false
     mfa_secret: v.optional(v.string()),
@@ -158,6 +165,34 @@ export default defineSchema({
     .index("by_user", ["user_id"])
     .index("by_expires", ["expires_at"])
     .index("by_is_active", ["is_active"]),
+
+  invitations: defineTable({
+    // Company & Invitation Details
+    company_id: v.id("companies"),
+    email: v.string(), // Email of the invited user
+    role_id: v.id("roles"), // Role to assign to the user
+    facility_ids: v.array(v.id("facilities")), // Facilities the user will have access to
+
+    // Invitation Token
+    token: v.string(), // Unique invitation token (UUID)
+    expires_at: v.number(), // 72 hours from creation
+
+    // Inviter Information
+    invited_by: v.id("users"), // User who sent the invitation
+
+    // Status
+    status: v.string(), // pending/accepted/rejected/expired
+
+    // Timestamps
+    created_at: v.number(),
+    accepted_at: v.optional(v.number()),
+    rejected_at: v.optional(v.number()),
+  })
+    .index("by_token", ["token"])
+    .index("by_email", ["email"])
+    .index("by_company", ["company_id"])
+    .index("by_status", ["status"])
+    .index("by_expires", ["expires_at"]),
 
   geographic_locations: defineTable({
     // Regional Hierarchical Structure
@@ -309,6 +344,8 @@ export default defineSchema({
     notifications_enabled: v.optional(v.boolean()), // Default: true
     low_stock_alert_enabled: v.optional(v.boolean()), // Default: true
     overdue_activity_alert_enabled: v.optional(v.boolean()), // Default: true
+    license_expiration_alert_enabled: v.optional(v.boolean()), // Default: true
+    critical_alert_email: v.optional(v.string()),
 
     // Metadata
     status: v.string(), // active/inactive/suspended
@@ -335,7 +372,7 @@ export default defineSchema({
     usable_area_m2: v.optional(v.number()),
 
     // Capacity
-    capacity_configurations: v.optional(v.object({})),
+    capacity_configurations: v.optional(v.any()), // { max_capacity: number, ... }
     current_occupancy: v.number(), // Default: 0
     reserved_capacity: v.number(), // Default: 0
 
@@ -343,7 +380,7 @@ export default defineSchema({
     climate_controlled: v.boolean(), // Default: false
     lighting_controlled: v.boolean(), // Default: false
     irrigation_system: v.boolean(), // Default: false
-    environmental_specs: v.optional(v.object({})),
+    environmental_specs: v.optional(v.any()), // { temperature_min, temperature_max, humidity_min, humidity_max, light_hours, ph_min, ph_max }
     equipment_list: v.array(v.any()), // Default: []
 
     // Metadata

@@ -39,6 +39,7 @@ export default function FacilityLocationPage() {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [coordinates, setCoordinates] = useState<GeolocationCoordinates | undefined>();
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const form = useForm<FacilityLocationFormValues>({
     resolver: zodResolver(facilityLocationSchema),
@@ -55,11 +56,14 @@ export default function FacilityLocationPage() {
   // Verify previous step is complete
   useEffect(() => {
     const storedCompanyId = sessionStorage.getItem('companyId');
+    const storedUserId = sessionStorage.getItem('signupUserId');
     const basicData = sessionStorage.getItem('facilityBasicData');
 
-    if (!storedCompanyId || !basicData) {
+    if (!storedCompanyId || !basicData || !storedUserId) {
       // Redirect to appropriate step
-      if (!storedCompanyId) {
+      if (!storedUserId) {
+        router.push('/signup');
+      } else if (!storedCompanyId) {
         router.push('/company-setup');
       } else {
         router.push('/facility-basic');
@@ -68,6 +72,7 @@ export default function FacilityLocationPage() {
     }
 
     setCompanyId(storedCompanyId);
+    setUserId(storedUserId);
 
     // Load saved location data if exists
     const savedLocationData = sessionStorage.getItem('facilityLocationData');
@@ -94,9 +99,9 @@ export default function FacilityLocationPage() {
   };
 
   const onSubmit = async (data: FacilityLocationFormValues) => {
-    if (!companyId) {
+    if (!companyId || !userId) {
       setGlobalError('Sesión expirada. Por favor vuelve a iniciar el proceso.');
-      router.push('/company-setup');
+      router.push('/signup');
       return;
     }
 
@@ -120,8 +125,8 @@ export default function FacilityLocationPage() {
         ...data,
       };
 
-      // Submit to server with companyId
-      const result = await createFacility(completeData, companyId);
+      // Submit to server with companyId and userId
+      const result = await createFacility(completeData, companyId, userId);
 
       if (!result.success) {
         setGlobalError(result.error || 'Error al crear la instalación');
@@ -228,7 +233,7 @@ export default function FacilityLocationPage() {
               <Input
                 id="latitude"
                 type="number"
-                step="0.000001"
+                step="any"
                 placeholder="-90 a 90"
                 {...form.register('latitude', { valueAsNumber: true })}
                 disabled={isSubmitting}
@@ -241,7 +246,7 @@ export default function FacilityLocationPage() {
               <Input
                 id="longitude"
                 type="number"
-                step="0.000001"
+                step="any"
                 placeholder="-180 a 180"
                 {...form.register('longitude', { valueAsNumber: true })}
                 disabled={isSubmitting}
@@ -264,7 +269,7 @@ export default function FacilityLocationPage() {
             <span className="text-destructive ml-1">*</span>
           </Label>
           <Select
-            value={form.watch('climateZone')}
+            value={form.watch('climateZone') ?? ''}
             onValueChange={(value) =>
               form.setValue('climateZone', value as FacilityLocationFormValues['climateZone'])
             }

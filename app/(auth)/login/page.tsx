@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PasswordInput } from '@/components/shared/password-input';
-import { authenticateUser } from './actions';
+import { authenticateUser, setSessionCookies } from './actions';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,21 +40,16 @@ export default function LoginPage() {
         return;
       }
 
-      // Store session data
-      if (result.sessionToken) {
-        if (rememberMe) {
-          localStorage.setItem('sessionToken', result.sessionToken);
-        } else {
-          sessionStorage.setItem('sessionToken', result.sessionToken);
-        }
-      }
-
-      // Store user and company IDs
-      if (result.userId) {
-        sessionStorage.setItem('userId', result.userId);
-      }
-      if (result.companyId) {
-        sessionStorage.setItem('companyId', result.companyId);
+      // Set HTTP-only cookies for server-side auth
+      if (result.sessionToken && result.userId && result.user) {
+        await setSessionCookies({
+          sessionToken: result.sessionToken,
+          userId: result.userId,
+          email: result.user.email,
+          companyId: result.companyId,
+          roleId: result.user.role_id,
+          primaryFacilityId: result.primaryFacilityId,
+        });
       }
 
       // Navigate to dashboard (backend only allows login for complete users)

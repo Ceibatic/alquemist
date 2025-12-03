@@ -173,7 +173,7 @@ export default function CompanySetupPage() {
             <span className="text-destructive ml-1">*</span>
           </Label>
           <Select
-            value={form.watch('businessType')}
+            value={form.watch('businessType') ?? ''}
             onValueChange={(value) =>
               form.setValue('businessType', value as CompanySetupFormValues['businessType'])
             }
@@ -204,7 +204,7 @@ export default function CompanySetupPage() {
             <span className="text-destructive ml-1">*</span>
           </Label>
           <Select
-            value={form.watch('industry')}
+            value={form.watch('industry') ?? ''}
             onValueChange={(value) =>
               form.setValue('industry', value as CompanySetupFormValues['industry'])
             }

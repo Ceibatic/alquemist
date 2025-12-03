@@ -1,6 +1,8 @@
 'use client';
 
 import * as React from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import {
   Select,
   SelectContent,
@@ -10,68 +12,6 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-
-// Mock data for Colombian departments and municipalities
-// This will be replaced with actual API data from Convex
-const DEPARTMENTS = [
-  { code: 'ANT', name: 'Antioquia' },
-  { code: 'ATL', name: 'Atlántico' },
-  { code: 'BOG', name: 'Bogotá D.C.' },
-  { code: 'BOL', name: 'Bolívar' },
-  { code: 'BOY', name: 'Boyacá' },
-  { code: 'CAL', name: 'Caldas' },
-  { code: 'CAQ', name: 'Caquetá' },
-  { code: 'CAS', name: 'Casanare' },
-  { code: 'CAU', name: 'Cauca' },
-  { code: 'CES', name: 'Cesar' },
-  { code: 'CHO', name: 'Chocó' },
-  { code: 'COR', name: 'Córdoba' },
-  { code: 'CUN', name: 'Cundinamarca' },
-  { code: 'HUI', name: 'Huila' },
-  { code: 'LAG', name: 'La Guajira' },
-  { code: 'MAG', name: 'Magdalena' },
-  { code: 'MET', name: 'Meta' },
-  { code: 'NAR', name: 'Nariño' },
-  { code: 'NSA', name: 'Norte de Santander' },
-  { code: 'QUI', name: 'Quindío' },
-  { code: 'RIS', name: 'Risaralda' },
-  { code: 'SAN', name: 'Santander' },
-  { code: 'SUC', name: 'Sucre' },
-  { code: 'TOL', name: 'Tolima' },
-  { code: 'VAC', name: 'Valle del Cauca' },
-];
-
-const MUNICIPALITIES: Record<string, { code: string; name: string }[]> = {
-  ANT: [
-    { code: 'MED', name: 'Medellín' },
-    { code: 'BEL', name: 'Bello' },
-    { code: 'ITA', name: 'Itagüí' },
-    { code: 'ENV', name: 'Envigado' },
-    { code: 'RIO', name: 'Rionegro' },
-    { code: 'SAB', name: 'Sabaneta' },
-  ],
-  BOG: [{ code: 'BOG', name: 'Bogotá D.C.' }],
-  VAC: [
-    { code: 'CAL', name: 'Cali' },
-    { code: 'PAL', name: 'Palmira' },
-    { code: 'BUE', name: 'Buenaventura' },
-    { code: 'TUL', name: 'Tuluá' },
-    { code: 'CAR', name: 'Cartago' },
-  ],
-  ATL: [
-    { code: 'BAQ', name: 'Barranquilla' },
-    { code: 'SOL', name: 'Soledad' },
-    { code: 'MAL', name: 'Malambo' },
-    { code: 'SAB', name: 'Sabanalarga' },
-  ],
-  SAN: [
-    { code: 'BUC', name: 'Bucaramanga' },
-    { code: 'FLO', name: 'Floridablanca' },
-    { code: 'GIR', name: 'Girón' },
-    { code: 'PIE', name: 'Piedecuesta' },
-  ],
-  // Add more departments as needed
-};
 
 export interface CascadingSelectProps {
   departmentValue?: string;
@@ -100,32 +40,32 @@ export function CascadingSelect({
   disabled = false,
   className,
 }: CascadingSelectProps) {
-  const [availableMunicipalities, setAvailableMunicipalities] = React.useState<
-    { code: string; name: string }[]
-  >([]);
+  // Fetch departments from Convex
+  const departments = useQuery(api.geographic.getDepartments, { countryCode: 'CO' });
 
-  // Update available municipalities when department changes
+  // Fetch municipalities for selected department
+  const municipalities = useQuery(
+    api.geographic.getMunicipalities,
+    departmentValue ? { countryCode: 'CO', departmentCode: departmentValue } : 'skip'
+  );
+
+  const isLoadingDepartments = departments === undefined;
+  const isLoadingMunicipalities = departmentValue && municipalities === undefined;
+
+  // Clear municipality when department changes and municipality is no longer valid
+  const prevDepartmentRef = React.useRef(departmentValue);
   React.useEffect(() => {
-    if (departmentValue) {
-      const municipalities = MUNICIPALITIES[departmentValue] || [];
-      setAvailableMunicipalities(municipalities);
-
-      // Clear municipality selection if it's not in the new list
-      if (
-        municipalityValue &&
-        !municipalities.find((m) => m.code === municipalityValue)
-      ) {
+    if (prevDepartmentRef.current !== departmentValue) {
+      prevDepartmentRef.current = departmentValue;
+      // Clear municipality when department changes
+      if (municipalityValue) {
         onMunicipalityChange?.('');
       }
-    } else {
-      setAvailableMunicipalities([]);
-      onMunicipalityChange?.('');
     }
   }, [departmentValue, municipalityValue, onMunicipalityChange]);
 
   const handleDepartmentChange = (value: string) => {
     onDepartmentChange?.(value);
-    // Municipality will be cleared by the useEffect above
   };
 
   return (
@@ -139,18 +79,18 @@ export function CascadingSelect({
         <Select
           value={departmentValue}
           onValueChange={handleDepartmentChange}
-          disabled={disabled}
+          disabled={disabled || isLoadingDepartments}
         >
           <SelectTrigger
             id="department"
             className={cn(departmentError && 'border-destructive')}
           >
-            <SelectValue placeholder="Selecciona un departamento" />
+            <SelectValue placeholder={isLoadingDepartments ? 'Cargando...' : 'Selecciona un departamento'} />
           </SelectTrigger>
           <SelectContent>
-            {DEPARTMENTS.map((dept) => (
-              <SelectItem key={dept.code} value={dept.code}>
-                {dept.name}
+            {(departments ?? []).map((dept) => (
+              <SelectItem key={dept.division_1_code} value={dept.division_1_code!}>
+                {dept.division_1_name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -169,7 +109,7 @@ export function CascadingSelect({
         <Select
           value={municipalityValue}
           onValueChange={onMunicipalityChange}
-          disabled={disabled || !departmentValue || availableMunicipalities.length === 0}
+          disabled={disabled || !departmentValue || isLoadingMunicipalities || (municipalities ?? []).length === 0}
         >
           <SelectTrigger
             id="municipality"
@@ -179,16 +119,18 @@ export function CascadingSelect({
               placeholder={
                 !departmentValue
                   ? 'Primero selecciona un departamento'
-                  : availableMunicipalities.length === 0
-                    ? 'No hay municipios disponibles'
-                    : 'Selecciona un municipio'
+                  : isLoadingMunicipalities
+                    ? 'Cargando...'
+                    : (municipalities ?? []).length === 0
+                      ? 'No hay municipios disponibles'
+                      : 'Selecciona un municipio'
               }
             />
           </SelectTrigger>
           <SelectContent>
-            {availableMunicipalities.map((mun) => (
-              <SelectItem key={mun.code} value={mun.code}>
-                {mun.name}
+            {(municipalities ?? []).map((mun) => (
+              <SelectItem key={mun.division_2_code} value={mun.division_2_code!}>
+                {mun.division_2_name}
               </SelectItem>
             ))}
           </SelectContent>
