@@ -54,7 +54,10 @@ className="bg-white border border-gray-200 hover:bg-gray-50"
 ├─────────────────────────────────────────────────────────────┤
 │ [Stats Cards: 4 metricas principales]                       │
 ├─────────────────────────────────────────────────────────────┤
-│ [Filtros] [Dropdown ▼] [🔍 Buscar...________] [+ Crear]    │
+│ [⚙ Filtros] [🗂 Tipo ▼] [🔍 Buscar...________] [+ Crear]   │
+│                                                             │
+│   ⚙ = Popover con filtros avanzados (estado, etc)          │
+│   🗂 = DropdownMenu selector de tipo/categoria              │
 ├─────────────────────────────────────────────────────────────┤
 │ ┌─────────┐ ┌─────────┐ ┌─────────┐                        │
 │ │  Card   │ │  Card   │ │  Card   │   Grid de Cards        │
@@ -64,46 +67,66 @@ className="bg-white border border-gray-200 hover:bg-gray-50"
 ```
 
 ### Barra de Filtros (Compacta - Una Linea)
+
+**Patron Responsive**: Se usa DropdownMenu en lugar de tabs horizontales para mejor UX en movil.
+
 ```tsx
 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-  {/* Izquierda: Filtros + Dropdown */}
+  {/* Izquierda: Filtros + Dropdown de Categoria */}
   <div className="flex items-center gap-2">
     {/* Popover de filtros avanzados */}
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="icon" className="relative">
+        <Button variant="outline" size="icon" className="relative shrink-0">
           <SlidersHorizontal className="h-4 w-4" />
           {activeFiltersCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-600 text-[10px]">
+            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-600 text-[10px] font-medium text-white flex items-center justify-center">
               {activeFiltersCount}
             </span>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent>
-        {/* Checkboxes de estado, etc */}
+      <PopoverContent className="w-64" align="start">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-sm">Filtros</h4>
+            {activeFiltersCount > 0 && (
+              <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-gray-500">
+                Limpiar
+              </Button>
+            )}
+          </div>
+          {/* Checkboxes de estado, controles de filtro */}
+        </div>
       </PopoverContent>
     </Popover>
 
-    {/* Dropdown de tipo/categoria */}
+    {/* Dropdown de Tipo/Categoria (Reemplaza Tabs Horizontales) */}
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="gap-2 min-w-[160px] justify-between">
           <span className="flex items-center gap-2">
-            <Icon className="h-4 w-4" />
-            <span className="hidden sm:inline">{selectedLabel}</span>
+            <SelectedIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">{selectedTypeOption.label}</span>
             <span className="sm:hidden">Tipo</span>
           </span>
           <ChevronDown className="h-4 w-4 opacity-50" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {options.map(opt => (
-          <DropdownMenuItem key={opt.value}>
-            <opt.icon className="mr-2 h-4 w-4" />
-            {opt.label}
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent align="start" className="w-[200px]">
+        {options.map((option) => {
+          const Icon = option.icon;
+          return (
+            <DropdownMenuItem
+              key={option.value || 'all'}
+              onClick={() => setSelectedType(option.value)}
+              className={selectedType === option.value ? 'bg-gray-100' : ''}
+            >
+              <Icon className="mr-2 h-4 w-4" />
+              {option.label}
+            </DropdownMenuItem>
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   </div>
@@ -113,7 +136,7 @@ className="bg-white border border-gray-200 hover:bg-gray-50"
     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
     <Input placeholder="Buscar..." className="pl-9 pr-9" />
     {query && (
-      <button onClick={clear} className="absolute right-3 top-1/2 -translate-y-1/2">
+      <button onClick={clear} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
         <X className="h-4 w-4" />
       </button>
     )}
@@ -125,6 +148,16 @@ className="bg-white border border-gray-200 hover:bg-gray-50"
     <span className="hidden sm:inline">Crear Area</span>
   </Button>
 </div>
+```
+
+### Opciones de Tipo/Categoria
+```tsx
+const typeOptions = [
+  { value: null, label: 'Todas las areas', icon: LayoutGrid },
+  { value: 'propagation', label: 'Propagacion', icon: Sprout },
+  { value: 'vegetative', label: 'Vegetativo', icon: Leaf },
+  // ... mas opciones
+];
 ```
 
 ### Card de Item (Clickeable)
@@ -196,7 +229,14 @@ className="bg-white border border-gray-200 hover:bg-gray-50"
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Sistema de Tabs
+### Sistema de Tabs vs Dropdown (Cuando Usar Cada Uno)
+
+| Patron | Uso | Ejemplo |
+|--------|-----|---------|
+| **DropdownMenu** | Filtros de categoria en listas (muchas opciones) | Selector de tipo de area en lista |
+| **Tabs + ScrollArea** | Navegacion de contenido en pagina de detalle (pocas opciones fijas) | Tabs de Detalle/Lotes/Actividades |
+
+### Sistema de Tabs (Pagina de Detalle)
 ```tsx
 <Tabs defaultValue="detail" className="w-full">
   <ScrollArea className="w-full">
@@ -209,15 +249,27 @@ className="bg-white border border-gray-200 hover:bg-gray-50"
         <Info className="h-4 w-4" />
         Detalle
       </TabsTrigger>
-      <TabsTrigger value="batches">
+      <TabsTrigger
+        value="batches"
+        className="inline-flex items-center gap-2 px-4 py-2
+                   data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+      >
         <Layers className="h-4 w-4" />
         Lotes
       </TabsTrigger>
-      <TabsTrigger value="activities">
+      <TabsTrigger
+        value="activities"
+        className="inline-flex items-center gap-2 px-4 py-2
+                   data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+      >
         <Activity className="h-4 w-4" />
         Actividades
       </TabsTrigger>
-      <TabsTrigger value="inventory">
+      <TabsTrigger
+        value="inventory"
+        className="inline-flex items-center gap-2 px-4 py-2
+                   data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+      >
         <Box className="h-4 w-4" />
         Inventario
       </TabsTrigger>
@@ -399,6 +451,30 @@ className="flex flex-col gap-3 sm:flex-row sm:items-center"
   <Plus className="h-4 w-4 sm:mr-2" />
   <span className="hidden sm:inline">Crear</span>
 </Button>
+```
+
+### Navegacion/Filtros Responsive
+```tsx
+// PREFERIDO: DropdownMenu para filtros de categoria (funciona bien en movil)
+<DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="outline" className="gap-2 min-w-[160px] justify-between">
+      <span className="flex items-center gap-2">
+        <Icon className="h-4 w-4" />
+        <span className="hidden sm:inline">{label}</span>
+        <span className="sm:hidden">Tipo</span>
+      </span>
+      <ChevronDown className="h-4 w-4 opacity-50" />
+    </Button>
+  </DropdownMenuTrigger>
+  <DropdownMenuContent>{/* opciones */}</DropdownMenuContent>
+</DropdownMenu>
+
+// ALTERNATIVA: Tabs con ScrollArea (solo para navegacion de contenido en detalle)
+<ScrollArea className="w-full">
+  <TabsList>{/* triggers */}</TabsList>
+  <ScrollBar orientation="horizontal" />
+</ScrollArea>
 ```
 
 ---

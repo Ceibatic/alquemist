@@ -1,772 +1,941 @@
-# PHASE 2: BASIC SETUP & MASTER DATA - TESTS
+# PHASE 2: MASTER DATA & BASIC SETUP - USER FLOWS & TESTS
 
-## Descripción de la Fase
+**Objetivo**: Configurar todos los datos maestros necesarios para operar el sistema.
+**Prerequisitos**: Phase 1 (Onboarding) completada exitosamente.
+**UI Reference**: Ver [../UI-PATTERNS.md](../UI-PATTERNS.md) para patrones visuales.
 
-Phase 2 cubre la configuración de todos los datos maestros necesarios para operar el sistema:
-- Creación y gestión de áreas de producción
-- Configuración de cultivares (variedades de cultivo)
-- Gestión de proveedores
-- Invitación y gestión de equipo
-- Configuración de inventario
-- Ajustes de facility y cuenta
+---
 
-## Módulos Cubiertos
+## Resumen de Modulos
 
-- **Module 8**: Area Management
-- **Module 15**: Cultivar Management
-- **Module 16**: Supplier Management
-- **Module 17**: User Invitations & Team Management
-- **Module 18**: Facility Management & Switcher
-- **Module 19**: Inventory Management
-- **Module 20**: Facility Settings
-- **Module 21**: Account Settings
+| Modulo | Entidad | Proposito | Ruta |
+|--------|---------|-----------|------|
+| **8** | Areas | Zonas de cultivo (salas, invernaderos) | `/areas` |
+| **15** | Cultivars | Variedades de plantas (strains, variedades) | `/cultivars` |
+| **16** | Suppliers | Proveedores de insumos | `/suppliers` |
+| **17** | Team | Gestion de usuarios e invitaciones | `/team` |
+| **18** | Facilities | Gestion multi-instalacion | `/facilities` |
+| **19** | Inventory | Stock de insumos y materiales | `/inventory` |
+| **20** | Facility Settings | Configuracion de instalacion | `/settings/facility` |
+| **21** | Account Settings | Preferencias de usuario | `/settings/account` |
 
-## Datos de Prueba
+---
 
-Ver [00-TESTING-OVERVIEW.md](00-TESTING-OVERVIEW.md) para datos completos.
+## Datos de Prueba Base
 
 **Facility**: North Greenhouse
-**Usuario**: admin@ceibatic.com
+**Usuario**: admin@ceibatic.com (Company Owner)
+**Crop Type**: Cannabis
 
 ---
 
-## Test 2.1: Crear Área de Producción - Propagation
+## MODULE 8: Area Management
 
-**Objetivo**: Validar la creación de un área de propagación.
+### Descripcion
+Areas son las zonas fisicas de cultivo dentro de una instalacion. Cada area tiene un tipo (propagacion, vegetativo, floracion, etc.), capacidad, y especificaciones ambientales.
 
-**Precondiciones**:
-- Phase 1 completada exitosamente
-- Usuario loggeado como admin@ceibatic.com
-- Facility "North Greenhouse" seleccionado
-- No existen áreas creadas (contador en 0)
+### Tipos de Area
+- `propagation` - Propagacion inicial (clones, semillas)
+- `vegetative` - Crecimiento vegetativo
+- `flowering` - Floracion/fructificacion
+- `drying` - Secado post-cosecha
+- `curing` - Curado
+- `storage` - Almacenamiento
+- `processing` - Procesamiento
+- `quarantine` - Cuarentena
 
-**Pasos**:
-1. Navegar a módulo "Areas"
-2. Hacer clic en "Create New Area" o "Add Area"
-3. Completar formulario:
-   - Area Name: Propagation Room
-   - Area Type: Propagation
-   - Total Area: 50
-   - Area Unit: m²
-   - Capacity: 500
-   - Capacity Unit: clones
-   - Temperature Range: 24-26°C
-   - Humidity Range: 70-80%
-   - Compatible Crop Types: Cannabis (seleccionar)
-4. Hacer clic en "Create Area"
+### Flujo 1: Ver Lista de Areas
 
-**Resultados Esperados**:
-- ✅ Área creada en tabla `areas`
-- ✅ `facility_id` apunta a "North Greenhouse"
-- ✅ Status: "active"
-- ✅ Occupancy: 0/500 (sin plantas asignadas)
-- ✅ Mensaje: "Area created successfully"
-- ✅ Área aparece en lista de áreas
-- ✅ Contador de dashboard actualizado a "1 Area"
+**Ruta**: `/areas`
 
-**Notas**:
-- El nombre del área debe ser único dentro del facility
-- Compatible Crop Types debe incluir al menos Cannabis (crop type del facility)
-
----
-
-## Test 2.2: Crear Área de Producción - Vegetative
-
-**Objetivo**: Validar la creación de un área vegetativa.
-
-**Precondiciones**:
-- Test 2.1 completado
-- Área "Propagation Room" existe
-
-**Pasos**:
-1. En módulo "Areas", hacer clic en "Create New Area"
-2. Completar formulario:
-   - Area Name: Vegetative Room
-   - Area Type: Vegetative
-   - Total Area: 150
-   - Area Unit: m²
-   - Capacity: 200
-   - Capacity Unit: plants
-   - Temperature Range: 22-26°C
-   - Humidity Range: 60-70%
-   - Compatible Crop Types: Cannabis
-3. Hacer clic en "Create Area"
-
-**Resultados Esperados**:
-- ✅ Área creada exitosamente
-- ✅ Lista muestra 2 áreas: Propagation Room, Vegetative Room
-- ✅ Contador de dashboard: "2 Areas"
-- ✅ Cada área muestra su capacidad correctamente
-
-**Notas**:
-- Las áreas son independientes entre sí
-- No hay límite de áreas en plan básico
-
----
-
-## Test 2.3: Crear Área de Producción - Flowering
-
-**Objetivo**: Validar la creación de un área de floración.
-
-**Precondiciones**:
-- Test 2.2 completado
-- 2 áreas existen
-
-**Pasos**:
-1. En módulo "Areas", hacer clic en "Create New Area"
-2. Completar formulario:
-   - Area Name: Flowering Room
-   - Area Type: Flowering
-   - Total Area: 250
-   - Area Unit: m²
-   - Capacity: 100
-   - Capacity Unit: plants
-   - Temperature Range: 20-24°C
-   - Humidity Range: 40-50%
-   - Compatible Crop Types: Cannabis
-3. Hacer clic en "Create Area"
-
-**Resultados Esperados**:
-- ✅ Área creada exitosamente
-- ✅ Lista muestra 3 áreas ordenadas (puede ser por fecha de creación o nombre)
-- ✅ Contador de dashboard: "3 Areas"
-- ✅ Total capacity del facility: 500 clones + 300 plants
-
-**Notas**:
-- Esta es la última área del setup básico
-- Las 3 áreas representan el ciclo completo de cannabis
-
----
-
-## Test 2.4: Ver y Editar Área Existente
-
-**Objetivo**: Validar que se puede ver detalles y editar un área.
-
-**Precondiciones**:
-- Test 2.3 completado
-- 3 áreas existen
-
-**Pasos**:
-1. En lista de áreas, hacer clic en "Propagation Room"
-2. Verificar que se muestran todos los detalles
-3. Hacer clic en "Edit" o botón de edición
-4. Cambiar:
-   - Capacity: 600 (aumentar de 500 a 600)
-5. Guardar cambios
-
-**Resultados Esperados**:
-- ✅ Vista de detalles muestra toda la información del área
-- ✅ Formulario de edición se pre-llena con datos actuales
-- ✅ Cambio guardado exitosamente
-- ✅ Capacity actualizado a 600 en lista y detalles
-- ✅ Mensaje: "Area updated successfully"
-
-**Notas**:
-- No se debe permitir cambiar el facility_id
-- Cambiar capacity no afecta plantas existentes (si las hubiera)
-
----
-
-## Test 2.5: Listar Cultivares del Sistema
-
-**Objetivo**: Validar que se pueden ver los cultivares disponibles en el sistema.
-
-**Precondiciones**:
-- Phase 1 completada
-- Usuario loggeado
-
-**Pasos**:
-1. Navegar a módulo "Cultivars"
-2. Ver pestaña "System Cultivars" o lista de cultivares del sistema
-3. Buscar cultivares compatibles con Cannabis
-
-**Resultados Esperados**:
-- ✅ Lista muestra cultivares del sistema (tabla `cultivars` con `is_system: true`)
-- ✅ Al menos estos cultivares disponibles:
-  - Cherry AK
-  - OG Kush
-  - Northern Lights
-- ✅ Cada cultivar muestra:
-  - Name
-  - Type (Indica/Sativa/Hybrid)
-  - Flowering time
-  - Crop type compatibility
-- ✅ Se puede filtrar por crop type "Cannabis"
-
-**Notas**:
-- Los cultivares del sistema son read-only (no se pueden editar)
-- Son compartidos entre todas las empresas
-
----
-
-## Test 2.6: Vincular Cultivar del Sistema al Facility
-
-**Objetivo**: Validar que se puede agregar un cultivar del sistema al facility.
-
-**Precondiciones**:
-- Test 2.5 completado
-- Cultivares del sistema visibles
-
-**Pasos**:
-1. En módulo "Cultivars", buscar "Cherry AK"
-2. Hacer clic en "Add to Facility" o "Link to Facility"
-3. Confirmar acción
-4. Repetir para "OG Kush" y "Northern Lights"
-
-**Resultados Esperados**:
-- ✅ Relación creada en tabla de facility-cultivars (o similar)
-- ✅ Los 3 cultivares aparecen en pestaña "My Cultivars" o "Facility Cultivars"
-- ✅ Mensaje: "Cultivar added to facility"
-- ✅ Cultivares disponibles para usar en templates y orders
-
-**Notas**:
-- No se duplica el cultivar, solo se vincula
-- Si ya está vinculado, mostrar "Already in facility" o botón deshabilitado
-
----
-
-## Test 2.7: Crear Cultivar Personalizado
-
-**Objetivo**: Validar que se puede crear un cultivar custom para el facility.
-
-**Precondiciones**:
-- Test 2.6 completado
-- 3 cultivares del sistema vinculados
-
-**Pasos**:
-1. En módulo "Cultivars", hacer clic en "Create Custom Cultivar"
-2. Completar formulario:
-   - Name: Test Strain 1
-   - Type: Hybrid
-   - Genetics: Unknown
-   - Flowering Time: 9 weeks
-   - Crop Type: Cannabis
-   - THC Range: 18-22%
-   - CBD Range: <1%
-   - Description: Custom hybrid for testing
-3. Hacer clic en "Create Cultivar"
-
-**Resultados Esperados**:
-- ✅ Cultivar creado en tabla `cultivars` con `is_system: false`
-- ✅ Automáticamente vinculado al facility actual
-- ✅ Aparece en "My Cultivars"
-- ✅ Marcado como "Custom" o tiene badge diferenciador
-- ✅ Total cultivars en facility: 4 (3 system + 1 custom)
-
-**Notas**:
-- Los cultivares custom solo son visibles para el facility que los creó
-- Se pueden editar y eliminar (a diferencia de los del sistema)
-
----
-
-## Test 2.8: Crear Segundo Cultivar Personalizado
-
-**Objetivo**: Validar que se pueden crear múltiples cultivares custom.
-
-**Precondiciones**:
-- Test 2.7 completado
-
-**Pasos**:
-1. Crear otro cultivar custom:
-   - Name: Test Strain 2
-   - Type: Sativa
-   - Flowering Time: 10 weeks
-   - Crop Type: Cannabis
-2. Guardar
-
-**Resultados Esperados**:
-- ✅ Segundo cultivar custom creado exitosamente
-- ✅ Total cultivars en facility: 5 (3 system + 2 custom)
-- ✅ Ambos cultivars custom aparecen en lista
-
-**Notas**:
-- No hay límite de cultivares custom en plan básico
-
----
-
-## Test 2.9: Crear Proveedor de Insumos Químicos
-
-**Objetivo**: Validar la creación de un proveedor.
-
-**Precondiciones**:
-- Usuario loggeado
-- Facility seleccionado
-
-**Pasos**:
-1. Navegar a módulo "Suppliers"
-2. Hacer clic en "Add Supplier"
-3. Completar formulario:
-   - Supplier Name: FarmChem Inc
-   - Contact Name: Carlos Rodríguez
-   - Email: sales@farmchem.com
-   - Phone: +57 301 234 5678
-   - Address: Carrera 10 #20-30, Bogotá
-   - Type: Chemicals / Nutrients
-   - Rating: 4.5
-   - Notes: Proveedor principal de nutrientes
-4. Hacer clic en "Create Supplier"
-
-**Resultados Esperados**:
-- ✅ Proveedor creado en tabla `suppliers`
-- ✅ Vinculado a facility "North Greenhouse"
-- ✅ Status: "active"
-- ✅ Aparece en lista de suppliers
-- ✅ Mensaje: "Supplier created successfully"
-
-**Notas**:
-- Email y phone son opcionales pero recomendados
-- Type puede ser free text o selección de categorías
-
----
-
-## Test 2.10: Crear Proveedor de Equipamiento
-
-**Objetivo**: Validar la creación de un segundo proveedor.
-
-**Precondiciones**:
-- Test 2.9 completado
-
-**Pasos**:
-1. En módulo "Suppliers", hacer clic en "Add Supplier"
-2. Completar formulario:
-   - Supplier Name: GrowSupply Colombia
-   - Contact Name: Ana Martínez
-   - Email: ventas@growsupply.co
-   - Phone: +57 302 345 6789
-   - Type: Equipment / Supplies
-   - Notes: Sustratos y herramientas
-3. Crear
-
-**Resultados Esperados**:
-- ✅ Segundo proveedor creado exitosamente
-- ✅ Lista muestra 2 suppliers
-- ✅ Se pueden filtrar por tipo
-
-**Notas**:
-- Los suppliers son independientes
-- Luego se vincularán a inventory items
-
----
-
-## Test 2.11: Crear Item de Inventario - Nutriente Base Vegetativa
-
-**Objetivo**: Validar la creación de un item de inventario.
-
-**Precondiciones**:
-- Test 2.10 completado
-- 2 suppliers existen
-
-**Pasos**:
-1. Navegar a módulo "Inventory"
-2. Hacer clic en "Add Inventory Item"
-3. Completar formulario:
-   - Item Name: Base Vegetativa A+B
-   - Category: Nutrients
-   - Supplier: FarmChem Inc (seleccionar)
-   - Unit of Measure: Liters
-   - Current Stock: 500
-   - Reorder Point: 100
-   - Reorder Quantity: 500
-   - Unit Cost: 25000 (COP por litro)
-   - Notes: Fertilizante base para etapa vegetativa
-4. Hacer clic en "Create Item"
-
-**Resultados Esperados**:
-- ✅ Item creado en tabla `inventory_items`
-- ✅ Vinculado a facility y supplier
-- ✅ Stock actual: 500 L
-- ✅ Status: "in_stock" (porque stock > reorder point)
-- ✅ Aparece en lista de inventario
-- ✅ Mensaje: "Inventory item created successfully"
-
-**Notas**:
-- Si stock < reorder point, status debería ser "low_stock"
-- Unit cost es opcional pero recomendado para tracking
-
----
-
-## Test 2.12: Crear Múltiples Items de Inventario
-
-**Objetivo**: Validar la creación de varios items de inventario.
-
-**Precondiciones**:
-- Test 2.11 completado
-
-**Pasos**:
-1. Crear los siguientes items (usar formulario repetidamente):
-
-**Item 2: Base Floración A+B**
-- Category: Nutrients
-- Supplier: FarmChem Inc
-- Unit: Liters
-- Stock: 500
-- Reorder Point: 100
-
-**Item 3: Cal-Mag**
-- Category: Supplements
-- Supplier: FarmChem Inc
-- Unit: Liters
-- Stock: 100
-- Reorder Point: 20
-
-**Item 4: pH Down**
-- Category: pH Control
-- Supplier: FarmChem Inc
-- Unit: Liters
-- Stock: 50
-- Reorder Point: 10
-
-**Item 5: Coco Coir Premium**
-- Category: Growing Media
-- Supplier: GrowSupply Colombia
-- Unit: Bags (50L)
-- Stock: 200
-- Reorder Point: 50
-
-**Item 6: Perlita**
-- Category: Growing Media
-- Supplier: GrowSupply Colombia
-- Unit: Bags (50L)
-- Stock: 50
-- Reorder Point: 20
-
-**Resultados Esperados**:
-- ✅ 6 items creados en total
-- ✅ Cada item vinculado al supplier correcto
-- ✅ Lista de inventario muestra todos los items
-- ✅ Se pueden filtrar por:
-  - Category
-  - Supplier
-  - Stock status (in stock / low stock)
-- ✅ Dashboard muestra "6 Inventory Items" (o contador similar)
-
-**Notas**:
-- Esto simula el inventario inicial básico
-- Más items se pueden agregar según necesidad
-
----
-
-## Test 2.13: Ajustar Stock de Inventario
-
-**Objetivo**: Validar que se puede ajustar el stock de un item.
-
-**Precondiciones**:
-- Test 2.12 completado
-- Item "Cal-Mag" con stock 100
-
-**Pasos**:
-1. En lista de inventario, seleccionar "Cal-Mag"
-2. Hacer clic en "Adjust Stock" o botón de ajuste
-3. Seleccionar tipo: "Manual Adjustment"
-4. Cantidad: -30 (reducir 30 litros)
-5. Reason: "Damaged bottles"
-6. Confirmar
-
-**Resultados Esperados**:
-- ✅ Stock actualizado a 70 L (100 - 30)
-- ✅ Registro de ajuste guardado (tabla de inventory_transactions o similar)
-- ✅ Mensaje: "Stock adjusted successfully"
-- ✅ Nuevo stock se refleja en lista inmediatamente
-
-**Notas**:
-- Ajustes pueden ser positivos (entrada) o negativos (salida)
-- El consumo por actividades se hace automáticamente (Phase 4)
-
----
-
-## Test 2.14: Item con Low Stock Alert
-
-**Objetivo**: Validar que el sistema alerta cuando un item está bajo en stock.
-
-**Precondiciones**:
-- Test 2.13 completado
-- Item "Cal-Mag" ahora tiene stock 70
-
-**Pasos**:
-1. Ajustar stock de "Cal-Mag" a 15 L (por debajo de reorder point 20)
-2. Ver lista de inventario
-
-**Resultados Esperados**:
-- ✅ Status del item cambia a "low_stock"
-- ✅ Item aparece con badge o color de alerta (rojo/amarillo)
-- ✅ (Opcional) Notificación o dashboard widget muestra "1 item low stock"
-- ✅ Reorder quantity sugiere pedir 100 L
-
-**Notas**:
-- El reorder es manual, no automático
-- En producción, podría generar notificación por email
-
----
-
-## Test 2.15: Invitar Facility Manager al Equipo
-
-**Objetivo**: Validar la invitación de un manager (si no se hizo en Phase 1).
-
-**Precondiciones**:
-- Usuario admin loggeado
-- Email maria.garcia@testfarm.com no existe en sistema
-
-**Pasos**:
-1. Navegar a módulo "Team" o "Users"
-2. Hacer clic en "Invite User"
-3. Completar formulario:
-   - Email: maria.garcia@testfarm.com
-   - First Name: María
-   - Last Name: García
-   - Role: Facility Manager
-   - Facility: North Greenhouse
-   - Permissions: (seleccionar permisos según rol)
-4. Enviar invitación
-
-**Resultados Esperados**:
-- ✅ Invitación creada en sistema
-- ✅ Email enviado a maria.garcia@testfarm.com
-- ✅ Usuario aparece en Team con status "pending"
-- ✅ Mensaje: "Invitation sent to maria.garcia@testfarm.com"
-
-**Notas**:
-- El proceso de aceptación es igual al Test 1.10 de Phase 1
-- No ejecutar aceptación aquí (es el mismo flujo)
-
----
-
-## Test 2.16: Invitar Production Operator al Equipo
-
-**Objetivo**: Validar la invitación de un operador.
-
-**Precondiciones**:
-- Test 2.15 completado
-
-**Pasos**:
-1. En módulo "Team", hacer clic en "Invite User"
-2. Completar:
-   - Email: juan.lopez@testfarm.com
-   - First Name: Juan
-   - Last Name: López
-   - Role: Production Operator
-   - Facility: North Greenhouse
-3. Enviar invitación
-
-**Resultados Esperados**:
-- ✅ Segunda invitación enviada
-- ✅ Lista de Team muestra:
-  - admin@ceibatic.com (active, Company Owner)
-  - maria.garcia@testfarm.com (pending, Facility Manager)
-  - juan.lopez@testfarm.com (pending, Production Operator)
-
-**Notas**:
-- Total team members: 3 (1 active + 2 pending)
-- Plan básico permite hasta 10 usuarios
-
----
-
-## Test 2.17: Ver Lista de Team Members
-
-**Objetivo**: Validar que se puede ver y gestionar el equipo.
-
-**Precondiciones**:
-- Test 2.16 completado
-- 3 usuarios en el sistema
-
-**Pasos**:
-1. Navegar a módulo "Team"
-2. Ver lista completa de miembros
-3. Verificar filtros disponibles
-
-**Resultados Esperados**:
-- ✅ Lista muestra 3 usuarios con:
-  - Name
-  - Email
-  - Role
-  - Status (active/pending)
-  - Facility
-  - Actions (edit, resend invitation, delete)
-- ✅ Se puede filtrar por:
-  - Status
-  - Role
-  - Facility
-- ✅ Admin puede editar roles de otros usuarios
-- ✅ Admin NO puede editar su propio rol de Company Owner
-
-**Notas**:
-- Solo Company Owner y Facility Manager pueden gestionar equipo
-- No se puede eliminar el último Company Owner
-
----
-
-## Test 2.18: Ver Facility Settings
-
-**Objetivo**: Validar que se pueden ver y editar configuraciones del facility.
-
-**Preconditions**:
-- Usuario admin loggeado
-- Facility "North Greenhouse" seleccionado
-
-**Pasos**:
-1. Navegar a "Settings" > "Facility Settings"
-2. Ver configuraciones actuales
-3. Editar:
-   - Total Area: 550 m² (aumentar de 500)
-   - Climate Zone: Tropical
-4. Guardar cambios
-
-**Resultados Esperados**:
-- ✅ Configuraciones actuales del facility visibles
-- ✅ Campos editables:
-  - Facility name
-  - Total area
-  - Climate zone
-  - License info (renovaciones)
-- ✅ Campos NO editables:
-  - Facility ID
-  - Primary crop type (requiere proceso especial)
-  - Creation date
-- ✅ Cambios guardados exitosamente
-- ✅ Mensaje: "Facility settings updated"
-
-**Notas**:
-- Cambiar primary crop type puede afectar áreas y templates
-- Se requiere confirmación para cambios críticos
-
----
-
-## Test 2.19: Ver Account Settings
-
-**Objetivo**: Validar que el usuario puede editar su perfil.
-
-**Preconditions**:
-- Usuario admin loggeado
-
-**Pasos**:
-1. Navegar a "Settings" > "Account Settings" o perfil de usuario
-2. Ver información actual
-3. Editar:
-   - Phone: +57 304 999 8888
-   - Preferred Language: Spanish
-4. Guardar
-
-**Resultados Esperados**:
-- ✅ Información del usuario visible
-- ✅ Campos editables:
-  - First name / Last name
-  - Phone
-  - Language preference
-  - Notification settings
-- ✅ Password se cambia en sección separada (por seguridad)
-- ✅ Email NO se puede cambiar (o requiere re-verificación)
-- ✅ Cambios guardados exitosamente
-
-**Notas**:
-- Cambiar email requiere flujo especial de re-verificación
-- Cambiar password requiere password actual para confirmar
-
----
-
-## Test 2.20: Facility Switcher (Si hay múltiples facilities)
-
-**Objetivo**: Validar el cambio entre facilities (si aplica).
-
-**Preconditions**:
-- Usuario tiene acceso a múltiples facilities (crear uno adicional si es necesario)
-
-**Pasos**:
-1. Observar facility actual en header: "North Greenhouse"
-2. Hacer clic en facility switcher dropdown
-3. Seleccionar otro facility (o crear uno nuevo para este test)
-4. Verificar cambio de contexto
-
-**Resultados Esperados**:
-- ✅ Dropdown muestra todos los facilities del usuario
-- ✅ Facility actual marcado/highlighted
-- ✅ Al cambiar facility:
-  - Header actualiza nombre
-  - Dashboard recarga con datos del nuevo facility
-  - Áreas, cultivares, inventario filtrados por nuevo facility
-  - `primary_facility_id` del usuario actualizado
-
-**Notas**:
-- Este test es opcional si solo hay 1 facility
-- El switcher es crítico para usuarios multi-facility
-
----
-
-## Resumen de Phase 2
-
-### Flujo Completo Esperado
-
+**Estructura de Pagina** (ver UI-PATTERNS.md seccion 2):
 ```
-1. Create 3 Areas (Propagation, Vegetative, Flowering)
-   ↓
-2. Link 3 System Cultivars + Create 2 Custom
-   ↓
-3. Add 2 Suppliers
-   ↓
-4. Create 6+ Inventory Items
-   ↓
-5. Invite 2 Team Members
-   ↓
-6. Configure Settings
-   ↓
-7. Ready for Phase 3
+┌─────────────────────────────────────────────────────────────┐
+│ [PageHeader: "Areas" + Breadcrumb]                          │
+├─────────────────────────────────────────────────────────────┤
+│ [Stats: Total | Activas | Mantenimiento | Inactivas]        │
+├─────────────────────────────────────────────────────────────┤
+│ [Filtros ▼] [Tipo ▼] [🔍 Buscar...] [+ Crear Area]         │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─────────┐ ┌─────────┐ ┌─────────┐                        │
+│ │ Card 1  │ │ Card 2  │ │ Card 3  │  Grid: lg:3 md:2 sm:1  │
+│ └─────────┘ └─────────┘ └─────────┘                        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Estado del Sistema al Finalizar Phase 2
+**Pasos**:
+1. Navegar a `/areas`
+2. Ver estadisticas en header (total, activas, mantenimiento, inactivas)
+3. Ver grid de cards con areas existentes
+4. Usar filtro de tipo para filtrar por tipo de area
+5. Usar buscador para buscar por nombre
+6. Click en card navega a detalle
 
-**Áreas**:
-- 3 areas: Propagation Room (50 m²), Vegetative Room (150 m²), Flowering Room (250 m²)
-- Total capacity: 500 clones + 300 plants
+**Criterios de Aceptacion**:
+- [ ] Stats cards muestran conteos correctos
+- [ ] Filtro de tipo funciona correctamente
+- [ ] Busqueda filtra por nombre
+- [ ] Cards muestran: codigo, tipo, nombre, ocupacion, status
+- [ ] Click en card navega a `/areas/[id]`
+- [ ] Estado vacio muestra mensaje + boton crear (si no hay areas)
 
-**Cultivares**:
-- 5 cultivares disponibles (3 system + 2 custom)
-- Todos compatibles con Cannabis
+---
 
-**Suppliers**:
-- 2 suppliers: FarmChem Inc, GrowSupply Colombia
+### Flujo 2: Crear Nueva Area
 
-**Inventario**:
-- 6+ items creados
-- Stock levels monitored
-- Reorder points configurados
+**Trigger**: Click en boton "Crear Area" (amber-500)
 
-**Team**:
-- 3 usuarios: 1 admin + 2 invitados (pending o active)
+**Modal de Creacion** (ver UI-PATTERNS.md seccion 4):
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [Icon] Crear Nueva Area                               [X]   │
+│        Complete los campos para crear una nueva area        │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────┬─────────────────────────────┐  │
+│ │ INFORMACION BASICA      │ CAPACIDAD & AMBIENTE        │  │
+│ │                         │                             │  │
+│ │ Nombre: [__________]    │ Area Total (m²): [___]      │  │
+│ │                         │                             │  │
+│ │ Tipo: [▼ Seleccionar]   │ Capacidad: [___] plantas    │  │
+│ │                         │                             │  │
+│ │ Estado:                 │ Control Climatico:          │  │
+│ │ ○ Activa               │ ○ Si  ○ No                  │  │
+│ │ ○ Mantenimiento        │                             │  │
+│ │ ○ Inactiva             │ [Si control climatico:]     │  │
+│ │                         │ Temp: [__] - [__] °C        │  │
+│ │ Descripcion:            │ Humedad: [__] - [__] %      │  │
+│ │ [________________]      │ Luz: [__] hrs/dia           │  │
+│ │                         │ pH: [__] - [__]             │  │
+│ └─────────────────────────┴─────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│                      [Cancelar] [Crear Area]                │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**Settings**:
-- Facility configurado completamente
-- Account preferences establecidas
+**Campos Requeridos**:
+- Nombre (unico dentro del facility)
+- Tipo de area
+- Area total (m²)
+- Capacidad (plantas)
 
-### Criterios de Éxito
+**Campos Opcionales**:
+- Estado (default: active)
+- Control climatico y especificaciones
+- Descripcion
 
-- ✅ Al menos 3 áreas creadas y activas
-- ✅ Al menos 3 cultivares disponibles
-- ✅ Al menos 2 suppliers registrados
-- ✅ Al menos 5 inventory items creados
-- ✅ Team configurado (invitaciones enviadas)
-- ✅ Settings configurados correctamente
+**Pasos**:
+1. Click "Crear Area"
+2. Completar nombre: "Propagation Room"
+3. Seleccionar tipo: "propagation"
+4. Ingresar area: 50 m²
+5. Ingresar capacidad: 500 plantas
+6. Activar control climatico
+7. Configurar: Temp 24-26°C, Humedad 70-80%
+8. Click "Crear Area"
 
-### Troubleshooting
+**Criterios de Aceptacion**:
+- [ ] Modal abre correctamente
+- [ ] Validacion de campos requeridos
+- [ ] Campos de ambiente aparecen solo si control climatico = Si
+- [ ] Al guardar: toast de exito, modal cierra, lista actualiza
+- [ ] Area aparece en lista con status correcto
+- [ ] Stats cards actualizan conteo
 
-**Problema: No puedo crear área (nombre duplicado)**
-- Nombres de área deben ser únicos dentro del facility
-- Usar nombre diferente o agregar sufijo (ej: "Room A", "Room B")
+---
 
-**Problema: Cultivar del sistema no aparece**
-- Verificar filtro de crop type
-- Verificar que crop type del facility sea compatible
+### Flujo 3: Ver Detalle de Area
 
-**Problema: No se puede vincular supplier a inventory item**
-- Verificar que supplier existe y está activo
-- Verificar que supplier pertenece al mismo facility
+**Ruta**: `/areas/[id]`
 
-**Problema: Stock adjustment no se refleja**
-- Verificar permisos del usuario
-- Refrescar página
-- Verificar que cantidad es válida (no negativo final)
+**Estructura de Pagina** (ver UI-PATTERNS.md seccion 3):
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [Breadcrumb: Home > Areas > Propagation Room]               │
+│ Propagation Room                              [Editar]      │
+├─────────────────────────────────────────────────────────────┤
+│ [Tab: Detalle] [Tab: Lotes] [Tab: Actividades]              │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐│
+│ │ INFORMACION GENERAL                      [StatusBadge]  ││
+│ │                                                         ││
+│ │ Tipo          Area Total    Capacidad    Ocupacion     ││
+│ │ Propagacion   50 m²         500          0 (0%)        ││
+│ └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐│
+│ │ CONTROL CLIMATICO                                       ││
+│ │                                                         ││
+│ │ Temperatura   Humedad       Luz          pH            ││
+│ │ 24-26°C       70-80%        18 hrs       5.5-6.5       ││
+│ └─────────────────────────────────────────────────────────┘│
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**Problema: Invitación no se puede enviar**
-- Verificar que email no existe ya en el sistema
-- Verificar límite de plan (10 usuarios en básico)
-- Verificar configuración de email service
+**Tabs**:
+- **Detalle**: Informacion general y especificaciones
+- **Lotes**: Lista de batches activos en el area
+- **Actividades**: Historial de actividades realizadas
+
+**Pasos**:
+1. Click en card de area desde lista
+2. Ver informacion general
+3. Navegar entre tabs
+4. Click "Editar" para modificar
+
+**Criterios de Aceptacion**:
+- [ ] Breadcrumb muestra ruta correcta
+- [ ] Informacion del area es correcta
+- [ ] Tabs funcionan y cargan contenido
+- [ ] Boton editar navega a edicion
+
+---
+
+### Flujo 4: Editar Area
+
+**Ruta**: `/areas/[id]/edit`
+
+**Pasos**:
+1. Desde detalle, click "Editar"
+2. Modificar capacidad: 600 (de 500)
+3. Click "Guardar"
+
+**Criterios de Aceptacion**:
+- [ ] Formulario pre-llenado con datos actuales
+- [ ] Cambios se guardan correctamente
+- [ ] Redirige a detalle con datos actualizados
+- [ ] Toast de confirmacion
+
+---
+
+### Test Cases: Areas
+
+| ID | Descripcion | Datos | Resultado Esperado |
+|----|-------------|-------|-------------------|
+| A-01 | Crear area propagacion | Propagation Room, propagation, 50m², 500 | Area creada, status active |
+| A-02 | Crear area vegetativa | Vegetative Room, vegetative, 150m², 200 | Area creada, lista muestra 2 |
+| A-03 | Crear area floracion | Flowering Room, flowering, 250m², 100 | Area creada, lista muestra 3 |
+| A-04 | Editar capacidad | Propagation Room → 600 | Capacidad actualizada |
+| A-05 | Buscar area | "Prop" | Solo Propagation Room visible |
+| A-06 | Filtrar por tipo | vegetative | Solo Vegetative Room visible |
+
+---
+
+## MODULE 15: Cultivar Management
+
+### Descripcion
+Cultivars son las variedades o strains que se cultivan. Pueden ser del sistema (predefinidos) o personalizados (creados por el facility).
+
+### Conceptos Clave
+- **System Cultivars**: Variedades predefinidas, solo lectura, compartidas
+- **Custom Cultivars**: Variedades propietarias, editables, privadas al facility
+- **Facility Linking**: Proceso de agregar cultivars del sistema al facility
+
+### Flujo 1: Ver Lista de Cultivars
+
+**Ruta**: `/cultivars`
+
+**Estructura de Pagina**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [PageHeader: "Cultivars" + Breadcrumb]                      │
+├─────────────────────────────────────────────────────────────┤
+│ [Stats: Total | Cannabis | Coffee | Custom]                 │
+├─────────────────────────────────────────────────────────────┤
+│ [Tipo ▼] [🔍 Buscar...] [Agregar del Sistema] [+ Crear]    │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────────────────────────┐│
+│ │ Cherry AK              [⭐ Sistema]                     ││
+│ │ Indica | 8-9 semanas | THC 18-22%                       ││
+│ │ [Ver] [Ver Lotes]                                       ││
+│ └─────────────────────────────────────────────────────────┘│
+│ ┌─────────────────────────────────────────────────────────┐│
+│ │ Test Strain 1          [✓ Custom]                       ││
+│ │ Hibrida | 9 semanas | THC 18-22%                        ││
+│ │ [Ver] [Editar] [Eliminar]                               ││
+│ └─────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Diferencias por Tipo**:
+- System: Solo lectura, badge ⭐, no editable
+- Custom: Editable, badge ✓, puede eliminarse
+
+**Pasos**:
+1. Navegar a `/cultivars`
+2. Ver lista de cultivars vinculados al facility
+3. Filtrar por crop type si hay multiples
+4. Identificar cuales son system vs custom
+
+**Criterios de Aceptacion**:
+- [ ] Lista muestra cultivars del facility
+- [ ] Badge indica si es system o custom
+- [ ] Acciones correctas segun tipo
+- [ ] Filtro de crop type funciona
+
+---
+
+### Flujo 2: Agregar Cultivars del Sistema
+
+**Trigger**: Click "Agregar del Sistema"
+
+**Modal de Seleccion**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Agregar Cultivars del Sistema                         [X]   │
+│ Selecciona los cultivars que cultivas en tu instalacion     │
+├─────────────────────────────────────────────────────────────┤
+│ Tipo de Cultivo: [▼ Cannabis]                               │
+│                                                             │
+│ [🔍 Buscar en catalogo...]                                  │
+├─────────────────────────────────────────────────────────────┤
+│ ☐ Cherry AK (Indica) - 8-9 sem - THC 18-22%                │
+│ ☐ OG Kush (Indica) - 8-9 sem - THC 19-24%                  │
+│ ☐ Northern Lights (Indica) - 7-9 sem - THC 16-21%          │
+│ ☐ White Widow (Hibrida) - 9-10 sem - THC 20-25%            │
+│ ☐ Sour Diesel (Sativa) - 10-11 sem - THC 20-25%            │
+├─────────────────────────────────────────────────────────────┤
+│ Seleccionados: 0                                            │
+│                      [Cancelar] [Agregar Seleccionados]     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Pasos**:
+1. Click "Agregar del Sistema"
+2. Filtrar por crop type si necesario
+3. Seleccionar: Cherry AK, OG Kush, Northern Lights
+4. Click "Agregar Seleccionados"
+
+**Criterios de Aceptacion**:
+- [ ] Modal muestra solo cultivars NO vinculados
+- [ ] Multi-seleccion funciona
+- [ ] Contador actualiza con seleccion
+- [ ] Al guardar: toast exito, lista actualiza
+- [ ] Cultivars aparecen con badge ⭐
+
+---
+
+### Flujo 3: Crear Cultivar Personalizado
+
+**Trigger**: Click "Crear Cultivar" (amber-500)
+
+**Modal de Creacion**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [Icon] Nuevo Cultivar Personalizado                   [X]   │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────┬─────────────────────────────┐  │
+│ │ INFORMACION BASICA      │ CARACTERISTICAS             │  │
+│ │                         │                             │  │
+│ │ Crop Type: [▼ Cannabis] │ Floración: [__] semanas     │  │
+│ │                         │                             │  │
+│ │ Nombre: [__________]    │ Rendimiento: [▼ Medio]      │  │
+│ │                         │                             │  │
+│ │ Tipo de Variedad:       │ THC (%): [__] - [__]        │  │
+│ │ ○ Indica               │                             │  │
+│ │ ○ Sativa               │ CBD (%): [__] - [__]        │  │
+│ │ ● Hibrida              │                             │  │
+│ │                         │ Aromas: [__________]        │  │
+│ │ Genetica: [__________]  │                             │  │
+│ │                         │ Efectos: [__________]       │  │
+│ │ Breeder: [__________]   │                             │  │
+│ └─────────────────────────┴─────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│                      [Cancelar] [Crear Cultivar]            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Campos Requeridos**:
+- Crop Type
+- Nombre
+- Tipo de variedad (Cannabis)
+- Tiempo de floracion
+- Nivel de rendimiento
+
+**Pasos**:
+1. Click "Crear Cultivar"
+2. Seleccionar crop type: Cannabis
+3. Nombre: "Test Strain 1"
+4. Tipo: Hibrida
+5. Floracion: 9 semanas
+6. Rendimiento: Medio-Alto
+7. THC: 18-22%
+8. Click "Crear Cultivar"
+
+**Criterios de Aceptacion**:
+- [ ] Modal abre correctamente
+- [ ] Campos dinamicos segun crop type
+- [ ] Al guardar: cultivar creado con badge ✓ Custom
+- [ ] Cultivar editable y eliminable
+
+---
+
+### Test Cases: Cultivars
+
+| ID | Descripcion | Datos | Resultado Esperado |
+|----|-------------|-------|-------------------|
+| C-01 | Agregar Cherry AK del sistema | Seleccionar Cherry AK | Cultivar vinculado, badge ⭐ |
+| C-02 | Agregar multiples del sistema | OG Kush, Northern Lights | 3 cultivars system total |
+| C-03 | Crear cultivar custom | Test Strain 1, Hibrida, 9 sem | Cultivar creado, badge ✓ |
+| C-04 | Crear segundo custom | Test Strain 2, Sativa, 10 sem | 5 cultivars total (3+2) |
+| C-05 | Editar cultivar custom | Test Strain 1 → 10 semanas | Floracion actualizada |
+| C-06 | Intentar editar system | Cherry AK | Boton editar no disponible |
+
+---
+
+## MODULE 16: Supplier Management
+
+### Descripcion
+Suppliers son los proveedores que suministran insumos al facility (nutrientes, semillas, equipamiento, etc.).
+
+### Categorias de Proveedor
+- `nutrients` - Nutrientes y fertilizantes
+- `pesticides` - Pesticidas y fungicidas
+- `seeds` - Semillas y material genetico
+- `equipment` - Equipamiento y herramientas
+- `growing_media` - Sustratos y medios de cultivo
+- `packaging` - Empaque y etiquetado
+- `lab_testing` - Servicios de laboratorio
+- `other` - Otros
+
+### Flujo 1: Ver Lista de Suppliers
+
+**Ruta**: `/suppliers`
+
+**Estructura de Pagina**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [PageHeader: "Proveedores" + Breadcrumb]                    │
+├─────────────────────────────────────────────────────────────┤
+│ [Stats: Total | Activos | Inactivos]                        │
+├─────────────────────────────────────────────────────────────┤
+│ [Categoria ▼] [🔍 Buscar...] [+ Nuevo Proveedor]           │
+├─────────────────────────────────────────────────────────────┤
+│ ┌───────────────────────────────────────────────────────┐  │
+│ │ ID    Nombre           Categorias      Estado        │  │
+│ │ 001   FarmChem Inc     Nutrientes      🟢 Activo    │  │
+│ │ 002   GrowSupply       Equipamiento    🟢 Activo    │  │
+│ └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Criterios de Aceptacion**:
+- [ ] Tabla muestra suppliers del company
+- [ ] Filtro por categoria funciona
+- [ ] Status badge correcto (active/inactive)
+- [ ] Acciones: Ver, Editar, Desactivar
+
+---
+
+### Flujo 2: Crear Supplier
+
+**Trigger**: Click "Nuevo Proveedor" (amber-500)
+
+**Modal de Creacion**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [Icon] Nuevo Proveedor                                [X]   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ Nombre: [________________________]                          │
+│                                                             │
+│ Contacto: [________________________]                        │
+│                                                             │
+│ Email: [________________________]                           │
+│                                                             │
+│ Telefono: [________________________]                        │
+│                                                             │
+│ Direccion: [________________________]                       │
+│                                                             │
+│ Categorias:                                                 │
+│ ☐ Nutrientes  ☐ Pesticidas  ☐ Semillas                    │
+│ ☐ Equipamiento  ☐ Sustratos  ☐ Empaque                    │
+│                                                             │
+│ Notas: [________________________]                           │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                      [Cancelar] [Crear Proveedor]           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Campos Requeridos**:
+- Nombre
+
+**Campos Opcionales**:
+- Contacto, Email, Telefono, Direccion
+- Categorias
+- Notas
+
+**Pasos**:
+1. Click "Nuevo Proveedor"
+2. Nombre: "FarmChem Inc"
+3. Contacto: "Carlos Rodriguez"
+4. Email: "sales@farmchem.com"
+5. Categorias: Nutrientes, Pesticidas
+6. Click "Crear Proveedor"
+
+**Criterios de Aceptacion**:
+- [ ] Proveedor creado exitosamente
+- [ ] Aparece en lista con categorias correctas
+- [ ] Status default: active
+
+---
+
+### Test Cases: Suppliers
+
+| ID | Descripcion | Datos | Resultado Esperado |
+|----|-------------|-------|-------------------|
+| S-01 | Crear proveedor quimicos | FarmChem Inc, Nutrientes | Proveedor creado |
+| S-02 | Crear proveedor equipamiento | GrowSupply, Equipamiento | 2 proveedores total |
+| S-03 | Editar proveedor | FarmChem → agregar Pesticidas | Categoria actualizada |
+| S-04 | Desactivar proveedor | GrowSupply → inactive | Status cambia a inactivo |
+| S-05 | Filtrar por categoria | Nutrientes | Solo FarmChem visible |
+
+---
+
+## MODULE 19: Inventory Management
+
+### Descripcion
+Inventory gestiona todos los items fisicos: plantas madre, semillas, clones, equipamiento, nutrientes, y materiales.
+
+### Categorias de Inventario
+- `mother_plant` - Plantas madre
+- `seeds` - Semillas
+- `clones` - Clones/esquejes
+- `equipment` - Equipamiento
+- `nutrients` - Nutrientes
+- `pesticides` - Pesticidas
+- `materials` - Materiales de cultivo
+- `consumables` - Consumibles
+
+### Flujo 1: Ver Lista de Inventario
+
+**Ruta**: `/inventory`
+
+**Estructura de Pagina**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [PageHeader: "Inventario" + Breadcrumb]                     │
+├─────────────────────────────────────────────────────────────┤
+│ [Stats: Total Items | Low Stock ⚠️]                         │
+├─────────────────────────────────────────────────────────────┤
+│ [Todos] [Plantas Madre] [Semillas] [Nutrientes] [Materiales]│
+├─────────────────────────────────────────────────────────────┤
+│ [🔍 Buscar...] [+ Agregar Item]                             │
+├─────────────────────────────────────────────────────────────┤
+│ ┌───────────────────────────────────────────────────────┐  │
+│ │ ID    Nombre         Categoria    Cantidad   Estado   │  │
+│ │ 001   Base Veg A+B   Nutrientes   500 L      🟢 OK   │  │
+│ │ 002   Cal-Mag        Nutrientes   15 L       🔴 Low  │  │
+│ │ 003   Coco Coir      Materiales   200 bags   🟢 OK   │  │
+│ └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Estados de Stock**:
+- 🟢 OK: stock >= reorder_point
+- 🟡 Medium: stock entre 50% y 100% del reorder_point
+- 🔴 Low: stock < reorder_point
+
+**Criterios de Aceptacion**:
+- [ ] Lista muestra items del facility
+- [ ] Tabs filtran por categoria
+- [ ] Status badge indica nivel de stock
+- [ ] Low stock count es correcto
+
+---
+
+### Flujo 2: Crear Item de Inventario
+
+**Trigger**: Click "Agregar Item" (amber-500)
+
+**Modal de Creacion**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [Icon] Nuevo Item de Inventario                       [X]   │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────┬─────────────────────────────┐  │
+│ │ INFORMACION BASICA      │ STOCK & TRACKING            │  │
+│ │                         │                             │  │
+│ │ Categoria: [▼ Select]   │ Cantidad: [___] [▼ Unidad] │  │
+│ │                         │                             │  │
+│ │ Nombre: [__________]    │ Punto Reorden: [___]        │  │
+│ │                         │                             │  │
+│ │ SKU: [__________]       │ Area: [▼ Almacen]           │  │
+│ │                         │                             │  │
+│ │ Proveedor: [▼ Select]   │ Precio Unit: $[___]         │  │
+│ │                         │                             │  │
+│ │ Lote: [__________]      │ Vencimiento: [__/__/____]   │  │
+│ └─────────────────────────┴─────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│                      [Cancelar] [Guardar]                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Campos Requeridos**:
+- Categoria
+- Nombre
+- Cantidad inicial
+- Unidad de medida
+- Area de almacenamiento
+
+**Pasos**:
+1. Click "Agregar Item"
+2. Categoria: Nutrientes
+3. Nombre: "Base Vegetativa A+B"
+4. Proveedor: FarmChem Inc
+5. Cantidad: 500 Litros
+6. Punto de Reorden: 100
+7. Click "Guardar"
+
+**Criterios de Aceptacion**:
+- [ ] Item creado con cantidad inicial
+- [ ] Status calculado automaticamente (OK si >= reorder_point)
+- [ ] Vinculo a supplier correcto
+
+---
+
+### Flujo 3: Ajustar Stock
+
+**Trigger**: Menu contextual → "Ajustar Stock"
+
+**Modal de Ajuste**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Ajustar Stock: Cal-Mag                                [X]   │
+├─────────────────────────────────────────────────────────────┤
+│ Stock Actual: 100 L                                         │
+│                                                             │
+│ Tipo de Ajuste:                                             │
+│ ○ Entrada (+)                                              │
+│ ● Salida (-)                                               │
+│                                                             │
+│ Cantidad: [30] L                                            │
+│                                                             │
+│ Razon: [Botellas danadas_____________]                      │
+│                                                             │
+│ Nuevo Stock: 70 L                                           │
+├─────────────────────────────────────────────────────────────┤
+│                      [Cancelar] [Confirmar Ajuste]          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Pasos**:
+1. En item "Cal-Mag", click menu → "Ajustar Stock"
+2. Tipo: Salida
+3. Cantidad: 30
+4. Razon: "Botellas danadas"
+5. Click "Confirmar Ajuste"
+
+**Criterios de Aceptacion**:
+- [ ] Preview del nuevo stock es correcto
+- [ ] Stock actualizado en lista
+- [ ] Registro de movimiento creado
+- [ ] Status actualiza si cruza reorder_point
+
+---
+
+### Test Cases: Inventory
+
+| ID | Descripcion | Datos | Resultado Esperado |
+|----|-------------|-------|-------------------|
+| I-01 | Crear nutriente base | Base Veg A+B, 500L, reorder 100 | Item creado, 🟢 OK |
+| I-02 | Crear nutriente floracion | Base Flor A+B, 500L | 2 items |
+| I-03 | Crear Cal-Mag | Cal-Mag, 100L, reorder 20 | 3 items |
+| I-04 | Crear sustrato | Coco Coir, 200 bags | 4 items |
+| I-05 | Ajustar stock negativo | Cal-Mag -85L | Stock 15L, 🔴 Low |
+| I-06 | Ver Low Stock | Filtrar items bajos | Solo Cal-Mag visible |
+
+---
+
+## MODULE 17: Team Management
+
+### Descripcion
+Team gestiona los usuarios que tienen acceso al sistema, incluyendo invitaciones, roles, y permisos.
+
+### Roles
+- `ADMIN` - Acceso completo, configuracion de empresa
+- `FACILITY_MANAGER` - Gestion de instalacion
+- `PRODUCTION_SUPERVISOR` - Supervision de produccion
+- `WORKER` - Ejecucion de actividades
+- `QUALITY_CONTROLLER` - Control de calidad
+
+### Flujo 1: Ver Lista de Usuarios
+
+**Ruta**: `/team`
+
+**Estructura de Pagina**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [PageHeader: "Equipo" + Breadcrumb]                         │
+├─────────────────────────────────────────────────────────────┤
+│ [Stats: Total | Activos | Pendientes]                       │
+├─────────────────────────────────────────────────────────────┤
+│ [Rol ▼] [Estado ▼] [🔍 Buscar...] [+ Invitar Usuario]      │
+├─────────────────────────────────────────────────────────────┤
+│ ┌───────────────────────────────────────────────────────┐  │
+│ │ Usuario           Email              Rol       Estado │  │
+│ │ Admin User        admin@...          Admin     🟢 Act │  │
+│ │ Maria Garcia      maria@...          Manager   ⏳ Pend │  │
+│ │ Juan Lopez        juan@...           Worker    ⏳ Pend │  │
+│ └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Estados de Usuario**:
+- 🟢 Active: Usuario activo con acceso
+- ⏳ Pending: Invitacion enviada, sin aceptar
+- 🔴 Inactive: Usuario desactivado
+
+**Criterios de Aceptacion**:
+- [ ] Lista muestra usuarios del company
+- [ ] Status badge correcto
+- [ ] Filtros de rol y estado funcionan
+
+---
+
+### Flujo 2: Invitar Usuario
+
+**Trigger**: Click "Invitar Usuario" (amber-500)
+
+**Modal de Invitacion**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [Icon] Invitar Nuevo Usuario                          [X]   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ Email: [________________________]                           │
+│                                                             │
+│ Nombre: [________________________]                          │
+│                                                             │
+│ Apellido: [________________________]                        │
+│                                                             │
+│ Rol: [▼ Seleccionar Rol]                                   │
+│                                                             │
+│ Instalacion: [▼ North Greenhouse]                          │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                      [Cancelar] [Enviar Invitacion]         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Pasos**:
+1. Click "Invitar Usuario"
+2. Email: "maria.garcia@testfarm.com"
+3. Nombre: "Maria"
+4. Apellido: "Garcia"
+5. Rol: Facility Manager
+6. Instalacion: North Greenhouse
+7. Click "Enviar Invitacion"
+
+**Criterios de Aceptacion**:
+- [ ] Email de invitacion enviado
+- [ ] Usuario aparece con status ⏳ Pending
+- [ ] Accion "Reenviar Invitacion" disponible
+
+---
+
+### Test Cases: Team
+
+| ID | Descripcion | Datos | Resultado Esperado |
+|----|-------------|-------|-------------------|
+| T-01 | Invitar Facility Manager | maria@..., Manager | Invitacion enviada, ⏳ Pending |
+| T-02 | Invitar Worker | juan@..., Worker | 3 usuarios total |
+| T-03 | Reenviar invitacion | Maria Garcia | Nueva invitacion enviada |
+| T-04 | Filtrar por rol | Rol = Worker | Solo Juan visible |
+| T-05 | Filtrar por estado | Estado = Pending | Maria y Juan visibles |
+
+---
+
+## MODULE 18: Facility Management
+
+### Descripcion
+Facility Management permite gestionar multiples instalaciones y cambiar entre ellas.
+
+### Flujo 1: Ver Instalaciones
+
+**Ruta**: `/facilities`
+
+**Estructura de Pagina**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [PageHeader: "Instalaciones" + Breadcrumb]                  │
+├─────────────────────────────────────────────────────────────┤
+│ [Stats: Total | Plan: Professional (5 max)]                 │
+├─────────────────────────────────────────────────────────────┤
+│ [+ Nueva Instalacion]                                       │
+├─────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────────────────────────┐│
+│ │ 🏭 North Greenhouse                        [✓ Activa]   ││
+│ │ Medellin | 500 m² | Cannabis                            ││
+│ │ Areas: 3 | Usuarios: 3 | Ordenes: 0                     ││
+│ │ [Ver Dashboard] [Configurar] [Cambiar a esta]           ││
+│ └─────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Flujo 2: Facility Switcher (Header)
+
+**Ubicacion**: Header global
+
+**Componente**:
+```
+┌─────────────────────────────────────────┐
+│ [🏭 North Greenhouse ▼]                 │
+├─────────────────────────────────────────┤
+│ 🏭 North Greenhouse ✓                   │
+│ 🏭 South Facility                       │
+│ ─────────────────────────               │
+│ + Agregar Instalacion                   │
+│ ⚙️ Gestionar Instalaciones              │
+└─────────────────────────────────────────┘
+```
+
+**Workflow al Cambiar**:
+1. Usuario selecciona facility diferente
+2. Sistema actualiza `currentFacilityId` del usuario
+3. Pagina actual recarga con contexto de nuevo facility
+4. Todos los datos mostrados son del nuevo facility
+
+**Criterios de Aceptacion**:
+- [ ] Switcher muestra facility actual
+- [ ] Dropdown lista todos los facilities accesibles
+- [ ] Al cambiar, toda la aplicacion usa nuevo contexto
+- [ ] Stats y datos reflejan nuevo facility
+
+---
+
+## MODULE 20: Facility Settings
+
+### Descripcion
+Configuraciones especificas de la instalacion actual.
+
+**Ruta**: `/settings/facility`
+
+### Secciones
+
+**Tab General**:
+- Nombre de instalacion
+- Tipo de licencia
+- Numero de licencia
+- Area licenciada (m²)
+- Cultivo principal
+
+**Tab Ubicacion**:
+- Departamento
+- Municipio
+- Direccion
+- Coordenadas GPS
+
+**Tab Ambiente**:
+- Zona climatica
+- Temperatura objetivo
+- Humedad objetivo
+
+**Criterios de Aceptacion**:
+- [ ] Datos pre-cargados correctamente
+- [ ] Cambios se guardan
+- [ ] Validacion de campos
+
+---
+
+## MODULE 21: Account Settings
+
+### Descripcion
+Preferencias personales del usuario.
+
+**Ruta**: `/settings/account`
+
+### Secciones
+
+**Tab Perfil**:
+- Nombre, Apellido
+- Email (solo lectura)
+- Telefono
+
+**Tab Preferencias**:
+- Idioma
+- Zona horaria
+- Formato de fecha
+- Unidades (metricas/imperiales)
+
+**Tab Notificaciones**:
+- Alertas de stock bajo
+- Actividades vencidas
+- Resumen diario
+- Alertas de calidad
+
+**Tab Seguridad**:
+- Cambiar contrasena
+- 2FA (si disponible)
+
+**Criterios de Aceptacion**:
+- [ ] Datos del usuario cargados
+- [ ] Cambio de idioma funciona
+- [ ] Preferencias se persisten
+
+---
+
+## Resumen de Estado Final - Phase 2
+
+### Al completar Phase 2, el sistema debe tener:
+
+**Areas (3)**:
+| Area | Tipo | m² | Capacidad |
+|------|------|-----|-----------|
+| Propagation Room | propagation | 50 | 500 clones |
+| Vegetative Room | vegetative | 150 | 200 plants |
+| Flowering Room | flowering | 250 | 100 plants |
+
+**Cultivars (5)**:
+| Cultivar | Tipo | Source |
+|----------|------|--------|
+| Cherry AK | Indica | System |
+| OG Kush | Indica | System |
+| Northern Lights | Indica | System |
+| Test Strain 1 | Hibrida | Custom |
+| Test Strain 2 | Sativa | Custom |
+
+**Suppliers (2)**:
+| Supplier | Categorias |
+|----------|------------|
+| FarmChem Inc | Nutrientes, Pesticidas |
+| GrowSupply | Equipamiento, Materiales |
+
+**Inventory (6+ items)**:
+| Item | Categoria | Stock | Status |
+|------|-----------|-------|--------|
+| Base Vegetativa A+B | Nutrientes | 500 L | OK |
+| Base Floracion A+B | Nutrientes | 500 L | OK |
+| Cal-Mag | Nutrientes | 15 L | Low |
+| pH Down | Nutrientes | 50 L | OK |
+| Coco Coir | Materiales | 200 bags | OK |
+| Perlita | Materiales | 50 bags | OK |
+
+**Team (3 usuarios)**:
+| Usuario | Rol | Estado |
+|---------|-----|--------|
+| admin@ceibatic.com | Admin | Active |
+| maria.garcia@testfarm.com | Facility Manager | Pending |
+| juan.lopez@testfarm.com | Worker | Pending |
+
+---
+
+## Checklist Final Phase 2
+
+- [ ] 3 areas creadas y activas
+- [ ] 3+ cultivars del sistema vinculados
+- [ ] 2+ cultivars personalizados creados
+- [ ] 2 suppliers registrados
+- [ ] 6+ items de inventario creados
+- [ ] 1+ item con status Low Stock
+- [ ] 2 invitaciones de equipo enviadas
+- [ ] Facility settings configurados
+- [ ] Account settings configurados
+- [ ] Facility switcher funcional (si hay multiples)
 
 ---
 

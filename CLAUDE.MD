@@ -90,7 +90,13 @@ Ver `docs/UI-PATTERNS.md` para patrones detallados.
 
 ## Convex Backend
 
-**Deployment**: https://handsome-jay-388.convex.site
+### Deployments
+| Environment | URL | Usage |
+|-------------|-----|-------|
+| **Development** | https://exciting-shrimp-34.convex.cloud | Local development |
+| **Production** | https://handsome-jay-388.convex.cloud | Vercel deployment |
+
+**Current**: Development (exciting-shrimp-34)
 
 ### Auth Flow
 1. Register → Email verification → Company setup → Facility setup
