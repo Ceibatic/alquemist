@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from 'convex/react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/convex/_generated/api';
@@ -46,6 +46,13 @@ export function FacilitySwitcher({
   const currentFacility = facilities?.find(
     (f) => f._id === currentFacilityId
   ) || facilities?.[0];
+
+  // Auto-select first facility if none is selected
+  useEffect(() => {
+    if (!currentFacilityId && facilities && facilities.length > 0) {
+      onFacilityChange?.(facilities[0]._id);
+    }
+  }, [currentFacilityId, facilities, onFacilityChange]);
 
   const handleFacilitySelect = (facilityId: string) => {
     setIsOpen(false);

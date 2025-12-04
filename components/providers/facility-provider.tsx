@@ -12,6 +12,7 @@ import { Id } from '@/convex/_generated/dataModel';
 
 interface FacilityContextType {
   currentFacilityId: Id<'facilities'> | null;
+  currentCompanyId: Id<'companies'> | null;
   setCurrentFacilityId: (facilityId: Id<'facilities'>) => void;
   isLoading: boolean;
 }
@@ -21,21 +22,27 @@ const FacilityContext = createContext<FacilityContextType | null>(null);
 interface FacilityProviderProps {
   children: ReactNode;
   initialFacilityId?: string;
+  initialCompanyId?: string;
 }
 
 export function FacilityProvider({
   children,
   initialFacilityId,
+  initialCompanyId,
 }: FacilityProviderProps) {
   const [currentFacilityId, setCurrentFacilityIdState] =
     useState<Id<'facilities'> | null>(
       initialFacilityId ? (initialFacilityId as Id<'facilities'>) : null
     );
+  const [currentCompanyId, setCurrentCompanyIdState] =
+    useState<Id<'companies'> | null>(
+      initialCompanyId ? (initialCompanyId as Id<'companies'>) : null
+    );
   const [isLoading, setIsLoading] = useState(!initialFacilityId);
 
-  // Load facility from cookies on mount if not provided
+  // Load facility and company from cookies on mount if not provided
   useEffect(() => {
-    if (initialFacilityId) {
+    if (initialFacilityId && initialCompanyId) {
       setIsLoading(false);
       return;
     }
@@ -49,17 +56,20 @@ export function FacilityProvider({
         const userData = JSON.parse(
           decodeURIComponent(userDataCookie.split('=')[1])
         );
-        if (userData.primaryFacilityId) {
+        if (userData.primaryFacilityId && !initialFacilityId) {
           setCurrentFacilityIdState(
             userData.primaryFacilityId as Id<'facilities'>
           );
+        }
+        if (userData.companyId && !initialCompanyId) {
+          setCurrentCompanyIdState(userData.companyId as Id<'companies'>);
         }
       } catch (err) {
         console.error('Error parsing user data cookie:', err);
       }
     }
     setIsLoading(false);
-  }, [initialFacilityId]);
+  }, [initialFacilityId, initialCompanyId]);
 
   const setCurrentFacilityId = useCallback((facilityId: Id<'facilities'>) => {
     setCurrentFacilityIdState(facilityId);
@@ -81,6 +91,7 @@ export function FacilityProvider({
     <FacilityContext.Provider
       value={{
         currentFacilityId,
+        currentCompanyId,
         setCurrentFacilityId,
         isLoading,
       }}

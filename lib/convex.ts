@@ -8,15 +8,10 @@
 
 import { ConvexHttpClient } from 'convex/browser';
 
-// Validate environment variable
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-
-if (!convexUrl) {
-  throw new Error(
-    'Missing NEXT_PUBLIC_CONVEX_URL environment variable. ' +
-      'Please set it in .env.local'
-  );
-}
+// TEMPORARY: Force dev URL
+const convexUrl = 'https://exciting-shrimp-34.convex.cloud';
+// const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+console.log('[Convex Server] Using URL:', convexUrl);
 
 // Create and export the HTTP client for server-side usage
 export const convex = new ConvexHttpClient(convexUrl);

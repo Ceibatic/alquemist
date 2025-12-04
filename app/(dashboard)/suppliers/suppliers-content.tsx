@@ -1,37 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
 import { SupplierList } from '@/components/suppliers/supplier-list';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFacility } from '@/components/providers/facility-provider';
 
 export function SuppliersContent() {
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [error, setError] = useState<Error | null>(null);
+  const { currentCompanyId, isLoading } = useFacility();
 
-  useEffect(() => {
-    // Get user data from cookies
-    const userDataCookie = document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('user_data='));
-
-    if (userDataCookie) {
-      try {
-        const userData = JSON.parse(
-          decodeURIComponent(userDataCookie.split('=')[1])
-        );
-        setCompanyId(userData.companyId);
-      } catch (err) {
-        setError(new Error('Error al cargar datos del usuario'));
-      }
-    } else {
-      setError(new Error('No se encontró información del usuario'));
-    }
-  }, []);
-
-  // Loading state
-  if (!companyId && !error) {
+  // Loading state - only show skeleton while actually loading
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />
@@ -50,8 +29,8 @@ export function SuppliersContent() {
     );
   }
 
-  // Error state
-  if (error) {
+  // Error state - no company (after loading completes)
+  if (!currentCompanyId) {
     return (
       <div className="space-y-6">
         <PageHeader
@@ -63,7 +42,9 @@ export function SuppliersContent() {
         />
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-sm text-gray-600">{error.message}</p>
+            <p className="text-sm text-gray-600">
+              No se pudo cargar la información de la empresa. Por favor, inicia sesión nuevamente.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -81,7 +62,7 @@ export function SuppliersContent() {
         ]}
       />
 
-      <SupplierList companyId={companyId!} />
+      <SupplierList companyId={currentCompanyId} />
     </div>
   );
 }

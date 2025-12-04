@@ -3,7 +3,9 @@
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { ReactNode } from 'react';
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL!;
+// TEMPORARY: Force dev URL
+const convexUrl = 'https://exciting-shrimp-34.convex.cloud';
+// const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL!;
 
 const convex = new ConvexReactClient(convexUrl);
 

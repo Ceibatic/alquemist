@@ -42,6 +42,7 @@ export async function establishSession(userId: string) {
         email: result.email,
         companyId: result.companyId,
         roleId: result.roleId,
+        primaryFacilityId: result.primaryFacilityId,
       }),
       cookieOptions
     );

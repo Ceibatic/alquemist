@@ -70,7 +70,10 @@ function DashboardLayoutInner({
 
 export function DashboardLayout({ children, user }: DashboardLayoutProps) {
   return (
-    <FacilityProvider initialFacilityId={user.primaryFacilityId}>
+    <FacilityProvider
+      initialFacilityId={user.primaryFacilityId}
+      initialCompanyId={user.companyId}
+    >
       <DashboardLayoutInner user={user}>{children}</DashboardLayoutInner>
     </FacilityProvider>
   );

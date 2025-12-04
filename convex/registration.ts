@@ -676,6 +676,7 @@ export const createOnboardingSession = mutation({
       email: user.email,
       companyId: user.company_id,
       roleId: user.role_id,
+      primaryFacilityId: user.primary_facility_id,
     };
   },
 });
