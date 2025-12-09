@@ -89,6 +89,7 @@ export const get = query({
  */
 export const create = mutation({
   args: {
+    company_id: v.id("companies"),
     facility_id: v.id("facilities"),
     area_id: v.id("areas"),
     crop_type_id: v.id("crop_types"),
@@ -97,9 +98,10 @@ export const create = mutation({
     template_id: v.optional(v.id("production_templates")),
     source_batch_id: v.optional(v.id("batches")),
 
-    batch_type: v.string(), // propagation/growth/harvest
+    batch_type: v.string(), // production/mother/research/rescue
+    source_type: v.string(), // seed/clone/purchase/rescue
     tracking_level: v.optional(v.string()),
-    individual_plant_tracking: v.optional(v.boolean()),
+    enable_individual_tracking: v.optional(v.boolean()),
 
     planned_quantity: v.number(),
     current_quantity: v.number(),
@@ -109,6 +111,7 @@ export const create = mutation({
     sample_size: v.optional(v.number()),
     sample_frequency: v.optional(v.string()),
 
+    germination_date: v.optional(v.number()),
     planned_completion_date: v.optional(v.number()),
 
     supplier_id: v.optional(v.id("suppliers")),
@@ -119,15 +122,21 @@ export const create = mutation({
     status: v.optional(v.string()),
     priority: v.optional(v.string()),
     notes: v.optional(v.string()),
+    created_by: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
 
-    // Generate unique QR code
-    const qrCode = `BAT-${now}`;
+    // Generate batch code (cultivar-YYMMDD-XXX)
+    const date = new Date(now);
+    const dateStr = `${date.getFullYear().toString().slice(-2)}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+    const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase();
+    const batchCode = `BAT-${dateStr}-${randomSuffix}`;
 
     const batchId = await ctx.db.insert("batches", {
-      qr_code: qrCode,
+      batch_code: batchCode,
+      qr_code: batchCode, // Use batch_code as QR code
+      company_id: args.company_id,
       facility_id: args.facility_id,
       area_id: args.area_id,
       crop_type_id: args.crop_type_id,
@@ -137,24 +146,23 @@ export const create = mutation({
       source_batch_id: args.source_batch_id,
 
       batch_type: args.batch_type,
+      source_type: args.source_type,
       tracking_level: args.tracking_level || "batch",
-      individual_plant_tracking: args.individual_plant_tracking || false,
+      enable_individual_tracking: args.enable_individual_tracking || false,
 
       planned_quantity: args.planned_quantity,
       current_quantity: args.current_quantity,
       initial_quantity: args.initial_quantity,
+      lost_quantity: 0,
       unit_of_measure: args.unit_of_measure,
 
       sample_size: args.sample_size,
       sample_frequency: args.sample_frequency,
 
+      germination_date: args.germination_date,
       created_date: now,
       planned_completion_date: args.planned_completion_date,
-      actual_completion_date: undefined,
 
-      quality_grade: undefined,
-      quality_distribution: undefined,
-      batch_metrics: undefined,
       environmental_history: [],
 
       supplier_id: args.supplier_id,
@@ -162,16 +170,16 @@ export const create = mutation({
       received_date: args.received_date,
       phytosanitary_certificate: args.phytosanitary_certificate,
 
+      created_by: args.created_by,
       status: args.status || "active",
       priority: args.priority || "normal",
       notes: args.notes,
       updated_at: now,
     });
 
-    // Return batch with QR code
     return {
       id: batchId,
-      qr_code: qrCode,
+      batch_code: batchCode,
     };
   },
 });

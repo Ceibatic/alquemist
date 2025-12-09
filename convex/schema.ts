@@ -771,11 +771,119 @@ export default defineSchema({
     .index("by_created_at", ["created_at"]),
 
   // ============================================================================
-  // PRODUCTION OPERATIONS TABLES (4)
+  // PRODUCTION OPERATIONS TABLES (10)
   // ============================================================================
 
+  // Phase 4: Order phases - instances of template phases for a specific order
+  order_phases: defineTable({
+    order_id: v.id("production_orders"),
+    template_phase_id: v.optional(v.id("template_phases")),
+    phase_name: v.string(),
+    phase_order: v.number(),
+
+    // Dates
+    planned_start_date: v.number(),
+    actual_start_date: v.optional(v.number()),
+    planned_end_date: v.number(),
+    actual_end_date: v.optional(v.number()),
+
+    // Location
+    area_id: v.optional(v.id("areas")),
+
+    // Status
+    status: v.string(), // pending/in_progress/completed/skipped
+    completion_notes: v.optional(v.string()),
+
+    created_at: v.number(),
+  })
+    .index("by_order", ["order_id"])
+    .index("by_order_phase_order", ["order_id", "phase_order"])
+    .index("by_status", ["status"]),
+
+  // Phase 4: Batch movements - track batch location changes
+  batch_movements: defineTable({
+    batch_id: v.id("batches"),
+    from_area_id: v.optional(v.id("areas")),
+    to_area_id: v.id("areas"),
+    movement_date: v.number(),
+    reason: v.string(), // phase_change/reorganization/quarantine/other
+    notes: v.optional(v.string()),
+    performed_by: v.id("users"),
+    created_at: v.number(),
+  })
+    .index("by_batch", ["batch_id"])
+    .index("by_movement_date", ["movement_date"]),
+
+  // Phase 4: Batch losses - track plant losses
+  batch_losses: defineTable({
+    batch_id: v.id("batches"),
+    quantity: v.number(),
+    reason: v.string(), // disease/pest/environmental/genetic/accident/discard
+    description: v.optional(v.string()),
+    detection_date: v.number(),
+    photos: v.array(v.string()),
+    incident_id: v.optional(v.id("compliance_events")),
+    recorded_by: v.id("users"),
+    created_at: v.number(),
+  })
+    .index("by_batch", ["batch_id"])
+    .index("by_reason", ["reason"])
+    .index("by_detection_date", ["detection_date"]),
+
+  // Phase 4: Batch harvests - track harvest data
+  batch_harvests: defineTable({
+    batch_id: v.id("batches"),
+    harvest_date: v.number(),
+    total_weight: v.number(),
+    weight_unit: v.string(), // kg/lb/g
+    quality_grade: v.string(), // A/B/C
+    humidity_percentage: v.optional(v.number()),
+    destination_area_id: v.optional(v.id("areas")),
+    product_lot_id: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    photos: v.array(v.string()),
+    harvested_by: v.id("users"),
+    created_at: v.number(),
+  })
+    .index("by_batch", ["batch_id"])
+    .index("by_harvest_date", ["harvest_date"])
+    .index("by_quality_grade", ["quality_grade"]),
+
+  // Phase 4: Plant measurements - track individual plant growth
+  plant_measurements: defineTable({
+    plant_id: v.id("plants"),
+    measurement_date: v.number(),
+    height_cm: v.optional(v.number()),
+    nodes: v.optional(v.number()),
+    stem_diameter_mm: v.optional(v.number()),
+    health_status: v.string(), // healthy/stressed/sick
+    notes: v.optional(v.string()),
+    photo_url: v.optional(v.string()),
+    recorded_by: v.id("users"),
+    created_at: v.number(),
+  })
+    .index("by_plant", ["plant_id"])
+    .index("by_measurement_date", ["measurement_date"]),
+
+  // Phase 4: Plant activities - individual plant activities
+  plant_activities: defineTable({
+    plant_id: v.id("plants"),
+    batch_activity_id: v.optional(v.id("scheduled_activities")),
+    activity_type: v.string(),
+    activity_date: v.number(),
+    description: v.optional(v.string()),
+    materials_used: v.array(v.any()),
+    notes: v.optional(v.string()),
+    photos: v.array(v.string()),
+    performed_by: v.id("users"),
+    created_at: v.number(),
+  })
+    .index("by_plant", ["plant_id"])
+    .index("by_activity_date", ["activity_date"])
+    .index("by_activity_type", ["activity_type"]),
+
   production_orders: defineTable({
-    order_number: v.string(), // Unique
+    order_number: v.string(), // Unique (ORD-YYYY-XXXX)
     template_id: v.optional(v.id("production_templates")),
     crop_type_id: v.id("crop_types"),
     cultivar_id: v.optional(v.id("cultivars")),
@@ -796,6 +904,16 @@ export default defineSchema({
     // Target
     target_facility_id: v.id("facilities"),
     target_area_id: v.optional(v.id("areas")),
+
+    // Phase 4: Current phase tracking
+    current_phase_id: v.optional(v.id("order_phases")),
+    total_plants_planned: v.optional(v.number()),
+    total_plants_actual: v.optional(v.number()),
+
+    // Yield tracking
+    estimated_yield: v.optional(v.number()),
+    actual_yield: v.optional(v.number()),
+    yield_unit: v.optional(v.string()),
 
     // Dates
     requested_delivery_date: v.optional(v.number()),
@@ -819,17 +937,21 @@ export default defineSchema({
     approval_date: v.optional(v.number()),
 
     // Status
-    status: v.string(), // pendiente/aprobado/en_proceso/completado/cancelado
+    status: v.string(), // planning/active/completed/cancelled
     priority: v.string(), // low/normal/high/urgent (Default: normal)
     completion_percentage: v.number(), // Default: 0
+    cancellation_reason: v.optional(v.string()),
 
     // Metadata
+    company_id: v.id("companies"),
     notes: v.optional(v.string()),
     created_at: v.number(),
     updated_at: v.number(),
   })
     .index("by_order_number", ["order_number"])
+    .index("by_company", ["company_id"])
     .index("by_template", ["template_id"])
+    .index("by_facility", ["target_facility_id"])
     .index("by_status", ["status"])
     .index("by_priority", ["priority"])
     .index("by_planned_start_date", ["planned_start_date"]),
@@ -927,34 +1049,52 @@ export default defineSchema({
     .index("by_status", ["status"]),
 
   batches: defineTable({
-    qr_code: v.string(), // Unique
+    batch_code: v.string(), // Unique (cultivar-YYMMDD-XXX)
+    qr_code: v.optional(v.string()), // QR code for scanning
     facility_id: v.id("facilities"),
     area_id: v.id("areas"),
     crop_type_id: v.id("crop_types"),
     cultivar_id: v.optional(v.id("cultivars")),
     production_order_id: v.optional(v.id("production_orders")),
     template_id: v.optional(v.id("production_templates")),
-    source_batch_id: v.optional(v.id("batches")),
+
+    // Phase 4: Genealogy
+    parent_batch_id: v.optional(v.id("batches")), // If split from another batch
+    merged_into_batch_id: v.optional(v.id("batches")), // If merged into another batch
+    source_batch_id: v.optional(v.id("batches")), // Original source
 
     // Batch Type
-    batch_type: v.string(), // propagation/growth/harvest
+    batch_type: v.string(), // production/mother/research/rescue
+    source_type: v.string(), // seed/clone/purchase/rescue
     tracking_level: v.string(), // batch/individual (Default: batch)
-    individual_plant_tracking: v.boolean(), // Default: false
+    enable_individual_tracking: v.boolean(), // Default: false
 
     // Quantities
     planned_quantity: v.number(),
-    current_quantity: v.number(),
     initial_quantity: v.number(),
+    current_quantity: v.number(),
+    lost_quantity: v.number(), // Default: 0
     unit_of_measure: v.string(), // plants/kg/units
+
+    // Phase 4: Mortality tracking
+    mortality_rate: v.optional(v.number()), // Percentage
+
+    // Current phase
+    current_phase: v.optional(v.string()),
 
     // Quality Control
     sample_size: v.optional(v.number()),
     sample_frequency: v.optional(v.string()),
 
     // Dates
+    germination_date: v.optional(v.number()),
     created_date: v.number(),
     planned_completion_date: v.optional(v.number()),
     actual_completion_date: v.optional(v.number()),
+    harvest_date: v.optional(v.number()),
+
+    // Phase 4: Days tracking
+    days_in_production: v.optional(v.number()),
 
     // Quality
     quality_grade: v.optional(v.string()), // A/B/C
@@ -969,58 +1109,86 @@ export default defineSchema({
     phytosanitary_certificate: v.optional(v.string()),
 
     // Metadata
-    status: v.string(), // active/completed/harvested/destroyed/archived
+    company_id: v.id("companies"),
+    created_by: v.optional(v.id("users")),
+    status: v.string(), // active/harvested/archived/split/merged/lost
     priority: v.string(), // low/normal/high (Default: normal)
     notes: v.optional(v.string()),
     updated_at: v.number(),
   })
+    .index("by_batch_code", ["batch_code"])
     .index("by_qr_code", ["qr_code"])
+    .index("by_company", ["company_id"])
     .index("by_facility", ["facility_id"])
     .index("by_area", ["area_id"])
+    .index("by_cultivar", ["cultivar_id"])
     .index("by_production_order", ["production_order_id"])
     .index("by_status", ["status"]),
 
   plants: defineTable({
-    qr_code: v.string(), // Unique
+    plant_code: v.string(), // Unique (batch_code-PXXX)
+    qr_code: v.optional(v.string()), // QR code for scanning
     batch_id: v.id("batches"),
-    mother_plant_id: v.optional(v.id("mother_plants")),
+    mother_plant_id: v.optional(v.id("plants")), // Mother plant if clone (changed from mother_plants)
     facility_id: v.id("facilities"),
     area_id: v.id("areas"),
     crop_type_id: v.id("crop_types"),
     cultivar_id: v.optional(v.id("cultivars")),
+
+    // Phase 4: Phenotype
+    phenotype: v.optional(v.string()),
 
     // Growth Stage
     plant_stage: v.string(), // seedling/vegetative/flowering/harvest
     sex: v.optional(v.string()), // male/female/unknown
 
     // Dates
+    germination_date: v.optional(v.number()),
     planted_date: v.number(),
     stage_progression_dates: v.optional(v.object({})),
     harvested_date: v.optional(v.number()),
     destroyed_date: v.optional(v.number()),
     destruction_reason: v.optional(v.string()),
 
+    // Phase 4: Current measurements
+    current_height_cm: v.optional(v.number()),
+    current_nodes: v.optional(v.number()),
+    stem_diameter_mm: v.optional(v.number()),
+
     // Metrics
-    plant_metrics: v.optional(v.object({})), // Height, width, health
-    health_status: v.string(), // healthy/stressed/diseased (Default: healthy)
+    plant_metrics: v.optional(v.object({})), // Additional metrics
+    health_status: v.string(), // healthy/stressed/sick (Default: healthy)
+    last_quality_score: v.optional(v.number()),
     last_inspection_date: v.optional(v.number()),
     inspection_notes: v.optional(v.string()),
 
+    // Phase 4: Cloning
+    clones_taken_count: v.number(), // Default: 0
+
+    // Phase 4: Harvest
+    harvest_weight: v.optional(v.number()),
+    harvest_quality: v.optional(v.string()), // A/B/C
+
     // Location
+    position: v.optional(v.object({})), // { row, column }
     position_x: v.optional(v.number()),
     position_y: v.optional(v.number()),
     container_id: v.optional(v.string()),
 
     // Metadata
-    status: v.string(), // active/harvested/destroyed/archived
+    company_id: v.id("companies"),
+    status: v.string(), // active/harvested/lost/transferred
     notes: v.optional(v.string()),
     created_at: v.number(),
     updated_at: v.number(),
   })
+    .index("by_plant_code", ["plant_code"])
     .index("by_qr_code", ["qr_code"])
     .index("by_batch", ["batch_id"])
+    .index("by_company", ["company_id"])
     .index("by_facility", ["facility_id"])
     .index("by_area", ["area_id"])
+    .index("by_health_status", ["health_status"])
     .index("by_status", ["status"]),
 
   // ============================================================================
