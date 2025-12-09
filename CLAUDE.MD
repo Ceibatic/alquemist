@@ -1,6 +1,6 @@
 # CLAUDE.MD - Alquemist Development Guide
 
-**Version**: 4.0 | **Last Updated**: 2025-12-04
+**Version**: 5.0 | **Last Updated**: 2025-12-08
 
 ---
 
@@ -49,11 +49,13 @@ docs/modules/
 │   ├── M19-inventory-management.md
 │   ├── M20-facility-settings.md
 │   └── M21-account-settings.md
-├── phase-3/           # Templates 📝
+├── phase-3/           # Templates ✅
 │   ├── M22-production-templates.md
 │   └── M23-ai-quality-checks.md
-└── phase-4/           # Production (pendiente)
-    └── ...
+└── phase-4/           # Production 📝
+    ├── M24-production-orders.md
+    ├── M25-batches.md
+    └── M26-plants.md
 ```
 
 ### Formato de cada documento de modulo:
@@ -94,8 +96,8 @@ docs/modules/
 |-------|-------------|--------|
 | 1 | Onboarding & Auth | ✅ Completada |
 | 2 | Master Data (Areas, Cultivars, Suppliers, Users, Inventory) | ✅ Completada |
-| 3 | Templates Management | 📝 Documentada |
-| 4 | Production Workflows | ⚪ Pendiente |
+| 3 | Templates Management | ✅ Completada |
+| 4 | Production Workflows | 📝 En documentacion |
 
 ### Phase 2 Modules:
 - Module 8: Areas ✅
@@ -108,8 +110,13 @@ docs/modules/
 - Module 21: Account Settings ✅
 
 ### Phase 3 Modules:
-- Module 22: Production Templates 📝
-- Module 23: AI Quality Checks 📝
+- Module 22: Production Templates ✅
+- Module 23: AI Quality Checks ✅
+
+### Phase 4 Modules:
+- Module 24: Production Orders 📝
+- Module 25: Batches 📝
+- Module 26: Plants 📝
 
 ---
 
