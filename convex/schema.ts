@@ -675,7 +675,7 @@ export default defineSchema({
     is_quality_check: v.boolean(), // Default: false
 
     // Timing
-    timing_configuration: v.object({}),
+    timing_configuration: v.any(),
 
     // Requirements
     required_materials: v.array(v.any()), // Default: []
@@ -706,7 +706,7 @@ export default defineSchema({
     compliance_standard: v.optional(v.string()), // INVIMA/ICA/FNC
 
     // Template Structure
-    template_structure: v.object({}), // Form definition
+    template_structure: v.any(), // Form definition (sections with fields)
 
     // AI Features
     ai_assisted: v.boolean(), // Default: false
@@ -731,6 +731,44 @@ export default defineSchema({
     .index("by_crop_type", ["crop_type_id"])
     .index("by_regulatory_requirement", ["regulatory_requirement"])
     .index("by_status", ["status"]),
+
+  quality_checks: defineTable({
+    template_id: v.id("quality_check_templates"),
+    entity_type: v.string(), // batch/plant
+    entity_id: v.string(),
+    performed_by: v.id("users"),
+
+    // Form Data
+    form_data: v.any(), // Completed form responses
+    ai_analysis_results: v.optional(v.any()), // AI analysis results
+
+    // Results
+    overall_result: v.string(), // pass/fail/conditional
+    duration_minutes: v.optional(v.number()),
+
+    // Media
+    photos: v.array(v.string()), // URLs
+
+    // Follow-up
+    notes: v.optional(v.string()),
+    follow_up_required: v.boolean(), // Default: false
+    follow_up_date: v.optional(v.number()),
+
+    // Context
+    company_id: v.id("companies"),
+    facility_id: v.id("facilities"),
+
+    // Status
+    status: v.string(), // draft/completed
+    created_at: v.number(),
+  })
+    .index("by_template", ["template_id"])
+    .index("by_entity", ["entity_type", "entity_id"])
+    .index("by_company", ["company_id"])
+    .index("by_facility", ["facility_id"])
+    .index("by_performed_by", ["performed_by"])
+    .index("by_status", ["status"])
+    .index("by_created_at", ["created_at"]),
 
   // ============================================================================
   // PRODUCTION OPERATIONS TABLES (4)
