@@ -7,7 +7,7 @@ export interface CompactStat {
   label: string;
   value: number | string;
   icon: LucideIcon;
-  color?: 'default' | 'yellow' | 'red' | 'green' | 'blue' | 'gray';
+  color?: 'default' | 'yellow' | 'red' | 'green' | 'blue' | 'gray' | 'purple';
 }
 
 interface CompactStatsProps {
@@ -39,6 +39,10 @@ const colorStyles = {
   gray: {
     icon: 'text-gray-500',
     bg: 'bg-gray-100',
+  },
+  purple: {
+    icon: 'text-purple-600',
+    bg: 'bg-purple-100',
   },
 };
 
