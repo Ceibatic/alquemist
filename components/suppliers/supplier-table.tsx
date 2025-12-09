@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, Eye, Pencil, Power } from 'lucide-react';
+import { MoreHorizontal, Eye, Pencil, Power, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,12 +35,14 @@ interface SupplierTableProps {
   suppliers: SupplierData[];
   loading?: boolean;
   onToggleStatus?: (supplierId: string) => void;
+  onDelete?: (supplierId: string) => void;
 }
 
 export function SupplierTable({
   suppliers,
   loading = false,
   onToggleStatus,
+  onDelete,
 }: SupplierTableProps) {
   // Cast suppliers to avoid type conflicts
   const supplierData = suppliers as any[];
@@ -216,21 +218,29 @@ export function SupplierTable({
                   <Power className="mr-2 h-4 w-4" />
                   {supplier.is_active ? 'Desactivar' : 'Activar'}
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete?.(supplier._id);
+                  }}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           );
         },
       },
     ],
-    [router, onToggleStatus]
+    [router, onToggleStatus, onDelete]
   );
 
   return (
     <DataTable
       columns={columns}
       data={supplierData}
-      searchKey="name"
-      searchPlaceholder="Buscar por nombre..."
       onRowClick={(supplier) => router.push(`/suppliers/${supplier._id}`)}
       loading={loading}
     />

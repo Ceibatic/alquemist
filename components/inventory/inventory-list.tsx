@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { useToast } from '@/hooks/use-toast';
 import { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
 import { InventoryTable } from './inventory-table';
@@ -12,6 +13,7 @@ import { LowStockAlert } from './low-stock-alert';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { CompactStats, CompactStat } from '@/components/ui/compact-stats';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   DropdownMenu,
@@ -19,6 +21,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -65,6 +77,7 @@ type StockFilter = 'normal' | 'low' | 'critical' | 'out_of_stock';
 
 export function InventoryList({ facilityId }: InventoryListProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -76,6 +89,14 @@ export function InventoryList({ facilityId }: InventoryListProps) {
     'critical',
     'out_of_stock',
   ]);
+
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Mutations
+  const removeItem = useMutation(api.inventory.remove);
 
   // Fetch inventory items
   const inventoryItems = useQuery(
@@ -191,8 +212,37 @@ export function InventoryList({ facilityId }: InventoryListProps) {
     setAdjustStockModalOpen(true);
   };
 
-  const handleDelete = async (item: any) => {
-    console.log('Delete item:', item);
+  const handleDelete = (item: any) => {
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    try {
+      setIsDeleting(true);
+      await removeItem({
+        inventoryId: itemToDelete._id as Id<'inventory_items'>,
+      });
+
+      toast({
+        title: 'Item eliminado',
+        description: `"${itemToDelete.productName}" ha sido eliminado del inventario.`,
+      });
+
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+    } catch (error: any) {
+      console.error('Error deleting item:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo eliminar el item.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleViewLowStock = () => {
@@ -204,10 +254,10 @@ export function InventoryList({ facilityId }: InventoryListProps) {
   if (inventoryItems === undefined) {
     return (
       <div className="space-y-6">
-        {/* Stats Skeleton */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Compact Stats Skeleton */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="h-14" />
           ))}
         </div>
         {/* Filter Bar Skeleton */}
@@ -267,64 +317,15 @@ export function InventoryList({ facilityId }: InventoryListProps) {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards with Lucide Icons */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Items</p>
-                <p className="mt-2 text-3xl font-bold text-gray-900">{metrics.total}</p>
-              </div>
-              <div className="rounded-full bg-blue-100 p-3">
-                <Package className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Stock Bajo</p>
-                <p className="mt-2 text-3xl font-bold text-yellow-600">{metrics.lowStock}</p>
-              </div>
-              <div className="rounded-full bg-yellow-100 p-3">
-                <AlertTriangle className="h-6 w-6 text-yellow-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Crítico</p>
-                <p className="mt-2 text-3xl font-bold text-red-600">{metrics.criticalStock}</p>
-              </div>
-              <div className="rounded-full bg-red-100 p-3">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Sin Stock</p>
-                <p className="mt-2 text-3xl font-bold text-gray-600">{metrics.outOfStock}</p>
-              </div>
-              <div className="rounded-full bg-gray-100 p-3">
-                <XCircle className="h-6 w-6 text-gray-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Compact Stats */}
+      <CompactStats
+        stats={[
+          { label: 'Total Items', value: metrics.total, icon: Package, color: 'blue' },
+          { label: 'Stock Bajo', value: metrics.lowStock, icon: AlertTriangle, color: 'yellow' },
+          { label: 'Crítico', value: metrics.criticalStock, icon: AlertTriangle, color: 'red' },
+          { label: 'Sin Stock', value: metrics.outOfStock, icon: XCircle, color: 'gray' },
+        ]}
+      />
 
       {/* Low Stock Alert */}
       {metrics.lowStock > 0 && (
@@ -535,6 +536,44 @@ export function InventoryList({ facilityId }: InventoryListProps) {
           item={selectedItem}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar item de inventario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {itemToDelete && (
+                <>
+                  ¿Estas seguro de que deseas eliminar{' '}
+                  <strong>{itemToDelete.productName}</strong> del inventario?
+                  <br /><br />
+                  {itemToDelete.quantity_available > 0 ? (
+                    <span className="text-orange-600">
+                      Este item tiene {itemToDelete.quantity_available} {itemToDelete.quantity_unit} en stock.
+                      Sera marcado como descontinuado pero los registros se mantendran.
+                    </span>
+                  ) : (
+                    <span>
+                      Este item sera eliminado permanentemente.
+                    </span>
+                  )}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

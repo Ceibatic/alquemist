@@ -16,6 +16,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -52,6 +62,11 @@ export function CultivarList({ facilityId }: CultivarListProps) {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [difficultyFilters, setDifficultyFilters] = useState<DifficultyFilter[]>(['easy', 'medium', 'difficult']);
   const [originFilter, setOriginFilter] = useState<OriginFilter | null>(null);
+
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [cultivarToDelete, setCultivarToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch data
   const cultivars = useQuery(api.cultivars.list, {
@@ -159,17 +174,23 @@ export function CultivarList({ facilityId }: CultivarListProps) {
     router.push(`/cultivars/${cultivar._id}/edit`);
   };
 
-  const handleDeleteCultivar = async (cultivar: any) => {
-    if (!confirm(`¿Estás seguro de que deseas eliminar el cultivar "${cultivar.name}"?`)) {
-      return;
-    }
+  const handleDeleteCultivar = (cultivar: any) => {
+    setCultivarToDelete(cultivar);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteCultivar = async () => {
+    if (!cultivarToDelete) return;
 
     try {
-      await deleteCultivar({ id: cultivar._id });
+      setIsDeleting(true);
+      await deleteCultivar({ id: cultivarToDelete._id });
       toast({
         title: 'Cultivar eliminado',
-        description: `${cultivar.name} ha sido eliminado correctamente.`,
+        description: `${cultivarToDelete.name} ha sido descontinuado correctamente.`,
       });
+      setDeleteDialogOpen(false);
+      setCultivarToDelete(null);
     } catch (error) {
       console.error('Error deleting cultivar:', error);
       toast({
@@ -177,6 +198,8 @@ export function CultivarList({ facilityId }: CultivarListProps) {
         description: 'No se pudo eliminar el cultivar. Intenta de nuevo.',
         variant: 'destructive',
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -484,6 +507,34 @@ export function CultivarList({ facilityId }: CultivarListProps) {
         cropTypes={cropTypes}
         onSubmit={handleCreateCultivar}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar cultivar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cultivarToDelete && (
+                <>
+                  El cultivar <strong>{cultivarToDelete.name}</strong> sera marcado como
+                  descontinuado. Los lotes existentes que usan este cultivar no seran
+                  afectados, pero no podras seleccionarlo para nuevos lotes.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteCultivar}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

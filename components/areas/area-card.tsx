@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { OccupancyBar } from '@/components/ui/occupancy-bar';
@@ -8,11 +9,23 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   MoreVertical,
   Edit,
+  Trash2,
   Layers,
   Thermometer,
   Droplets,
@@ -28,6 +41,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import { useToast } from '@/hooks/use-toast';
 
 // Flexible type for Convex data
 interface AreaData {
@@ -73,6 +90,11 @@ const areaTypeConfig: Record<string, { label: string; icon: React.ReactNode }> =
 
 export function AreaCard({ area, index }: AreaCardProps) {
   const router = useRouter();
+  const { toast } = useToast();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const removeArea = useMutation(api.areas.remove);
+
   const maxCapacity = area.capacity_configurations?.max_capacity || 0;
   const hasContainerConfig = !!area.capacity_configurations?.container_type;
   const typeConfig = areaTypeConfig[area.area_type] || { label: area.area_type, icon: null };
@@ -85,6 +107,27 @@ export function AreaCard({ area, index }: AreaCardProps) {
       return;
     }
     router.push(`/areas/${area._id}`);
+  };
+
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      await removeArea({ id: area._id as Id<'areas'> });
+      toast({
+        title: 'Area eliminada',
+        description: `El area "${area.name}" ha sido desactivada.`,
+      });
+      setDeleteDialogOpen(false);
+    } catch (error: any) {
+      console.error('Error deleting area:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo eliminar el area.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const occupancyPercentage = maxCapacity > 0
@@ -125,6 +168,17 @@ export function AreaCard({ area, index }: AreaCardProps) {
                   <Edit className="h-4 w-4" />
                   Editar
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteDialogOpen(true);
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Eliminar
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -214,6 +268,30 @@ export function AreaCard({ area, index }: AreaCardProps) {
           </span>
         </div>
       </CardContent>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar area</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estas seguro de que deseas eliminar el area &quot;{area.name}&quot;?
+              El area sera desactivada y no aparecera en la lista activa.
+              Esta accion no eliminara el historial asociado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

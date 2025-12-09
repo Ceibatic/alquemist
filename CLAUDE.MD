@@ -1,6 +1,6 @@
 # CLAUDE.MD - Alquemist Development Guide
 
-**Version**: 3.0 | **Last Updated**: 2025-12-02
+**Version**: 4.0 | **Last Updated**: 2025-12-04
 
 ---
 
@@ -26,22 +26,65 @@
 
 ---
 
-## Documentation Context
+## Documentation System
 
 ### Para planear/implementar un modulo:
 
 | Documento | Proposito |
 |-----------|-----------|
-| `docs/testing/0X-PHASE-X-*.md` | Funcionalidades y casos de prueba |
+| `docs/modules/phase-X/MXX-*.md` | Especificacion del modulo (user stories, criterios de aceptacion) |
 | `docs/UI-PATTERNS.md` | Patrones de layout y UX |
 | `convex/schema.ts` | Estructura de datos |
-| `docs/ui/reference-images/` | Imagenes de referencia visual |
 
-### Archivos de Testing por Fase:
-- `docs/testing/01-PHASE-1-ONBOARDING-TESTS.md`
-- `docs/testing/02-PHASE-2-MASTER-DATA-TESTS.md`
-- `docs/testing/03-PHASE-3-TEMPLATES-TESTS.md`
-- `docs/testing/04-PHASE-4-PRODUCTION-TESTS.md`
+### Estructura de documentacion por modulo:
+
+```
+docs/modules/
+├── phase-2/           # Master Data ✅
+│   ├── M08-area-management.md
+│   ├── M15-cultivar-management.md
+│   ├── M16-supplier-management.md
+│   ├── M17-team-management.md
+│   ├── M18-facility-management.md
+│   ├── M19-inventory-management.md
+│   ├── M20-facility-settings.md
+│   └── M21-account-settings.md
+├── phase-3/           # Templates 📝
+│   ├── M22-production-templates.md
+│   └── M23-ai-quality-checks.md
+└── phase-4/           # Production (pendiente)
+    └── ...
+```
+
+### Formato de cada documento de modulo:
+
+```markdown
+# Module XX: [Nombre]
+
+## Overview
+[1-2 parrafos describiendo el proposito]
+
+## User Stories
+
+### US-XX.1: [Titulo]
+**Como** [rol]
+**Quiero** [accion]
+**Para** [beneficio]
+
+**Criterios de Aceptacion:**
+- [ ] AC1: ...
+- [ ] AC2: ...
+
+**Componentes:** [archivos relevantes]
+
+---
+
+## Schema (Tablas relacionadas)
+## Integraciones
+## Estados / Flujos
+## API Backend
+## Notas de Implementacion
+```
 
 ---
 
@@ -50,8 +93,8 @@
 | Phase | Descripcion | Status |
 |-------|-------------|--------|
 | 1 | Onboarding & Auth | ✅ Completada |
-| 2 | Master Data (Areas, Cultivars, Suppliers, Users, Inventory) | 🟡 En progreso |
-| 3 | Templates Management | ⚪ Pendiente |
+| 2 | Master Data (Areas, Cultivars, Suppliers, Users, Inventory) | ✅ Completada |
+| 3 | Templates Management | 📝 Documentada |
 | 4 | Production Workflows | ⚪ Pendiente |
 
 ### Phase 2 Modules:
@@ -61,8 +104,12 @@
 - Module 17: Users ✅
 - Module 18: Facilities ✅
 - Module 19: Inventory ✅
-- Module 20: Facility Settings
-- Module 21: Account Settings
+- Module 20: Facility Settings ✅
+- Module 21: Account Settings ✅
+
+### Phase 3 Modules:
+- Module 22: Production Templates 📝
+- Module 23: AI Quality Checks 📝
 
 ---
 
@@ -114,11 +161,11 @@ Ver `docs/UI-PATTERNS.md` para patrones detallados.
 
 ### Iniciar desarrollo de un modulo:
 
-1. **Revisar funcionalidades**: Leer `docs/testing/0X-PHASE-X-*.md`
-2. **Revisar patrones**: Leer `docs/UI-PATTERNS.md`
-3. **Revisar schema**: Leer `convex/schema.ts` (tabla relevante)
+1. **Leer especificacion**: `docs/modules/phase-X/MXX-*.md`
+2. **Revisar patrones UI**: `docs/UI-PATTERNS.md`
+3. **Revisar schema**: `convex/schema.ts` (tabla relevante)
 4. **Implementar**: Seguir patrones establecidos
-5. **Probar**: Ejecutar casos de prueba del documento
+5. **Validar**: Marcar criterios de aceptacion como completados
 
 ### Estructura de archivos por modulo:
 ```
@@ -169,11 +216,11 @@ npx tsc --noEmit     # Type check
 - **Production-ready**: Cada cambio debe ser deployable
 
 ### Antes de implementar
-1. Leer codigo existente
-2. Entender patrones establecidos
-3. Planificar cambios minimos
+1. Leer especificacion del modulo
+2. Leer codigo existente
+3. Entender patrones establecidos
 
 ### Despues de implementar
 - Verificar TypeScript: `npx tsc --noEmit`
 - Probar funcionalidad manualmente
-- Seguir casos de prueba del doc de testing
+- Marcar criterios de aceptacion como completados

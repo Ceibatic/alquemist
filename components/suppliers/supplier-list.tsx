@@ -10,6 +10,7 @@ import { SupplierCreateModal } from './supplier-create-modal';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { CompactStats } from '@/components/ui/compact-stats';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   DropdownMenu,
@@ -17,6 +18,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -86,6 +97,12 @@ export function SupplierList({ companyId }: SupplierListProps) {
   const [statusFilters, setStatusFilters] = useState<StatusFilter[]>(['active', 'inactive']);
   const [approvedFilter, setApprovedFilter] = useState<boolean | null>(null);
 
+  // Dialog states for toggle and delete
+  const [toggleDialogOpen, setToggleDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [supplierToAction, setSupplierToAction] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
   // Fetch suppliers
   const suppliers = useQuery(
     api.suppliers.list,
@@ -97,21 +114,76 @@ export function SupplierList({ companyId }: SupplierListProps) {
       : 'skip'
   );
 
-  // Toggle supplier status mutation
+  // Mutations
   const toggleStatus = useMutation(api.suppliers.toggleStatus);
+  const removeSupplier = useMutation(api.suppliers.remove);
 
-  const handleToggleStatus = async (supplierId: string) => {
-    if (!companyId) return;
+  // Handle toggle - show confirmation dialog only for deactivation
+  const handleToggleStatus = (supplierId: string) => {
+    const supplier = suppliers?.find((s) => s._id === supplierId);
+    if (!supplier) return;
+
+    if (supplier.is_active) {
+      // Show confirmation for deactivation
+      setSupplierToAction(supplier);
+      setToggleDialogOpen(true);
+    } else {
+      // Direct activation without confirmation
+      confirmToggleStatus(supplier);
+    }
+  };
+
+  const confirmToggleStatus = async (supplier?: any) => {
+    const targetSupplier = supplier || supplierToAction;
+    if (!companyId || !targetSupplier) return;
 
     try {
+      setIsProcessing(true);
       await toggleStatus({
-        supplierId: supplierId as Id<'suppliers'>,
+        supplierId: targetSupplier._id as Id<'suppliers'>,
         companyId: companyId as Id<'companies'>,
       });
-      toast.success('Estado del proveedor actualizado');
+      toast.success(
+        targetSupplier.is_active
+          ? `${targetSupplier.name} ha sido desactivado`
+          : `${targetSupplier.name} ha sido activado`
+      );
+      setToggleDialogOpen(false);
+      setSupplierToAction(null);
     } catch (error) {
       console.error('Error toggling supplier status:', error);
       toast.error('Error al actualizar el estado del proveedor');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle delete
+  const handleDeleteSupplier = (supplierId: string) => {
+    const supplier = suppliers?.find((s) => s._id === supplierId);
+    if (supplier) {
+      setSupplierToAction(supplier);
+      setDeleteDialogOpen(true);
+    }
+  };
+
+  const confirmDeleteSupplier = async () => {
+    if (!companyId || !supplierToAction) return;
+
+    try {
+      setIsProcessing(true);
+      await removeSupplier({
+        id: supplierToAction._id as Id<'suppliers'>,
+        companyId: companyId as Id<'companies'>,
+      });
+      toast.success(`${supplierToAction.name} ha sido eliminado`);
+      setDeleteDialogOpen(false);
+      setSupplierToAction(null);
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
+      toast.error('Error al eliminar el proveedor');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -190,10 +262,10 @@ export function SupplierList({ companyId }: SupplierListProps) {
   if (suppliers === undefined) {
     return (
       <div className="space-y-6">
-        {/* Stats Skeleton */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Compact Stats Skeleton */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="h-14" />
           ))}
         </div>
         {/* Filter Bar Skeleton */}
@@ -253,64 +325,15 @@ export function SupplierList({ companyId }: SupplierListProps) {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards with Lucide Icons */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total</p>
-                <p className="mt-2 text-3xl font-bold text-gray-900">{metrics.total}</p>
-              </div>
-              <div className="rounded-full bg-blue-100 p-3">
-                <Building2 className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Activos</p>
-                <p className="mt-2 text-3xl font-bold text-green-600">{metrics.active}</p>
-              </div>
-              <div className="rounded-full bg-green-100 p-3">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Inactivos</p>
-                <p className="mt-2 text-3xl font-bold text-gray-600">{metrics.inactive}</p>
-              </div>
-              <div className="rounded-full bg-gray-100 p-3">
-                <XCircle className="h-6 w-6 text-gray-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Aprobados</p>
-                <p className="mt-2 text-3xl font-bold text-blue-600">{metrics.approved}</p>
-              </div>
-              <div className="rounded-full bg-blue-100 p-3">
-                <BadgeCheck className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Compact Stats */}
+      <CompactStats
+        stats={[
+          { label: 'Total', value: metrics.total, icon: Building2, color: 'blue' },
+          { label: 'Activos', value: metrics.active, icon: CheckCircle, color: 'green' },
+          { label: 'Inactivos', value: metrics.inactive, icon: XCircle, color: 'gray' },
+          { label: 'Aprobados', value: metrics.approved, icon: BadgeCheck, color: 'blue' },
+        ]}
+      />
 
       {/* Compact Filter Bar - Single Line */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -495,6 +518,7 @@ export function SupplierList({ companyId }: SupplierListProps) {
             suppliers={filteredSuppliers}
             loading={false}
             onToggleStatus={handleToggleStatus}
+            onDelete={handleDeleteSupplier}
           />
         </Card>
       )}
@@ -505,6 +529,62 @@ export function SupplierList({ companyId }: SupplierListProps) {
         onOpenChange={setCreateModalOpen}
         companyId={companyId as Id<'companies'>}
       />
+
+      {/* Toggle Status Confirmation Dialog */}
+      <AlertDialog open={toggleDialogOpen} onOpenChange={setToggleDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Desactivar proveedor?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {supplierToAction && (
+                <>
+                  El proveedor <strong>{supplierToAction.name}</strong> sera desactivado.
+                  No aparecera en los selectores de otros modulos hasta que lo actives
+                  nuevamente.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => confirmToggleStatus()}
+              disabled={isProcessing}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              {isProcessing ? 'Procesando...' : 'Desactivar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar proveedor?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {supplierToAction && (
+                <>
+                  El proveedor <strong>{supplierToAction.name}</strong> sera eliminado
+                  permanentemente. Esta accion no se puede deshacer.
+                  Los registros historicos de inventario y compras se mantendran.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteSupplier}
+              disabled={isProcessing}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isProcessing ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

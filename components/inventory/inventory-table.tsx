@@ -258,8 +258,6 @@ export function InventoryTable({
     <DataTable
       columns={columns}
       data={items}
-      searchKey="productName"
-      searchPlaceholder="Buscar por nombre o SKU..."
       onRowClick={onRowClick}
       loading={loading}
     />

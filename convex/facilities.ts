@@ -94,9 +94,47 @@ export const create = mutation({
     cultivation_area_m2: v.optional(v.number()),
 
     status: v.optional(v.string()),
+
+    // Skip limit validation for onboarding (first facility)
+    skipLimitValidation: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+
+    // Validate facility limit (unless skipped for onboarding)
+    if (!args.skipLimitValidation) {
+      const company = await ctx.db.get(args.company_id);
+      if (!company) {
+        throw new Error("Empresa no encontrada");
+      }
+
+      // Count existing active facilities
+      const existingFacilities = await ctx.db
+        .query("facilities")
+        .withIndex("by_company", (q) => q.eq("company_id", args.company_id))
+        .filter((q) => q.neq(q.field("status"), "inactive"))
+        .collect();
+
+      const activeFacilityCount = existingFacilities.length;
+      const maxFacilities = company.max_facilities || 1;
+
+      if (activeFacilityCount >= maxFacilities) {
+        throw new Error(
+          `Has alcanzado el límite de ${maxFacilities} instalación(es) de tu plan. ` +
+          `Actualiza tu suscripción para agregar más instalaciones.`
+        );
+      }
+    }
+
+    // Check license number uniqueness
+    const existingLicense = await ctx.db
+      .query("facilities")
+      .withIndex("by_license_number", (q) => q.eq("license_number", args.license_number))
+      .first();
+
+    if (existingLicense) {
+      throw new Error("El número de licencia ya está registrado en el sistema");
+    }
 
     const facilityId = await ctx.db.insert("facilities", {
       company_id: args.company_id,

@@ -18,6 +18,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -64,6 +74,11 @@ export function FacilityList({ userId, companyId }: FacilityListProps) {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [statusFilters, setStatusFilters] = useState<StatusFilter[]>(['active', 'inactive', 'suspended']);
 
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [facilityToDelete, setFacilityToDelete] = useState<FacilityWithCropTypes | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Fetch user data
   const user = useQuery(api.users.getUserById, {
     userId: userId as Id<'users'>,
@@ -80,6 +95,7 @@ export function FacilityList({ userId, companyId }: FacilityListProps) {
   // Mutations
   const createFacility = useMutation(api.facilities.create);
   const setCurrentFacility = useMutation(api.users.setCurrentFacility);
+  const removeFacility = useMutation(api.facilities.remove);
 
   // Plan info
   const planType: PlanType = 'business';
@@ -227,6 +243,40 @@ export function FacilityList({ userId, companyId }: FacilityListProps) {
         description: 'No se pudo cambiar la instalación. Por favor intenta de nuevo.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleDeleteFacility = (facility: FacilityWithCropTypes) => {
+    setFacilityToDelete(facility);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteFacility = async () => {
+    if (!facilityToDelete) return;
+
+    try {
+      setIsDeleting(true);
+      await removeFacility({
+        id: facilityToDelete._id as Id<'facilities'>,
+        companyId: companyId as Id<'companies'>,
+      });
+
+      toast({
+        title: 'Instalación desactivada',
+        description: `La instalación "${facilityToDelete.name}" ha sido desactivada.`,
+      });
+
+      setDeleteDialogOpen(false);
+      setFacilityToDelete(null);
+    } catch (error: any) {
+      console.error('Error deleting facility:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo desactivar la instalación.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -473,6 +523,7 @@ export function FacilityList({ userId, companyId }: FacilityListProps) {
               facility={facility}
               isCurrentFacility={facility._id === currentFacilityId}
               onSwitchToFacility={handleSwitchToFacility}
+              onDelete={() => handleDeleteFacility(facility)}
             />
           ))}
         </div>
@@ -486,6 +537,43 @@ export function FacilityList({ userId, companyId }: FacilityListProps) {
         currentFacilityCount={totalFacilities}
         planType={planType}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Desactivar instalación?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {facilityToDelete && (
+                <>
+                  La instalación <strong>{facilityToDelete.name}</strong> sera desactivada.
+                  <br /><br />
+                  No podras crear nuevos lotes ni actividades en esta instalación hasta que
+                  la reactives. Los datos existentes se mantendran.
+                  {facilityToDelete._id === currentFacilityId && (
+                    <>
+                      <br /><br />
+                      <span className="text-orange-600 font-medium">
+                        Esta es tu instalación actual. Seras redirigido a otra instalación.
+                      </span>
+                    </>
+                  )}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteFacility}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? 'Desactivando...' : 'Desactivar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

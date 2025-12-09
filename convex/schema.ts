@@ -451,7 +451,7 @@ export default defineSchema({
     gtin: v.optional(v.string()),
     name: v.string(),
     description: v.optional(v.string()),
-    category: v.string(), // nutrient/pesticide/equipment
+    category: v.string(), // seed/nutrient/pesticide/equipment/substrate/container/tool/clone/seedling/mother_plant/plant_material/other
     subcategory: v.optional(v.string()),
 
     // Crop Applicability

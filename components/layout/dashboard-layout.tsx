@@ -7,6 +7,7 @@ import { SidebarMobile } from './sidebar-mobile';
 import { Toaster } from '@/components/ui/toaster';
 import { FacilityProvider, useFacility } from '@/components/providers/facility-provider';
 import { Id } from '@/convex/_generated/dataModel';
+import { cn } from '@/lib/utils';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -23,39 +24,50 @@ function DashboardLayoutInner({
   user,
 }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
   const { currentFacilityId, setCurrentFacilityId } = useFacility();
 
   const handleFacilityChange = (facilityId: string) => {
     setCurrentFacilityId(facilityId as Id<'facilities'>);
   };
 
+  const handleSidebarToggle = () => {
+    setSidebarVisible((prev) => !prev);
+  };
+
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      {/* Header */}
-      <Header
-        user={user}
-        onMenuClick={() => setMobileMenuOpen(true)}
-        notificationCount={0}
-      />
-
-      {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:block">
-          <Sidebar
-            userId={user.userId}
-            currentFacilityId={currentFacilityId ?? undefined}
-            onFacilityChange={handleFacilityChange}
-          />
-        </div>
-
-        {/* Mobile Sidebar */}
-        <SidebarMobile
-          open={mobileMenuOpen}
-          onOpenChange={setMobileMenuOpen}
+    <div className="flex h-screen overflow-hidden">
+      {/* Desktop Sidebar - Full height */}
+      <div
+        className={cn(
+          'hidden lg:block transition-all duration-300 ease-in-out overflow-hidden flex-shrink-0',
+          sidebarVisible ? 'w-60' : 'w-0'
+        )}
+      >
+        <Sidebar
           userId={user.userId}
           currentFacilityId={currentFacilityId ?? undefined}
           onFacilityChange={handleFacilityChange}
+        />
+      </div>
+
+      {/* Mobile Sidebar */}
+      <SidebarMobile
+        open={mobileMenuOpen}
+        onOpenChange={setMobileMenuOpen}
+        userId={user.userId}
+        currentFacilityId={currentFacilityId ?? undefined}
+        onFacilityChange={handleFacilityChange}
+      />
+
+      {/* Right side: Header + Content */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Header */}
+        <Header
+          user={user}
+          onMenuClick={() => setMobileMenuOpen(true)}
+          onSidebarToggle={handleSidebarToggle}
+          notificationCount={0}
         />
 
         {/* Main Content */}
@@ -74,7 +86,9 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
       initialFacilityId={user.primaryFacilityId}
       initialCompanyId={user.companyId}
     >
-      <DashboardLayoutInner user={user}>{children}</DashboardLayoutInner>
+      <DashboardLayoutInner user={user}>
+        {children}
+      </DashboardLayoutInner>
     </FacilityProvider>
   );
 }

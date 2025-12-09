@@ -22,6 +22,7 @@ import {
   Leaf,
   Home,
   Warehouse,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -31,6 +32,7 @@ interface FacilityCardProps {
   facility: FacilityWithCropTypes;
   isCurrentFacility?: boolean;
   onSwitchToFacility?: (facilityId: string) => void;
+  onDelete?: () => void;
 }
 
 const facilityTypeConfig: Record<string, { label: string; icon: React.ReactNode; gradient: string }> = {
@@ -44,6 +46,7 @@ export function FacilityCard({
   facility,
   isCurrentFacility = false,
   onSwitchToFacility,
+  onDelete,
 }: FacilityCardProps) {
   const router = useRouter();
   const typeConfig = facilityTypeConfig[facility.facility_type || 'indoor'] || facilityTypeConfig.indoor;
@@ -128,6 +131,21 @@ export function FacilityCard({
                   >
                     <ArrowRightLeft className="h-4 w-4 mr-2" />
                     Cambiar a esta
+                  </DropdownMenuItem>
+                </>
+              )}
+              {onDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete();
+                    }}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Desactivar
                   </DropdownMenuItem>
                 </>
               )}

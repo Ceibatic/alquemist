@@ -1,34 +1,34 @@
 'use client';
 
-import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { AreaForm } from '@/components/areas/area-form';
+import { CreateAreaInput } from '@/lib/validations/area';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { CreateAreaInput } from '@/lib/validations/area';
+import { useState } from 'react';
+import { Map } from 'lucide-react';
 
 export default function AreaEditPage() {
   const params = useParams();
   const router = useRouter();
+  const areaId = params.id as Id<'areas'>;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const areaId = params.id as Id<'areas'>;
-
-  const area = useQuery(api.areas.get, { id: areaId });
+  const area = useQuery(api.areas.getById, { areaId });
   const cropTypes = useQuery(api.crops.getCropTypes, { includeInactive: false });
   const updateArea = useMutation(api.areas.update);
 
   if (area === undefined || cropTypes === undefined) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-32" />
-        <Skeleton className="h-96" />
+        <Skeleton className="h-20" />
+        <Skeleton className="h-[600px]" />
       </div>
     );
   }
@@ -37,23 +37,44 @@ export default function AreaEditPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Área no encontrada"
+          title="Area no encontrada"
+          icon={Map}
           breadcrumbs={[
             { label: 'Inicio', href: '/dashboard' },
-            { label: 'Áreas', href: '/areas' },
+            { label: 'Areas', href: '/areas' },
             { label: 'No encontrada' },
           ]}
         />
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-sm text-gray-600">
-              El área que buscas no existe o ha sido eliminada
+              El area que buscas no existe o ha sido eliminada
             </p>
           </CardContent>
         </Card>
       </div>
     );
   }
+
+  // Transform area data to form format
+  const defaultValues: Partial<CreateAreaInput> = {
+    name: area.name,
+    area_type: area.area_type as CreateAreaInput['area_type'],
+    status: area.status as CreateAreaInput['status'],
+    compatible_crop_type_ids: area.compatible_crop_type_ids.map(String),
+    length_meters: area.length_meters ?? undefined,
+    width_meters: area.width_meters ?? undefined,
+    height_meters: area.height_meters ?? undefined,
+    total_area_m2: area.total_area_m2 ?? undefined,
+    usable_area_m2: area.usable_area_m2 ?? undefined,
+    capacity_configurations: area.capacity_configurations as CreateAreaInput['capacity_configurations'],
+    climate_controlled: area.climate_controlled,
+    lighting_controlled: area.lighting_controlled,
+    irrigation_system: area.irrigation_system,
+    environmental_specs: area.environmental_specs as CreateAreaInput['environmental_specs'],
+    equipment_list: area.equipment_list ?? [],
+    notes: area.notes ?? undefined,
+  };
 
   const handleSubmit = async (data: CreateAreaInput) => {
     try {
@@ -80,8 +101,8 @@ export default function AreaEditPage() {
       });
 
       toast({
-        title: 'Área actualizada',
-        description: `El área "${data.name}" ha sido actualizada exitosamente.`,
+        title: 'Area actualizada',
+        description: `El area "${data.name}" ha sido actualizada exitosamente.`,
       });
 
       router.push(`/areas/${areaId}`);
@@ -89,7 +110,7 @@ export default function AreaEditPage() {
       console.error('Error updating area:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo actualizar el área. Por favor, intenta nuevamente.',
+        description: 'No se pudo actualizar el area. Por favor, intenta nuevamente.',
         variant: 'destructive',
       });
     } finally {
@@ -101,40 +122,19 @@ export default function AreaEditPage() {
     router.push(`/areas/${areaId}`);
   };
 
-  // Prepare default values for the form
-  const defaultValues: Partial<CreateAreaInput> = {
-    name: area.name,
-    area_type: area.area_type as any,
-    status: area.status as any,
-    compatible_crop_type_ids: area.compatible_crop_type_ids,
-    total_area_m2: area.total_area_m2 || 0,
-    length_meters: area.length_meters,
-    width_meters: area.width_meters,
-    height_meters: area.height_meters,
-    usable_area_m2: area.usable_area_m2,
-    capacity_configurations: area.capacity_configurations as any,
-    climate_controlled: area.climate_controlled,
-    lighting_controlled: area.lighting_controlled,
-    irrigation_system: area.irrigation_system,
-    environmental_specs: area.environmental_specs,
-    equipment_list: area.equipment_list,
-    notes: area.notes,
-  };
-
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <PageHeader
         title={`Editar: ${area.name}`}
+        icon={Map}
         breadcrumbs={[
           { label: 'Inicio', href: '/dashboard' },
-          { label: 'Áreas', href: '/areas' },
+          { label: 'Areas', href: '/areas' },
           { label: area.name, href: `/areas/${areaId}` },
           { label: 'Editar' },
         ]}
       />
 
-      {/* Form Card */}
       <Card>
         <CardContent className="pt-6">
           <AreaForm

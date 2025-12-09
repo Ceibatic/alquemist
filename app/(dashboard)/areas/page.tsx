@@ -3,11 +3,12 @@
 import { PageHeader } from '@/components/layout/page-header';
 import { AreaList } from '@/components/areas/area-list';
 import { Card, CardContent } from '@/components/ui/card';
+import { CompactStats } from '@/components/ui/compact-stats';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFacility } from '@/components/providers/facility-provider';
+import { LayoutGrid, CheckCircle, Wrench, XCircle, Map } from 'lucide-react';
 
 export default function AreasPage() {
   const { currentFacilityId, isLoading } = useFacility();
@@ -22,10 +23,10 @@ export default function AreasPage() {
   if (isLoading || !currentFacilityId) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-32" />
-        <div className="grid gap-4 md:grid-cols-4">
+        <Skeleton className="h-20" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="h-14" />
           ))}
         </div>
         <Skeleton className="h-96" />
@@ -39,6 +40,7 @@ export default function AreasPage() {
       <div className="space-y-6">
         <PageHeader
           title="Áreas"
+          icon={Map}
           breadcrumbs={[{ label: 'Inicio', href: '/dashboard' }, { label: 'Áreas' }]}
         />
         <Card>
@@ -57,56 +59,28 @@ export default function AreasPage() {
       {/* Page Header */}
       <PageHeader
         title="Áreas"
+        icon={Map}
         breadcrumbs={[{ label: 'Inicio', href: '/dashboard' }, { label: 'Áreas' }]}
         description="Gestiona las áreas de cultivo de tu instalación"
       />
 
-      {/* Stats Bar */}
-      <div className="grid gap-4 md:grid-cols-4">
-        {stats === undefined ? (
-          <>
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-24" />
-            ))}
-          </>
-        ) : (
-          <>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold">{stats.total}</div>
-                <p className="text-xs text-muted-foreground">Total de Áreas</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-green-600">
-                  {stats.active}
-                </div>
-                <p className="text-xs text-muted-foreground">Áreas Activas</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-yellow-600">
-                  {stats.maintenance}
-                </div>
-                <p className="text-xs text-muted-foreground">En Mantenimiento</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-2xl font-bold text-red-600">
-                  {stats.inactive}
-                </div>
-                <p className="text-xs text-muted-foreground">Áreas Inactivas</p>
-              </CardContent>
-            </Card>
-          </>
-        )}
-      </div>
+      {/* Compact Stats */}
+      {stats === undefined ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-14" />
+          ))}
+        </div>
+      ) : (
+        <CompactStats
+          stats={[
+            { label: 'Total', value: stats.total, icon: LayoutGrid, color: 'blue' },
+            { label: 'Activas', value: stats.active, icon: CheckCircle, color: 'green' },
+            { label: 'Mantenimiento', value: stats.maintenance, icon: Wrench, color: 'yellow' },
+            { label: 'Inactivas', value: stats.inactive, icon: XCircle, color: 'red' },
+          ]}
+        />
+      )}
 
       {/* Areas List */}
       <AreaList facilityId={currentFacilityId} />

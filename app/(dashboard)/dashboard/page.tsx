@@ -14,6 +14,7 @@ import { DashboardError } from '@/components/dashboard/dashboard-error';
 import { Sprout } from 'lucide-react';
 import { useDashboard } from '@/hooks/use-dashboard';
 import { useEffect, useState } from 'react';
+import { TrialBanner } from '@/components/subscription/trial-banner';
 
 export default function DashboardPage() {
   // Get user ID from session storage or context
@@ -102,6 +103,9 @@ export default function DashboardPage() {
         breadcrumbs={[{ label: 'Dashboard' }]}
         description="Vista general de tu instalación"
       />
+
+      {/* Trial Banner - Shows when trial is expiring */}
+      <TrialBanner companyId={companyId as Id<'companies'>} />
 
       {/* Empty State for New Installations */}
       {isNewInstallation && onboardingStatus && (

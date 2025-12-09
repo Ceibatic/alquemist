@@ -42,7 +42,7 @@ export function StockStatus({ status, className }: StockStatusProps) {
   const config = statusConfig[status] || statusConfig.adequate;
 
   return (
-    <Badge className={cn(config.className, className)}>
+    <Badge className={cn(config.className, 'hover:opacity-80 transition-opacity', className)}>
       <span className="mr-1">{config.icon}</span>
       {config.label}
     </Badge>

@@ -1,9 +1,7 @@
 'use client';
 
-import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Bell, LogOut, Settings, User } from 'lucide-react';
+import { Bell, LogOut, Settings, User, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,12 +21,14 @@ interface HeaderProps {
     companyId?: string;
   };
   onMenuClick?: () => void;
+  onSidebarToggle?: () => void;
   notificationCount?: number;
 }
 
 export function Header({
   user,
   onMenuClick,
+  onSidebarToggle,
   notificationCount = 0,
 }: HeaderProps) {
   const router = useRouter();
@@ -50,16 +50,17 @@ export function Header({
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-white px-4 lg:px-6">
-      {/* Left: Menu button (mobile) + Logo */}
+    <header className="flex h-14 items-center justify-between border-b bg-white px-4">
+      {/* Left: Toggle sidebar */}
       <div className="flex items-center gap-3">
+        {/* Mobile menu button */}
         <button
           onClick={onMenuClick}
           className="lg:hidden rounded-md p-2 hover:bg-gray-100"
-          aria-label="Toggle menu"
+          aria-label="Toggle mobile menu"
         >
           <svg
-            className="h-6 w-6"
+            className="h-5 w-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -72,26 +73,15 @@ export function Header({
             />
           </svg>
         </button>
-        <Link href="/dashboard" className="flex items-center">
-          {/* Mobile: Icon only, centered */}
-          <Image
-            src="/icon.svg"
-            alt="Alquemist"
-            width={32}
-            height={32}
-            className="sm:hidden"
-            priority
-          />
-          {/* Tablet/Desktop: Full logo */}
-          <Image
-            src="/logo.svg"
-            alt="Alquemist"
-            width={150}
-            height={35}
-            className="hidden sm:block"
-            priority
-          />
-        </Link>
+
+        {/* Desktop sidebar toggle */}
+        <button
+          onClick={onSidebarToggle}
+          className="hidden lg:flex rounded-md p-2 hover:bg-gray-100"
+          aria-label="Toggle sidebar"
+        >
+          <PanelLeft className="h-5 w-5 text-gray-600" />
+        </button>
       </div>
 
       {/* Right: Notifications + User Menu */}

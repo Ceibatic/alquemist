@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { MoreVertical, UserX, Edit2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -10,11 +12,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Id } from '@/convex/_generated/dataModel';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserRowData {
   id: Id<'users'>;
@@ -32,6 +45,11 @@ interface UserRowProps {
 
 export function UserRow({ user }: UserRowProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+
+  const { toast } = useToast();
+  const deactivateUser = useMutation(api.users.deactivateUser);
 
   // Generate initials
   const initials = user.firstName && user.lastName
@@ -62,6 +80,26 @@ export function UserRow({ user }: UserRowProps) {
   };
 
   const isOwner = user.roleName.includes('Owner') || user.roleName.includes('Propietario');
+
+  const handleDeactivate = async () => {
+    try {
+      setIsDeactivating(true);
+      await deactivateUser({ userId: user.id });
+      toast({
+        title: 'Usuario desactivado',
+        description: `${user.firstName || user.email} ha sido desactivado. Ya no podra acceder al sistema.`,
+      });
+      setIsDeactivateDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo desactivar el usuario',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeactivating(false);
+    }
+  };
 
   return (
     <div className="flex items-center justify-between border-b p-4 last:border-b-0 hover:bg-gray-50">
@@ -128,7 +166,10 @@ export function UserRow({ user }: UserRowProps) {
                 <Edit2 className="mr-2 h-4 w-4" />
                 Editar Rol
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-red-600">
+              <DropdownMenuItem
+                onClick={() => setIsDeactivateDialogOpen(true)}
+                className="text-red-600 focus:text-red-600"
+              >
                 <UserX className="mr-2 h-4 w-4" />
                 Desactivar
               </DropdownMenuItem>
@@ -136,6 +177,32 @@ export function UserRow({ user }: UserRowProps) {
           </DropdownMenu>
         )}
       </div>
+
+      {/* Deactivate Confirmation Dialog */}
+      <AlertDialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Desactivar usuario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estas seguro de que deseas desactivar a{' '}
+              <strong>{user.firstName ? `${user.firstName} ${user.lastName}` : user.email}</strong>?
+              <br /><br />
+              El usuario perdera acceso al sistema inmediatamente y todas sus sesiones
+              activas seran invalidadas. Podras reactivarlo mas adelante si es necesario.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeactivating}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeactivate}
+              disabled={isDeactivating}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeactivating ? 'Desactivando...' : 'Desactivar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

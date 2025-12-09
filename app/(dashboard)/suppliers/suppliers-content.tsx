@@ -5,6 +5,7 @@ import { SupplierList } from '@/components/suppliers/supplier-list';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFacility } from '@/components/providers/facility-provider';
+import { Building2 } from 'lucide-react';
 
 export function SuppliersContent() {
   const { currentCompanyId, isLoading } = useFacility();
@@ -35,10 +36,8 @@ export function SuppliersContent() {
       <div className="space-y-6">
         <PageHeader
           title="Proveedores"
-          breadcrumbs={[
-            { label: 'Inicio', href: '/dashboard' },
-            { label: 'Proveedores' },
-          ]}
+          icon={Building2}
+          breadcrumbs={[{ label: 'Inicio', href: '/dashboard' }, { label: 'Proveedores' }]}
         />
         <Card>
           <CardContent className="py-12 text-center">
@@ -55,11 +54,9 @@ export function SuppliersContent() {
     <div className="space-y-6">
       <PageHeader
         title="Proveedores"
+        icon={Building2}
+        breadcrumbs={[{ label: 'Inicio', href: '/dashboard' }, { label: 'Proveedores' }]}
         description="Gestiona tus proveedores y relaciones comerciales"
-        breadcrumbs={[
-          { label: 'Inicio', href: '/dashboard' },
-          { label: 'Proveedores' },
-        ]}
       />
 
       <SupplierList companyId={currentCompanyId} />

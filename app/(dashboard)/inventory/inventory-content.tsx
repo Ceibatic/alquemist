@@ -5,6 +5,7 @@ import { InventoryList } from '@/components/inventory/inventory-list';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFacility } from '@/components/providers/facility-provider';
+import { Package } from 'lucide-react';
 
 export function InventoryContent() {
   const { currentFacilityId, isLoading } = useFacility();
@@ -35,10 +36,8 @@ export function InventoryContent() {
       <div className="space-y-6">
         <PageHeader
           title="Inventario"
-          breadcrumbs={[
-            { label: 'Inicio', href: '/dashboard' },
-            { label: 'Inventario' },
-          ]}
+          icon={Package}
+          breadcrumbs={[{ label: 'Inicio', href: '/dashboard' }, { label: 'Inventario' }]}
         />
         <Card>
           <CardContent className="py-12 text-center">
@@ -55,11 +54,9 @@ export function InventoryContent() {
     <div className="space-y-6">
       <PageHeader
         title="Inventario"
+        icon={Package}
+        breadcrumbs={[{ label: 'Inicio', href: '/dashboard' }, { label: 'Inventario' }]}
         description="Gestiona tu inventario y stock de productos"
-        breadcrumbs={[
-          { label: 'Inicio', href: '/dashboard' },
-          { label: 'Inventario' },
-        ]}
       />
 
       <InventoryList facilityId={currentFacilityId} />
