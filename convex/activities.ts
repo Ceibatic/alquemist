@@ -264,3 +264,265 @@ export const log = mutation({
     return activityId;
   },
 });
+
+/**
+ * List activities by batch
+ */
+export const listByBatch = query({
+  args: {
+    batchId: v.id("batches"),
+    activity_type: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    let activitiesQuery = ctx.db
+      .query("activities")
+      .withIndex("by_entity", (q) =>
+        q.eq("entity_type", "batch").eq("entity_id", args.batchId)
+      );
+
+    const activities = await activitiesQuery.order("desc").take(args.limit || 100);
+
+    // Filter by activity_type if specified
+    const filtered = args.activity_type
+      ? activities.filter((a) => a.activity_type === args.activity_type)
+      : activities;
+
+    // Enrich with user info
+    const enriched = await Promise.all(
+      filtered.map(async (activity) => {
+        const user = await ctx.db.get(activity.performed_by);
+        return {
+          ...activity,
+          performedByName: user
+            ? `${user.first_name} ${user.last_name}`
+            : "Unknown",
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+/**
+ * List activities by production order (all batches)
+ */
+export const listByOrder = query({
+  args: {
+    orderId: v.id("production_orders"),
+    activity_type: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Get all batches for this order
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_production_order", (q) => q.eq("production_order_id", args.orderId))
+      .collect();
+
+    const batchIds = batches.map((b) => b._id);
+
+    // Get activities for all batches
+    const allActivities = await ctx.db.query("activities").collect();
+
+    let activities = allActivities
+      .filter(
+        (a) =>
+          a.entity_type === "batch" &&
+          batchIds.includes(a.entity_id as Id<"batches">)
+      )
+      .sort((a, b) => b.timestamp - a.timestamp);
+
+    // Filter by activity_type if specified
+    if (args.activity_type) {
+      activities = activities.filter((a) => a.activity_type === args.activity_type);
+    }
+
+    // Apply limit
+    if (args.limit) {
+      activities = activities.slice(0, args.limit);
+    }
+
+    // Enrich with user and batch info
+    const enriched = await Promise.all(
+      activities.map(async (activity) => {
+        const user = await ctx.db.get(activity.performed_by);
+        const batch = batches.find((b) => b._id === activity.entity_id);
+        return {
+          ...activity,
+          performedByName: user
+            ? `${user.first_name} ${user.last_name}`
+            : "Unknown",
+          batchCode: batch?.batch_code || "Unknown",
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+/**
+ * Get activity statistics for a batch or order
+ */
+export const getStats = query({
+  args: {
+    entity_type: v.string(), // 'batch' | 'order'
+    entity_id: v.string(),
+  },
+  handler: async (ctx, args) => {
+    let activities: any[] = [];
+
+    if (args.entity_type === "batch") {
+      activities = await ctx.db
+        .query("activities")
+        .withIndex("by_entity", (q) =>
+          q.eq("entity_type", "batch").eq("entity_id", args.entity_id)
+        )
+        .collect();
+    } else if (args.entity_type === "order") {
+      const orderId = args.entity_id as Id<"production_orders">;
+      const batches = await ctx.db
+        .query("batches")
+        .withIndex("by_production_order", (q) => q.eq("production_order_id", orderId))
+        .collect();
+
+      const batchIds = batches.map((b) => b._id);
+      const allActivities = await ctx.db.query("activities").collect();
+      activities = allActivities.filter(
+        (a) =>
+          a.entity_type === "batch" &&
+          batchIds.includes(a.entity_id as Id<"batches">)
+      );
+    }
+
+    // Calculate statistics
+    const byType: Record<string, number> = {};
+    let totalDuration = 0;
+    let totalWithDuration = 0;
+
+    for (const activity of activities) {
+      byType[activity.activity_type] = (byType[activity.activity_type] || 0) + 1;
+      if (activity.duration_minutes) {
+        totalDuration += activity.duration_minutes;
+        totalWithDuration++;
+      }
+    }
+
+    // Calculate quantity changes
+    const movements = activities.filter(
+      (a) => a.area_from || a.area_to
+    ).length;
+
+    const lossRecords = activities.filter(
+      (a) => a.activity_type === "loss_record"
+    );
+    const totalLoss = lossRecords.reduce(
+      (sum, a) => sum + ((a.quantity_before || 0) - (a.quantity_after || 0)),
+      0
+    );
+
+    return {
+      totalActivities: activities.length,
+      byType,
+      averageDuration: totalWithDuration > 0 ? totalDuration / totalWithDuration : 0,
+      totalDurationMinutes: totalDuration,
+      movements,
+      totalLoss,
+      firstActivity: activities.length > 0
+        ? Math.min(...activities.map((a) => a.timestamp))
+        : null,
+      lastActivity: activities.length > 0
+        ? Math.max(...activities.map((a) => a.timestamp))
+        : null,
+    };
+  },
+});
+
+/**
+ * Get scheduled activities for an entity
+ */
+export const getScheduledActivities = query({
+  args: {
+    entity_type: v.string(),
+    entity_id: v.string(),
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let query = ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_entity", (q) =>
+        q.eq("entity_type", args.entity_type).eq("entity_id", args.entity_id)
+      );
+
+    const activities = await query.collect();
+
+    // Filter by status if specified
+    const filtered = args.status
+      ? activities.filter((a) => a.status === args.status)
+      : activities;
+
+    return filtered.sort((a, b) => a.scheduled_date - b.scheduled_date);
+  },
+});
+
+/**
+ * Complete a scheduled activity
+ */
+export const completeScheduledActivity = mutation({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+    completedBy: v.id("users"),
+    notes: v.optional(v.string()),
+    duration_minutes: v.optional(v.number()),
+    materials_consumed: v.optional(v.array(v.any())),
+    quality_check_data: v.optional(v.object({})),
+    photos: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const scheduledActivity = await ctx.db.get(args.scheduledActivityId);
+    if (!scheduledActivity) {
+      throw new Error("Scheduled activity not found");
+    }
+
+    if (scheduledActivity.status === "completed") {
+      throw new Error("Activity already completed");
+    }
+
+    // Update scheduled activity status
+    await ctx.db.patch(args.scheduledActivityId, {
+      status: "completed",
+      actual_end_time: now,
+      completed_by: args.completedBy,
+      completion_notes: args.notes,
+      updated_at: now,
+    });
+
+    // Create activity record
+    const activityId = await ctx.db.insert("activities", {
+      entity_type: scheduledActivity.entity_type,
+      entity_id: scheduledActivity.entity_id,
+      activity_type: scheduledActivity.activity_type,
+      scheduled_activity_id: args.scheduledActivityId,
+      performed_by: args.completedBy,
+      timestamp: now,
+      duration_minutes: args.duration_minutes,
+      materials_consumed: args.materials_consumed || [],
+      equipment_used: [],
+      quality_check_data: args.quality_check_data,
+      photos: args.photos || [],
+      files: [],
+      activity_metadata: {},
+      notes: args.notes,
+      created_at: now,
+    });
+
+    return {
+      activityId,
+      scheduledActivityId: args.scheduledActivityId,
+    };
+  },
+});

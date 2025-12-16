@@ -48,8 +48,22 @@ export const list = query({
     const offset = args.offset || 0;
     const limit = args.limit || 50;
 
+    // Enrich items with product information
+    const paginatedItems = items.slice(offset, offset + limit);
+    const enrichedItems = await Promise.all(
+      paginatedItems.map(async (item) => {
+        const product = await ctx.db.get(item.product_id);
+        return {
+          ...item,
+          productName: product?.name || 'Producto desconocido',
+          productSku: product?.sku || '',
+          productCategory: product?.category || '',
+        };
+      })
+    );
+
     return {
-      items: items.slice(offset, offset + limit),
+      items: enrichedItems,
       total: items.length,
     };
   },

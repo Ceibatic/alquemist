@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { MapPin, ArrowRight } from 'lucide-react';
+import { MapPin, ArrowRight, Sparkles } from 'lucide-react';
 import {
   facilityLocationSchema,
   type FacilityLocationFormValues,
@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -40,6 +41,7 @@ export default function FacilityLocationPage() {
   const [coordinates, setCoordinates] = useState<GeolocationCoordinates | undefined>();
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [generateSampleData, setGenerateSampleData] = useState(true);
 
   const form = useForm<FacilityLocationFormValues>({
     resolver: zodResolver(facilityLocationSchema),
@@ -125,8 +127,8 @@ export default function FacilityLocationPage() {
         ...data,
       };
 
-      // Submit to server with companyId and userId
-      const result = await createFacility(completeData, companyId, userId);
+      // Submit to server with companyId, userId, and sample data flag
+      const result = await createFacility(completeData, companyId, userId, generateSampleData);
 
       if (!result.success) {
         setGlobalError(result.error || 'Error al crear la instalación');
@@ -291,6 +293,30 @@ export default function FacilityLocationPage() {
               {form.formState.errors.climateZone.message}
             </p>
           )}
+        </div>
+
+        {/* Sample Data Option */}
+        <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+          <div className="flex items-start space-x-3">
+            <Checkbox
+              id="generateSampleData"
+              checked={generateSampleData}
+              onCheckedChange={(checked) => setGenerateSampleData(checked === true)}
+              disabled={isSubmitting}
+            />
+            <div className="flex-1">
+              <Label
+                htmlFor="generateSampleData"
+                className="text-sm font-medium cursor-pointer flex items-center gap-2"
+              >
+                <Sparkles className="h-4 w-4 text-primary" />
+                Generar datos de ejemplo
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Incluye areas, cultivares, proveedores, productos y una plantilla de produccion para explorar la plataforma
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Submit Button */}

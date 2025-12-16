@@ -1,13 +1,50 @@
-# AI Quality Check & Pest Detection System (Simplified)
+# AI Quality Check & Pest Detection System
+
+**Estado**: 🟡 Backend Implementado, Requiere Configuracion API Key
+
+## Implementation Status
+
+### Implemented (Backend)
+
+| Feature | File | Status |
+|---------|------|--------|
+| QC Template Extraction | `convex/ai.ts` | ✅ `generateQCTemplateFromDocument` action |
+| Pest Detection | `convex/ai.ts` | ✅ `analyzePestDisease` action |
+| Dynamic Form Renderer | `components/quality-checks/dynamic-form-renderer.tsx` | ✅ Universal form component |
+| Template Structure | `convex/ai.ts` | ✅ JSON schema (not HTML) |
+| Save Detection Results | `convex/ai.ts` | ✅ `savePestDetection` mutation |
+
+### Required Configuration
+
+```bash
+# Add to .env.local
+GEMINI_API_KEY=your_api_key_from_google_ai_studio
+```
+
+Get your API key at: https://makersuite.google.com/app/apikey
+
+### Design Change: JSON vs HTML
+
+**Original Design**: AI generates raw HTML to render in iframe
+**Implemented Design**: AI generates **structured JSON** that is programmatically rendered
+
+**Why JSON is better**:
+1. Field-level data extraction for analytics
+2. Validation rules per field
+3. Conditional field display
+4. Easier to modify/version
+5. Supports all field types (photos, signatures, QR, etc.)
+
+---
 
 ## Overview
 
-This document details the simplified AI-powered features for quality check template creation and pest/disease detection in production activities using **Google Gemini API**.
+This document details the AI-powered features for quality check template creation and pest/disease detection in production activities using **Google Gemini API**.
 
 ## Purpose
 
 The AI system provides two main capabilities:
-1. **Quality Check Template Extraction**: Transform PDF/image documents into renderable HTML forms (single API call)
+1. **Quality Check Template Extraction**: Transform PDF/image documents into structured JSON forms (single API call)
 2. **Pest & Disease Detection**: Analyze photos to identify plant health issues and return search parameters (single API call)
 
 **Design Philosophy**: Keep it simple for fast initial development. Both features use a single Gemini API call with a well-crafted prompt.
@@ -855,4 +892,147 @@ Very affordable for initial development and testing.
 
 ---
 
+## Actual Implementation (Convex + Next.js)
+
+### Calling the AI Functions
+
+**Generate QC Template from Document**:
+```typescript
+import { useAction } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+
+const generateTemplate = useAction(api.ai.generateQCTemplateFromDocument);
+
+// Usage
+const result = await generateTemplate({
+  documentUrl: 'https://storage.example.com/form.pdf',
+  companyId: companyId,
+  cropTypeId: cropTypeId,
+  templateName: 'Control de Calidad - Propagacion',
+  category: 'propagation',
+  createdBy: userId,
+});
+
+if (result.success) {
+  console.log('Template ID:', result.templateId);
+  console.log('Structure:', result.templateStructure);
+}
+```
+
+**Analyze Photos for Pests**:
+```typescript
+const analyzePests = useAction(api.ai.analyzePestDisease);
+
+// Usage
+const result = await analyzePests({
+  photoUrls: ['https://storage.example.com/plant1.jpg'],
+  facilityId: facilityId,
+  areaId: areaId,
+  entityType: 'batch',
+  entityId: batchId,
+  cropType: 'cannabis',
+  detectedBy: userId,
+  saveResults: true,
+});
+
+if (result.success) {
+  for (const photo of result.results) {
+    console.log('Detections:', photo.detections);
+    console.log('Health:', photo.overallHealth);
+  }
+}
+```
+
+### Rendering Dynamic Forms
+
+```tsx
+import { DynamicFormRenderer } from '@/components/quality-checks/dynamic-form-renderer';
+
+// Usage in a page
+<DynamicFormRenderer
+  template={templateStructure}
+  initialValues={{}}
+  onChange={(values) => console.log('Form values:', values)}
+  onSubmit={(values) => saveQualityCheck(values)}
+  submitButtonText="Guardar Inspeccion"
+/>
+```
+
+### Template Structure JSON Schema
+
+The AI generates forms with this structure:
+
+```typescript
+{
+  version: "1.0",
+  generatedBy: "ai",
+  sections: [
+    {
+      id: "visual_inspection",
+      title: "Inspeccion Visual",
+      fields: [
+        {
+          id: "plant_height",
+          type: "measurement",
+          label: "Altura de Planta",
+          required: true,
+          min: 0,
+          max: 300,
+          unit: "cm"
+        },
+        {
+          id: "leaf_color",
+          type: "select",
+          label: "Color de Hojas",
+          options: [
+            { value: "green", label: "Verde Saludable" },
+            { value: "yellow", label: "Amarillento" },
+            { value: "brown", label: "Marron" }
+          ]
+        },
+        {
+          id: "health_rating",
+          type: "scale",
+          label: "Puntuacion de Salud",
+          scaleMin: 1,
+          scaleMax: 5,
+          scaleLabels: { min: "Pobre", max: "Excelente" }
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Supported Field Types
+
+| Type | Description | Properties |
+|------|-------------|------------|
+| `text` | Single line text | placeholder, validation |
+| `number` | Numeric input | min, max, step |
+| `measurement` | Number with unit | min, max, unit |
+| `date` | Date picker | - |
+| `time` | Time picker | - |
+| `datetime` | Date and time | - |
+| `select` | Dropdown (single) | options[] |
+| `multiselect` | Dropdown (multiple) | options[] |
+| `checkbox` | Single yes/no | - |
+| `checkbox_group` | Multiple checkboxes | options[] |
+| `radio` | Radio buttons | options[] |
+| `textarea` | Multi-line text | validation |
+| `scale` | Rating scale | scaleMin, scaleMax, scaleLabels |
+| `photo` | Photo upload | - |
+| `signature` | Digital signature | - |
+| `location` | GPS coordinates | - |
+| `qr_scan` | QR code scanner | - |
+| `heading` | Section header | - |
+| `paragraph` | Info text | - |
+
+---
+
 This simplified approach prioritizes **speed of development** and **ease of implementation** while maintaining the core AI-powered functionality. The system can be enhanced incrementally based on user feedback.
+
+---
+
+**Last Updated**: 2025-12-09
+**Version**: 2.0 (Backend Implemented)

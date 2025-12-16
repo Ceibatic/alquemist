@@ -48,10 +48,15 @@
 **Functional Requirements**:
 - Facility name, license number (unique), license type
 - Primary crop type (Cannabis, Hemp, Vegetables, Flowers, Other)
-- Total area with units (m², ft²)
+- Total area with units (mï¿½, ftï¿½)
 - Facility type (Indoor/Outdoor/Greenhouse)
 - Climate controlled flag, climate zone
 - Geographic location
+- **Sample Data Generation (Opt-in)**:
+  - Checkbox to generate example data during onboarding (checked by default)
+  - Generates areas, cultivars, suppliers, products, inventory, and production template
+  - Data marked with "(Demo)" suffix for easy identification
+  - Configurable per crop type (Cannabis implemented)
 
 #### Module 5: Role Management
 **Functional Requirements**:
@@ -68,7 +73,7 @@
 #### Module 7: Reference Data
 **Functional Requirements**:
 - Crop types master list
-- Geographic locations (departments ’ municipalities)
+- Geographic locations (departments ï¿½ municipalities)
 - Cascading dropdowns for location selection
 
 ---
@@ -170,9 +175,9 @@
 - Order: name, area, start date, quantity (plants)
 - Auto-schedule all activities based on template rules
 - Calculate estimated end date
-- Approval workflow (pending_approval ’ active)
+- Approval workflow (pending_approval ï¿½ active)
 - Approval by manager with timestamp
-- Order lifecycle: draft ’ pending_approval ’ active ’ paused ’ completed
+- Order lifecycle: draft ï¿½ pending_approval ï¿½ active ï¿½ paused ï¿½ completed
 - Pause/resume orders with schedule adjustment
 - Progress tracking (% activities completed)
 - Capacity validation against area limits
@@ -180,7 +185,7 @@
 #### Module 25: Activity Execution & Quality Control
 **Functional Requirements**:
 - Operator view: list assigned activities by date
-- Activity states: pending ’ in_progress ’ completed (or overdue)
+- Activity states: pending ï¿½ in_progress ï¿½ completed (or overdue)
 - Start activity (record timestamp)
 - Complete activity with required QC form
 - Upload photos during activity (max 10 per activity)
@@ -271,7 +276,7 @@
 ## Success Metrics
 
 ### Phase 1
-- User registration ’ email verified ’ company created ’ facility active
+- User registration ï¿½ email verified ï¿½ company created ï¿½ facility active
 
 ### Phase 2
 - 3+ areas, 5+ cultivars, 2+ suppliers, 5+ inventory items, team configured
@@ -280,7 +285,7 @@
 - 1+ active template, 3+ phases, 10+ activities, QC templates linked
 
 ### Phase 4
-- Order created ’ approved ’ 30%+ activities completed ’ inventory consumed ’ order completed
+- Order created ï¿½ approved ï¿½ 30%+ activities completed ï¿½ inventory consumed ï¿½ order completed
 
 ---
 

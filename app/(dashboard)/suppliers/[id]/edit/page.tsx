@@ -1,7 +1,7 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -11,57 +11,25 @@ import { Button } from '@/components/ui/button';
 import { SupplierForm } from '@/components/suppliers/supplier-form';
 import { CreateSupplierInput } from '@/lib/validations/supplier';
 
-interface SupplierEditPageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
-
-export default function SupplierEditPage({ params }: SupplierEditPageProps) {
-  const { id } = use(params);
+export default function SupplierEditPage() {
   const router = useRouter();
-  const [companyId, setCompanyId] = useState<string | null>(null);
+  const params = useParams();
+  const id = params.id as string;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    // Get user data from cookies
-    const userDataCookie = document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('user_data='));
-
-    if (userDataCookie) {
-      try {
-        const userData = JSON.parse(
-          decodeURIComponent(userDataCookie.split('=')[1])
-        );
-        setCompanyId(userData.companyId);
-      } catch (err) {
-        console.error('Error al cargar datos del usuario:', err);
-      }
-    }
-  }, []);
-
-  const supplier = useQuery(
-    api.suppliers.get,
-    companyId && id
-      ? {
-          id: id as Id<'suppliers'>,
-          companyId: companyId as any,
-        }
-      : 'skip'
-  );
+  const supplier = useQuery(api.suppliers.get, { id: id as Id<'suppliers'> });
 
   const updateSupplier = useMutation(api.suppliers.update);
 
   const handleSubmit = async (data: CreateSupplierInput) => {
-    if (!companyId) return;
+    if (!supplier) return;
 
     try {
       setIsSubmitting(true);
 
       await updateSupplier({
         id: id as Id<'suppliers'>,
-        companyId: companyId as any,
+        companyId: supplier.company_id,
         name: data.name,
         legalName: data.legal_name,
         taxId: data.tax_id,

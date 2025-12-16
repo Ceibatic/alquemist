@@ -37,11 +37,12 @@
 - **MODULE 4**: User Role Assignment
 - **MODULE 5**: Dashboard Home
 - **MODULE 6**: Login & Session Management
+- **MODULE 7**: Sample Data Generation (Onboarding)
 
 **Estimated Pages**: 11 screens total (7 for first user + 4 for invited user)
 **Exit Point**: Operational Dashboard with facility context established
 
-**Total Endpoints**: 23 endpoints across 6 modules
+**Total Endpoints**: 26 endpoints across 7 modules
 
 ---
 
@@ -3462,18 +3463,122 @@ All Bubble-specific content (API Connector configs, workflows, dropdown setups) 
 - [x] Get recent activities
 - [x] Get active alerts
 
+**MODULE 7: Sample Data Generation** ✅
+- [x] Generate sample data for new company
+- [x] Check if facility has sample data
+- [x] Clear sample data
+
+---
+
+## MODULE 7: Sample Data Generation (Onboarding)
+
+Automatically generates example data when a user completes onboarding, allowing them to explore the platform without manual configuration.
+
+### generateSampleDataForNewCompany (Mutation)
+
+**File**: `convex/seedOnboardingData.ts`
+
+**Input**:
+```typescript
+{
+  companyId: Id<"companies">,
+  facilityId: Id<"facilities">,
+  userId: Id<"users">,
+  cropTypeId: Id<"crop_types">
+}
+```
+
+**Output**:
+```typescript
+{
+  success: boolean,
+  results: {
+    areas: { success: boolean, count: number, ids: Id<"areas">[] },
+    cultivars: { success: boolean, count: number, ids: Id<"cultivars">[] },
+    suppliers: { success: boolean, count: number, ids: Id<"suppliers">[] },
+    products: { success: boolean, count: number, ids: Id<"products">[] },
+    inventory: { success: boolean, count: number },
+    template: { success: boolean, templateId?: Id<"production_templates">, phases: number, activities: number }
+  }
+}
+```
+
+**Generated Data (Cannabis)**:
+| Entity | Count | Examples |
+|--------|-------|----------|
+| Areas | 6 | Almacen (Demo), Propagacion (Demo), Vegetativo (Demo), Floracion (Demo), Secado (Demo), Curado (Demo) |
+| Cultivars | 5 | Blue Dream, OG Kush, Colombian Gold, White Widow, Critical Mass |
+| Suppliers | 4 | NutriCultivos (Demo), GeneSemillas (Demo), AgroEquipos (Demo), BioProtect (Demo) |
+| Products | 14 | Nutrients, substrates, pesticides, equipment, tools |
+| Inventory | 14 | Initial stock in storage area |
+| Template | 1 | "Cannabis Indoor Estandar (Demo)" with 5 phases, 15 activities, 133 days |
+
+---
+
+### hasSampleData (Query)
+
+Checks if a facility has sample data generated.
+
+**Input**:
+```typescript
+{ facilityId: Id<"facilities"> }
+```
+
+**Output**:
+```typescript
+{
+  exists: boolean,
+  counts: {
+    areas: number,
+    cultivars: number,
+    suppliers: number,
+    products: number,
+    templates: number
+  }
+}
+```
+
+---
+
+### clearSampleData (Mutation)
+
+Removes all sample data (items with "(Demo)" suffix or "DEMO-" prefix).
+
+**Input**:
+```typescript
+{
+  companyId: Id<"companies">,
+  facilityId: Id<"facilities">
+}
+```
+
+**Output**:
+```typescript
+{
+  success: boolean,
+  deleted: {
+    areas: number,
+    cultivars: number,
+    suppliers: number,
+    products: number,
+    inventory: number,
+    templates: number
+  }
+}
+```
+
 ---
 
 ## IMPLEMENTATION STATUS
 
-**Backend Status**: ✅ Phase 1 Backend COMPLETE - All 23 endpoints implemented and production-ready
+**Backend Status**: ✅ Phase 1 Backend COMPLETE - All 26 endpoints implemented and production-ready
 
 **Frontend Status**: 🔴 Implementation Pending
 - Next.js 15 implementation to be completed following wireframes
 - Use this document for API integration reference
 - Follow [CLAUDE.md](../dev/CLAUDE.md) methodology for development approach
 
-**Endpoint Coverage**: 23/23 (100% backend complete)
+**Endpoint Coverage**: 26/26 (100% backend complete)
 
 **Backend Implementation** ✅:
 - ✅ All authentication endpoints functional with email verification
@@ -3484,6 +3589,7 @@ All Bubble-specific content (API Connector configs, workflows, dropdown setups) 
 - ✅ Dashboard with alerts and activity tracking
 - ✅ Geographic data (departments/municipalities) integrated
 - ✅ Session management and token validation complete
+- ✅ Sample data generation for onboarding (Cannabis)
 
 **Frontend TODO** 🔴:
 - 🔴 Implement Next.js 15 App Router pages
@@ -3493,6 +3599,11 @@ All Bubble-specific content (API Connector configs, workflows, dropdown setups) 
 - 🔴 Add shadcn/ui components following design system
 - 🔴 Configure email sending with Resend
 - 🔴 Set up HTTP-only cookie session management
+
+**Recent Changes (2025-12-15)**:
+- Added MODULE 7: Sample Data Generation for onboarding
+- Implemented generateSampleDataForNewCompany, hasSampleData, clearSampleData endpoints
+- Cannabis crop type fully configured with 6 areas, 5 cultivars, 4 suppliers, 14 products, 1 template
 
 **Recent Changes (2025-01-30)**:
 - Updated documentation to Next.js-first approach
@@ -3510,5 +3621,5 @@ All Bubble-specific content (API Connector configs, workflows, dropdown setups) 
 
 ---
 
-**Last Updated**: 2025-01-30
-**Version**: 3.0 (Updated for Next.js-first methodology)
+**Last Updated**: 2025-12-15
+**Version**: 3.1 (Added Sample Data Generation)

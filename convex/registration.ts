@@ -16,7 +16,7 @@ import {
   verifyPassword,
 } from "./auth";
 import { api } from "./_generated/api";
-import { generateVerificationEmailHTML, sendEmailViaResend } from "./email";
+import { generateVerificationEmailHTML, generatePasswordResetEmailHTML, sendEmailViaResend } from "./email";
 
 // ============================================================================
 // STEP 1: USER REGISTRATION (Without Company)
@@ -700,4 +700,202 @@ export const updateUserVerificationToken = mutation({
   },
 });
 
+// ============================================================================
+// PASSWORD RESET
+// ============================================================================
 
+/**
+ * Request password reset
+ * Generates a 6-digit token and sends email
+ * Always returns success to prevent email enumeration
+ */
+export const requestPasswordReset = action({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const email = args.email.toLowerCase().trim();
+
+    // Always return success message to prevent email enumeration
+    const successResponse = {
+      success: true,
+      message: "Si el correo existe, recibirás instrucciones para restablecer tu contraseña",
+    };
+
+    // Validate email format
+    if (!validateEmail(email)) {
+      return successResponse;
+    }
+
+    // Find user by email
+    const user = await ctx.runQuery(api.registration.getUserByEmailForReset, { email });
+
+    if (!user) {
+      // User not found - return success anyway to prevent enumeration
+      console.log(`[PASSWORD_RESET] Email not found: ${email}`);
+      return successResponse;
+    }
+
+    // Generate 6-digit token
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour
+
+    // Save token to user
+    await ctx.runMutation(api.registration.updatePasswordResetToken, {
+      userId: user._id,
+      token: resetToken,
+      expiresAt,
+    });
+
+    // Generate email
+    const { html, text } = generatePasswordResetEmailHTML(
+      user.first_name || "",
+      email,
+      resetToken,
+      60
+    );
+
+    // Send email
+    const emailResult = await sendEmailViaResend({
+      to: email,
+      subject: "Restablecer Contraseña - Alquemist",
+      html,
+      text,
+    });
+
+    if (!emailResult.success) {
+      console.error(`[PASSWORD_RESET] Failed to send email: ${emailResult.error}`);
+      // Log token for testing
+      console.log(`[PASSWORD_RESET] Reset token for ${email}: ${resetToken}`);
+    } else {
+      console.log(`[PASSWORD_RESET] Email sent to ${email}`);
+    }
+
+    return {
+      ...successResponse,
+      // For testing only - remove in production
+      resetToken,
+    };
+  },
+});
+
+/**
+ * Helper query to get user by email for password reset
+ */
+export const getUserByEmailForReset = query({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+
+    if (!user) return null;
+
+    return {
+      _id: user._id,
+      first_name: user.first_name,
+      email: user.email,
+    };
+  },
+});
+
+/**
+ * Helper mutation to update password reset token
+ */
+export const updatePasswordResetToken = mutation({
+  args: {
+    userId: v.id("users"),
+    token: v.string(),
+    expiresAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      password_reset_token: args.token,
+      password_reset_expires_at: args.expiresAt,
+      updated_at: Date.now(),
+    });
+  },
+});
+
+/**
+ * Reset password with token
+ * Verifies token and updates password
+ */
+export const resetPassword = mutation({
+  args: {
+    token: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find user by reset token
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_password_reset_token", (q) =>
+        q.eq("password_reset_token", args.token)
+      )
+      .first();
+
+    if (!user) {
+      throw new Error("Código inválido o expirado");
+    }
+
+    // Check if token is expired
+    if (user.password_reset_expires_at && user.password_reset_expires_at < Date.now()) {
+      throw new Error("El código ha expirado. Solicita uno nuevo.");
+    }
+
+    // Validate new password
+    const passwordError = validatePassword(args.newPassword);
+    if (passwordError) {
+      throw new Error(passwordError);
+    }
+
+    // Hash new password
+    const passwordHash = await hashPassword(args.newPassword);
+
+    // Update user with new password and clear reset token
+    await ctx.db.patch(user._id, {
+      password_hash: passwordHash,
+      password_reset_token: undefined,
+      password_reset_expires_at: undefined,
+      failed_login_attempts: 0, // Reset failed attempts
+      account_locked_until: undefined, // Unlock account if locked
+      updated_at: Date.now(),
+    });
+
+    return {
+      success: true,
+      message: "Contraseña actualizada exitosamente",
+    };
+  },
+});
+
+/**
+ * Verify password reset token (for UI validation)
+ */
+export const verifyPasswordResetToken = query({
+  args: {
+    token: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_password_reset_token", (q) =>
+        q.eq("password_reset_token", args.token)
+      )
+      .first();
+
+    if (!user) {
+      return { valid: false, error: "Código inválido" };
+    }
+
+    if (user.password_reset_expires_at && user.password_reset_expires_at < Date.now()) {
+      return { valid: false, error: "El código ha expirado" };
+    }
+
+    return { valid: true, email: user.email };
+  },
+});

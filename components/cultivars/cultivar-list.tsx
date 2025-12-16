@@ -9,7 +9,6 @@ import { CultivarCreateModal } from './cultivar-create-modal';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,20 +25,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useFacility } from '@/components/providers/facility-provider';
 import {
   Search,
   Plus,
   PackageOpen,
-  SlidersHorizontal,
   X,
   ChevronDown,
   Leaf,
   Sprout,
-  Flower2,
   LayoutGrid,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -49,29 +45,31 @@ interface CultivarListProps {
   facilityId?: Id<'facilities'>;
 }
 
-type DifficultyFilter = 'easy' | 'medium' | 'difficult';
-type OriginFilter = 'system' | 'custom';
-
 export function CultivarList({ facilityId }: CultivarListProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { currentCompanyId } = useFacility();
 
   // Filter states
   const [selectedCropType, setSelectedCropType] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [difficultyFilters, setDifficultyFilters] = useState<DifficultyFilter[]>(['easy', 'medium', 'difficult']);
-  const [originFilter, setOriginFilter] = useState<OriginFilter | null>(null);
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [cultivarToDelete, setCultivarToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Fetch data
-  const cultivars = useQuery(api.cultivars.list, {
-    cropTypeId: selectedCropType ? (selectedCropType as Id<'crop_types'>) : undefined,
-  });
+  // Fetch data - requires companyId
+  const cultivars = useQuery(
+    api.cultivars.list,
+    currentCompanyId
+      ? {
+          companyId: currentCompanyId,
+          cropTypeId: selectedCropType ? (selectedCropType as Id<'crop_types'>) : undefined,
+        }
+      : 'skip'
+  );
 
   const cropTypes = useQuery(api.crops.getCropTypes, {});
 
@@ -88,54 +86,19 @@ export function CultivarList({ facilityId }: CultivarListProps) {
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      result = result.filter((cultivar) =>
-        cultivar.name.toLowerCase().includes(query) ||
-        cultivar.variety_type?.toLowerCase().includes(query) ||
-        cultivar.genetic_lineage?.toLowerCase().includes(query)
+      result = result.filter(
+        (cultivar) =>
+          cultivar.name.toLowerCase().includes(query) ||
+          cultivar.variety_type?.toLowerCase().includes(query) ||
+          cultivar.genetic_lineage?.toLowerCase().includes(query)
       );
-    }
-
-    // Filter by difficulty
-    if (difficultyFilters.length < 3) {
-      result = result.filter((cultivar) => {
-        const characteristics = cultivar.characteristics as { growth_difficulty?: string } | undefined;
-        const difficulty = characteristics?.growth_difficulty;
-        if (!difficulty) return true; // Include those without difficulty set
-        return difficultyFilters.includes(difficulty as DifficultyFilter);
-      });
-    }
-
-    // Filter by origin (system vs custom)
-    if (originFilter !== null) {
-      result = result.filter((cultivar) => {
-        const isSystem = !!(cultivar as any).origin_metadata;
-        return originFilter === 'system' ? isSystem : !isSystem;
-      });
     }
 
     // Sort alphabetically
     return result.sort((a, b) => a.name.localeCompare(b.name));
-  }, [cultivars, searchQuery, difficultyFilters, originFilter]);
-
-  // Handlers
-  const handleDifficultyFilterChange = (difficulty: DifficultyFilter, checked: boolean) => {
-    if (checked) {
-      setDifficultyFilters((prev) => [...prev, difficulty]);
-    } else {
-      setDifficultyFilters((prev) => prev.filter((d) => d !== difficulty));
-    }
-  };
-
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (difficultyFilters.length < 3) count++;
-    if (originFilter !== null) count++;
-    return count;
-  }, [difficultyFilters, originFilter]);
+  }, [cultivars, searchQuery]);
 
   const clearAllFilters = () => {
-    setDifficultyFilters(['easy', 'medium', 'difficult']);
-    setOriginFilter(null);
     setSearchQuery('');
     setSelectedCropType(null);
   };
@@ -145,11 +108,6 @@ export function CultivarList({ facilityId }: CultivarListProps) {
     if (!cropTypes) return '';
     const cropType = cropTypes.find((ct) => ct._id === cropTypeId);
     return cropType?.display_name_es || '';
-  };
-
-  // Determine if cultivar is from system
-  const isSystemCultivar = (cultivar: any) => {
-    return !!cultivar.origin_metadata;
   };
 
   // Get selected crop type option
@@ -162,7 +120,8 @@ export function CultivarList({ facilityId }: CultivarListProps) {
     })) || []),
   ];
 
-  const selectedCropTypeOption = cropTypeOptions.find((opt) => opt.value === selectedCropType) || cropTypeOptions[0];
+  const selectedCropTypeOption =
+    cropTypeOptions.find((opt) => opt.value === selectedCropType) || cropTypeOptions[0];
   const SelectedIcon = selectedCropTypeOption.icon;
 
   // Handlers for cultivar actions
@@ -204,15 +163,28 @@ export function CultivarList({ facilityId }: CultivarListProps) {
   };
 
   const handleCreateCultivar = async (data: CreateCustomCultivarInput) => {
+    if (!currentCompanyId) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo determinar la empresa actual.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       await createCultivar({
+        companyId: currentCompanyId,
         name: data.name,
         cropTypeId: data.crop_type_id as Id<'crop_types'>,
         varietyType: data.variety_type,
         geneticLineage: data.genetic_lineage,
-        supplierId: data.supplier_id as Id<'suppliers'> | undefined,
-        characteristics: data.characteristics,
-        optimalConditions: data.optimal_conditions,
+        floweringTimeDays: data.flowering_time_days,
+        supplierId: data.supplier_id ? (data.supplier_id as Id<'suppliers'>) : undefined,
+        thcMin: data.thc_min,
+        thcMax: data.thc_max,
+        cbdMin: data.cbd_min,
+        cbdMax: data.cbd_max,
         notes: data.notes,
       });
       setCreateModalOpen(false);
@@ -231,7 +203,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
   };
 
   // Loading state
-  if (cultivars === undefined || cropTypes === undefined) {
+  if (!currentCompanyId || cultivars === undefined || cropTypes === undefined) {
     return (
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -269,8 +241,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
               No hay cultivares configurados
             </h3>
             <p className="text-sm text-gray-600 text-center mb-6 max-w-md">
-              Comienza creando tu primer cultivar personalizado o agregando
-              cultivares del catálogo del sistema.
+              Comienza creando tu primer cultivar personalizado.
             </p>
             <Button
               onClick={() => setCreateModalOpen(true)}
@@ -296,116 +267,8 @@ export function CultivarList({ facilityId }: CultivarListProps) {
     <div className="space-y-6">
       {/* Compact Filter Bar - Single Line */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        {/* Left: Filters + Type Dropdown */}
+        {/* Left: Type Dropdown */}
         <div className="flex items-center gap-2">
-          {/* Filter Popover */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="icon" className="relative shrink-0">
-                <SlidersHorizontal className="h-4 w-4" />
-                {activeFiltersCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-600 text-[10px] font-medium text-white flex items-center justify-center">
-                    {activeFiltersCount}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64" align="start">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-sm">Filtros</h4>
-                  {activeFiltersCount > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto p-0 text-xs text-gray-500 hover:text-gray-700"
-                      onClick={clearAllFilters}
-                    >
-                      Limpiar
-                    </Button>
-                  )}
-                </div>
-
-                {/* Difficulty Filter */}
-                <div className="space-y-2">
-                  <Label className="text-xs text-gray-600">Dificultad de Cultivo</Label>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="difficulty-easy"
-                        checked={difficultyFilters.includes('easy')}
-                        onCheckedChange={(checked) =>
-                          handleDifficultyFilterChange('easy', checked as boolean)
-                        }
-                      />
-                      <label htmlFor="difficulty-easy" className="text-sm flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-green-500" />
-                        Fácil
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="difficulty-medium"
-                        checked={difficultyFilters.includes('medium')}
-                        onCheckedChange={(checked) =>
-                          handleDifficultyFilterChange('medium', checked as boolean)
-                        }
-                      />
-                      <label htmlFor="difficulty-medium" className="text-sm flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-yellow-500" />
-                        Medio
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="difficulty-difficult"
-                        checked={difficultyFilters.includes('difficult')}
-                        onCheckedChange={(checked) =>
-                          handleDifficultyFilterChange('difficult', checked as boolean)
-                        }
-                      />
-                      <label htmlFor="difficulty-difficult" className="text-sm flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-red-500" />
-                        Difícil
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Origin Filter */}
-                <div className="space-y-2">
-                  <Label className="text-xs text-gray-600">Origen</Label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={originFilter === null ? 'default' : 'outline'}
-                      size="sm"
-                      className={originFilter === null ? 'bg-green-700 hover:bg-green-800' : ''}
-                      onClick={() => setOriginFilter(null)}
-                    >
-                      Todos
-                    </Button>
-                    <Button
-                      variant={originFilter === 'system' ? 'default' : 'outline'}
-                      size="sm"
-                      className={originFilter === 'system' ? 'bg-green-700 hover:bg-green-800' : ''}
-                      onClick={() => setOriginFilter('system')}
-                    >
-                      Sistema
-                    </Button>
-                    <Button
-                      variant={originFilter === 'custom' ? 'default' : 'outline'}
-                      size="sm"
-                      className={originFilter === 'custom' ? 'bg-green-700 hover:bg-green-800' : ''}
-                      onClick={() => setOriginFilter('custom')}
-                    >
-                      Custom
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-
           {/* Crop Type Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -473,7 +336,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
             <p className="text-sm text-gray-600">
               No se encontraron cultivares que coincidan con tu búsqueda
             </p>
-            {(activeFiltersCount > 0 || searchQuery || selectedCropType) && (
+            {(searchQuery || selectedCropType) && (
               <Button
                 variant="link"
                 className="mt-2 text-green-700"
@@ -490,11 +353,11 @@ export function CultivarList({ facilityId }: CultivarListProps) {
             <CultivarCard
               key={cultivar._id}
               cultivar={cultivar}
-              isSystem={isSystemCultivar(cultivar)}
+              isSystem={false}
               cropTypeName={getCropTypeName(cultivar.crop_type_id)}
               onView={() => handleViewCultivar(cultivar)}
-              onEdit={!isSystemCultivar(cultivar) ? () => handleEditCultivar(cultivar) : undefined}
-              onDelete={!isSystemCultivar(cultivar) ? () => handleDeleteCultivar(cultivar) : undefined}
+              onEdit={() => handleEditCultivar(cultivar)}
+              onDelete={() => handleDeleteCultivar(cultivar)}
             />
           ))}
         </div>

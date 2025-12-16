@@ -14,6 +14,7 @@ import {
   Building2,
   LayoutTemplate,
   ClipboardCheck,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -49,6 +50,16 @@ const navigationItems = [
     name: 'Templates',
     href: '/templates' as const,
     icon: LayoutTemplate,
+  },
+  {
+    name: 'Ordenes',
+    href: '/production-orders' as const,
+    icon: ClipboardList,
+  },
+  {
+    name: 'Lotes',
+    href: '/batches' as const,
+    icon: Layers,
   },
   {
     name: 'Control de Calidad',

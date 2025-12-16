@@ -82,17 +82,9 @@ export const list = query({
 export const get = query({
   args: {
     id: v.id("suppliers"),
-    companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    const supplier = await ctx.db.get(args.id);
-
-    // Verify company ownership
-    if (!supplier || supplier.company_id !== args.companyId) {
-      return null;
-    }
-
-    return supplier;
+    return await ctx.db.get(args.id);
   },
 });
 

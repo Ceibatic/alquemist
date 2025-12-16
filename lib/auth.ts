@@ -9,6 +9,7 @@ export interface AuthUser {
   email: string;
   companyId?: string;
   roleId: string;
+  roleName?: string; // Added for role-based access checks
   primaryFacilityId?: string;
 }
 

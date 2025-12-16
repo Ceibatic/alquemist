@@ -36,13 +36,17 @@ const batchStatusMap: Record<string, string> = {
 };
 
 export function AreaBatchesTab({ areaId, companyId }: AreaBatchesTabProps) {
-  const batchesData = useQuery(api.batches.list, {
-    companyId,
-    area_id: areaId,
-    limit: 50,
-  });
+  const batches = useQuery(
+    api.batches.list,
+    companyId
+      ? {
+          companyId: companyId as Id<'companies'>,
+          areaId: areaId,
+        }
+      : 'skip'
+  );
 
-  if (batchesData === undefined) {
+  if (batches === undefined) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full" />
@@ -51,9 +55,9 @@ export function AreaBatchesTab({ areaId, companyId }: AreaBatchesTabProps) {
     );
   }
 
-  const { batches, total } = batchesData;
+  const total = batches.length;
 
-  if (batches.length === 0) {
+  if (total === 0) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">

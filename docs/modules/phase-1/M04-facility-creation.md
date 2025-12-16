@@ -108,6 +108,46 @@ El modulo de Creacion de Instalacion permite al fundador crear su primera instal
 
 ---
 
+### US-04.8: Generar datos de ejemplo automaticamente
+**Como** fundador
+**Quiero** tener datos de ejemplo pre-cargados
+**Para** explorar la plataforma sin configurar todo manualmente
+
+**Criterios de Aceptacion:**
+- [x] Checkbox "Generar datos de ejemplo" visible en paso 2 (ubicacion)
+- [x] Checkbox marcado por defecto
+- [x] Texto explicativo de que incluye
+- [x] Al crear instalacion, si checkbox activo:
+  - [x] Genera 6 areas (Almacen, Propagacion, Vegetativo, Floracion, Secado, Curado)
+  - [x] Genera 5 cultivares segun tipo de cultivo
+  - [x] Genera 4 proveedores demo
+  - [x] Genera 14 productos (nutrientes, sustratos, pesticidas, equipos)
+  - [x] Genera inventario inicial en area de almacen
+  - [x] Genera template de produccion completo con 5 fases y 15 actividades
+- [x] Todos los datos demo tienen sufijo "(Demo)" en nombre
+- [x] SKUs de productos tienen prefijo "DEMO-"
+- [x] Error en generacion no bloquea el onboarding
+
+**Componentes:**
+- Frontend: `app/(onboarding)/facility-location/page.tsx`
+- Backend: `convex/seedOnboardingData.ts`
+- Action: `app/(onboarding)/facility-location/actions.ts`
+
+**Datos generados por tipo de cultivo:**
+
+| Tipo | Areas | Cultivares | Fases Template | Duracion |
+|------|-------|------------|----------------|----------|
+| Cannabis | 6 | 5 | 5 (Propagacion→Vegetativo→Floracion→Secado→Curado) | 133 dias |
+| Coffee | Futuro | Futuro | Futuro | - |
+| Cocoa | Futuro | Futuro | Futuro | - |
+| Flowers | Futuro | Futuro | Futuro | - |
+
+**Utilidades:**
+- `hasSampleData(facilityId)` - Verifica si hay datos demo
+- `clearSampleData(companyId, facilityId)` - Elimina datos demo
+
+---
+
 ### US-04.6: Ver pagina de onboarding completo
 **Como** fundador
 **Quiero** ver un resumen de lo que configure

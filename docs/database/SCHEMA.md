@@ -176,21 +176,37 @@ This document defines the complete database structure for Alquemist. Each table 
 ---
 
 ### cultivars
-**Purpose**: Crop varieties (strains, species)
+**Purpose**: Crop varieties (strains, species) - **Company-scoped**
 
 | Field | Type | Description |
 |-------|------|-------------|
 | _id | Id | Convex auto-generated ID |
+| company_id | Id | **Reference to companies (owner)** |
 | crop_type_id | Id | Reference to crop_types |
-| name | string | Cultivar name (e.g., "Cherry AK") |
-| variety_type | string | Indica, Sativa, Hybrid, Arabica, Robusta, etc. |
-| flowering_weeks | number? | Expected flowering duration |
-| yield_level | string | low, medium, medium-high, high, very-high |
-| description | string? | Cultivar details |
+| name | string | Cultivar name (e.g., "Blue Dream") |
+| variety_type | string? | Indica, Sativa, Hybrid, etc. |
+| genetic_lineage | string? | Parent genetics |
+| supplier_id | Id? | Reference to suppliers |
+| flowering_time_days | number? | Days to flower (cannabis) |
+| thc_min | number? | Min THC % (cannabis) |
+| thc_max | number? | Max THC % (cannabis) |
+| cbd_min | number? | Min CBD % (cannabis) |
+| cbd_max | number? | Max CBD % (cannabis) |
+| performance_metrics | object | Yield/performance data (default: {}) |
+| status | string | active, discontinued |
+| notes | string? | Additional notes |
+| created_at | number | Creation timestamp |
+| updated_at | number? | Last update timestamp |
 
 **Relationships**:
+- Many-to-one: cultivars → companies
 - Many-to-one: cultivars → crop_types
-- Many-to-many: cultivars → facilities
+- Many-to-one: cultivars → suppliers (optional)
+
+**Indexes**:
+- by_company: company_id
+- by_company_crop: company_id, crop_type_id
+- by_status: status
 
 ---
 
@@ -741,6 +757,91 @@ This document defines the complete database structure for Alquemist. Each table 
 
 **Relationships**:
 - Many-to-one: api_keys → companies
+
+---
+
+## PLATFORM ADMINISTRATION
+
+### ai_providers
+**Purpose**: AI provider configurations for dynamic model switching
+
+| Field | Type | Description |
+|-------|------|-------------|
+| _id | Id | Convex auto-generated ID |
+| provider_name | string | "gemini" \| "claude" \| "openai" |
+| display_name | string | Display name for UI |
+| is_active | boolean | Whether provider is available |
+| is_default | boolean | Default provider for AI calls |
+| api_key_configured | boolean | Whether API key is set in env |
+| api_endpoint | string? | Custom API endpoint |
+| default_model | string | Default model to use |
+| available_models | array | List of available models |
+| default_temperature | number | Temperature (0-2) |
+| default_top_k | number? | Top K for sampling |
+| default_top_p | number | Top P (nucleus sampling) |
+| default_max_tokens | number | Max output tokens |
+| supports_vision | boolean | Whether supports image analysis |
+| supports_function_calling | boolean? | Whether supports function calling |
+| created_at | number | Creation timestamp |
+| updated_at | number | Last update timestamp |
+
+**Indexes**:
+- by_provider: provider_name
+- by_is_default: is_default
+- by_is_active: is_active
+
+---
+
+### ai_prompts
+**Purpose**: Configurable system prompts for AI features
+
+| Field | Type | Description |
+|-------|------|-------------|
+| _id | Id | Convex auto-generated ID |
+| prompt_key | string | Unique identifier (e.g., "template_extraction") |
+| display_name | string | Display name for UI |
+| description | string? | Description of prompt purpose |
+| system_prompt | string | System prompt content |
+| user_prompt_template | string? | User prompt template |
+| feature_type | string | "quality_check" \| "pest_detection" |
+| is_active | boolean | Whether prompt is active |
+| version | number | Prompt version number |
+| updated_by | Id? | Reference to users (who last updated) |
+| created_at | number | Creation timestamp |
+| updated_at | number | Last update timestamp |
+
+**Indexes**:
+- by_key: prompt_key
+- by_feature: feature_type
+- by_is_active: is_active
+
+---
+
+### audit_logs
+**Purpose**: Audit trail for platform admin actions
+
+| Field | Type | Description |
+|-------|------|-------------|
+| _id | Id | Convex auto-generated ID |
+| action_type | string | Type of action performed |
+| entity_type | string | Type of entity affected |
+| entity_id | string? | ID of affected entity |
+| performed_by | Id | Reference to users |
+| previous_value | any? | Value before change |
+| new_value | any? | Value after change |
+| description | string | Human-readable description |
+| ip_address | string? | IP address of request |
+| user_agent | string? | User agent string |
+| created_at | number | Creation timestamp |
+
+**Relationships**:
+- Many-to-one: audit_logs → users (performed by)
+
+**Indexes**:
+- by_action_type: action_type
+- by_entity: entity_type, entity_id
+- by_performer: performed_by
+- by_created_at: created_at
 
 ---
 

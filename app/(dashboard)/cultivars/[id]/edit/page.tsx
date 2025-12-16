@@ -23,9 +23,6 @@ export default function CultivarEditPage() {
   // Mutation
   const updateCultivar = useMutation(api.cultivars.update);
 
-  // Check if it's a system cultivar (cannot be edited)
-  const isSystem = cultivar?.origin_metadata !== undefined;
-
   if (!cultivar || !cropTypes) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -36,22 +33,19 @@ export default function CultivarEditPage() {
     );
   }
 
-  // Redirect if system cultivar
-  if (isSystem) {
-    router.push(`/cultivars/${cultivarId}`);
-    return null;
-  }
-
-  // Convert cultivar to form values
+  // Convert cultivar to form values - using direct fields now
   const defaultValues: Partial<CreateCustomCultivarInput> = {
     name: cultivar.name,
     crop_type_id: cultivar.crop_type_id,
     variety_type: cultivar.variety_type,
     genetic_lineage: cultivar.genetic_lineage,
     supplier_id: cultivar.supplier_id,
+    flowering_time_days: cultivar.flowering_time_days,
+    thc_min: cultivar.thc_min,
+    thc_max: cultivar.thc_max,
+    cbd_min: cultivar.cbd_min,
+    cbd_max: cultivar.cbd_max,
     notes: cultivar.notes,
-    characteristics: cultivar.characteristics,
-    optimal_conditions: cultivar.optimal_conditions,
   };
 
   const handleSubmit = async (data: CreateCustomCultivarInput) => {
@@ -61,9 +55,12 @@ export default function CultivarEditPage() {
         name: data.name,
         varietyType: data.variety_type,
         geneticLineage: data.genetic_lineage,
-        supplierId: data.supplier_id as Id<'suppliers'> | undefined,
-        characteristics: data.characteristics,
-        optimalConditions: data.optimal_conditions,
+        floweringTimeDays: data.flowering_time_days,
+        supplierId: data.supplier_id ? (data.supplier_id as Id<'suppliers'>) : undefined,
+        thcMin: data.thc_min,
+        thcMax: data.thc_max,
+        cbdMin: data.cbd_min,
+        cbdMax: data.cbd_max,
         notes: data.notes,
       });
       router.push(`/cultivars/${cultivarId}`);

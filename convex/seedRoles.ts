@@ -1,6 +1,6 @@
 /**
  * Seed System Roles
- * Creates the 5 standard system roles
+ * Creates the 6 standard system roles (including PLATFORM_ADMIN for Ceibatic)
  */
 
 import { mutation } from "./_generated/server";
@@ -16,6 +16,25 @@ export const seedSystemRoles = mutation({
 
     const now = Date.now();
     const roles = [
+      {
+        name: "PLATFORM_ADMIN",
+        display_name_es: "Administrador de Plataforma",
+        display_name_en: "Platform Administrator",
+        description: "Full access to platform administration - for Ceibatic team only",
+        level: 9999,
+        scope_level: "platform",
+        permissions: {
+          platform: ["read", "write", "manage"],
+          companies: ["read", "write", "manage"],
+          ai_config: ["read", "write", "manage"],
+          subscriptions: ["read", "write", "manage"],
+          audit: ["read"],
+        },
+        inherits_from_role_ids: [],
+        is_system_role: true,
+        is_active: true,
+        created_at: now,
+      },
       {
         name: "COMPANY_OWNER",
         display_name_es: "Propietario de Empresa",
@@ -126,6 +145,56 @@ export const seedSystemRoles = mutation({
       message: "Successfully created system roles",
       count: roleIds.length,
       roles: roles.map((r, i) => ({ name: r.name, id: roleIds[i] })),
+    };
+  },
+});
+
+/**
+ * Add PLATFORM_ADMIN role to existing installation
+ * Use this if roles already exist but PLATFORM_ADMIN is missing
+ */
+export const seedPlatformAdminRole = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Check if PLATFORM_ADMIN already exists
+    const existingRole = await ctx.db
+      .query("roles")
+      .withIndex("by_name", (q) => q.eq("name", "PLATFORM_ADMIN"))
+      .first();
+
+    if (existingRole) {
+      return {
+        success: true,
+        message: "PLATFORM_ADMIN role already exists",
+        roleId: existingRole._id,
+      };
+    }
+
+    const now = Date.now();
+    const roleId = await ctx.db.insert("roles", {
+      name: "PLATFORM_ADMIN",
+      display_name_es: "Administrador de Plataforma",
+      display_name_en: "Platform Administrator",
+      description: "Full access to platform administration - for Ceibatic team only",
+      level: 9999,
+      scope_level: "platform",
+      permissions: {
+        platform: ["read", "write", "manage"],
+        companies: ["read", "write", "manage"],
+        ai_config: ["read", "write", "manage"],
+        subscriptions: ["read", "write", "manage"],
+        audit: ["read"],
+      },
+      inherits_from_role_ids: [],
+      is_system_role: true,
+      is_active: true,
+      created_at: now,
+    });
+
+    return {
+      success: true,
+      message: "PLATFORM_ADMIN role created successfully",
+      roleId,
     };
   },
 });

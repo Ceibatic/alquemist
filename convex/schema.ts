@@ -1,7 +1,7 @@
 /**
  * Alquemist Database Schema
  * Complete schema for multi-crop agricultural management platform
- * 26 tables organized in 8 functional groups
+ * 29 tables organized in 8 functional groups
  */
 
 import { defineSchema, defineTable } from "convex/server";
@@ -9,8 +9,136 @@ import { v } from "convex/values";
 
 export default defineSchema({
   // ============================================================================
-  // CORE SYSTEM TABLES (3)
+  // CORE SYSTEM TABLES (6)
   // ============================================================================
+
+  // Company-level settings and integrations
+  company_settings: defineTable({
+    company_id: v.id("companies"),
+
+    // AI Features Configuration
+    ai_features_enabled: v.boolean(), // Default: true
+    gemini_api_configured: v.boolean(), // Set by system based on env check
+    ai_pest_detection_enabled: v.boolean(), // Default: true
+    ai_template_extraction_enabled: v.boolean(), // Default: true
+    ai_quality_analysis_enabled: v.boolean(), // Default: true
+
+    // Email Configuration
+    email_notifications_enabled: v.boolean(), // Default: true
+    email_api_configured: v.boolean(), // Set by system based on env check
+
+    // Compliance & Regulatory
+    require_quality_checks: v.boolean(), // Default: false
+    require_batch_photos: v.boolean(), // Default: false
+    require_activity_notes: v.boolean(), // Default: false
+    auto_generate_reports: v.boolean(), // Default: false
+
+    // Default Values
+    default_tracking_level: v.string(), // "batch" | "individual"
+    default_batch_size: v.number(), // Default: 50
+    default_quality_template_id: v.optional(v.id("quality_check_templates")),
+
+    // Notification Preferences
+    notify_on_phase_change: v.boolean(), // Default: true
+    notify_on_low_inventory: v.boolean(), // Default: true
+    notify_on_scheduled_activity: v.boolean(), // Default: true
+    notify_on_overdue_activity: v.boolean(), // Default: true
+    low_inventory_threshold_percentage: v.number(), // Default: 20
+
+    // Audit & Logging
+    log_all_activities: v.boolean(), // Default: true
+    retain_logs_days: v.number(), // Default: 365
+
+    // Metadata
+    updated_by: v.optional(v.id("users")),
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_company", ["company_id"]),
+
+  // AI Provider configurations (for dynamic AI model switching)
+  ai_providers: defineTable({
+    provider_name: v.string(), // "gemini" | "claude" | "openai"
+    display_name: v.string(), // "Google Gemini" | "Anthropic Claude" | "OpenAI GPT"
+    is_active: v.boolean(), // Whether this provider is enabled
+    is_default: v.boolean(), // Only one should be default
+
+    // API Configuration
+    api_key_configured: v.boolean(), // Set by system based on env check
+    api_endpoint: v.optional(v.string()), // Custom endpoint if needed
+
+    // Model Configuration
+    default_model: v.string(), // "gemini-1.5-pro" | "claude-sonnet-4-20250514" | "gpt-4o"
+    available_models: v.array(v.string()), // List of available models
+
+    // Default Parameters
+    default_temperature: v.number(), // 0-2
+    default_top_k: v.optional(v.number()), // For Gemini
+    default_top_p: v.number(), // 0-1
+    default_max_tokens: v.number(), // Max output tokens
+
+    // Capabilities
+    supports_vision: v.boolean(), // Can analyze images
+    supports_function_calling: v.optional(v.boolean()),
+
+    // Metadata
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_provider", ["provider_name"])
+    .index("by_is_default", ["is_default"])
+    .index("by_is_active", ["is_active"]),
+
+  // System prompts for AI features (editable without code changes)
+  ai_prompts: defineTable({
+    prompt_key: v.string(), // "template_extraction" | "pest_detection" | "quality_analysis"
+    display_name: v.string(), // Human-readable name
+    description: v.optional(v.string()), // What this prompt does
+
+    // Prompt content
+    system_prompt: v.string(), // The actual system prompt
+    user_prompt_template: v.optional(v.string()), // Template for user prompts
+
+    // Feature association
+    feature_type: v.string(), // "template_extraction" | "pest_detection" | "quality_analysis"
+
+    // Status & Versioning
+    is_active: v.boolean(),
+    version: v.number(), // Increment on each update
+
+    // Metadata
+    updated_by: v.optional(v.id("users")),
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_key", ["prompt_key"])
+    .index("by_feature", ["feature_type"])
+    .index("by_is_active", ["is_active"]),
+
+  // Audit logs for platform admin actions
+  audit_logs: defineTable({
+    action_type: v.string(), // "config_update" | "subscription_change" | "ai_config_update" | "company_suspend"
+    entity_type: v.string(), // "ai_provider" | "ai_prompt" | "company" | "platform_config"
+    entity_id: v.optional(v.string()), // ID of the affected entity
+
+    // Actor
+    performed_by: v.id("users"), // Platform admin who performed the action
+
+    // Change details
+    previous_value: v.optional(v.any()), // Value before change
+    new_value: v.optional(v.any()), // Value after change
+    description: v.string(), // Human-readable description
+
+    // Request context
+    ip_address: v.optional(v.string()),
+    user_agent: v.optional(v.string()),
+
+    created_at: v.number(),
+  })
+    .index("by_action_type", ["action_type"])
+    .index("by_entity", ["entity_type", "entity_id"])
+    .index("by_performer", ["performed_by"])
+    .index("by_created_at", ["created_at"]),
 
   companies: defineTable({
     // DEPRECATED: Clerk organization ID (kept for backward compatibility)
@@ -94,6 +222,10 @@ export default defineSchema({
     email_verification_token: v.optional(v.string()), // 6-digit token
     token_expires_at: v.optional(v.number()), // 24-hour expiration
 
+    // Password Reset
+    password_reset_token: v.optional(v.string()), // 6-digit token
+    password_reset_expires_at: v.optional(v.number()), // 1-hour expiration
+
     // Personal Information
     first_name: v.optional(v.string()),
     last_name: v.optional(v.string()),
@@ -141,7 +273,8 @@ export default defineSchema({
     .index("by_company", ["company_id"])
     .index("by_role", ["role_id"])
     .index("by_status", ["status"])
-    .index("by_email_verification_token", ["email_verification_token"]),
+    .index("by_email_verification_token", ["email_verification_token"])
+    .index("by_password_reset_token", ["password_reset_token"]),
 
   sessions: defineTable({
     // Session Token Management (for Bubble.io API authentication)
@@ -256,19 +389,25 @@ export default defineSchema({
     .index("by_is_active", ["is_active"]),
 
   cultivars: defineTable({
+    company_id: v.id("companies"), // Owner company
     name: v.string(),
     crop_type_id: v.id("crop_types"),
     variety_type: v.optional(v.string()), // Indica/Sativa, Arabica/Robusta
     genetic_lineage: v.optional(v.string()),
+    flowering_time_days: v.optional(v.number()), // Days from start of flowering to harvest
     supplier_id: v.optional(v.id("suppliers")),
-    origin_metadata: v.optional(v.object({})),
-    characteristics: v.optional(v.object({})),
-    optimal_conditions: v.optional(v.object({})),
+    thc_min: v.optional(v.number()), // THC range min %
+    thc_max: v.optional(v.number()), // THC range max %
+    cbd_min: v.optional(v.number()), // CBD range min %
+    cbd_max: v.optional(v.number()), // CBD range max %
     performance_metrics: v.object({}), // Default: {}
     status: v.string(), // active/discontinued
     notes: v.optional(v.string()),
     created_at: v.number(),
+    updated_at: v.optional(v.number()),
   })
+    .index("by_company", ["company_id"])
+    .index("by_company_crop", ["company_id", "crop_type_id"])
     .index("by_crop_type", ["crop_type_id"])
     .index("by_supplier", ["supplier_id"])
     .index("by_status", ["status"]),

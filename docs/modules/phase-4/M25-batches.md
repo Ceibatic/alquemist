@@ -4,7 +4,83 @@
 
 El modulo de Batches (Lotes) permite gestionar grupos de plantas a traves de su ciclo de vida. Un batch es la unidad principal de trazabilidad y representa un conjunto de plantas del mismo cultivar, edad y tratamiento. Los batches se crean automaticamente desde ordenes de produccion o manualmente para operaciones especiales.
 
-**Estado**: Pendiente de implementacion
+**Estado**: ✅ Implementado (Backend + Frontend)
+
+---
+
+## Implementacion Actual
+
+### Backend (Convex)
+
+**Archivo**: `convex/batches.ts`
+
+#### Queries Implementadas
+| Funcion | Descripcion |
+|---------|-------------|
+| `list` | Lista batches con filtros multiples |
+| `getById` | Detalle completo con plants, movements, losses, harvests |
+| `getStats` | Estadisticas por company/facility |
+
+#### Mutations Implementadas
+| Funcion | Descripcion |
+|---------|-------------|
+| `create` | Crea batch con plantas individuales (opcional) |
+| `move` | Mueve batch a otra area + activity log |
+| `recordLoss` | Registra perdidas + activity log |
+| `split` | Divide batch en multiples + activity log |
+| `merge` | Combina batches + activity log |
+| `harvest` | Registra cosecha + activity log |
+| `updatePhase` | Cambia fase + activity log |
+| `archive` | Archiva batch completado |
+
+### Activity Logging
+
+**IMPORTANTE**: Todas las operaciones de batch crean registros automaticos en la tabla `activities`:
+
+| Operacion | Activity Type |
+|-----------|---------------|
+| `move` | `movement` |
+| `recordLoss` | `loss_record` |
+| `split` | `batch_split` |
+| `merge` | `batch_merge` |
+| `harvest` | `harvest` |
+| `updatePhase` | `phase_transition` |
+
+**Datos registrados en cada activity**:
+```typescript
+{
+  entity_type: "batch",
+  entity_id: batchId,
+  activity_type: "movement" | "loss_record" | etc,
+  performed_by: userId,
+  timestamp: now,
+  quantity_before: number,
+  quantity_after: number,
+  area_from?: areaId,     // para movimientos
+  area_to?: areaId,       // para movimientos
+  activity_metadata: {},  // datos especificos
+  notes: string,
+}
+```
+
+### Creacion desde Orden de Produccion
+
+Cuando se activa una orden (`productionOrders.activate`):
+
+1. Se calculan batches: `Math.ceil(requested_quantity / batch_size)`
+2. Se crea cada batch con:
+   - `batch_code`: CULTIVAR-YYMMDD-XXX
+   - `production_order_id`: referencia a la orden
+   - `status`: "active"
+   - `current_phase`: primera fase del template
+3. Se actualizan `scheduled_activities.entity_type` de "production_order" a "batch"
+
+### Frontend
+
+**Archivos**:
+- `app/(dashboard)/batches/page.tsx` - Lista de batches
+- `app/(dashboard)/batches/[id]/page.tsx` - Detalle de batch
+- `components/batches/batch-create-modal.tsx` - Modal de creacion
 
 ---
 

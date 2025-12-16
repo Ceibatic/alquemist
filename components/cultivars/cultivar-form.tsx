@@ -67,8 +67,12 @@ export function CultivarForm({
       variety_type: '',
       genetic_lineage: '',
       supplier_id: '',
+      flowering_time_days: undefined,
+      thc_min: undefined,
+      thc_max: undefined,
+      cbd_min: undefined,
+      cbd_max: undefined,
       notes: '',
-      characteristics: {},
     },
   });
 
@@ -244,7 +248,7 @@ export function CultivarForm({
 
               <FormField
                 control={form.control}
-                name="characteristics.flowering_time_days"
+                name="flowering_time_days"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tiempo de Floración (días)</FormLabel>
@@ -268,33 +272,6 @@ export function CultivarForm({
                   </FormItem>
                 )}
               />
-
-              <FormField
-                control={form.control}
-                name="characteristics.growth_difficulty"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dificultad de Cultivo</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={isSubmitting}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona dificultad" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="easy">Fácil</SelectItem>
-                        <SelectItem value="medium">Medio</SelectItem>
-                        <SelectItem value="difficult">Difícil</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
 
             {/* Cannabis Characteristics - Only show for Cannabis */}
@@ -307,27 +284,19 @@ export function CultivarForm({
 
                 <CannabinoidRangeInput
                   label="Rango de THC"
-                  minValue={form.watch('characteristics.thc_min')}
-                  maxValue={form.watch('characteristics.thc_max')}
-                  onMinChange={(value) =>
-                    form.setValue('characteristics.thc_min', value)
-                  }
-                  onMaxChange={(value) =>
-                    form.setValue('characteristics.thc_max', value)
-                  }
+                  minValue={form.watch('thc_min')}
+                  maxValue={form.watch('thc_max')}
+                  onMinChange={(value) => form.setValue('thc_min', value)}
+                  onMaxChange={(value) => form.setValue('thc_max', value)}
                   disabled={isSubmitting}
                 />
 
                 <CannabinoidRangeInput
                   label="Rango de CBD"
-                  minValue={form.watch('characteristics.cbd_min')}
-                  maxValue={form.watch('characteristics.cbd_max')}
-                  onMinChange={(value) =>
-                    form.setValue('characteristics.cbd_min', value)
-                  }
-                  onMaxChange={(value) =>
-                    form.setValue('characteristics.cbd_max', value)
-                  }
+                  minValue={form.watch('cbd_min')}
+                  maxValue={form.watch('cbd_max')}
+                  onMinChange={(value) => form.setValue('cbd_min', value)}
+                  onMaxChange={(value) => form.setValue('cbd_max', value)}
                   disabled={isSubmitting}
                 />
               </div>

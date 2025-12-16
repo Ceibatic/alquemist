@@ -4,7 +4,72 @@
 
 El modulo de Ordenes de Produccion permite crear y gestionar ordenes de trabajo basadas en templates de produccion. Una orden de produccion representa un ciclo de cultivo planificado, desde la siembra hasta la cosecha, y genera automaticamente las actividades y batches correspondientes segun el template seleccionado.
 
-**Estado**: Pendiente de implementacion
+**Estado**: ✅ Implementado (Backend + Frontend)
+
+---
+
+## Implementacion Actual
+
+### Backend (Convex)
+
+**Archivo**: `convex/productionOrders.ts`
+
+#### Queries Implementadas
+| Funcion | Descripcion |
+|---------|-------------|
+| `list` | Lista ordenes con filtros por company, facility, status |
+| `getById` | Detalle completo con fases, batches, stats |
+| `getActivities` | Actividades programadas de la orden |
+| `getByFacility` | Ordenes por instalacion para calendario |
+
+#### Mutations Implementadas
+| Funcion | Descripcion |
+|---------|-------------|
+| `create` | Crea orden + fases + scheduled_activities desde template |
+| `update` | Actualiza datos basicos de orden |
+| `activate` | Aprueba orden, crea batches, actualiza activities |
+| `completePhase` | Completa fase y activa siguiente |
+| `cancel` | Cancela orden y activities pendientes |
+
+### Flujo de Creacion de Orden
+
+```
+1. CREAR ORDEN (Admin)
+   └── productionOrders.create({templateId, facilityId, ...})
+       ├── Genera order_phases desde template_phases
+       ├── Genera scheduled_activities con algoritmos de timing:
+       │   ├── one_time: phaseStart + (phaseDay - 1) * DAY_MS
+       │   ├── daily_range: instancia por cada dia del rango
+       │   ├── specific_days: filtrado por dias de semana
+       │   ├── every_n_days: intervalos regulares
+       │   └── dependent: phaseStart + daysAfter * DAY_MS
+       └── Status: "planning"
+
+2. APROBAR ORDEN (Manager)
+   └── productionOrders.activate({orderId, approvedBy, targetAreaId})
+       ├── Crea N batches: ceil(requested_quantity / batch_size)
+       ├── Actualiza scheduled_activities.entity_type: "batch"
+       ├── Activa primera fase
+       └── Status: "active"
+
+3. COMPLETAR FASES (Operador)
+   └── productionOrders.completePhase({orderId, phaseId})
+       ├── Marca fase como completada
+       ├── Activa siguiente fase
+       └── Si es ultima fase: order.status = "completed"
+```
+
+### Frontend
+
+**Archivo**: `app/(dashboard)/production-orders/[id]/page.tsx`
+
+**Tabs implementados**:
+- **Detalle**: Info general, cantidades, fechas
+- **Fases**: Timeline de fases con boton "Completar"
+- **Batches**: Lista de lotes creados con navegacion
+- **Actividades**:
+  - Scheduled activities con boton "Completar"
+  - Historial de activities ejecutadas
 
 ---
 

@@ -1,29 +1,30 @@
 'use client';
 
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { useEffect, useState } from 'react';
 import { Id } from '@/convex/_generated/dataModel';
 import { PageHeader } from '@/components/layout/page-header';
-import { MetricsBar } from '@/components/dashboard/metrics-bar';
-import { QuickActions } from '@/components/dashboard/quick-actions';
-import { RecentActivity } from '@/components/dashboard/recent-activity';
 import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist';
 import { EmptyState } from '@/components/ui/empty-state';
 import { DashboardLoading } from '@/components/dashboard/dashboard-loading';
 import { DashboardError } from '@/components/dashboard/dashboard-error';
-import { Sprout } from 'lucide-react';
-import { useDashboard } from '@/hooks/use-dashboard';
-import { useEffect, useState } from 'react';
 import { TrialBanner } from '@/components/subscription/trial-banner';
+import { AdminDashboard, OperativeDashboard, TrendCharts } from '@/components/home';
+import { Sprout } from 'lucide-react';
+import {
+  useHomeDashboard,
+  isAdminDashboard,
+  isOperativeDashboard,
+} from '@/hooks/use-home-dashboard';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useDashboard } from '@/hooks/use-dashboard';
 
 export default function DashboardPage() {
-  // Get user ID from session storage or context
-  // In a production app, this would come from a user context provider
   const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
+  // Get user ID from cookies on mount
   useEffect(() => {
-    // Get user data from cookies (temporary solution)
     const userDataCookie = document.cookie
       .split('; ')
       .find((row) => row.startsWith('user_data='));
@@ -34,11 +35,11 @@ export default function DashboardPage() {
           decodeURIComponent(userDataCookie.split('=')[1])
         );
         setUserId(userData.userId);
-      } catch (err) {
+      } catch {
         setError(new Error('Error al cargar datos del usuario'));
       }
     } else {
-      setError(new Error('No se encontró información del usuario'));
+      setError(new Error('No se encontro informacion del usuario'));
     }
   }, []);
 
@@ -48,7 +49,7 @@ export default function DashboardPage() {
     userId ? { userId: userId as Id<'users'> } : 'skip'
   );
 
-  // Get the user's primary facility or first accessible facility
+  // Get facility ID
   const primaryFacilityId =
     user?.accessibleFacilityIds && user.accessibleFacilityIds.length > 0
       ? user.accessibleFacilityIds[0]
@@ -56,19 +57,28 @@ export default function DashboardPage() {
 
   const companyId = user?.companyId;
 
-  // Fetch dashboard data using the custom hook
-  const { metrics, onboardingStatus, recentActivities, isLoading } =
-    useDashboard(
-      primaryFacilityId && companyId
-        ? {
-            facilityId: primaryFacilityId as Id<'facilities'>,
-            companyId: companyId as Id<'companies'>,
-          }
-        : 'skip'
-    );
+  // Fetch role-based home dashboard data (consolidated query)
+  const { data: dashboardData, roleInfo, isLoading: isHomeLoading } = useHomeDashboard(
+    userId && primaryFacilityId
+      ? {
+          userId: userId as Id<'users'>,
+          facilityId: primaryFacilityId as Id<'facilities'>,
+        }
+      : 'skip'
+  );
+
+  // Fetch onboarding status for new installations (lightweight query)
+  const { onboardingStatus, metrics } = useDashboard(
+    primaryFacilityId && companyId
+      ? {
+          facilityId: primaryFacilityId as Id<'facilities'>,
+          companyId: companyId as Id<'companies'>,
+        }
+      : 'skip'
+  );
 
   // Loading state
-  if (!userId || !user || isLoading) {
+  if (!userId || !user || isHomeLoading) {
     return <DashboardLoading />;
   }
 
@@ -79,10 +89,10 @@ export default function DashboardPage() {
         <PageHeader
           title="Dashboard"
           breadcrumbs={[{ label: 'Dashboard' }]}
-          description="Vista general de tu instalación"
+          description="Vista general de tu instalacion"
         />
         <DashboardError
-          error={error || new Error('No se encontró una instalación activa')}
+          error={error || new Error('No se encontro una instalacion activa')}
         />
       </div>
     );
@@ -95,13 +105,27 @@ export default function DashboardPage() {
     metrics.cultivars.total === 0 &&
     metrics.inventory.total === 0;
 
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Buenos dias';
+    if (hour < 18) return 'Buenas tardes';
+    return 'Buenas noches';
+  };
+
+  const userName = user.firstName || 'Usuario';
+
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Page Header with personalized greeting */}
       <PageHeader
-        title="Dashboard"
+        title={`${getGreeting()}, ${userName}`}
         breadcrumbs={[{ label: 'Dashboard' }]}
-        description="Vista general de tu instalación"
+        description={
+          roleInfo
+            ? `Panel ${roleInfo.roleDisplayName}`
+            : 'Vista general de tu instalacion'
+        }
       />
 
       {/* Trial Banner - Shows when trial is expiring */}
@@ -112,29 +136,28 @@ export default function DashboardPage() {
         <>
           <EmptyState
             icon={Sprout}
-            title="¡Bienvenido a Alquemist!"
-            description="Tu instalación está lista. Comienza configurando los elementos básicos para tu operación."
+            title="Bienvenido a Alquemist!"
+            description="Tu instalacion esta lista. Comienza configurando los elementos basicos para tu operacion."
           />
           <OnboardingChecklist status={onboardingStatus} />
         </>
       )}
 
-      {/* Dashboard with Data */}
-      {!isNewInstallation && metrics && (
+      {/* Role-based Dashboard Content */}
+      {!isNewInstallation && dashboardData && (
         <>
-          {/* Metrics Bar */}
-          <MetricsBar
-            areas={metrics.areas}
-            cultivars={metrics.cultivars}
-            inventory={metrics.inventory}
-            alerts={metrics.alerts}
-          />
+          {/* Administrative Dashboard */}
+          {isAdminDashboard(dashboardData) && (
+            <>
+              <AdminDashboard data={dashboardData} />
+              <TrendCharts facilityId={primaryFacilityId as Id<'facilities'>} />
+            </>
+          )}
 
-          {/* Quick Actions */}
-          <QuickActions />
-
-          {/* Recent Activity */}
-          <RecentActivity activities={recentActivities || []} />
+          {/* Operative Dashboard */}
+          {isOperativeDashboard(dashboardData) && (
+            <OperativeDashboard data={dashboardData} />
+          )}
 
           {/* Show onboarding checklist if not complete */}
           {onboardingStatus && onboardingStatus.completionPercentage < 100 && (

@@ -11,10 +11,13 @@ import { useFacility } from '@/components/providers/facility-provider';
 import { Sprout, Leaf, Flower2, Trees } from 'lucide-react';
 
 export default function CultivarsPage() {
-  const { currentFacilityId, isLoading: facilityLoading } = useFacility();
+  const { currentFacilityId, currentCompanyId, isLoading: facilityLoading } = useFacility();
 
-  // Fetch data for stats
-  const cultivars = useQuery(api.cultivars.list, {});
+  // Fetch data for stats - requires companyId
+  const cultivars = useQuery(
+    api.cultivars.list,
+    currentCompanyId ? { companyId: currentCompanyId } : 'skip'
+  );
   const cropTypes = useQuery(api.crops.getCropTypes, {});
 
   // Icons for crop types (rotate through these)
@@ -52,7 +55,7 @@ export default function CultivarsPage() {
   }, [cultivars, cropTypes]);
 
   // Loading state
-  if (facilityLoading || cultivars === undefined || cropTypes === undefined) {
+  if (facilityLoading || !currentCompanyId || cultivars === undefined || cropTypes === undefined) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-20 w-full" />

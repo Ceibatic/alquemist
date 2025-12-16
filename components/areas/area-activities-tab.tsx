@@ -36,12 +36,17 @@ const activityTypeLabels: Record<string, string> = {
 };
 
 export function AreaActivitiesTab({ areaId, companyId }: AreaActivitiesTabProps) {
-  const activitiesData = useQuery(api.activities.list, {
-    companyId,
-    entity_type: 'area',
-    entity_id: areaId,
-    limit: 50,
-  });
+  const activitiesData = useQuery(
+    api.activities.list,
+    companyId
+      ? {
+          companyId,
+          entity_type: 'area',
+          entity_id: areaId,
+          limit: 50,
+        }
+      : 'skip'
+  );
 
   if (activitiesData === undefined) {
     return (

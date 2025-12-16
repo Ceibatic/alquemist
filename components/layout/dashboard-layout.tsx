@@ -6,6 +6,7 @@ import { Sidebar } from './sidebar';
 import { SidebarMobile } from './sidebar-mobile';
 import { Toaster } from '@/components/ui/toaster';
 import { FacilityProvider, useFacility } from '@/components/providers/facility-provider';
+import { UserProvider } from '@/components/providers/user-provider';
 import { Id } from '@/convex/_generated/dataModel';
 import { cn } from '@/lib/utils';
 
@@ -82,13 +83,15 @@ function DashboardLayoutInner({
 
 export function DashboardLayout({ children, user }: DashboardLayoutProps) {
   return (
-    <FacilityProvider
-      initialFacilityId={user.primaryFacilityId}
-      initialCompanyId={user.companyId}
-    >
-      <DashboardLayoutInner user={user}>
-        {children}
-      </DashboardLayoutInner>
-    </FacilityProvider>
+    <UserProvider initialUserId={user.userId}>
+      <FacilityProvider
+        initialFacilityId={user.primaryFacilityId}
+        initialCompanyId={user.companyId}
+      >
+        <DashboardLayoutInner user={user}>
+          {children}
+        </DashboardLayoutInner>
+      </FacilityProvider>
+    </UserProvider>
   );
 }

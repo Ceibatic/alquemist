@@ -1,37 +1,18 @@
 /**
  * Cultivar Queries and Mutations
  * Cultivar/variety management for each crop type
+ * All cultivars belong to a company (not global like crop_types)
  */
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 /**
- * Get cultivars by crop type
- */
-export const getByCrop = query({
-  args: {
-    cropTypeId: v.id("crop_types"),
-    status: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    let cultivarsQuery = ctx.db
-      .query("cultivars")
-      .withIndex("by_crop_type", (q) => q.eq("crop_type_id", args.cropTypeId));
-
-    const allCultivars = await cultivarsQuery.collect();
-
-    // Filter by status if provided (default: active only)
-    const statusFilter = args.status || "active";
-    return allCultivars.filter((cultivar) => cultivar.status === statusFilter);
-  },
-});
-
-/**
- * List all cultivars with optional filters
+ * List cultivars by company with optional filters
  */
 export const list = query({
   args: {
+    companyId: v.id("companies"),
     cropTypeId: v.optional(v.id("crop_types")),
     supplierId: v.optional(v.id("suppliers")),
     status: v.optional(v.string()),
@@ -40,33 +21,31 @@ export const list = query({
   handler: async (ctx, args) => {
     let cultivars;
 
-    // Start with most specific index if available
+    // Use company index first
     if (args.cropTypeId !== undefined) {
       cultivars = await ctx.db
         .query("cultivars")
-        .withIndex("by_crop_type", (q) => q.eq("crop_type_id", args.cropTypeId!))
-        .collect();
-    } else if (args.supplierId !== undefined) {
-      cultivars = await ctx.db
-        .query("cultivars")
-        .withIndex("by_supplier", (q) => q.eq("supplier_id", args.supplierId!))
-        .collect();
-    } else if (args.status !== undefined) {
-      cultivars = await ctx.db
-        .query("cultivars")
-        .withIndex("by_status", (q) => q.eq("status", args.status!))
+        .withIndex("by_company_crop", (q) =>
+          q.eq("company_id", args.companyId).eq("crop_type_id", args.cropTypeId!)
+        )
         .collect();
     } else {
-      cultivars = await ctx.db.query("cultivars").collect();
+      cultivars = await ctx.db
+        .query("cultivars")
+        .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+        .collect();
     }
 
     // Apply additional filters
-    if (args.supplierId && !args.supplierId) {
+    if (args.supplierId) {
       cultivars = cultivars.filter((c) => c.supplier_id === args.supplierId);
     }
 
     if (args.status) {
       cultivars = cultivars.filter((c) => c.status === args.status);
+    } else {
+      // Default: active only
+      cultivars = cultivars.filter((c) => c.status === "active");
     }
 
     if (args.varietyType) {
@@ -74,6 +53,29 @@ export const list = query({
     }
 
     return cultivars;
+  },
+});
+
+/**
+ * Get cultivars by crop type for a company
+ */
+export const getByCrop = query({
+  args: {
+    companyId: v.id("companies"),
+    cropTypeId: v.id("crop_types"),
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const cultivars = await ctx.db
+      .query("cultivars")
+      .withIndex("by_company_crop", (q) =>
+        q.eq("company_id", args.companyId).eq("crop_type_id", args.cropTypeId)
+      )
+      .collect();
+
+    // Filter by status if provided (default: active only)
+    const statusFilter = args.status || "active";
+    return cultivars.filter((cultivar) => cultivar.status === statusFilter);
   },
 });
 
@@ -90,9 +92,8 @@ export const get = query({
 });
 
 /**
- * Get cultivars by facility
+ * Get cultivars by facility (through batches)
  * Returns cultivars that are linked to a facility via batches
- * Phase 2 Module 15
  */
 export const getByFacility = query({
   args: {
@@ -106,7 +107,9 @@ export const getByFacility = query({
       .collect();
 
     // Extract unique cultivar IDs from batches
-    const cultivarIds = [...new Set(batches.map((b) => b.cultivar_id).filter((id) => id !== undefined))];
+    const cultivarIds = Array.from(
+      new Set(batches.map((b) => b.cultivar_id).filter((id) => id !== undefined))
+    );
 
     // Get cultivar details
     const cultivars = await Promise.all(
@@ -123,128 +126,31 @@ export const getByFacility = query({
 });
 
 /**
- * Get system cultivars available to link
- * Phase 2 Module 15
- */
-export const getSystemCultivars = query({
-  args: {
-    cropTypeId: v.id("crop_types"),
-  },
-  handler: async (ctx, args) => {
-    // Get all active cultivars for the crop type
-    const cultivars = await ctx.db
-      .query("cultivars")
-      .withIndex("by_crop_type", (q) => q.eq("crop_type_id", args.cropTypeId))
-      .filter((q) => q.eq(q.field("status"), "active"))
-      .collect();
-
-    return cultivars;
-  },
-});
-
-/**
- * Link system cultivars to facility
- * Phase 2 Module 15 - This creates batches or facility-cultivar associations
- */
-export const linkSystemCultivars = mutation({
-  args: {
-    facilityId: v.id("facilities"),
-    cultivarIds: v.array(v.id("cultivars")),
-  },
-  handler: async (ctx, args) => {
-    // Verify facility exists
-    const facility = await ctx.db.get(args.facilityId);
-    if (!facility) {
-      throw new Error("Instalación no encontrada");
-    }
-
-    // Verify all cultivars exist
-    const cultivars = await Promise.all(
-      args.cultivarIds.map((id) => ctx.db.get(id))
-    );
-
-    const invalidCultivars = cultivars.filter((c) => !c);
-    if (invalidCultivars.length > 0) {
-      throw new Error("Uno o más cultivares son inválidos");
-    }
-
-    // Note: In the schema, cultivar-facility relationships are tracked via batches
-    // For now, we just return success. When batches are created with these cultivars,
-    // the relationship will be established automatically
-    return {
-      success: true,
-      facilityId: args.facilityId,
-      cultivarIds: args.cultivarIds,
-      message: "Cultivares vinculados exitosamente",
-    };
-  },
-});
-
-/**
- * Create custom cultivar for facility
- * Phase 2 Module 15 - Allows facilities to create their own cultivar varieties
- */
-export const createCustom = mutation({
-  args: {
-    name: v.string(),
-    cropTypeId: v.id("crop_types"),
-    varietyType: v.optional(v.string()),
-    geneticLineage: v.optional(v.string()),
-    characteristics: v.optional(v.any()),
-    notes: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const now = Date.now();
-
-    // Verify crop type exists
-    const cropType = await ctx.db.get(args.cropTypeId);
-    if (!cropType) {
-      throw new Error("Tipo de cultivo no encontrado");
-    }
-
-    // Validate name length
-    if (args.name.length < 2) {
-      throw new Error("El nombre debe tener al menos 2 caracteres");
-    }
-
-    const cultivarId = await ctx.db.insert("cultivars", {
-      name: args.name,
-      crop_type_id: args.cropTypeId,
-      variety_type: args.varietyType,
-      genetic_lineage: args.geneticLineage,
-      supplier_id: undefined,
-      origin_metadata: undefined,
-      characteristics: args.characteristics,
-      optimal_conditions: undefined,
-      performance_metrics: {},
-      status: "active",
-      notes: args.notes,
-      created_at: now,
-    });
-
-    return cultivarId;
-  },
-});
-
-/**
- * Create a custom cultivar
- * Allows companies to add their own cultivar varieties
+ * Create a custom cultivar for a company
  */
 export const create = mutation({
   args: {
+    companyId: v.id("companies"),
     name: v.string(),
     cropTypeId: v.id("crop_types"),
     varietyType: v.optional(v.string()),
     geneticLineage: v.optional(v.string()),
+    floweringTimeDays: v.optional(v.number()),
     supplierId: v.optional(v.id("suppliers")),
-    originMetadata: v.optional(v.any()),
-    characteristics: v.optional(v.any()),
-    optimalConditions: v.optional(v.any()),
-    performanceMetrics: v.optional(v.any()),
+    thcMin: v.optional(v.number()),
+    thcMax: v.optional(v.number()),
+    cbdMin: v.optional(v.number()),
+    cbdMax: v.optional(v.number()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+
+    // Verify company exists
+    const company = await ctx.db.get(args.companyId);
+    if (!company) {
+      throw new Error("Empresa no encontrada");
+    }
 
     // Verify crop type exists
     const cropType = await ctx.db.get(args.cropTypeId);
@@ -260,19 +166,102 @@ export const create = mutation({
       }
     }
 
+    // Validate name length
+    if (args.name.length < 2) {
+      throw new Error("El nombre debe tener al menos 2 caracteres");
+    }
+
+    // Validate THC range
+    if (args.thcMin !== undefined && args.thcMax !== undefined) {
+      if (args.thcMin > args.thcMax) {
+        throw new Error("THC mínimo no puede ser mayor que THC máximo");
+      }
+    }
+
+    // Validate CBD range
+    if (args.cbdMin !== undefined && args.cbdMax !== undefined) {
+      if (args.cbdMin > args.cbdMax) {
+        throw new Error("CBD mínimo no puede ser mayor que CBD máximo");
+      }
+    }
+
     const cultivarId = await ctx.db.insert("cultivars", {
+      company_id: args.companyId,
       name: args.name,
       crop_type_id: args.cropTypeId,
       variety_type: args.varietyType,
       genetic_lineage: args.geneticLineage,
+      flowering_time_days: args.floweringTimeDays,
       supplier_id: args.supplierId,
-      origin_metadata: args.originMetadata,
-      characteristics: args.characteristics,
-      optimal_conditions: args.optimalConditions,
-      performance_metrics: args.performanceMetrics || {},
+      thc_min: args.thcMin,
+      thc_max: args.thcMax,
+      cbd_min: args.cbdMin,
+      cbd_max: args.cbdMax,
+      performance_metrics: {},
       status: "active",
       notes: args.notes,
       created_at: now,
+      updated_at: now,
+    });
+
+    return cultivarId;
+  },
+});
+
+/**
+ * Create custom cultivar (simplified alias for create)
+ */
+export const createCustom = mutation({
+  args: {
+    companyId: v.id("companies"),
+    name: v.string(),
+    cropTypeId: v.id("crop_types"),
+    varietyType: v.optional(v.string()),
+    geneticLineage: v.optional(v.string()),
+    floweringTimeDays: v.optional(v.number()),
+    thcMin: v.optional(v.number()),
+    thcMax: v.optional(v.number()),
+    cbdMin: v.optional(v.number()),
+    cbdMax: v.optional(v.number()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Verify company exists
+    const company = await ctx.db.get(args.companyId);
+    if (!company) {
+      throw new Error("Empresa no encontrada");
+    }
+
+    // Verify crop type exists
+    const cropType = await ctx.db.get(args.cropTypeId);
+    if (!cropType) {
+      throw new Error("Tipo de cultivo no encontrado");
+    }
+
+    // Validate name length
+    if (args.name.length < 2) {
+      throw new Error("El nombre debe tener al menos 2 caracteres");
+    }
+
+    const cultivarId = await ctx.db.insert("cultivars", {
+      company_id: args.companyId,
+      name: args.name,
+      crop_type_id: args.cropTypeId,
+      variety_type: args.varietyType,
+      genetic_lineage: args.geneticLineage,
+      flowering_time_days: args.floweringTimeDays,
+      supplier_id: undefined,
+      thc_min: args.thcMin,
+      thc_max: args.thcMax,
+      cbd_min: args.cbdMin,
+      cbd_max: args.cbdMax,
+      performance_metrics: {},
+      status: "active",
+      notes: args.notes,
+      created_at: now,
+      updated_at: now,
     });
 
     return cultivarId;
@@ -288,11 +277,12 @@ export const update = mutation({
     name: v.optional(v.string()),
     varietyType: v.optional(v.string()),
     geneticLineage: v.optional(v.string()),
+    floweringTimeDays: v.optional(v.number()),
     supplierId: v.optional(v.id("suppliers")),
-    originMetadata: v.optional(v.any()),
-    characteristics: v.optional(v.any()),
-    optimalConditions: v.optional(v.any()),
-    performanceMetrics: v.optional(v.any()),
+    thcMin: v.optional(v.number()),
+    thcMax: v.optional(v.number()),
+    cbdMin: v.optional(v.number()),
+    cbdMax: v.optional(v.number()),
     status: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
@@ -313,21 +303,39 @@ export const update = mutation({
       }
     }
 
+    // Validate THC range
+    const finalThcMin = updates.thcMin ?? cultivar.thc_min;
+    const finalThcMax = updates.thcMax ?? cultivar.thc_max;
+    if (finalThcMin !== undefined && finalThcMax !== undefined) {
+      if (finalThcMin > finalThcMax) {
+        throw new Error("THC mínimo no puede ser mayor que THC máximo");
+      }
+    }
+
+    // Validate CBD range
+    const finalCbdMin = updates.cbdMin ?? cultivar.cbd_min;
+    const finalCbdMax = updates.cbdMax ?? cultivar.cbd_max;
+    if (finalCbdMin !== undefined && finalCbdMax !== undefined) {
+      if (finalCbdMin > finalCbdMax) {
+        throw new Error("CBD mínimo no puede ser mayor que CBD máximo");
+      }
+    }
+
     // Build update object with proper field names
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {
+      updated_at: Date.now(),
+    };
 
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.varietyType !== undefined) updateData.variety_type = updates.varietyType;
     if (updates.geneticLineage !== undefined) updateData.genetic_lineage = updates.geneticLineage;
+    if (updates.floweringTimeDays !== undefined)
+      updateData.flowering_time_days = updates.floweringTimeDays;
     if (updates.supplierId !== undefined) updateData.supplier_id = updates.supplierId;
-    if (updates.originMetadata !== undefined) updateData.origin_metadata = updates.originMetadata;
-    if (updates.characteristics !== undefined) updateData.characteristics = updates.characteristics;
-    if (updates.optimalConditions !== undefined) {
-      updateData.optimal_conditions = updates.optimalConditions;
-    }
-    if (updates.performanceMetrics !== undefined) {
-      updateData.performance_metrics = updates.performanceMetrics;
-    }
+    if (updates.thcMin !== undefined) updateData.thc_min = updates.thcMin;
+    if (updates.thcMax !== undefined) updateData.thc_max = updates.thcMax;
+    if (updates.cbdMin !== undefined) updateData.cbd_min = updates.cbdMin;
+    if (updates.cbdMax !== undefined) updateData.cbd_max = updates.cbdMax;
     if (updates.status !== undefined) updateData.status = updates.status;
     if (updates.notes !== undefined) updateData.notes = updates.notes;
 
@@ -354,8 +362,78 @@ export const remove = mutation({
     // Soft delete by changing status to discontinued
     await ctx.db.patch(args.id, {
       status: "discontinued",
+      updated_at: Date.now(),
     });
 
     return args.id;
+  },
+});
+
+/**
+ * Hard delete cultivar (for cleanup purposes)
+ */
+export const hardDelete = mutation({
+  args: {
+    id: v.id("cultivars"),
+  },
+  handler: async (ctx, args) => {
+    const cultivar = await ctx.db.get(args.id);
+    if (!cultivar) {
+      throw new Error("Cultivar no encontrado");
+    }
+
+    await ctx.db.delete(args.id);
+    return args.id;
+  },
+});
+
+/**
+ * Delete demo cultivars for a company
+ */
+export const deleteDemoCultivars = mutation({
+  args: {
+    companyId: v.id("companies"),
+  },
+  handler: async (ctx, args) => {
+    const cultivars = await ctx.db
+      .query("cultivars")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .collect();
+
+    // Filter demo cultivars (name contains "(Demo)")
+    const demoCultivars = cultivars.filter((c) => c.name.includes("(Demo)"));
+
+    // Delete each demo cultivar
+    for (const cultivar of demoCultivars) {
+      await ctx.db.delete(cultivar._id);
+    }
+
+    return {
+      deleted: demoCultivars.length,
+    };
+  },
+});
+
+/**
+ * Delete orphaned cultivars (those without company_id - legacy data)
+ */
+export const deleteOrphanedCultivars = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Get all cultivars
+    const allCultivars = await ctx.db.query("cultivars").collect();
+
+    // Filter cultivars without company_id
+    const orphaned = allCultivars.filter((c) => !c.company_id);
+
+    // Delete each orphaned cultivar
+    for (const cultivar of orphaned) {
+      await ctx.db.delete(cultivar._id);
+    }
+
+    return {
+      deleted: orphaned.length,
+      names: orphaned.map((c) => c.name),
+    };
   },
 });

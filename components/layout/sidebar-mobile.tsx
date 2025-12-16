@@ -13,6 +13,9 @@ import {
   Settings,
   LogOut,
   Building2,
+  LayoutTemplate,
+  ClipboardCheck,
+  Layers,
 } from 'lucide-react';
 import {
   Sheet,
@@ -50,6 +53,26 @@ const navigationItems = [
     name: 'Inventario',
     href: '/inventory',
     icon: ClipboardList,
+  },
+  {
+    name: 'Templates',
+    href: '/templates',
+    icon: LayoutTemplate,
+  },
+  {
+    name: 'Ordenes',
+    href: '/production-orders',
+    icon: ClipboardList,
+  },
+  {
+    name: 'Lotes',
+    href: '/batches',
+    icon: Layers,
+  },
+  {
+    name: 'Control de Calidad',
+    href: '/quality-checks',
+    icon: ClipboardCheck,
   },
   {
     name: 'Usuarios',

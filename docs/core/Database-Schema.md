@@ -20,7 +20,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ### Database Structure
 
-**26 Tables organized in 8 functional groups:**
+**29 Tables organized in 9 functional groups:**
 
 1. **Core System** (3 tables) - Multi-tenancy, authentication, permissions
 2. **Crop Configuration** (2 tables) - Multi-crop support system
@@ -30,6 +30,7 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 6. **Production Operations** (4 tables) - Batch-first tracking
 7. **Activity & Quality** (3 tables) - Work execution, pest management
 8. **Media & Compliance** (3 tables) - Documents, regulatory tracking
+9. **Platform Administration** (3 tables) - AI config, prompts, audit logs
 
 ### Design Principles
 
@@ -127,11 +128,12 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 ### Standard Roles
 
-1. **COMPANY_OWNER** (level 1000) - Full access
-2. **FACILITY_MANAGER** (level 500) - Facility operations
-3. **PRODUCTION_SUPERVISOR** (level 300) - Production management
-4. **WORKER** (level 100) - Activity execution
-5. **VIEWER** (level 10) - Read-only access
+1. **PLATFORM_ADMIN** (level 9999) - Platform administration (Ceibatic team only)
+2. **COMPANY_OWNER** (level 1000) - Full company access
+3. **FACILITY_MANAGER** (level 500) - Facility operations
+4. **PRODUCTION_SUPERVISOR** (level 300) - Production management
+5. **WORKER** (level 100) - Activity execution
+6. **VIEWER** (level 10) - Read-only access
 
 ---
 
@@ -1282,6 +1284,122 @@ This document provides a **technology-agnostic** definition of the Alquemist dat
 
 - Unique: certificate_number
 - Index: company_id, certificate_type, expiry_date, status
+
+---
+
+# Platform Administration Tables
+
+## Table: ai_providers
+
+**Purpose**: AI provider configurations for dynamic model switching
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | String | Yes | Primary key |
+| provider_name | String | Yes | Provider identifier (gemini/claude/openai) |
+| display_name | String | Yes | Display name for UI |
+| is_active | Boolean | Yes | Whether provider is available |
+| is_default | Boolean | Yes | Default provider for AI calls |
+| api_key_configured | Boolean | Yes | Whether API key is set in env |
+| api_endpoint | String | No | Custom API endpoint |
+| default_model | String | Yes | Default model to use |
+| available_models | Array[String] | Yes | List of available models |
+| default_temperature | Decimal | Yes | Temperature (0-2) |
+| default_top_k | Number | No | Top K for sampling |
+| default_top_p | Decimal | Yes | Top P (nucleus sampling) |
+| default_max_tokens | Number | Yes | Max output tokens |
+| supports_vision | Boolean | Yes | Whether supports image analysis |
+| supports_function_calling | Boolean | No | Whether supports function calling |
+| created_at | DateTime | Yes | Creation timestamp |
+| updated_at | DateTime | Yes | Last update timestamp |
+
+### Relationships
+
+- Has many: ai_prompts (implicit via feature usage)
+
+### Indexes
+
+- Unique: provider_name
+- Index: is_default, is_active
+
+---
+
+## Table: ai_prompts
+
+**Purpose**: Configurable system prompts for AI features
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | String | Yes | Primary key |
+| prompt_key | String | Yes | Unique identifier (e.g., "template_extraction") |
+| display_name | String | Yes | Display name for UI |
+| description | String | No | Description of prompt purpose |
+| system_prompt | String | Yes | System prompt content |
+| user_prompt_template | String | No | User prompt template |
+| feature_type | String | Yes | Feature category (quality_check/pest_detection) |
+| is_active | Boolean | Yes | Whether prompt is active |
+| version | Number | Yes | Prompt version number |
+| updated_by | String | No | Foreign key → users.id |
+| created_at | DateTime | Yes | Creation timestamp |
+| updated_at | DateTime | Yes | Last update timestamp |
+
+### Relationships
+
+- Belongs to: user (updated_by)
+
+### Indexes
+
+- Unique: prompt_key
+- Index: feature_type, is_active
+
+### Standard Prompts
+
+1. **template_extraction** - Extracts quality check templates from PDF/images
+2. **pest_detection** - Analyzes plant images for pests, diseases, deficiencies
+
+---
+
+## Table: audit_logs
+
+**Purpose**: Audit trail for platform admin actions
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | String | Yes | Primary key |
+| action_type | String | Yes | Type of action performed |
+| entity_type | String | Yes | Type of entity affected |
+| entity_id | String | No | ID of affected entity |
+| performed_by | String | Yes | Foreign key → users.id |
+| previous_value | JSON | No | Value before change |
+| new_value | JSON | No | Value after change |
+| description | String | Yes | Human-readable description |
+| ip_address | String | No | IP address of request |
+| user_agent | String | No | User agent string |
+| created_at | DateTime | Yes | Creation timestamp |
+
+### Relationships
+
+- Belongs to: user (performed_by)
+
+### Indexes
+
+- Index: action_type, entity_type, entity_id, performed_by, created_at
+
+### Common Action Types
+
+- `ai_provider.update` - AI provider settings changed
+- `ai_provider.set_default` - Default provider changed
+- `ai_prompt.update` - System prompt modified
+- `company.extend_trial` - Trial period extended
+- `company.suspend` - Company suspended
+- `company.activate` - Company activated
+- `subscription.update` - Subscription plan changed
 
 ---
 

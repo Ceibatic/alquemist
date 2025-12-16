@@ -30,11 +30,16 @@ const stockStatusColors: Record<string, string> = {
 };
 
 export function AreaInventoryTab({ areaId, companyId }: AreaInventoryTabProps) {
-  const inventoryData = useQuery(api.inventory.list, {
-    companyId,
-    area_id: areaId,
-    limit: 50,
-  });
+  const inventoryData = useQuery(
+    api.inventory.list,
+    companyId
+      ? {
+          companyId,
+          area_id: areaId,
+          limit: 50,
+        }
+      : 'skip'
+  );
 
   if (inventoryData === undefined) {
     return (
@@ -84,13 +89,12 @@ export function AreaInventoryTab({ areaId, companyId }: AreaInventoryTabProps) {
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-base">
-                      {item.batch_number || `INV-${item._id.slice(-6)}`}
+                      {item.productName || 'Producto desconocido'}
                     </CardTitle>
-                    {item.supplier_lot_number && (
-                      <p className="text-xs text-gray-500">
-                        Lote: {item.supplier_lot_number}
-                      </p>
-                    )}
+                    <p className="text-xs text-gray-500">
+                      {item.productSku && <span className="mr-2">{item.productSku}</span>}
+                      {item.batch_number && <span>Lote: {item.batch_number}</span>}
+                    </p>
                   </div>
                   <StatusBadge
                     status={stockStatusColors[item.stockStatus] || 'active'}

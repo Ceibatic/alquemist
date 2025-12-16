@@ -26,7 +26,8 @@ const cropNameMap: Record<string, string> = {
 export async function createFacility(
   data: z.infer<typeof facilityCompleteSchema>,
   companyId: string,
-  userId: string
+  userId: string,
+  generateSampleData: boolean = true
 ) {
   try {
     // Validate the complete data
@@ -133,6 +134,23 @@ export async function createFacility(
     });
 
     console.log('[createFacility] User updated successfully');
+
+    // 5. Generate sample data if requested
+    if (generateSampleData && cropTypeIds.length > 0) {
+      console.log('[createFacility] Generating sample data...');
+      try {
+        const seedResult = await convex.mutation(api.seedOnboardingData.generateSampleDataForNewCompany, {
+          companyId: companyId as Id<'companies'>,
+          facilityId: facilityId,
+          userId: userId as Id<'users'>,
+          cropTypeId: cropTypeIds[0], // Use primary crop type
+        });
+        console.log('[createFacility] Sample data generated:', seedResult);
+      } catch (seedError) {
+        // Log but don't fail - sample data is nice to have but not critical
+        console.error('[createFacility] Error generating sample data:', seedError);
+      }
+    }
 
     return {
       success: true,

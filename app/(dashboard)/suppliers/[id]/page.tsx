@@ -1,7 +1,6 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -12,44 +11,12 @@ import { Pencil, Mail, Phone, MapPin, Building2, Star } from 'lucide-react';
 import { getCategoryLabel, getCategoryIcon, getCropSpecializationLabel } from '@/lib/constants/suppliers';
 import { cn } from '@/lib/utils';
 
-interface SupplierDetailPageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
-
-export default function SupplierDetailPage({ params }: SupplierDetailPageProps) {
-  const { id } = use(params);
+export default function SupplierDetailPage() {
   const router = useRouter();
-  const [companyId, setCompanyId] = useState<string | null>(null);
+  const params = useParams();
+  const id = params.id as string;
 
-  useEffect(() => {
-    // Get user data from cookies
-    const userDataCookie = document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('user_data='));
-
-    if (userDataCookie) {
-      try {
-        const userData = JSON.parse(
-          decodeURIComponent(userDataCookie.split('=')[1])
-        );
-        setCompanyId(userData.companyId);
-      } catch (err) {
-        console.error('Error al cargar datos del usuario:', err);
-      }
-    }
-  }, []);
-
-  const supplier = useQuery(
-    api.suppliers.get,
-    companyId && id
-      ? {
-          id: id as Id<'suppliers'>,
-          companyId: companyId as any,
-        }
-      : 'skip'
-  );
+  const supplier = useQuery(api.suppliers.get, { id: id as Id<'suppliers'> });
 
   if (supplier === undefined) {
     return (

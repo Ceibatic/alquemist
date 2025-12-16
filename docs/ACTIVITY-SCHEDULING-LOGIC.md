@@ -4,6 +4,8 @@
 
 This document details the algorithm and business logic for automatically scheduling production activities when a production order is created or approved.
 
+**Estado**: ✅ Implementado en `convex/productionOrders.ts`
+
 ## Purpose
 
 The auto-scheduling system transforms template-level activity timing rules into concrete scheduled dates and times when a production order is initiated. This enables:
@@ -12,6 +14,94 @@ The auto-scheduling system transforms template-level activity timing rules into 
 - Worker task assignment
 - Progress tracking
 - Timeline visualization
+
+---
+
+## Implementation Status
+
+### Implemented ✅
+
+| Feature | Location | Notes |
+|---------|----------|-------|
+| One-time activities | `productionOrders.create` | `timing.type === "one_time"` |
+| Daily range recurring | `productionOrders.create` | `timing.frequencyType === "daily_range"` |
+| Specific days of week | `productionOrders.create` | `timing.frequencyType === "specific_days"` |
+| Every N days | `productionOrders.create` | `timing.frequencyType === "every_n_days"` |
+| Dependent activities | `productionOrders.create` | `timing.type === "dependent"` |
+| Phase date calculation | `productionOrders.create` | Calculates phase start/end dates |
+| Batch creation on approve | `productionOrders.activate` | Creates N batches from order |
+| Activity-to-batch linking | `productionOrders.activate` | Updates entity_type to "batch" |
+| Complete scheduled activity | `activities.completeScheduledActivity` | Creates activity record |
+
+### Implementation Details
+
+**Archivo principal**: `convex/productionOrders.ts` lines 375-525
+
+**Algoritmo de scheduling** (ejecutado en `create`):
+```typescript
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Para cada fase del template
+for (const templatePhase of sortedPhases) {
+  const phaseStart = phaseStartDates.get(templatePhase._id);
+  const phaseEnd = phaseEndDates.get(templatePhase._id);
+
+  // Para cada actividad del template
+  for (const templateActivity of templateActivities) {
+    const timing = templateActivity.timing_configuration;
+    const scheduleDates: number[] = [];
+
+    if (!timing || timing.type === "one_time") {
+      // Dia especifico de la fase
+      const dayOffset = (timing?.phaseDay || 1) - 1;
+      scheduleDates.push(phaseStart + dayOffset * DAY_MS);
+    }
+    else if (timing.type === "recurring") {
+      if (timing.frequencyType === "daily_range") {
+        // Cada dia del rango
+        for (let day = startDay; day <= endDay; day++) {
+          scheduleDates.push(phaseStart + (day - 1) * DAY_MS);
+        }
+      }
+      else if (timing.frequencyType === "specific_days") {
+        // Dias especificos de la semana
+        for (let day = startDay; day <= endDay; day++) {
+          const date = new Date(phaseStart + (day - 1) * DAY_MS);
+          if (daysOfWeek.includes(date.getDay())) {
+            scheduleDates.push(phaseStart + (day - 1) * DAY_MS);
+          }
+        }
+      }
+      else if (timing.frequencyType === "every_n_days") {
+        // Cada N dias
+        for (let day = startDay; day <= endDay; day += interval) {
+          scheduleDates.push(phaseStart + (day - 1) * DAY_MS);
+        }
+      }
+    }
+    else if (timing.type === "dependent") {
+      // Dias despues de otra actividad
+      scheduleDates.push(phaseStart + daysAfter * DAY_MS);
+    }
+
+    // Crear scheduled_activity para cada fecha
+    for (const scheduleDate of scheduleDates) {
+      await ctx.db.insert("scheduled_activities", {...});
+    }
+  }
+}
+```
+
+### Pending 🔜
+
+| Feature | Notes |
+|---------|-------|
+| Dependency chain resolution | Actualmente usa phaseStart como base |
+| Circular dependency detection | No implementado |
+| Weekend/holiday handling | No implementado |
+| Resource conflict detection | No implementado |
+| Auto-rescheduling | No implementado |
+| Calendar UI | No implementado |
 
 ---
 
