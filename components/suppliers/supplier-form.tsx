@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   CategoryMultiSelect,
   CropSpecializationMultiSelect,
@@ -59,6 +58,7 @@ export function SupplierForm({
     formState: { errors },
     setValue,
     watch,
+    control,
   } = useForm<SupplierFormData>({
     resolver: zodResolver(createSupplierSchema),
     defaultValues: {
@@ -136,21 +136,24 @@ export function SupplierForm({
           {/* Business Type */}
           <div className="space-y-2">
             <Label htmlFor="business_type">Tipo de Empresa</Label>
-            <Select
-              value={watch('business_type')}
-              onValueChange={(value) => setValue('business_type', value as any)}
-            >
-              <SelectTrigger id="business_type">
-                <SelectValue placeholder="Selecciona tipo de empresa" />
-              </SelectTrigger>
-              <SelectContent>
-                {BUSINESS_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Controller
+              name="business_type"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                  <SelectTrigger id="business_type">
+                    <SelectValue placeholder="Selecciona tipo de empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.business_type && (
               <p className="text-sm text-red-600">{errors.business_type.message}</p>
             )}
@@ -249,23 +252,24 @@ export function SupplierForm({
           {/* Department */}
           <div className="space-y-2">
             <Label htmlFor="administrative_division_1">Departamento</Label>
-            <Select
-              value={watch('administrative_division_1')}
-              onValueChange={(value) =>
-                setValue('administrative_division_1', value)
-              }
-            >
-              <SelectTrigger id="administrative_division_1">
-                <SelectValue placeholder="Selecciona departamento" />
-              </SelectTrigger>
-              <SelectContent>
-                {COLOMBIAN_DEPARTMENTS.map((dept) => (
-                  <SelectItem key={dept} value={dept}>
-                    {dept}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Controller
+              name="administrative_division_1"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                  <SelectTrigger id="administrative_division_1">
+                    <SelectValue placeholder="Selecciona departamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COLOMBIAN_DEPARTMENTS.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.administrative_division_1 && (
               <p className="text-sm text-red-600">
                 {errors.administrative_division_1.message}
@@ -318,21 +322,24 @@ export function SupplierForm({
           {/* Payment Terms */}
           <div className="space-y-2">
             <Label htmlFor="payment_terms">Términos de Pago</Label>
-            <Select
-              value={watch('payment_terms')}
-              onValueChange={(value) => setValue('payment_terms', value)}
-            >
-              <SelectTrigger id="payment_terms">
-                <SelectValue placeholder="Selecciona términos de pago" />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_TERMS.map((term) => (
-                  <SelectItem key={term.value} value={term.value}>
-                    {term.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Controller
+              name="payment_terms"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                  <SelectTrigger id="payment_terms">
+                    <SelectValue placeholder="Selecciona términos de pago" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_TERMS.map((term) => (
+                      <SelectItem key={term.value} value={term.value}>
+                        {term.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.payment_terms && (
               <p className="text-sm text-red-600">
                 {errors.payment_terms.message}

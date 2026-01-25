@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
+import { useUser } from '@/components/providers/user-provider';
 import {
   Dialog,
   DialogContent,
@@ -94,6 +95,7 @@ export function AdjustStockModal({
   item,
 }: AdjustStockModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { userId } = useUser();
   const adjustStock = useMutation(api.inventory.adjustStock);
 
   const form = useForm<AdjustStockInput>({
@@ -139,15 +141,31 @@ export function AdjustStockModal({
   };
 
   const handleSubmit = async (data: AdjustStockInput) => {
+    if (!userId) {
+      toast.error('Debe estar autenticado para ajustar el stock');
+      return;
+    }
+
     setIsSubmitting(true);
+
+    // Map reason enum to readable string
+    const reasonLabels: Record<string, string> = {
+      purchase: 'Compra',
+      usage: 'Uso en producción',
+      waste: 'Desperdicio',
+      transfer: 'Transferencia',
+      correction: 'Corrección de inventario',
+      other: 'Otro',
+    };
 
     try {
       await adjustStock({
         inventoryId: item._id,
         adjustmentType: data.adjustmentType,
         quantity: data.quantity,
-        reason: data.reason,
+        reason: reasonLabels[data.reason] || data.reason,
         notes: data.notes,
+        userId: userId,
       });
 
       toast.success('Stock ajustado exitosamente');

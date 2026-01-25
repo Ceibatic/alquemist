@@ -8,7 +8,8 @@ import { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
 import { InventoryTable } from './inventory-table';
 import { InventoryCreateModal } from './inventory-create-modal';
-import { AdjustStockModal } from './adjust-stock-modal';
+import { InventoryReceiptModal } from './inventory-receipt-modal';
+import { InventoryMovementModal } from './inventory-movement-modal';
 import { LowStockAlert } from './low-stock-alert';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ import {
   Wrench,
   FileText,
   LayoutGrid,
+  Truck,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -81,7 +83,8 @@ export function InventoryList({ facilityId }: InventoryListProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [adjustStockModalOpen, setAdjustStockModalOpen] = useState(false);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [movementModalOpen, setMovementModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [stockFilters, setStockFilters] = useState<StockFilter[]>([
     'normal',
@@ -209,7 +212,7 @@ export function InventoryList({ facilityId }: InventoryListProps) {
 
   const handleAdjustStock = (item: any) => {
     setSelectedItem(item);
-    setAdjustStockModalOpen(true);
+    setMovementModalOpen(true);
   };
 
   const handleDelete = (item: any) => {
@@ -479,14 +482,24 @@ export function InventoryList({ facilityId }: InventoryListProps) {
           )}
         </div>
 
-        {/* Right: Create Button */}
-        <Button
-          onClick={() => setCreateModalOpen(true)}
-          className="bg-amber-500 hover:bg-amber-600 text-white shrink-0"
-        >
-          <Plus className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Agregar Item</span>
-        </Button>
+        {/* Right: Action Buttons */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setReceiptModalOpen(true)}
+            className="shrink-0"
+          >
+            <Truck className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Registrar Entrada</span>
+          </Button>
+          <Button
+            onClick={() => setCreateModalOpen(true)}
+            className="bg-amber-500 hover:bg-amber-600 text-white shrink-0"
+          >
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Agregar Item</span>
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -528,12 +541,29 @@ export function InventoryList({ facilityId }: InventoryListProps) {
         facilityId={facilityId}
       />
 
-      {/* Adjust Stock Modal */}
+      {/* Receipt Modal */}
+      <InventoryReceiptModal
+        open={receiptModalOpen}
+        onOpenChange={setReceiptModalOpen}
+        facilityId={facilityId}
+      />
+
+      {/* Movement Modal */}
       {selectedItem && (
-        <AdjustStockModal
-          open={adjustStockModalOpen}
-          onOpenChange={setAdjustStockModalOpen}
-          item={selectedItem}
+        <InventoryMovementModal
+          open={movementModalOpen}
+          onOpenChange={setMovementModalOpen}
+          item={{
+            _id: selectedItem._id,
+            product_id: selectedItem.product_id,
+            productName: selectedItem.productName,
+            quantity_available: selectedItem.quantity_available,
+            quantity_unit: selectedItem.quantity_unit,
+            area_id: selectedItem.area_id,
+            reorder_point: selectedItem.reorder_point,
+            batch_number: selectedItem.batch_number,
+          }}
+          facilityId={facilityId}
         />
       )}
 

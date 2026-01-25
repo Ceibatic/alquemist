@@ -15,6 +15,7 @@ import {
   LayoutTemplate,
   ClipboardCheck,
   Layers,
+  ShoppingCart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -40,6 +41,11 @@ const navigationItems = [
     name: 'Proveedores',
     href: '/suppliers' as const,
     icon: Package,
+  },
+  {
+    name: 'Productos',
+    href: '/products' as const,
+    icon: ShoppingCart,
   },
   {
     name: 'Inventario',

@@ -593,6 +593,9 @@ export default defineSchema({
     category: v.string(), // seed/nutrient/pesticide/equipment/substrate/container/tool/clone/seedling/mother_plant/plant_material/other
     subcategory: v.optional(v.string()),
 
+    // Inventory Unit - default unit for tracking inventory (kg/g/L/mL/unidades/etc)
+    default_unit: v.optional(v.string()),
+
     // Crop Applicability
     applicable_crop_type_ids: v.array(v.id("crop_types")),
 
@@ -633,6 +636,32 @@ export default defineSchema({
     .index("by_category", ["category"])
     .index("by_regulatory_registered", ["regulatory_registered"])
     .index("by_status", ["status"]),
+
+  // Product Price History - Audit trail for price changes
+  product_price_history: defineTable({
+    product_id: v.id("products"),
+
+    // Price Change
+    old_price: v.optional(v.number()), // null if first price
+    new_price: v.number(),
+    price_currency: v.string(), // COP/USD/EUR
+
+    // Change Metadata
+    change_type: v.string(), // initial/update/correction/promotion/cost_increase
+    change_reason: v.optional(v.string()), // User-provided reason
+    change_category: v.optional(v.string()), // market_adjustment/supplier_change/inflation/promotion/error_correction
+
+    // Audit
+    changed_by: v.id("users"),
+    changed_at: v.number(),
+
+    // Additional context
+    notes: v.optional(v.string()),
+    effective_date: v.optional(v.number()), // When the price becomes effective (if different from changed_at)
+  })
+    .index("by_product", ["product_id"])
+    .index("by_changed_at", ["changed_at"])
+    .index("by_change_type", ["change_type"]),
 
   inventory_items: defineTable({
     product_id: v.id("products"),
@@ -685,11 +714,66 @@ export default defineSchema({
     notes: v.optional(v.string()),
     created_at: v.number(),
     updated_at: v.number(),
+
+    // Activity tracking - links to the activity that created this inventory item
+    created_by_activity_id: v.optional(v.id("activities")),
+
+    // Transformation tracking - for plant lifecycle and material conversions
+    transformation_status: v.optional(v.union(
+      v.literal("active"),        // Currently in use
+      v.literal("transformed"),   // Transformed to another category
+      v.literal("consumed"),      // Fully consumed
+      v.literal("harvested"),     // Harvested (plants)
+      v.literal("expired"),       // Expired
+      v.literal("waste")          // Discarded as waste
+    )),
+    transformed_to_item_id: v.optional(v.id("inventory_items")),
+    transformed_by_activity_id: v.optional(v.id("activities")),
   })
     .index("by_product", ["product_id"])
     .index("by_area", ["area_id"])
     .index("by_lot_status", ["lot_status"])
-    .index("by_expiration_date", ["expiration_date"]),
+    .index("by_expiration_date", ["expiration_date"])
+    .index("by_created_activity", ["created_by_activity_id"])
+    .index("by_transformation_status", ["transformation_status"]),
+
+  /**
+   * Inventory Transactions - Audit trail for all inventory movements
+   * Records every change to inventory quantities for full traceability
+   */
+  inventory_transactions: defineTable({
+    inventory_item_id: v.id("inventory_items"),
+    product_id: v.id("products"), // Denormalized for easier queries
+
+    // Transaction Details
+    transaction_type: v.string(), // adjustment/consumption/addition/transfer/waste/correction/receipt
+    quantity_change: v.number(), // Positive for additions, negative for deductions
+    quantity_before: v.number(),
+    quantity_after: v.number(),
+    quantity_unit: v.string(),
+
+    // Reference & Context
+    reason: v.string(), // User-provided reason
+    reference_type: v.optional(v.string()), // activity/production_order/transfer/adjustment
+    reference_id: v.optional(v.string()), // ID of related entity
+
+    // Source/Destination (for transfers)
+    source_area_id: v.optional(v.id("areas")),
+    destination_area_id: v.optional(v.id("areas")),
+
+    // Audit
+    performed_by: v.id("users"),
+    performed_at: v.number(),
+    notes: v.optional(v.string()),
+
+    // Metadata
+    created_at: v.number(),
+  })
+    .index("by_inventory_item", ["inventory_item_id"])
+    .index("by_product", ["product_id"])
+    .index("by_transaction_type", ["transaction_type"])
+    .index("by_performed_at", ["performed_at"])
+    .index("by_performed_by", ["performed_by"]),
 
   // ============================================================================
   // PRODUCTION & TEMPLATES TABLES (5)
@@ -1125,7 +1209,7 @@ export default defineSchema({
 
     // Instructions
     instructions: v.optional(v.string()),
-    activity_metadata: v.object({}), // Default: {}
+    activity_metadata: v.optional(v.any()), // Flexible object for activity-specific data
 
     // Execution
     status: v.string(), // pending/in_progress/completed/skipped/cancelled
@@ -1361,6 +1445,14 @@ export default defineSchema({
     materials_consumed: v.array(v.any()), // Default: []
     equipment_used: v.array(v.any()), // Default: []
 
+    // Materials produced - for transformations (phase transitions, harvests)
+    materials_produced: v.optional(v.array(v.object({
+      product_id: v.id("products"),
+      inventory_item_id: v.optional(v.id("inventory_items")), // Item created
+      quantity: v.number(),
+      quantity_unit: v.string(),
+    }))),
+
     // Quality & Environment
     quality_check_data: v.optional(v.object({})),
     environmental_data: v.optional(v.object({})),
@@ -1373,8 +1465,8 @@ export default defineSchema({
     // AI
     ai_assistance_data: v.optional(v.object({})),
 
-    // Metadata
-    activity_metadata: v.object({}), // Default: {}
+    // Metadata - flexible object to store activity-specific data (inventory movements, etc.)
+    activity_metadata: v.optional(v.any()),
     notes: v.optional(v.string()),
     created_at: v.number(),
   })

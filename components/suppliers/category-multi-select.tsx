@@ -1,15 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import {
-  PRODUCT_CATEGORIES,
-  getCategoryIcon,
-} from '@/lib/constants/suppliers';
+import { Check } from 'lucide-react';
+import { PRODUCT_CATEGORIES } from '@/lib/constants/suppliers';
 
 interface CategoryMultiSelectProps {
   value: string[];
@@ -35,29 +28,32 @@ export function CategoryMultiSelect({
         {PRODUCT_CATEGORIES.map((category) => {
           const isSelected = value.includes(category.value);
           return (
-            <div
+            <button
+              type="button"
               key={category.value}
               onClick={() => handleToggle(category.value)}
               className={cn(
-                'flex items-center space-x-2 rounded-lg border p-3 cursor-pointer transition-colors',
+                'flex items-center space-x-2 rounded-lg border p-3 cursor-pointer transition-colors text-left',
                 isSelected
                   ? 'border-green-600 bg-green-50'
                   : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               )}
             >
-              <Checkbox
-                id={`category-${category.value}`}
-                checked={isSelected}
-                onCheckedChange={() => handleToggle(category.value)}
-              />
-              <Label
-                htmlFor={`category-${category.value}`}
-                className="flex items-center space-x-2 cursor-pointer flex-1"
+              <div
+                className={cn(
+                  'h-4 w-4 rounded border flex items-center justify-center flex-shrink-0',
+                  isSelected
+                    ? 'bg-green-600 border-green-600'
+                    : 'border-gray-300 bg-white'
+                )}
               >
+                {isSelected && <Check className="h-3 w-3 text-white" />}
+              </div>
+              <span className="flex items-center space-x-2 flex-1">
                 <span className="text-lg">{category.icon}</span>
                 <span className="text-sm font-medium">{category.label}</span>
-              </Label>
-            </div>
+              </span>
+            </button>
           );
         })}
       </div>
@@ -98,28 +94,29 @@ export function CropSpecializationMultiSelect({
         {crops.map((crop) => {
           const isSelected = value.includes(crop.value);
           return (
-            <div
+            <button
+              type="button"
               key={crop.value}
               onClick={() => handleToggle(crop.value)}
               className={cn(
-                'flex items-center space-x-2 rounded-lg border p-3 cursor-pointer transition-colors',
+                'flex items-center space-x-2 rounded-lg border p-3 cursor-pointer transition-colors text-left',
                 isSelected
                   ? 'border-green-600 bg-green-50'
                   : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               )}
             >
-              <Checkbox
-                id={`crop-${crop.value}`}
-                checked={isSelected}
-                onCheckedChange={() => handleToggle(crop.value)}
-              />
-              <Label
-                htmlFor={`crop-${crop.value}`}
-                className="cursor-pointer flex-1 text-sm font-medium"
+              <div
+                className={cn(
+                  'h-4 w-4 rounded border flex items-center justify-center flex-shrink-0',
+                  isSelected
+                    ? 'bg-green-600 border-green-600'
+                    : 'border-gray-300 bg-white'
+                )}
               >
-                {crop.label}
-              </Label>
-            </div>
+                {isSelected && <Check className="h-3 w-3 text-white" />}
+              </div>
+              <span className="flex-1 text-sm font-medium">{crop.label}</span>
+            </button>
           );
         })}
       </div>

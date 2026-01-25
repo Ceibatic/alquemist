@@ -93,6 +93,7 @@ export const create = mutation({
     description: v.optional(v.string()),
     category: v.string(),
     subcategory: v.optional(v.string()),
+    default_unit: v.optional(v.string()),
 
     // Optional fields
     gtin: v.optional(v.string()),
@@ -144,6 +145,7 @@ export const create = mutation({
       description: args.description,
       category: args.category,
       subcategory: args.subcategory,
+      default_unit: args.default_unit,
 
       applicable_crop_type_ids: args.applicable_crop_type_ids || [],
 
@@ -189,6 +191,7 @@ export const update = mutation({
     description: v.optional(v.string()),
     category: v.optional(v.string()),
     subcategory: v.optional(v.string()),
+    default_unit: v.optional(v.string()),
     preferred_supplier_id: v.optional(v.id("suppliers")),
     default_price: v.optional(v.number()),
     price_unit: v.optional(v.string()),
@@ -199,6 +202,11 @@ export const update = mutation({
     organic_certified: v.optional(v.boolean()),
     organic_cert_number: v.optional(v.string()),
     status: v.optional(v.string()),
+    // Price history tracking (optional)
+    userId: v.optional(v.id("users")),
+    priceChangeReason: v.optional(v.string()),
+    priceChangeCategory: v.optional(v.string()),
+    priceChangeNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -217,6 +225,26 @@ export const update = mutation({
       }
     }
 
+    // Check if price is changing and record history
+    const priceChanged =
+      args.default_price !== undefined &&
+      args.default_price !== product.default_price;
+
+    if (priceChanged && args.userId) {
+      await ctx.db.insert("product_price_history", {
+        product_id: args.productId,
+        old_price: product.default_price,
+        new_price: args.default_price!,
+        price_currency: product.price_currency || "COP",
+        change_type: product.default_price === undefined ? "initial" : "update",
+        change_reason: args.priceChangeReason,
+        change_category: args.priceChangeCategory,
+        changed_by: args.userId,
+        changed_at: now,
+        notes: args.priceChangeNotes,
+      });
+    }
+
     const updates: Record<string, unknown> = {
       updated_at: now,
     };
@@ -226,6 +254,7 @@ export const update = mutation({
     if (args.description !== undefined) updates.description = args.description;
     if (args.category !== undefined) updates.category = args.category;
     if (args.subcategory !== undefined) updates.subcategory = args.subcategory;
+    if (args.default_unit !== undefined) updates.default_unit = args.default_unit;
     if (args.preferred_supplier_id !== undefined)
       updates.preferred_supplier_id = args.preferred_supplier_id;
     if (args.default_price !== undefined)
@@ -250,6 +279,7 @@ export const update = mutation({
     return {
       success: true,
       message: "Product updated successfully",
+      priceChanged,
     };
   },
 });
@@ -381,5 +411,117 @@ export const generateSku = query({
     const paddedNumber = String(nextNumber).padStart(4, "0");
 
     return `${prefix}-${paddedNumber}`;
+  },
+});
+
+// ============================================================================
+// PRICE HISTORY
+// ============================================================================
+
+/**
+ * Get price history for a product
+ */
+export const getPriceHistory = query({
+  args: {
+    productId: v.id("products"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 50;
+
+    const history = await ctx.db
+      .query("product_price_history")
+      .withIndex("by_product", (q) => q.eq("product_id", args.productId))
+      .order("desc")
+      .take(limit);
+
+    // Enrich with user info
+    const enrichedHistory = await Promise.all(
+      history.map(async (record) => {
+        const user = await ctx.db.get(record.changed_by);
+        const userName = user
+          ? user.first_name && user.last_name
+            ? `${user.first_name} ${user.last_name}`
+            : user.first_name || user.email
+          : "Usuario desconocido";
+        return {
+          ...record,
+          changedByName: userName,
+        };
+      })
+    );
+
+    return enrichedHistory;
+  },
+});
+
+/**
+ * Manually record a price change (for initial setup or corrections)
+ */
+export const recordPriceChange = mutation({
+  args: {
+    productId: v.id("products"),
+    newPrice: v.number(),
+    changeType: v.string(), // initial/update/correction/promotion/cost_increase
+    changeReason: v.optional(v.string()),
+    changeCategory: v.optional(v.string()), // market_adjustment/supplier_change/inflation/promotion/error_correction
+    notes: v.optional(v.string()),
+    userId: v.id("users"),
+    effectiveDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Get current product
+    const product = await ctx.db.get(args.productId);
+    if (!product) {
+      throw new Error("Product not found");
+    }
+
+    // Record price history
+    await ctx.db.insert("product_price_history", {
+      product_id: args.productId,
+      old_price: product.default_price,
+      new_price: args.newPrice,
+      price_currency: product.price_currency || "COP",
+      change_type: args.changeType,
+      change_reason: args.changeReason,
+      change_category: args.changeCategory,
+      changed_by: args.userId,
+      changed_at: now,
+      notes: args.notes,
+      effective_date: args.effectiveDate,
+    });
+
+    // Update product price
+    await ctx.db.patch(args.productId, {
+      default_price: args.newPrice,
+      updated_at: now,
+    });
+
+    return {
+      success: true,
+      message: "Price updated and recorded successfully",
+    };
+  },
+});
+
+/**
+ * Get price change categories
+ */
+export const getPriceChangeCategories = query({
+  args: {},
+  handler: async () => {
+    return [
+      { value: "market_adjustment", label: "Ajuste de mercado" },
+      { value: "supplier_change", label: "Cambio de proveedor" },
+      { value: "inflation", label: "Inflación" },
+      { value: "promotion", label: "Promoción" },
+      { value: "error_correction", label: "Corrección de error" },
+      { value: "cost_increase", label: "Aumento de costos" },
+      { value: "cost_decrease", label: "Reducción de costos" },
+      { value: "new_contract", label: "Nuevo contrato" },
+      { value: "other", label: "Otro" },
+    ];
   },
 });

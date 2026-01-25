@@ -446,9 +446,137 @@ export const transferInventorySchema = z.object({
 );
 
 // ============================================================================
+// INVENTORY MOVEMENT SCHEMAS (Phase E - Centralized Activity Tracking)
+// ============================================================================
+
+export const movementTypeSchema = z.enum(
+  ['receipt', 'consumption', 'correction', 'waste', 'transfer', 'return'],
+  {
+    errorMap: () => ({ message: 'Debes seleccionar un tipo de movimiento' }),
+  }
+);
+
+export const inventoryReceiptSchema = z.object({
+  product_id: z.string().min(1, 'Debes seleccionar un producto'),
+  area_id: z.string().min(1, 'Debes seleccionar un área de almacenamiento'),
+  supplier_id: z.string().optional(),
+
+  // Quantity
+  quantity: z.number().positive('Cantidad debe ser mayor a 0'),
+  quantity_unit: z
+    .string()
+    .min(1, 'Unidad de cantidad es requerida')
+    .max(50, 'Unidad no puede exceder 50 caracteres'),
+
+  // Batch info
+  batch_number: z
+    .string()
+    .max(100, 'Número de lote no puede exceder 100 caracteres')
+    .optional(),
+  supplier_lot_number: z
+    .string()
+    .max(100, 'Número de lote del proveedor no puede exceder 100 caracteres')
+    .optional(),
+
+  // Dates
+  received_date: z.number().positive().optional(),
+  manufacturing_date: z.number().positive().optional(),
+  expiration_date: z.number().positive().optional(),
+
+  // Financial
+  purchase_price: z
+    .number()
+    .positive('Precio de compra debe ser un número positivo')
+    .optional(),
+  cost_per_unit: z
+    .number()
+    .positive('Costo por unidad debe ser un número positivo')
+    .optional(),
+
+  // Context
+  reason: z
+    .string()
+    .min(1, 'Razón es requerida')
+    .max(500, 'Razón no puede exceder 500 caracteres'),
+  notes: z
+    .string()
+    .max(1000, 'Notas no pueden exceder 1000 caracteres')
+    .optional(),
+}).refine(
+  (data) => {
+    if (data.manufacturing_date !== undefined && data.expiration_date !== undefined) {
+      return data.manufacturing_date < data.expiration_date;
+    }
+    return true;
+  },
+  {
+    message: 'Fecha de fabricación debe ser anterior a fecha de vencimiento',
+    path: ['manufacturing_date'],
+  }
+);
+
+export const inventoryMovementSchema = z.object({
+  movement_type: movementTypeSchema,
+  product_id: z.string().min(1, 'Debes seleccionar un producto'),
+  inventory_item_id: z.string().optional(),
+  area_id: z.string().min(1, 'Debes seleccionar un área'),
+
+  // Quantity
+  quantity: z.number().min(0, 'Cantidad debe ser mayor o igual a 0'),
+  quantity_unit: z
+    .string()
+    .min(1, 'Unidad de cantidad es requerida')
+    .max(50, 'Unidad no puede exceder 50 caracteres'),
+
+  // For correction: the new absolute quantity
+  new_quantity: z.number().min(0).optional(),
+
+  // For transfers
+  destination_area_id: z.string().optional(),
+
+  // Context
+  reason: z
+    .string()
+    .min(1, 'Razón es requerida')
+    .max(500, 'Razón no puede exceder 500 caracteres'),
+  notes: z
+    .string()
+    .max(1000, 'Notas no pueden exceder 1000 caracteres')
+    .optional(),
+
+  // Lot selection
+  lot_selection_mode: z.enum(['fifo', 'specific']).optional(),
+}).refine(
+  (data) => {
+    if (data.movement_type === 'transfer' && !data.destination_area_id) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Área de destino es requerida para transferencias',
+    path: ['destination_area_id'],
+  }
+).refine(
+  (data) => {
+    if (data.movement_type === 'transfer' && data.destination_area_id === data.area_id) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Área de origen y destino deben ser diferentes',
+    path: ['destination_area_id'],
+  }
+);
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 
+export type MovementType = z.infer<typeof movementTypeSchema>;
+export type InventoryReceiptInput = z.infer<typeof inventoryReceiptSchema>;
+export type InventoryMovementInput = z.infer<typeof inventoryMovementSchema>;
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type CreateInventoryItemInput = z.infer<typeof createInventoryItemSchema>;

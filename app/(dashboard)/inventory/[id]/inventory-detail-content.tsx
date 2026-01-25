@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { StockStatus, StockLevelBar } from '@/components/inventory/stock-status';
-import { AdjustStockModal } from '@/components/inventory/adjust-stock-modal';
+import { InventoryMovementModal } from '@/components/inventory/inventory-movement-modal';
+import { InventoryActivityHistory } from '@/components/inventory/inventory-activity-history';
 import {
   Edit,
   Package,
@@ -33,7 +34,7 @@ export function InventoryDetailContent({
   inventoryId,
 }: InventoryDetailContentProps) {
   const router = useRouter();
-  const [adjustStockModalOpen, setAdjustStockModalOpen] = useState(false);
+  const [movementModalOpen, setMovementModalOpen] = useState(false);
 
   // Fetch inventory item details
   const item = useQuery(api.inventory.getById, {
@@ -82,10 +83,10 @@ export function InventoryDetailContent({
           <div className="flex gap-3">
             <Button
               variant="outline"
-              onClick={() => setAdjustStockModalOpen(true)}
+              onClick={() => setMovementModalOpen(true)}
             >
               <BarChart3 className="mr-2 h-4 w-4" />
-              Ajustar Stock
+              Registrar Movimiento
             </Button>
             <Button
               onClick={() => router.push(`/inventory/${inventoryId}/edit`)}
@@ -334,6 +335,9 @@ export function InventoryDetailContent({
               )}
             </Card>
           )}
+
+          {/* Activity History */}
+          <InventoryActivityHistory inventoryItemId={inventoryId} limit={20} />
         </div>
 
         {/* Sidebar */}
@@ -515,12 +519,24 @@ export function InventoryDetailContent({
         </div>
       </div>
 
-      {/* Adjust Stock Modal */}
-      <AdjustStockModal
-        open={adjustStockModalOpen}
-        onOpenChange={setAdjustStockModalOpen}
-        item={item}
-      />
+      {/* Inventory Movement Modal */}
+      {item.facilityId && (
+        <InventoryMovementModal
+          open={movementModalOpen}
+          onOpenChange={setMovementModalOpen}
+          item={{
+            _id: item._id,
+            product_id: item.product_id,
+            productName: item.productName ?? undefined,
+            quantity_available: item.quantity_available,
+            quantity_unit: item.quantity_unit,
+            area_id: item.area_id,
+            reorder_point: item.reorder_point,
+            batch_number: item.batch_number,
+          }}
+          facilityId={item.facilityId}
+        />
+      )}
     </>
   );
 }

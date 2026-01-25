@@ -159,6 +159,7 @@ export const getByFacility = query({
     facilityId: v.id("facilities"),
     category: v.optional(v.string()),
     status: v.optional(v.string()),
+    productId: v.optional(v.id("products")),
   },
   handler: async (ctx, args) => {
     // Get all areas for this facility first
@@ -175,7 +176,15 @@ export const getByFacility = query({
     // Filter by areas belonging to this facility
     let items = allItems.filter((item) => item.area_id && areaIds.includes(item.area_id));
 
-    // Enrich with product and supplier data
+    // Filter by product if provided
+    if (args.productId) {
+      items = items.filter((item) => item.product_id === args.productId);
+    }
+
+    // Create area name map
+    const areaMap = new Map(areas.map((a) => [a._id, a.name]));
+
+    // Enrich with product, supplier, and area data
     const itemsWithProducts = await Promise.all(
       items.map(async (item) => {
         const product = await ctx.db.get(item.product_id);
@@ -186,6 +195,7 @@ export const getByFacility = query({
           productSku: product?.sku,
           productCategory: product?.category,
           supplierName: supplier?.name,
+          areaName: item.area_id ? areaMap.get(item.area_id) : undefined,
         };
       })
     );
@@ -284,6 +294,7 @@ export const getById = query({
       productSku: product?.sku || null,
       productCategory: product?.category || null,
       areaName: area?.name || null,
+      facilityId: area?.facility_id || null,
       supplierName: supplier?.name || null,
       stockStatus,
     };
@@ -343,6 +354,10 @@ export const update = mutation({
 /**
  * Adjust stock levels (add or consume)
  * Phase 2 Module 19
+ *
+ * @deprecated Use activities.logInventoryMovement() instead for proper audit trail.
+ * This mutation is kept for backward compatibility but will be removed in a future version.
+ * All inventory movements should go through activities for centralized tracking.
  */
 export const adjustStock = mutation({
   args: {
@@ -351,6 +366,12 @@ export const adjustStock = mutation({
     quantity: v.number(),
     reason: v.string(),
     notes: v.optional(v.string()),
+    userId: v.id("users"),
+    // Optional reference to related entity
+    referenceType: v.optional(v.string()), // activity/production_order/transfer
+    referenceId: v.optional(v.string()),
+    // For transfers
+    destinationAreaId: v.optional(v.id("areas")),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -361,19 +382,24 @@ export const adjustStock = mutation({
       throw new Error("Inventory item not found");
     }
 
-    let newQuantity = item.quantity_available;
+    const quantityBefore = item.quantity_available;
+    let newQuantity = quantityBefore;
+    let quantityChange = 0;
 
     // Calculate new quantity based on adjustment type
     if (args.adjustmentType === "addition") {
       newQuantity += args.quantity;
+      quantityChange = args.quantity;
     } else if (["consumption", "waste", "transfer"].includes(args.adjustmentType)) {
       // Validate sufficient stock
       if (item.quantity_available < args.quantity) {
         throw new Error(`Insufficient stock. Available: ${item.quantity_available}, Required: ${args.quantity}`);
       }
       newQuantity -= args.quantity;
+      quantityChange = -args.quantity;
     } else if (args.adjustmentType === "correction") {
       // For corrections, quantity is the new absolute value
+      quantityChange = args.quantity - quantityBefore;
       newQuantity = args.quantity;
     } else {
       throw new Error(`Invalid adjustment type: ${args.adjustmentType}`);
@@ -386,8 +412,25 @@ export const adjustStock = mutation({
       updated_at: now,
     });
 
-    // TODO: Create inventory transaction record for audit trail
-    // This would be implemented in Phase 3 or later
+    // Create inventory transaction record for audit trail
+    await ctx.db.insert("inventory_transactions", {
+      inventory_item_id: args.inventoryId,
+      product_id: item.product_id,
+      transaction_type: args.adjustmentType,
+      quantity_change: quantityChange,
+      quantity_before: quantityBefore,
+      quantity_after: newQuantity,
+      quantity_unit: item.quantity_unit,
+      reason: args.reason,
+      reference_type: args.referenceType,
+      reference_id: args.referenceId,
+      source_area_id: args.adjustmentType === "transfer" ? item.area_id : undefined,
+      destination_area_id: args.destinationAreaId,
+      performed_by: args.userId,
+      performed_at: now,
+      notes: args.notes,
+      created_at: now,
+    });
 
     return {
       success: true,
@@ -468,5 +511,128 @@ export const remove = mutation({
       success: true,
       message: "Inventory item deleted successfully",
     };
+  },
+});
+
+// ============================================================================
+// TRANSACTION HISTORY
+// ============================================================================
+
+/**
+ * Get transaction history for an inventory item
+ */
+export const getTransactionHistory = query({
+  args: {
+    inventoryId: v.id("inventory_items"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 50;
+
+    const transactions = await ctx.db
+      .query("inventory_transactions")
+      .withIndex("by_inventory_item", (q) =>
+        q.eq("inventory_item_id", args.inventoryId)
+      )
+      .order("desc")
+      .take(limit);
+
+    // Enrich with user info
+    const enrichedTransactions = await Promise.all(
+      transactions.map(async (tx) => {
+        const user = await ctx.db.get(tx.performed_by);
+        const userName = user
+          ? user.first_name && user.last_name
+            ? `${user.first_name} ${user.last_name}`
+            : user.first_name || user.email
+          : "Usuario desconocido";
+
+        // Get area names if applicable
+        let sourceAreaName = null;
+        let destinationAreaName = null;
+
+        if (tx.source_area_id) {
+          const sourceArea = await ctx.db.get(tx.source_area_id);
+          sourceAreaName = sourceArea?.name || null;
+        }
+
+        if (tx.destination_area_id) {
+          const destArea = await ctx.db.get(tx.destination_area_id);
+          destinationAreaName = destArea?.name || null;
+        }
+
+        return {
+          ...tx,
+          performedByName: userName,
+          sourceAreaName,
+          destinationAreaName,
+        };
+      })
+    );
+
+    return enrichedTransactions;
+  },
+});
+
+/**
+ * Get transaction history for a product (across all inventory items)
+ */
+export const getProductTransactionHistory = query({
+  args: {
+    productId: v.id("products"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 100;
+
+    const transactions = await ctx.db
+      .query("inventory_transactions")
+      .withIndex("by_product", (q) => q.eq("product_id", args.productId))
+      .order("desc")
+      .take(limit);
+
+    // Enrich with user info
+    const enrichedTransactions = await Promise.all(
+      transactions.map(async (tx) => {
+        const user = await ctx.db.get(tx.performed_by);
+        const userName = user
+          ? user.first_name && user.last_name
+            ? `${user.first_name} ${user.last_name}`
+            : user.first_name || user.email
+          : "Usuario desconocido";
+
+        // Get inventory item info
+        const inventoryItem = await ctx.db.get(tx.inventory_item_id);
+        const area = inventoryItem?.area_id
+          ? await ctx.db.get(inventoryItem.area_id)
+          : null;
+
+        return {
+          ...tx,
+          performedByName: userName,
+          areaName: area?.name || null,
+          batchNumber: inventoryItem?.batch_number || null,
+        };
+      })
+    );
+
+    return enrichedTransactions;
+  },
+});
+
+/**
+ * Get transaction type labels
+ */
+export const getTransactionTypeLabels = query({
+  args: {},
+  handler: async () => {
+    return [
+      { value: "addition", label: "Entrada" },
+      { value: "consumption", label: "Consumo" },
+      { value: "waste", label: "Desperdicio" },
+      { value: "transfer", label: "Transferencia" },
+      { value: "correction", label: "Corrección" },
+      { value: "receipt", label: "Recepción" },
+    ];
   },
 });
