@@ -50,22 +50,13 @@ export {
   coffeeVarietyTypeSchema,
   varietyTypeSchema,
   cultivarStatusSchema,
-  growthDifficultySchema,
-  cultivarCharacteristicsSchema,
-  optimalConditionsSchema,
-  originMetadataSchema,
   createCustomCultivarSchema,
-  linkSystemCultivarSchema,
   updateCultivarSchema,
   cultivarFilterSchema,
   type CreateCustomCultivarInput,
-  type LinkSystemCultivarInput,
   type UpdateCultivarInput,
   type CultivarFilterInput,
   type CultivarStatus,
-  type CultivarCharacteristics,
-  type OptimalConditions,
-  type OriginMetadata,
 } from './cultivar';
 
 // Phase 2 - Supplier validations

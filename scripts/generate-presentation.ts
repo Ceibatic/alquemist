@@ -71,7 +71,7 @@ slide1.addText("Sistema de Gestion de Produccion\npara Cannabis Regulado", {
   color: COLORS.textLight,
 });
 
-slide1.addShape(pptx.shapes.RECTANGLE, {
+slide1.addShape("rect", {
   x: 0.5,
   y: 4.8,
   w: 2,
@@ -94,7 +94,7 @@ slide1.addText("www.alquemist.co", {
 const slide2 = pptx.addSlide({ masterName: "CONTENT_SLIDE" });
 
 // Header bar
-slide2.addShape(pptx.shapes.RECTANGLE, {
+slide2.addShape("rect", {
   x: 0,
   y: 0,
   w: "100%",
@@ -140,7 +140,7 @@ problems.forEach((problem, idx) => {
   const y = 1.3 + idx * 1.1;
 
   // Icon circle
-  slide2.addShape(pptx.shapes.OVAL, {
+  slide2.addShape("ellipse", {
     x: 0.5,
     y: y,
     w: 0.5,
@@ -185,7 +185,7 @@ problems.forEach((problem, idx) => {
 // ============================================
 const slide3 = pptx.addSlide({ masterName: "CONTENT_SLIDE" });
 
-slide3.addShape(pptx.shapes.RECTANGLE, {
+slide3.addShape("rect", {
   x: 0,
   y: 0,
   w: "100%",
@@ -227,7 +227,7 @@ const features = [
 features.forEach((feature, idx) => {
   const y = 2.5 + idx * 0.6;
 
-  slide3.addShape(pptx.shapes.RECTANGLE, {
+  slide3.addShape("rect", {
     x: 0.5,
     y: y + 0.1,
     w: 0.3,
@@ -250,7 +250,7 @@ features.forEach((feature, idx) => {
 // ============================================
 const slide4 = pptx.addSlide({ masterName: "CONTENT_SLIDE" });
 
-slide4.addShape(pptx.shapes.RECTANGLE, {
+slide4.addShape("rect", {
   x: 0,
   y: 0,
   w: "100%",
@@ -281,7 +281,7 @@ cycleSteps.forEach((step, idx) => {
   const y = 2;
 
   // Box
-  slide4.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  slide4.addShape("roundRect", {
     x: x,
     y: y,
     w: 2,
@@ -343,7 +343,7 @@ slide4.addText("De la semilla a la cosecha, con trazabilidad completa", {
 // ============================================
 const slide5 = pptx.addSlide({ masterName: "CONTENT_SLIDE" });
 
-slide5.addShape(pptx.shapes.RECTANGLE, {
+slide5.addShape("rect", {
   x: 0,
   y: 0,
   w: "100%",
@@ -379,10 +379,10 @@ const templateTable = [
     { text: "Descripcion", options: { bold: true, fill: { color: COLORS.primary }, color: COLORS.textLight } },
     { text: "Ejemplo Cannabis", options: { bold: true, fill: { color: COLORS.primary }, color: COLORS.textLight } },
   ],
-  ["Fases", "Etapas del ciclo", "Propagacion → Veg → Flor → Cosecha"],
-  ["Actividades", "Tareas programadas", "Riego, Fertilizacion, Poda, IPM"],
-  ["Controles QC", "Inspecciones", "Tricomas, Plagas, pH"],
-  ["Consumo", "Insumos por fase", "Clonex, Fertilizante, Neem"],
+  [{ text: "Fases" }, { text: "Etapas del ciclo" }, { text: "Propagacion → Veg → Flor → Cosecha" }],
+  [{ text: "Actividades" }, { text: "Tareas programadas" }, { text: "Riego, Fertilizacion, Poda, IPM" }],
+  [{ text: "Controles QC" }, { text: "Inspecciones" }, { text: "Tricomas, Plagas, pH" }],
+  [{ text: "Consumo" }, { text: "Insumos por fase" }, { text: "Clonex, Fertilizante, Neem" }],
 ];
 
 slide5.addTable(templateTable, {
@@ -411,7 +411,7 @@ slide5.addText("Tipos de scheduling: Dia especifico | Recurrente | Cada N dias |
 // ============================================
 const slide6 = pptx.addSlide({ masterName: "CONTENT_SLIDE" });
 
-slide6.addShape(pptx.shapes.RECTANGLE, {
+slide6.addShape("rect", {
   x: 0,
   y: 0,
   w: "100%",
@@ -434,7 +434,7 @@ slide6.addText("Ordenes de Produccion y Lotes", {
 const orderStates = ["PLANNING", "APROBADA", "ACTIVA", "COMPLETADA"];
 orderStates.forEach((state, idx) => {
   const x = 0.5 + idx * 2.4;
-  slide6.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+  slide6.addShape("roundRect", {
     x: x,
     y: 1.2,
     w: 2,
@@ -518,7 +518,7 @@ slide6.addText("Trazabilidad completa: cada operacion queda registrada con fecha
 // ============================================
 const slide7 = pptx.addSlide({ masterName: "CONTENT_SLIDE" });
 
-slide7.addShape(pptx.shapes.RECTANGLE, {
+slide7.addShape("rect", {
   x: 0,
   y: 0,
   w: "100%",
@@ -548,7 +548,7 @@ slide7.addText("Calendario de Actividades", {
   bold: true,
 });
 
-slide7.addShape(pptx.shapes.RECTANGLE, {
+slide7.addShape("rect", {
   x: 0.5,
   y: 1.5,
   w: 4.5,
@@ -605,7 +605,7 @@ aiSteps.forEach((step, idx) => {
   });
 });
 
-slide7.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+slide7.addShape("roundRect", {
   x: 5.3,
   y: 3.6,
   w: 4.5,
@@ -629,7 +629,7 @@ slide7.addText("Deteccion 3x mas rapida que inspeccion manual", {
 // ============================================
 const slide8 = pptx.addSlide({ masterName: "CONTENT_SLIDE" });
 
-slide8.addShape(pptx.shapes.RECTANGLE, {
+slide8.addShape("rect", {
   x: 0,
   y: 0,
   w: "100%",
@@ -661,7 +661,7 @@ phases.forEach((phase, idx) => {
   const width = idx === 2 ? 2.2 : idx === 1 ? 1.8 : 1.4;
 
   // Phase bar
-  slide8.addShape(pptx.shapes.RECTANGLE, {
+  slide8.addShape("rect", {
     x: x,
     y: 1.5,
     w: width,
@@ -702,7 +702,7 @@ phases.forEach((phase, idx) => {
 });
 
 // Result box
-slide8.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+slide8.addShape("roundRect", {
   x: 0.5,
   y: 3.5,
   w: 9,
@@ -727,7 +727,7 @@ slide8.addText("Resultado: 50 plantas → 22.5 kg cosecha | Calidad A | Trazabil
 // ============================================
 const slide9 = pptx.addSlide({ masterName: "CONTENT_SLIDE" });
 
-slide9.addShape(pptx.shapes.RECTANGLE, {
+slide9.addShape("rect", {
   x: 0,
   y: 0,
   w: "100%",
@@ -761,11 +761,11 @@ const complianceTable = [
     { text: "Requisito", options: { bold: true, fill: { color: COLORS.primary }, color: COLORS.textLight } },
     { text: "Como Alquemist lo cumple", options: { bold: true, fill: { color: COLORS.primary }, color: COLORS.textLight } },
   ],
-  ["Origen de material", "Registro de planta madre, proveedor"],
-  ["Historial de lote", "Cada movimiento, actividad, perdida"],
-  ["Aplicaciones IPM", "Producto, cantidad, fecha, responsable"],
-  ["Condiciones ambientales", "Registros diarios con timestamp"],
-  ["Cosecha", "Peso, calidad, fecha, destino"],
+  [{ text: "Origen de material" }, { text: "Registro de planta madre, proveedor" }],
+  [{ text: "Historial de lote" }, { text: "Cada movimiento, actividad, perdida" }],
+  [{ text: "Aplicaciones IPM" }, { text: "Producto, cantidad, fecha, responsable" }],
+  [{ text: "Condiciones ambientales" }, { text: "Registros diarios con timestamp" }],
+  [{ text: "Cosecha" }, { text: "Peso, calidad, fecha, destino" }],
 ];
 
 slide9.addTable(complianceTable, {
@@ -793,7 +793,7 @@ slide9.addText("Exportacion de datos en Excel/PDF para auditorias", {
 // ============================================
 const slide10 = pptx.addSlide({ masterName: "CONTENT_SLIDE" });
 
-slide10.addShape(pptx.shapes.RECTANGLE, {
+slide10.addShape("rect", {
   x: 0,
   y: 0,
   w: "100%",
@@ -820,26 +820,26 @@ const pricingTable = [
     { text: "Precio/mes", options: { bold: true, fill: { color: COLORS.primary }, color: COLORS.textLight } },
     { text: "Early Adopter", options: { bold: true, fill: { color: COLORS.primary }, color: COLORS.textLight } },
   ],
-  ["Trial", "1", "3", "GRATIS", "30 dias"],
+  [{ text: "Trial" }, { text: "1" }, { text: "3" }, { text: "GRATIS" }, { text: "30 dias" }],
   [
     { text: "Starter", options: { bold: true } },
-    "1",
-    "10",
-    "$359,000",
+    { text: "1" },
+    { text: "10" },
+    { text: "$359,000" },
     { text: "$179,500", options: { bold: true, color: COLORS.primary } },
   ],
   [
     { text: "Pro", options: { bold: true } },
-    "3",
-    "50",
-    "$990,000",
+    { text: "3" },
+    { text: "50" },
+    { text: "$990,000" },
     { text: "$495,000", options: { bold: true, color: COLORS.primary } },
   ],
   [
     { text: "Enterprise", options: { bold: true } },
-    "Ilimitado",
-    "Ilimitado",
-    "$3,999,000+",
+    { text: "Ilimitado" },
+    { text: "Ilimitado" },
+    { text: "$3,999,000+" },
     { text: "$1,999,500", options: { bold: true, color: COLORS.primary } },
   ],
 ];
@@ -857,7 +857,7 @@ slide10.addTable(pricingTable, {
 });
 
 // Early adopter banner
-slide10.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+slide10.addShape("roundRect", {
   x: 2,
   y: 4,
   w: 6,
@@ -900,7 +900,7 @@ const nextSteps = [
 nextSteps.forEach((step, idx) => {
   const y = 2.5 + idx * 0.8;
 
-  slide11.addShape(pptx.shapes.OVAL, {
+  slide11.addShape("ellipse", {
     x: 0.5,
     y: y,
     w: 0.6,
@@ -929,7 +929,7 @@ nextSteps.forEach((step, idx) => {
   });
 });
 
-slide11.addShape(pptx.shapes.RECTANGLE, {
+slide11.addShape("rect", {
   x: 0.5,
   y: 4.8,
   w: 2,

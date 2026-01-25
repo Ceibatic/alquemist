@@ -36,9 +36,13 @@ import { useState, useEffect } from 'react';
 
 export default function SystemSettingsPage() {
   const { toast } = useToast();
-  const { user, companyId } = useUser();
+  const { userId } = useUser();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Get full user data including companyId
+  const user = useQuery(api.users.getUserById, userId ? { userId } : 'skip');
+  const companyId = user?.companyId;
 
   // Queries
   const systemStatus = useQuery(api.config.getSystemStatus);

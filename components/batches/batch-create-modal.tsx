@@ -70,7 +70,7 @@ export function BatchCreateModal({
   const cropTypes = useQuery(api.crops.getCropTypes, {});
   const cultivars = useQuery(
     api.cultivars.getByCrop,
-    selectedCropType ? { cropTypeId: selectedCropType as Id<'crop_types'> } : 'skip'
+    selectedCropType ? { companyId, cropTypeId: selectedCropType as Id<'crop_types'> } : 'skip'
   );
 
   // Mutations

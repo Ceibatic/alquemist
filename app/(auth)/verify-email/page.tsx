@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Mail, CheckCircle2 } from 'lucide-react';
 
@@ -9,7 +10,7 @@ import { CodeInput } from '@/components/shared/code-input';
 import { CountdownTimer } from '@/components/shared/countdown-timer';
 import { verifyEmailCode, resendVerificationEmail } from './actions';
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = React.useState<string>('');
@@ -303,5 +304,17 @@ export default function VerifyEmailPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }
