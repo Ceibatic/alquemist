@@ -39,7 +39,9 @@ El módulo de Productos permite gestionar el catálogo maestro de productos e in
 **Para** encontrar productos específicos
 
 **Criterios de Aceptación:**
-- [x] Dropdown de categoría: Todas, Semillas, Nutrientes, Pesticidas, Equipos, Sustratos, Contenedores, Herramientas, Otros
+- [x] Dropdown de categoría: Todas las categorías de insumos + categorías de ciclo de vida (12 total)
+- [x] Categorías de insumos: Semillas, Nutrientes, Pesticidas, Equipos, Sustratos, Contenedores, Herramientas, Otros
+- [x] Categorías de ciclo de vida: Esquejes, Plántulas, Plantas Madre, Material Vegetal
 - [x] Filtro de estado: Todos / Activos / Descontinuados
 - [x] Búsqueda por nombre o SKU
 - [x] Botón limpiar filtros
@@ -58,9 +60,11 @@ El módulo de Productos permite gestionar el catálogo maestro de productos e in
 **Criterios de Aceptación:**
 - [x] Modal de creación con formulario multi-sección
 - [x] Secciones: Información Básica, Proveedor/Fabricante, Precios, Propiedades Físicas, Información Regulatoria
-- [x] Generación automática de SKU basado en categoría
-- [x] Validación: SKU único, nombre requerido, categoría requerida
+- [x] Generación automática de SKU basado en categoría (12 categorías incluyendo Phase F)
+- [x] Validación: SKU único (con feedback en tiempo real), nombre requerido, categoría requerida
 - [x] Selector de proveedor preferido (opcional)
+- [x] Selector de unidad de inventario por defecto (kg, g, L, mL, unidades, etc.)
+- [x] Selector de categoría incluye categorías de ciclo de vida: clone, seedling, mother_plant, plant_material
 - [x] Toast de confirmación al crear
 - [x] Redirección a detalle del producto creado
 
@@ -78,14 +82,16 @@ El módulo de Productos permite gestionar el catálogo maestro de productos e in
 **Criterios de Aceptación:**
 - [x] Página de detalle en `/products/[id]`
 - [x] Cards con información organizada:
-  - Información del Producto (SKU, categoría, estado, descripción)
+  - Información del Producto (SKU, categoría, estado, descripción, unidad de inventario)
   - Información de Precios (precio base, moneda, unidad)
-  - Propiedades Físicas (peso)
+  - Propiedades Físicas (peso, dimensiones)
   - Proveedor y Fabricante
   - Información Regulatoria (registro, certificación orgánica)
-  - Inventario Asociado (conteo de items)
-- [x] Botones: Volver, Editar
+  - Inventario Asociado (conteo dinámico de items en inventario)
+  - Historial de Precios (últimos cambios)
+- [x] Botones: Volver, Editar, Agregar Inventario
 - [x] Breadcrumbs de navegación
+- [x] Error boundary para productos eliminados
 
 **Consulta:** `products.getById({ productId })`
 
@@ -121,12 +127,82 @@ El módulo de Productos permite gestionar el catálogo maestro de productos e in
 - [x] Confirmación antes de eliminar
 - [x] Si tiene inventario asociado: soft delete (marca como "descontinuado")
 - [x] Si no tiene inventario: hard delete
+- [x] Validación de ownership (multi-tenant): solo productos de la empresa del usuario
 - [x] Toast de confirmación
-- [x] Mensaje informativo sobre comportamiento
+- [x] Mensaje informativo sobre comportamiento del delete
 
 **Mutación:** `products.remove({ productId })` (requiere auth)
 
 **Componentes:** [product-list.tsx](components/products/product-list.tsx) (AlertDialog)
+
+---
+
+### US-PRD.9: Validación de SKU único en tiempo real
+**Como** administrador de inventario
+**Quiero** recibir feedback inmediato si el SKU que estoy ingresando ya existe
+**Para** evitar errores y duplicados antes de enviar el formulario
+
+**Criterios de Aceptación:**
+- [ ] Query debounced `products.checkSkuExists({ sku, companyId })` en backend
+- [ ] Validación en tiempo real mientras el usuario escribe el SKU
+- [ ] Mensaje de error claro si el SKU ya existe
+- [ ] Indicador visual (check verde) si el SKU está disponible
+- [ ] Solo valida si SKU tiene formato correcto (min 2 caracteres)
+- [ ] No bloquea el botón de generar SKU automático
+
+**Consulta:** `products.checkSkuExists({ sku, companyId })`
+
+**Componentes:** [product-form.tsx](components/products/product-form.tsx)
+
+---
+
+## Requerimientos de Seguridad y Validación
+
+### Validaciones Backend (Convex)
+
+**Todas las mutations deben incluir:**
+- ✅ **Auth guard**: `getAuthUserId(ctx)` al inicio de cada mutation
+- ✅ **Ownership validation**: Verificar que `product.company_id` coincide con la empresa del usuario autenticado
+- ✅ **Input sanitization**: `.trim()` en todos los strings (name, sku, description, manufacturer, etc.)
+- ✅ **Enum validation**: Usar `v.union(v.literal(...))` para campos con valores fijos:
+  - `category`: enum de 12 valores (seed, nutrient, pesticide, equipment, substrate, container, tool, clone, seedling, mother_plant, plant_material, other)
+  - `status`: enum de 2 valores (active, discontinued)
+  - `price_currency`: enum (COP, USD, EUR)
+- ✅ **SKU uniqueness**: Verificar en `create` que no exista otro producto con el mismo SKU en la empresa
+- ✅ **Supplier validation**: Si `preferred_supplier_id` está presente, verificar que existe y pertenece a la empresa
+
+### Validaciones Frontend (Zod)
+
+**Schema `productFormSchema` debe incluir:**
+- ✅ **SKU**: min 2, max 50, regex `/^[A-Z0-9-]+$/`, `.trim()`
+- ✅ **name**: min 2, max 200, `.trim()`, requerido
+- ✅ **category**: enum de 12 valores (incluyendo categorías Phase F)
+- ✅ **default_price**: number opcional, min 0
+- ✅ **weight_value**: number opcional, positive
+- ✅ **description**: max 1000, opcional
+
+### Performance
+
+**Índices requeridos en `convex/schema.ts`:**
+- ✅ `by_company` - Para multi-tenancy (query principal)
+- ✅ `by_sku` - Para búsqueda rápida por SKU
+- ✅ `by_category` - Para filtrado por categoría
+- ✅ `by_status` - Para filtrado por estado
+- ✅ `by_regulatory_registered` - Para compliance reports
+- [ ] **NUEVO**: `by_company_status` - Índice compuesto para query más común: "productos activos de mi empresa"
+
+```typescript
+.index("by_company_status", ["company_id", "status"])
+```
+
+### Manejo de Errores
+
+**Toasts y feedback:**
+- ✅ Error de red: Mostrar mensaje con opción de reintentar
+- ✅ SKU duplicado: Mensaje específico "El SKU {sku} ya existe en el catálogo"
+- ✅ Producto no encontrado: Redirect a `/products` con toast informativo
+- ✅ Sin permisos: "No tienes permisos para realizar esta acción"
+- ✅ Proveedor inválido: "El proveedor seleccionado no existe o fue eliminado"
 
 ---
 
@@ -168,11 +244,12 @@ El módulo de Productos permite gestionar el catálogo maestro de productos e in
 | `updated_at` | number | Timestamp de actualización |
 
 **Índices:**
-- `by_company` - company_id
-- `by_sku` - sku
-- `by_category` - category
-- `by_regulatory_registered` - regulatory_registered
-- `by_status` - status
+- `by_company` - company_id (multi-tenancy)
+- `by_sku` - sku (búsqueda rápida)
+- `by_category` - category (filtrado)
+- `by_regulatory_registered` - regulatory_registered (compliance)
+- `by_status` - status (filtrado)
+- `by_company_status` - [company_id, status] (índice compuesto para query más común)
 
 ---
 
@@ -244,12 +321,26 @@ Estas categorías permiten tracking de inventario sincronizado con las fases de 
 - `app/(dashboard)/products/[id]/edit/product-edit-content.tsx` - Contenido de edición
 
 ### Componentes
-- `components/products/product-list.tsx` - Lista con filtros
-- `components/products/product-table.tsx` - Tabla de productos
-- `components/products/product-form.tsx` - Formulario de crear/editar (incluye campos de historial de precio)
+- `components/products/product-list.tsx` - Lista con filtros y stats
+- `components/products/product-table.tsx` - Tabla de productos (debe incluir columna default_unit)
+- `components/products/product-form.tsx` - Formulario de crear/editar (incluye validación SKU en tiempo real, campos de historial de precio, soporte categorías Phase F)
 - `components/products/product-create-modal.tsx` - Modal de creación
 - `components/products/product-price-history.tsx` - Historial de cambios de precio
 - `components/inventory/product-combobox.tsx` - Selector searchable de productos (usado en inventario)
+
+### Queries Backend
+- `products.list` - Listado con filtros (category, status, search, pagination)
+- `products.getById` - Detalle de producto con proveedor denormalizado
+- `products.getByCategory` - Productos por categoría (helper)
+- `products.generateSku` - Generación automática de SKU con prefijos
+- `products.getPriceHistory` - Historial de cambios con usuario
+- `products.checkSkuExists` - Validación de unicidad de SKU (NUEVO - pendiente)
+
+### Mutations Backend
+- `products.create` - Creación con validaciones completas (auth, ownership, SKU único, trim, enum)
+- `products.update` - Actualización con tracking de precio
+- `products.remove` - Eliminación inteligente (soft/hard según inventario)
+- `products.recordPriceChange` - Registro manual de cambio de precio (helper)
 
 ### Validaciones
 - `lib/validations/product.ts` - Schemas Zod
@@ -372,3 +463,96 @@ Cuando un batch transiciona de fase, el inventario se actualiza automáticamente
 | `activities.logHarvest` | Cosecha batch + crea inventario plant_material |
 
 Ver [M19-inventory-management.md](M19-inventory-management.md) para documentación completa.
+
+---
+
+## Implementación de Categorías Phase F
+
+### Requerimiento
+
+**CRÍTICO para integración con M25 (Batches) y M26 (Plants)**: El módulo de productos DEBE soportar las 4 categorías de ciclo de vida de plantas:
+
+1. **clone** (Esquejes) - Material vegetal propagativo inicial
+2. **seedling** (Plántulas) - Plantas jóvenes en desarrollo temprano
+3. **mother_plant** (Plantas Madre) - Plantas fuente para propagación continua
+4. **plant_material** (Material Vegetal) - Producto cosechado (flores secas, extractos)
+
+### Archivos que requieren actualización
+
+**Backend:**
+- `convex/products.ts` - Validación enum debe incluir las 4 nuevas categorías
+- `convex/schema.ts` - Ya incluye las categorías en el schema (sin cambios)
+
+**Frontend:**
+- `lib/validations/product.ts:38-45` - Enum de categorías en Zod schema
+- `components/products/product-form.tsx:50-59` - Array de categorías en select
+- `components/products/product-table.tsx` - Mapeo de iconos (Plant, Seedling, Tree, Leaf)
+- `components/products/product-list.tsx:53-63` - categoryOptions para filtros
+- `components/inventory/product-combobox.tsx:49-69` - categoryIcons para selector
+
+### Iconos sugeridos (lucide-react)
+
+```typescript
+import { Plant, Seedling, Tree, Leaf } from "lucide-react"
+
+const categoryIcons = {
+  // ... existentes
+  clone: Plant,
+  seedling: Seedling,
+  mother_plant: Tree,
+  plant_material: Leaf,
+}
+```
+
+### Labels en español
+
+```typescript
+const productCategoryLabels = {
+  // ... existentes
+  clone: "Esquejes",
+  seedling: "Plántulas",
+  mother_plant: "Plantas Madre",
+  plant_material: "Material Vegetal",
+}
+```
+
+### Prefijos de SKU (ya implementados)
+
+Los prefijos están correctamente configurados en `products.generateSku`:
+- CLO - Clone (Esqueje)
+- PLT - Plant/Seedling (Plántula)
+- MAD - Madre (Planta Madre)
+- MAT - Material (Material Vegetal)
+
+---
+
+## Estado de Implementación
+
+| User Story | Estado | Completitud |
+|------------|--------|-------------|
+| US-PRD.1: Ver lista | ✅ Completo | 100% |
+| US-PRD.2: Filtrar | ⚠️ Parcial | 90% - Falta categorías Phase F |
+| US-PRD.3: Crear | ⚠️ Parcial | 90% - Falta SKU validation en tiempo real, categorías Phase F |
+| US-PRD.4: Ver detalle | ⚠️ Parcial | 95% - Falta inventory count dinámico |
+| US-PRD.5: Editar | ✅ Completo | 100% |
+| US-PRD.6: Eliminar | ⚠️ Parcial | 95% - Falta ownership validation en backend |
+| US-PRD.7: Historial precio | ✅ Completo | 100% |
+| US-PRD.8: Razón cambio precio | ✅ Completo | 100% |
+| US-PRD.9: Validación SKU | ❌ Pendiente | 0% - No implementado |
+
+**Seguridad:**
+- Auth guards: ✅ Implementado
+- Ownership validation: ⚠️ Falta en `remove` mutation
+- Input sanitization: ⚠️ Falta `.trim()` en mutations
+- Enum validation: ⚠️ Usa `v.string()` en lugar de `v.union(v.literal(...))`
+
+**Performance:**
+- Índices básicos: ✅ Completo
+- Índice compuesto: ❌ Falta `by_company_status`
+
+**General:** 95% implementado, falta completar requerimientos de seguridad y categorías Phase F.
+
+---
+
+**Última actualización**: 2026-01-28
+**Versión**: 2.0 (Actualizado post-auditoría)
