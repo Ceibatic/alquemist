@@ -71,6 +71,10 @@ export const list = query({
 
 /**
  * Create inventory item
+ *
+ * @deprecated Use activities.logInventoryMovement({ movement_type: "receipt" }) instead.
+ * This mutation is kept for backward compatibility but will be removed in a future version.
+ * The new approach ensures proper audit trail and centralized tracking.
  */
 export const create = mutation({
   args: {
