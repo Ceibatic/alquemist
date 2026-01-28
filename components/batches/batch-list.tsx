@@ -31,6 +31,9 @@ import {
   CheckCircle,
   LayoutGrid,
   Leaf,
+  ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -40,6 +43,7 @@ interface BatchListProps {
 }
 
 type StatusFilter = 'active' | 'harvested' | 'lost' | 'archived';
+type SortOption = 'date-desc' | 'date-asc' | 'age-desc' | 'age-asc' | 'quantity-desc' | 'quantity-asc';
 
 export function BatchList({ companyId, facilityId }: BatchListProps) {
   const router = useRouter();
@@ -51,6 +55,10 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [statusFilters, setStatusFilters] = useState<StatusFilter[]>(['active', 'harvested']);
+  const [selectedAreas, setSelectedAreas] = useState<Id<'areas'>[]>([]);
+  const [selectedCultivars, setSelectedCultivars] = useState<Id<'cultivars'>[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<Id<'production_orders'> | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>('date-desc');
 
   // Fetch data
   const batches = useQuery(api.batches.list, {
@@ -60,7 +68,19 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
     orderId: orderIdParam ? (orderIdParam as Id<'production_orders'>) : undefined,
   });
 
-  // Filter batches
+  const areas = useQuery(
+    api.areas.list,
+    facilityId ? { facilityId } : 'skip'
+  );
+
+  const cultivars = useQuery(api.cultivars.list, { companyId });
+
+  const productionOrders = useQuery(api.productionOrders.list, {
+    companyId,
+    facilityId: facilityId || undefined,
+  });
+
+  // Filter and sort batches
   const filteredBatches = useMemo(() => {
     if (!batches) return [];
 
@@ -82,8 +102,47 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
       result = result.filter((batch) => statusFilters.includes(batch.status as StatusFilter));
     }
 
+    // Filter by areas
+    if (selectedAreas.length > 0) {
+      result = result.filter((batch) =>
+        batch.current_area_id && selectedAreas.includes(batch.current_area_id)
+      );
+    }
+
+    // Filter by cultivars
+    if (selectedCultivars.length > 0) {
+      result = result.filter((batch) =>
+        batch.cultivar_id && selectedCultivars.includes(batch.cultivar_id)
+      );
+    }
+
+    // Filter by production order
+    if (selectedOrder) {
+      result = result.filter((batch) => batch.production_order_id === selectedOrder);
+    }
+
+    // Sort batches
+    result = [...result].sort((a, b) => {
+      switch (sortBy) {
+        case 'date-desc':
+          return b.created_date - a.created_date;
+        case 'date-asc':
+          return a.created_date - b.created_date;
+        case 'age-desc':
+          return b.daysInProduction - a.daysInProduction;
+        case 'age-asc':
+          return a.daysInProduction - b.daysInProduction;
+        case 'quantity-desc':
+          return b.current_quantity - a.current_quantity;
+        case 'quantity-asc':
+          return a.current_quantity - b.current_quantity;
+        default:
+          return 0;
+      }
+    });
+
     return result;
-  }, [batches, searchQuery, statusFilters]);
+  }, [batches, searchQuery, statusFilters, selectedAreas, selectedCultivars, selectedOrder, sortBy]);
 
   // Handlers
   const handleStatusFilterChange = (status: StatusFilter, checked: boolean) => {
@@ -94,17 +153,39 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
     }
   };
 
+  const handleAreaFilterChange = (areaId: Id<'areas'>, checked: boolean) => {
+    if (checked) {
+      setSelectedAreas((prev) => [...prev, areaId]);
+    } else {
+      setSelectedAreas((prev) => prev.filter((id) => id !== areaId));
+    }
+  };
+
+  const handleCultivarFilterChange = (cultivarId: Id<'cultivars'>, checked: boolean) => {
+    if (checked) {
+      setSelectedCultivars((prev) => [...prev, cultivarId]);
+    } else {
+      setSelectedCultivars((prev) => prev.filter((id) => id !== cultivarId));
+    }
+  };
+
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (statusFilters.length < 4) count++;
     if (orderIdParam) count++;
+    if (selectedAreas.length > 0) count++;
+    if (selectedCultivars.length > 0) count++;
+    if (selectedOrder) count++;
     return count;
-  }, [statusFilters, orderIdParam]);
+  }, [statusFilters, orderIdParam, selectedAreas, selectedCultivars, selectedOrder]);
 
   const clearAllFilters = () => {
     setStatusFilters(['active', 'harvested']);
     setSearchQuery('');
     setSelectedStatus(null);
+    setSelectedAreas([]);
+    setSelectedCultivars([]);
+    setSelectedOrder(null);
     if (orderIdParam) {
       router.push('/batches');
     }
@@ -118,9 +199,21 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
     { value: 'lost', label: 'Perdidos', icon: Leaf },
   ];
 
+  const sortOptions = [
+    { value: 'date-desc' as SortOption, label: 'Mas recientes', icon: ArrowDown },
+    { value: 'date-asc' as SortOption, label: 'Mas antiguos', icon: ArrowUp },
+    { value: 'age-desc' as SortOption, label: 'Mayor dias de vida', icon: ArrowDown },
+    { value: 'age-asc' as SortOption, label: 'Menor dias de vida', icon: ArrowUp },
+    { value: 'quantity-desc' as SortOption, label: 'Mas plantas', icon: ArrowDown },
+    { value: 'quantity-asc' as SortOption, label: 'Menos plantas', icon: ArrowUp },
+  ];
+
   const selectedStatusOption =
     statusOptions.find((opt) => opt.value === selectedStatus) || statusOptions[0];
   const SelectedIcon = selectedStatusOption.icon;
+
+  const selectedSortOption = sortOptions.find((opt) => opt.value === sortBy) || sortOptions[0];
+  const SortIcon = selectedSortOption.icon;
 
   // Handlers for batch actions
   const handleViewBatch = (batch: any) => {
@@ -230,7 +323,7 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-64" align="start">
+            <PopoverContent className="w-72 max-h-[500px] overflow-y-auto" align="start">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-sm">Filtros</h4>
@@ -258,7 +351,7 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
                           handleStatusFilterChange('active', checked as boolean)
                         }
                       />
-                      <label htmlFor="status-active" className="text-sm">
+                      <label htmlFor="status-active" className="text-sm cursor-pointer">
                         Activos
                       </label>
                     </div>
@@ -270,7 +363,7 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
                           handleStatusFilterChange('harvested', checked as boolean)
                         }
                       />
-                      <label htmlFor="status-harvested" className="text-sm">
+                      <label htmlFor="status-harvested" className="text-sm cursor-pointer">
                         Cosechados
                       </label>
                     </div>
@@ -282,7 +375,7 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
                           handleStatusFilterChange('lost', checked as boolean)
                         }
                       />
-                      <label htmlFor="status-lost" className="text-sm">
+                      <label htmlFor="status-lost" className="text-sm cursor-pointer">
                         Perdidos
                       </label>
                     </div>
@@ -294,12 +387,97 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
                           handleStatusFilterChange('archived', checked as boolean)
                         }
                       />
-                      <label htmlFor="status-archived" className="text-sm">
+                      <label htmlFor="status-archived" className="text-sm cursor-pointer">
                         Archivados
                       </label>
                     </div>
                   </div>
                 </div>
+
+                {/* Area Filter */}
+                {areas && areas.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-gray-600">Area</Label>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {areas.map((area) => (
+                        <div key={area._id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`area-${area._id}`}
+                            checked={selectedAreas.includes(area._id)}
+                            onCheckedChange={(checked) =>
+                              handleAreaFilterChange(area._id, checked as boolean)
+                            }
+                          />
+                          <label htmlFor={`area-${area._id}`} className="text-sm cursor-pointer">
+                            {area.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cultivar Filter */}
+                {cultivars && cultivars.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-gray-600">Cultivar</Label>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {cultivars.map((cultivar) => (
+                        <div key={cultivar._id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`cultivar-${cultivar._id}`}
+                            checked={selectedCultivars.includes(cultivar._id)}
+                            onCheckedChange={(checked) =>
+                              handleCultivarFilterChange(cultivar._id, checked as boolean)
+                            }
+                          />
+                          <label htmlFor={`cultivar-${cultivar._id}`} className="text-sm cursor-pointer">
+                            {cultivar.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Production Order Filter */}
+                {productionOrders && productionOrders.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-gray-600">Orden de Produccion</Label>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="order-none"
+                          checked={selectedOrder === null}
+                          onCheckedChange={(checked) => {
+                            if (checked) setSelectedOrder(null);
+                          }}
+                        />
+                        <label htmlFor="order-none" className="text-sm cursor-pointer">
+                          Todas
+                        </label>
+                      </div>
+                      {productionOrders.map((order) => (
+                        <div key={order._id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`order-${order._id}`}
+                            checked={selectedOrder === order._id}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedOrder(order._id);
+                              } else {
+                                setSelectedOrder(null);
+                              }
+                            }}
+                          />
+                          <label htmlFor={`order-${order._id}`} className="text-sm cursor-pointer">
+                            {order.order_number}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </PopoverContent>
           </Popover>
@@ -352,6 +530,34 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
             </button>
           )}
         </div>
+
+        {/* Sort Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="gap-2 min-w-[140px] justify-between shrink-0">
+              <span className="flex items-center gap-2">
+                <ArrowUpDown className="h-4 w-4" />
+                <span className="hidden sm:inline">Ordenar</span>
+              </span>
+              <ChevronDown className="h-4 w-4 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[220px]">
+            {sortOptions.map((option) => {
+              const Icon = option.icon;
+              return (
+                <DropdownMenuItem
+                  key={option.value}
+                  onClick={() => setSortBy(option.value)}
+                  className={sortBy === option.value ? 'bg-gray-100' : ''}
+                >
+                  <Icon className="mr-2 h-4 w-4" />
+                  {option.label}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Right: Create Button */}
         <Button

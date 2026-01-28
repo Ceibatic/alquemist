@@ -138,6 +138,28 @@ export function BatchCard({ batch, onClick }: BatchCardProps) {
       ? Math.round((batch.current_quantity / batch.initial_quantity) * 100)
       : 100;
 
+  // Calculate phase progress (simple progress based on phase)
+  const getPhaseProgress = () => {
+    switch (batch.current_phase) {
+      case 'germination':
+        return 0;
+      case 'seedling':
+        return 20;
+      case 'propagation':
+        return 40;
+      case 'vegetative':
+        return 60;
+      case 'flowering':
+        return 80;
+      case 'harvest':
+        return 100;
+      default:
+        return 0;
+    }
+  };
+
+  const phaseProgress = getPhaseProgress();
+
   return (
     <Card
       className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden"
@@ -217,6 +239,22 @@ export function BatchCard({ batch, onClick }: BatchCardProps) {
             </p>
           )}
         </div>
+
+        {/* Phase Progress */}
+        {batch.current_phase && batch.status === 'active' && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500">Progreso de fase</span>
+              <span className="font-medium text-amber-600">{phaseProgress}%</span>
+            </div>
+            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-amber-100">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 to-green-500 transition-all"
+                style={{ width: `${phaseProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Quantities */}
         <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
