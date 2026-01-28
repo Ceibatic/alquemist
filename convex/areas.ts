@@ -70,7 +70,21 @@ export const list = query({
       areas = areas.filter((area) => area.status === args.status);
     }
 
-    return areas;
+    // Enrich with batch counts
+    const areasWithCounts = await Promise.all(
+      areas.map(async (area) => {
+        const batches = await ctx.db
+          .query("batches")
+          .withIndex("by_area", (q) => q.eq("area_id", area._id))
+          .collect();
+        return {
+          ...area,
+          batchCount: batches.length,
+        };
+      })
+    );
+
+    return areasWithCounts;
   },
 });
 
