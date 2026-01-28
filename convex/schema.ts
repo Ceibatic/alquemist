@@ -462,6 +462,9 @@ export default defineSchema({
     canopy_area_m2: v.optional(v.number()),
     cultivation_area_m2: v.optional(v.number()),
 
+    // Climate
+    climate_zone: v.optional(v.string()), // tropical/subtropical/temperate
+
     // Technical Specifications
     facility_specifications: v.optional(v.object({})),
     climate_monitoring: v.boolean(), // Default: false
@@ -490,6 +493,16 @@ export default defineSchema({
     .index("by_license_number", ["license_number"])
     .index("by_status", ["status"])
     .index("by_regional_code", ["regional_code"]),
+
+  facility_users: defineTable({
+    facility_id: v.id("facilities"),
+    user_id: v.id("users"),
+    role_id: v.optional(v.id("roles")),
+    created_at: v.number(),
+  })
+    .index("by_facility", ["facility_id"])
+    .index("by_user", ["user_id"])
+    .index("by_facility_user", ["facility_id", "user_id"]),
 
   areas: defineTable({
     facility_id: v.id("facilities"),

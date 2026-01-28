@@ -121,6 +121,7 @@ export async function createFacility(
       latitude: validated.latitude,
       longitude: validated.longitude,
       primary_crop_type_ids: cropTypeIds,
+      climate_zone: validated.climateZone,
       status: 'active',
     });
 

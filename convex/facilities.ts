@@ -5,6 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
  * List facilities for a company
@@ -17,6 +18,9 @@ export const list = query({
     offset: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     let facilitiesQuery = ctx.db.query("facilities")
       .withIndex("by_company", (q) => q.eq("company_id", args.companyId));
 
@@ -48,6 +52,9 @@ export const get = query({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const facility = await ctx.db.get(args.id);
 
     // Verify company ownership
@@ -64,7 +71,7 @@ export const get = query({
  */
 export const create = mutation({
   args: {
-    company_id: v.id("companies"), // Convex company ID
+    company_id: v.id("companies"),
 
     // Required
     name: v.string(),
@@ -88,42 +95,40 @@ export const create = mutation({
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
     altitude_meters: v.optional(v.number()),
+    climate_zone: v.optional(v.string()),
 
     total_area_m2: v.optional(v.number()),
     canopy_area_m2: v.optional(v.number()),
     cultivation_area_m2: v.optional(v.number()),
 
     status: v.optional(v.string()),
-
-    // Skip limit validation for onboarding (first facility)
-    skipLimitValidation: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const now = Date.now();
 
-    // Validate facility limit (unless skipped for onboarding)
-    if (!args.skipLimitValidation) {
-      const company = await ctx.db.get(args.company_id);
-      if (!company) {
-        throw new Error("Empresa no encontrada");
-      }
+    // Validate facility limit — auto-detect if this is the first facility
+    const company = await ctx.db.get(args.company_id);
+    if (!company) {
+      throw new Error("Empresa no encontrada");
+    }
 
-      // Count existing active facilities
-      const existingFacilities = await ctx.db
-        .query("facilities")
-        .withIndex("by_company", (q) => q.eq("company_id", args.company_id))
-        .filter((q) => q.neq(q.field("status"), "inactive"))
-        .collect();
+    const existingFacilities = await ctx.db
+      .query("facilities")
+      .withIndex("by_company", (q) => q.eq("company_id", args.company_id))
+      .filter((q) => q.neq(q.field("status"), "inactive"))
+      .collect();
 
-      const activeFacilityCount = existingFacilities.length;
-      const maxFacilities = company.max_facilities || 1;
+    const activeFacilityCount = existingFacilities.length;
+    const maxFacilities = company.max_facilities || 1;
 
-      if (activeFacilityCount >= maxFacilities) {
-        throw new Error(
-          `Has alcanzado el límite de ${maxFacilities} instalación(es) de tu plan. ` +
-          `Actualiza tu suscripción para agregar más instalaciones.`
-        );
-      }
+    if (activeFacilityCount >= maxFacilities) {
+      throw new Error(
+        `Has alcanzado el límite de ${maxFacilities} instalación(es) de tu plan. ` +
+        `Actualiza tu suscripción para agregar más instalaciones.`
+      );
     }
 
     // Check license number uniqueness
@@ -158,6 +163,7 @@ export const create = mutation({
       latitude: args.latitude,
       longitude: args.longitude,
       altitude_meters: args.altitude_meters,
+      climate_zone: args.climate_zone,
 
       total_area_m2: args.total_area_m2,
       canopy_area_m2: args.canopy_area_m2,
@@ -171,6 +177,14 @@ export const create = mutation({
       status: args.status || "active",
       created_at: now,
       updated_at: now,
+    });
+
+    // Add creator to facility_users
+    await ctx.db.insert("facility_users", {
+      facility_id: facilityId,
+      user_id: userId,
+      role_id: undefined,
+      created_at: now,
     });
 
     return facilityId;
@@ -229,6 +243,9 @@ export const update = mutation({
     critical_alert_email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const { id, companyId, gps_latitude, gps_longitude, ...updates } = args;
 
     // Verify company ownership
@@ -265,6 +282,9 @@ export const remove = mutation({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     // Verify company ownership
     const facility = await ctx.db.get(args.id);
     if (!facility || facility.company_id !== args.companyId) {
@@ -289,6 +309,9 @@ export const checkLicenseAvailability = query({
     licenseNumber: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const existingFacility = await ctx.db
       .query("facilities")
       .withIndex("by_license_number", (q) => q.eq("license_number", args.licenseNumber))
@@ -312,6 +335,9 @@ export const linkCultivars = mutation({
     cultivarIds: v.array(v.id("cultivars")),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     // Verify facility exists and company ownership
     const facility = await ctx.db.get(args.facilityId);
     if (!facility || facility.company_id !== args.companyId) {
@@ -355,11 +381,12 @@ export const getFacilitiesByCompany = query({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    // Direct implementation instead of calling list()
-    let facilitiesQuery = ctx.db.query("facilities")
-      .withIndex("by_company", (q) => q.eq("company_id", args.companyId));
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
 
-    const allFacilities = await facilitiesQuery.collect();
+    const allFacilities = await ctx.db.query("facilities")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .collect();
 
     return allFacilities;
   },
@@ -367,7 +394,6 @@ export const getFacilitiesByCompany = query({
 
 /**
  * Get facility by ID
- * Wrapper for Bubble.io API compatibility (Phase 1 Module 3)
  */
 export const getById = query({
   args: {
@@ -375,10 +401,11 @@ export const getById = query({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    // Direct implementation instead of calling get()
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const facility = await ctx.db.get(args.facilityId);
 
-    // Verify company ownership
     if (!facility || facility.company_id !== args.companyId) {
       return null;
     }
@@ -400,13 +427,15 @@ export const getSettings = query({
     facilityId: v.id("facilities"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const facility = await ctx.db.get(args.facilityId);
     if (!facility) {
       throw new Error("Facility not found");
     }
 
     // Return facility settings
-    // Note: These settings are stored directly in the facility record
     return {
       facilityId: facility._id,
       timezone: facility.timezone || "America/Bogota",
@@ -440,6 +469,9 @@ export const updateSettings = mutation({
     overdueActivityAlertEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const now = Date.now();
 
     // Verify facility exists
