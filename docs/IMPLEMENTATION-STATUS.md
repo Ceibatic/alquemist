@@ -210,7 +210,7 @@ Panel exclusivo para el equipo de Ceibatic con:
 | Frontend | Next.js 15 + React 19 | ✅ |
 | Styling | Tailwind CSS v4 + shadcn/ui | ✅ |
 | Backend | Convex | ✅ |
-| Auth | Custom (email/password) | ✅ |
+| Auth | Convex Auth (Password + Email OTP) | ✅ |
 | Email | Resend | ✅ |
 | AI | Claude API (calidad) | ✅ |
 
@@ -255,7 +255,7 @@ alquemist/
 
 ### Tablas en Base de Datos
 - Total: 29 tablas
-- Core: companies, users, roles, sessions
+- Core: companies, users, roles (+ authTables de Convex Auth)
 - Production: production_orders, order_phases, batches, plants
 - Configuration: facilities, areas, cultivars, suppliers
 - Activities: activities, scheduled_activities
@@ -320,4 +320,5 @@ alquemist/
 | Dic 2024 | Completado Phase 4 (Production Orders, Batches) |
 | Nov 2024 | Completado Phase 3 (Templates, Quality Checks) |
 | Nov 2024 | Completado Phase 2 (CRUDs basicos) |
+| Ene 2026 | Migracion auth: custom → Convex Auth (Password + Email OTP via Resend) |
 | Oct 2024 | Completado Phase 1 (Onboarding) |

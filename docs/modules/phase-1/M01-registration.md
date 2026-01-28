@@ -49,14 +49,13 @@ El modulo de Registro permite a nuevos usuarios crear una cuenta en Alquemist. I
 - [ ] Boton deshabilitado si formulario invalido
 - [ ] Estado de carga en boton durante submit
 
-**Escribe:** `auth.register({ email, password, firstName, lastName, phone? })`
+**Escribe:** `signIn("password", { email, password, firstName, lastName, phone, flow: "signUp" })` via Convex Auth `useAuthActions()`
 
-**Validaciones backend:**
+**Validaciones backend (Convex Auth Password provider):**
 - Email formato valido
 - Email no registrado previamente
-- Password cumple requisitos de seguridad
-- Genera token de verificacion de 6 digitos
-- Token expira en 24 horas
+- Password cumple requisitos (8+ chars, mayuscula, minuscula, numero, especial)
+- Convex Auth envia OTP de 6 digitos via Resend (`convex/ResendOTP.ts`)
 
 **Componentes:** [signup-form.tsx](components/auth/signup-form.tsx)
 
@@ -122,13 +121,11 @@ El modulo de Registro permite a nuevos usuarios crear una cuenta en Alquemist. I
 - [ ] Redirige a `/company-setup` al verificar exitosamente
 - [ ] Toast de exito "Email verificado correctamente"
 
-**Escribe:** `auth.verifyEmail({ email, token })`
+**Escribe:** `signIn("password", { email, code, flow: "email-verification" })` via Convex Auth
 
-**Validaciones backend:**
-- Token existe y pertenece al usuario
-- Token no ha expirado (< 24 horas)
-- Actualiza email_verified = true
-- Limpia token de verificacion
+**Validaciones backend (Convex Auth):**
+- Codigo OTP valido y no expirado
+- Marca email como verificado internamente
 
 **Componentes:** [verify-email-form.tsx](components/auth/verify-email-form.tsx)
 
@@ -147,12 +144,10 @@ El modulo de Registro permite a nuevos usuarios crear una cuenta en Alquemist. I
 - [ ] Toast de confirmacion "Codigo reenviado a [email]"
 - [ ] Limite de 5 reenvios por hora
 
-**Escribe:** `auth.resendVerification({ email })`
+**Escribe:** `signIn("password", { email, flow: "signUp" })` (re-trigger OTP via Convex Auth)
 
 **Validaciones backend:**
-- Usuario existe y no esta verificado
-- Rate limiting: max 5 por hora
-- Genera nuevo token, invalida anterior
+- Convex Auth genera nuevo codigo OTP y envia via Resend
 
 **Componentes:** [verify-email-form.tsx](components/auth/verify-email-form.tsx)
 
@@ -183,14 +178,14 @@ El modulo de Registro permite a nuevos usuarios crear una cuenta en Alquemist. I
 | Campo | Tipo | Descripcion |
 |-------|------|-------------|
 | `email` | `string` | Email unico del usuario |
-| `password_hash` | `string` | Hash bcrypt de la contrasena |
 | `first_name` | `string?` | Nombre |
 | `last_name` | `string?` | Apellido |
 | `phone` | `string?` | Telefono opcional |
 | `email_verified` | `boolean` | Estado de verificacion |
-| `email_verification_token` | `string?` | Token de 6 digitos |
-| `token_expires_at` | `number?` | Timestamp de expiracion |
+| `onboarding_completed` | `boolean?` | Onboarding finalizado |
 | `created_at` | `number` | Timestamp de creacion |
+
+> **Nota:** Password hashing y tokens de verificacion son manejados internamente por Convex Auth (`authTables`). No se almacenan en la tabla `users`.
 
 ---
 
@@ -229,17 +224,14 @@ El modulo de Registro permite a nuevos usuarios crear una cuenta en Alquemist. I
 
 ## API Backend
 
-### Mutations
-| Funcion | Parametros | Retorna |
-|---------|------------|---------|
-| `register` | `email, password, firstName, lastName, phone?` | `{ userId, email }` |
-| `verifyEmail` | `email, token` | `{ success, userId }` |
-| `resendVerification` | `email` | `{ success }` |
+> Auth manejado por Convex Auth (`useAuthActions().signIn("password", { ... })`). No hay mutations custom de auth.
 
 ### Queries
 | Funcion | Parametros | Retorna |
 |---------|------------|---------|
-| `checkEmailExists` | `email` | `boolean` |
+| `registration.checkEmailAvailability` | `email` | `{ available, message? }` |
+| `users.getCurrentUser` | (auth context) | User completo con role/company |
+| `users.getOnboardingStatus` | (auth context) | `{ hasCompany, onboardingCompleted }` |
 
 ---
 
