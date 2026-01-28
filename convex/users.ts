@@ -663,7 +663,11 @@ export const updatePreferences = mutation({
     if (args.locale !== undefined) {
       const validLocales = ["es", "en"];
       if (!validLocales.includes(args.locale)) {
-        throw new ConvexError("Invalid locale. Must be 'es' or 'en'");
+        throw new ConvexError({
+          message: "El idioma debe ser 'es' o 'en'",
+          type: "validation",
+          field: "locale",
+        });
       }
       updates.locale = args.locale;
     }
@@ -672,7 +676,11 @@ export const updatePreferences = mutation({
     if (args.theme !== undefined) {
       const validThemes = ["light", "dark", "system"];
       if (!validThemes.includes(args.theme)) {
-        throw new ConvexError("Invalid theme. Must be 'light', 'dark', or 'system'");
+        throw new ConvexError({
+          message: "El tema debe ser 'light', 'dark' o 'system'",
+          type: "validation",
+          field: "theme",
+        });
       }
       updates.theme = args.theme;
     }
@@ -681,7 +689,11 @@ export const updatePreferences = mutation({
     if (args.date_format !== undefined) {
       const validFormats = ["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"];
       if (!validFormats.includes(args.date_format)) {
-        throw new ConvexError("Invalid date format. Must be 'DD/MM/YYYY', 'MM/DD/YYYY', or 'YYYY-MM-DD'");
+        throw new ConvexError({
+          message: "El formato de fecha debe ser 'DD/MM/YYYY', 'MM/DD/YYYY' o 'YYYY-MM-DD'",
+          type: "validation",
+          field: "date_format",
+        });
       }
       updates.date_format = args.date_format;
     }
@@ -690,7 +702,11 @@ export const updatePreferences = mutation({
     if (args.time_format !== undefined) {
       const validFormats = ["12h", "24h"];
       if (!validFormats.includes(args.time_format)) {
-        throw new ConvexError("Invalid time format. Must be '12h' or '24h'");
+        throw new ConvexError({
+          message: "El formato de hora debe ser '12h' o '24h'",
+          type: "validation",
+          field: "time_format",
+        });
       }
       updates.time_format = args.time_format;
     }
@@ -705,18 +721,30 @@ export const updatePreferences = mutation({
       // Verify facility exists
       const facility = await ctx.db.get(args.default_facility_id);
       if (!facility) {
-        throw new ConvexError("Facility not found");
+        throw new ConvexError({
+          message: "Instalación no encontrada",
+          type: "validation",
+          field: "default_facility_id",
+        });
       }
 
       // Verify facility belongs to user's company
       if (facility.company_id !== user.company_id) {
-        throw new ConvexError("Facility does not belong to your company");
+        throw new ConvexError({
+          message: "La instalación no pertenece a tu compañía",
+          type: "validation",
+          field: "default_facility_id",
+        });
       }
 
       // Verify user has access to this facility
       const hasAccess = user.accessible_facility_ids?.includes(args.default_facility_id);
       if (!hasAccess) {
-        throw new ConvexError("You do not have access to this facility");
+        throw new ConvexError({
+          message: "No tienes acceso a esta instalación",
+          type: "validation",
+          field: "default_facility_id",
+        });
       }
 
       updates.primary_facility_id = args.default_facility_id;
@@ -797,7 +825,11 @@ export const updateNotificationSettings = mutation({
       // Validate HH:MM format
       const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
       if (!timeRegex.test(args.quiet_hours_start)) {
-        throw new ConvexError("Invalid quiet_hours_start format. Must be HH:MM (e.g., 22:00)");
+        throw new ConvexError({
+          message: "El formato de hora de inicio debe ser HH:MM (ej: 22:00)",
+          type: "validation",
+          field: "quiet_hours_start",
+        });
       }
       updates.quiet_hours_start = args.quiet_hours_start;
     }
@@ -806,7 +838,11 @@ export const updateNotificationSettings = mutation({
       // Validate HH:MM format
       const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
       if (!timeRegex.test(args.quiet_hours_end)) {
-        throw new ConvexError("Invalid quiet_hours_end format. Must be HH:MM (e.g., 08:00)");
+        throw new ConvexError({
+          message: "El formato de hora de fin debe ser HH:MM (ej: 08:00)",
+          type: "validation",
+          field: "quiet_hours_end",
+        });
       }
       updates.quiet_hours_end = args.quiet_hours_end;
     }
@@ -825,7 +861,11 @@ export const updateNotificationSettings = mutation({
       // Allow wrap-around (e.g., 22:00 to 08:00 next day)
       // Only error if they're the same time
       if (startMinutes === endMinutes) {
-        throw new ConvexError("Quiet hours start and end times cannot be the same");
+        throw new ConvexError({
+          message: "La hora de inicio y fin del modo silencioso no pueden ser iguales",
+          type: "validation",
+          field: "quiet_hours_start",
+        });
       }
     }
 
@@ -890,14 +930,22 @@ export const updateProfile = mutation({
     // Validate first_name
     if (args.first_name !== undefined) {
       if (args.first_name.trim().length < 2) {
-        throw new ConvexError("El nombre debe tener al menos 2 caracteres");
+        throw new ConvexError({
+          message: "El nombre debe tener al menos 2 caracteres",
+          type: "validation",
+          field: "first_name",
+        });
       }
     }
 
     // Validate last_name
     if (args.last_name !== undefined) {
       if (args.last_name.trim().length < 2) {
-        throw new ConvexError("El apellido debe tener al menos 2 caracteres");
+        throw new ConvexError({
+          message: "El apellido debe tener al menos 2 caracteres",
+          type: "validation",
+          field: "last_name",
+        });
       }
     }
 
@@ -905,7 +953,11 @@ export const updateProfile = mutation({
     if (args.theme !== undefined) {
       const validThemes = ["light", "dark", "system"];
       if (!validThemes.includes(args.theme)) {
-        throw new ConvexError("El tema debe ser 'light', 'dark' o 'system'");
+        throw new ConvexError({
+          message: "El tema debe ser 'light', 'dark' o 'system'",
+          type: "validation",
+          field: "theme",
+        });
       }
     }
 
@@ -913,7 +965,11 @@ export const updateProfile = mutation({
     if (args.date_format !== undefined) {
       const validFormats = ["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"];
       if (!validFormats.includes(args.date_format)) {
-        throw new ConvexError("El formato de fecha debe ser 'DD/MM/YYYY', 'MM/DD/YYYY' o 'YYYY-MM-DD'");
+        throw new ConvexError({
+          message: "El formato de fecha debe ser 'DD/MM/YYYY', 'MM/DD/YYYY' o 'YYYY-MM-DD'",
+          type: "validation",
+          field: "date_format",
+        });
       }
     }
 
@@ -921,7 +977,11 @@ export const updateProfile = mutation({
     if (args.time_format !== undefined) {
       const validFormats = ["12h", "24h"];
       if (!validFormats.includes(args.time_format)) {
-        throw new ConvexError("El formato de hora debe ser '12h' o '24h'");
+        throw new ConvexError({
+          message: "El formato de hora debe ser '12h' o '24h'",
+          type: "validation",
+          field: "time_format",
+        });
       }
     }
 
@@ -929,7 +989,11 @@ export const updateProfile = mutation({
     if (args.locale !== undefined) {
       const validLocales = ["es", "en"];
       if (!validLocales.includes(args.locale)) {
-        throw new ConvexError("El idioma debe ser 'es' o 'en'");
+        throw new ConvexError({
+          message: "El idioma debe ser 'es' o 'en'",
+          type: "validation",
+          field: "locale",
+        });
       }
     }
 
@@ -937,7 +1001,11 @@ export const updateProfile = mutation({
     if (args.quiet_hours_start !== undefined) {
       const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
       if (!timeRegex.test(args.quiet_hours_start)) {
-        throw new ConvexError("El formato de hora de inicio debe ser HH:MM (ej: 22:00)");
+        throw new ConvexError({
+          message: "El formato de hora de inicio debe ser HH:MM (ej: 22:00)",
+          type: "validation",
+          field: "quiet_hours_start",
+        });
       }
     }
 
@@ -945,7 +1013,11 @@ export const updateProfile = mutation({
     if (args.quiet_hours_end !== undefined) {
       const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
       if (!timeRegex.test(args.quiet_hours_end)) {
-        throw new ConvexError("El formato de hora de fin debe ser HH:MM (ej: 08:00)");
+        throw new ConvexError({
+          message: "El formato de hora de fin debe ser HH:MM (ej: 08:00)",
+          type: "validation",
+          field: "quiet_hours_end",
+        });
       }
     }
 
@@ -960,7 +1032,11 @@ export const updateProfile = mutation({
       const endMinutes = endHour * 60 + endMin;
 
       if (startMinutes === endMinutes) {
-        throw new ConvexError("La hora de inicio y fin del modo silencioso no pueden ser iguales");
+        throw new ConvexError({
+          message: "La hora de inicio y fin del modo silencioso no pueden ser iguales",
+          type: "validation",
+          field: "quiet_hours_start",
+        });
       }
     }
 
@@ -1025,7 +1101,11 @@ export const changePassword = action({
   handler: async (ctx, args) => {
     // 1. Validate that new password is different from current
     if (args.currentPassword === args.newPassword) {
-      throw new ConvexError("La nueva contraseña debe ser diferente a la actual");
+      throw new ConvexError({
+        message: "La nueva contraseña debe ser diferente a la actual",
+        type: "validation",
+        field: "new_password",
+      });
     }
 
     // 2. Validate new password requirements
@@ -1043,6 +1123,14 @@ export const changePassword = action({
     );
 
     if (!result.success) {
+      // Check if it's an incorrect password error
+      if (result.error?.includes("incorrecta") || result.error?.includes("incorrect")) {
+        throw new ConvexError({
+          message: result.error || "La contraseña actual es incorrecta",
+          type: "validation",
+          field: "current_password",
+        });
+      }
       throw new ConvexError(result.error || "Error al cambiar la contraseña");
     }
 
@@ -1058,19 +1146,39 @@ export const changePassword = action({
  */
 function validatePasswordRequirements(password: string): void {
   if (password.length < 8) {
-    throw new ConvexError("La contraseña debe tener al menos 8 caracteres");
+    throw new ConvexError({
+      message: "La contraseña debe tener al menos 8 caracteres",
+      type: "validation",
+      field: "new_password",
+    });
   }
   if (!/[A-Z]/.test(password)) {
-    throw new ConvexError("La contraseña debe incluir al menos una mayúscula");
+    throw new ConvexError({
+      message: "La contraseña debe incluir al menos una mayúscula",
+      type: "validation",
+      field: "new_password",
+    });
   }
   if (!/[a-z]/.test(password)) {
-    throw new ConvexError("La contraseña debe incluir al menos una minúscula");
+    throw new ConvexError({
+      message: "La contraseña debe incluir al menos una minúscula",
+      type: "validation",
+      field: "new_password",
+    });
   }
   if (!/[0-9]/.test(password)) {
-    throw new ConvexError("La contraseña debe incluir al menos un número");
+    throw new ConvexError({
+      message: "La contraseña debe incluir al menos un número",
+      type: "validation",
+      field: "new_password",
+    });
   }
   if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    throw new ConvexError("La contraseña debe incluir al menos un carácter especial");
+    throw new ConvexError({
+      message: "La contraseña debe incluir al menos un carácter especial",
+      type: "validation",
+      field: "new_password",
+    });
   }
 }
 

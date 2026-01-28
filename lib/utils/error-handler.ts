@@ -13,6 +13,64 @@ export interface ParsedError {
 }
 
 /**
+ * Field name mappings from backend field names to frontend form field names
+ */
+const FIELD_NAME_MAPPINGS: Record<string, string> = {
+  first_name: 'first_name',
+  last_name: 'last_name',
+  phone: 'phone',
+  identification_type: 'identification_type',
+  identification_number: 'identification_number',
+  locale: 'locale',
+  timezone: 'timezone',
+  date_format: 'date_format',
+  time_format: 'time_format',
+  theme: 'theme',
+  email_notifications: 'email_notifications',
+  sms_notifications: 'sms_notifications',
+  current_password: 'current_password',
+  new_password: 'new_password',
+  confirm_new_password: 'confirm_new_password',
+  default_facility_id: 'default_facility_id',
+  quiet_hours_start: 'quiet_hours_start',
+  quiet_hours_end: 'quiet_hours_end',
+};
+
+/**
+ * Attempts to extract field name from error message
+ */
+function extractFieldFromMessage(message: string): string | undefined {
+  const lowerMessage = message.toLowerCase();
+
+  // Common field name patterns in error messages
+  const fieldPatterns: Array<{ pattern: RegExp; field: string }> = [
+    { pattern: /\bnombre\b/i, field: 'first_name' },
+    { pattern: /\bapellido\b/i, field: 'last_name' },
+    { pattern: /\bteléfono\b|\btelefono\b|\bphone\b/i, field: 'phone' },
+    { pattern: /\btema\b|\btheme\b/i, field: 'theme' },
+    { pattern: /\bformato de fecha\b|date.?format/i, field: 'date_format' },
+    { pattern: /\bformato de hora\b|time.?format/i, field: 'time_format' },
+    { pattern: /\bidioma\b|locale/i, field: 'locale' },
+    { pattern: /\bzona horaria\b|timezone/i, field: 'timezone' },
+    { pattern: /\bcontraseña actual\b|current.?password/i, field: 'current_password' },
+    { pattern: /\bnueva contraseña\b|new.?password/i, field: 'new_password' },
+    { pattern: /\bconfirmar.*contraseña\b|confirm.*password/i, field: 'confirm_new_password' },
+    { pattern: /\bidentificación tipo\b|identification.?type/i, field: 'identification_type' },
+    { pattern: /\bidentificación número\b|identification.?number/i, field: 'identification_number' },
+    { pattern: /\bhora de inicio\b|start.?time/i, field: 'quiet_hours_start' },
+    { pattern: /\bhora de fin\b|end.?time/i, field: 'quiet_hours_end' },
+  ];
+
+  for (const { pattern, field } of fieldPatterns) {
+    if (pattern.test(message)) {
+      return field;
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * Parses Convex errors to extract type, message, and field information
  *
  * @param error - The error object caught from a Convex mutation/query
@@ -42,21 +100,24 @@ export function parseConvexError(error: any): ParsedError {
   if (error?.data) {
     const { type, message, field } = error.data;
 
+    // Map backend field name to frontend field name
+    const mappedField = field ? FIELD_NAME_MAPPINGS[field] || field : undefined;
+
     // If explicitly typed as validation
     if (type === 'validation') {
       return {
         type: 'validation',
         message: message || 'Error de validación. Verifica los datos ingresados.',
-        field,
+        field: mappedField,
       };
     }
 
     // If error has a field, it's likely a validation error
-    if (field) {
+    if (mappedField) {
       return {
         type: 'validation',
         message: message || 'Error de validación. Verifica los datos ingresados.',
-        field,
+        field: mappedField,
       };
     }
 
@@ -71,26 +132,33 @@ export function parseConvexError(error: any): ParsedError {
 
   // Check error message for validation patterns
   if (error?.message) {
-    const message = error.message.toLowerCase();
+    const message = error.message;
+    const lowerMessage = message.toLowerCase();
+
+    // Try to extract field name from error message
+    const extractedField = extractFieldFromMessage(message);
 
     // Validation error patterns
     if (
-      message.includes('invalid') ||
-      message.includes('required') ||
-      message.includes('must be') ||
-      message.includes('validation')
+      lowerMessage.includes('invalid') ||
+      lowerMessage.includes('required') ||
+      lowerMessage.includes('must be') ||
+      lowerMessage.includes('debe tener') ||
+      lowerMessage.includes('debe ser') ||
+      lowerMessage.includes('validation')
     ) {
       return {
         type: 'validation',
         message: error.message,
+        field: extractedField,
       };
     }
 
     // Server error patterns
     if (
-      message.includes('internal server') ||
-      message.includes('server error') ||
-      message.includes('database')
+      lowerMessage.includes('internal server') ||
+      lowerMessage.includes('server error') ||
+      lowerMessage.includes('database')
     ) {
       return {
         type: 'server',
@@ -102,6 +170,7 @@ export function parseConvexError(error: any): ParsedError {
     return {
       type: 'server',
       message: error.message,
+      field: extractedField,
     };
   }
 
