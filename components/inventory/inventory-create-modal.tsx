@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
 import {
@@ -27,17 +27,24 @@ export function InventoryCreateModal({
   facilityId,
 }: InventoryCreateModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const createInventoryItem = useMutation(api.inventory.create);
+  const user = useQuery(api.users.getCurrentUser);
+  const logInventoryMovement = useMutation(api.activities.logInventoryMovement);
 
   const handleSubmit = async (data: CreateInventoryItemInput) => {
     setIsSubmitting(true);
 
     try {
-      await createInventoryItem({
+      if (!user?.userId) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      const result = await logInventoryMovement({
+        movement_type: 'receipt',
         product_id: data.product_id as any,
         area_id: data.area_id as any,
+        facility_id: facilityId as any,
         supplier_id: data.supplier_id as any,
-        quantity_available: data.quantity_available,
+        quantity: data.quantity_available,
         quantity_unit: data.quantity_unit,
         batch_number: data.batch_number,
         supplier_lot_number: data.supplier_lot_number,
@@ -46,7 +53,8 @@ export function InventoryCreateModal({
         expiration_date: data.expiration_date,
         purchase_price: data.purchase_price,
         cost_per_unit: data.cost_per_unit,
-        lot_status: 'available',
+        reason: 'Recepción inicial de inventario',
+        performed_by: user.userId,
       });
 
       toast.success('Item de inventario creado exitosamente');
