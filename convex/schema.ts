@@ -383,6 +383,19 @@ export default defineSchema({
     .index("by_name", ["name"])
     .index("by_is_active", ["is_active"]),
 
+  units_of_measure: defineTable({
+    name: v.string(), // e.g., "kilogram", "gram", "liter"
+    symbol: v.string(), // e.g., "kg", "g", "L"
+    category: v.string(), // "weight", "volume", "area", "quantity", "time"
+    base_unit_symbol: v.optional(v.string()), // symbol of the base unit in this category
+    conversion_factor: v.optional(v.number()), // multiplier to convert to base unit
+    is_active: v.boolean(),
+    created_at: v.number(),
+  })
+    .index("by_category", ["category"])
+    .index("by_symbol", ["symbol"])
+    .index("by_is_active", ["is_active"]),
+
   cultivars: defineTable({
     company_id: v.id("companies"), // Owner company
     name: v.string(),
