@@ -15,12 +15,18 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { PlantsTab } from '@/components/plants';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { BatchMoveModal } from '@/components/batches/batch-move-modal';
-import { BatchSplitWizard } from '@/components/batches/batch-split-wizard';
-import { BatchLossModal } from '@/components/batches/batch-loss-modal';
-import { BatchHarvestWizard } from '@/components/batches/batch-harvest-wizard';
-import { BatchMergeModal } from '@/components/batches/batch-merge-modal';
-import { BatchArchiveModal } from '@/components/batches/batch-archive-modal';
+import {
+  BatchMoveModal,
+  BatchSplitWizard,
+  BatchLossModal,
+  BatchHarvestWizard,
+  BatchMergeModal,
+  BatchArchiveModal,
+  BatchActivitiesTab,
+  BatchQualityChecksTab,
+  BatchGenealogyTab,
+  BatchNotesTab,
+} from '@/components/batches';
 import {
   Layers,
   Leaf,
@@ -34,6 +40,10 @@ import {
   Scissors,
   Merge,
   Archive,
+  Activity,
+  ClipboardCheck,
+  GitBranch,
+  FileText,
 } from 'lucide-react';
 
 interface PageProps {
@@ -250,6 +260,34 @@ export default function BatchDetailPage({ params }: PageProps) {
               </TabsTrigger>
             )}
             <TabsTrigger
+              value="activities"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <Activity className="h-4 w-4" />
+              Actividades
+            </TabsTrigger>
+            <TabsTrigger
+              value="quality"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              Calidad
+            </TabsTrigger>
+            <TabsTrigger
+              value="genealogy"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <GitBranch className="h-4 w-4" />
+              Genealogia
+            </TabsTrigger>
+            <TabsTrigger
+              value="notes"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <FileText className="h-4 w-4" />
+              Notas
+            </TabsTrigger>
+            <TabsTrigger
               value="movements"
               className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
             >
@@ -416,6 +454,40 @@ export default function BatchDetailPage({ params }: PageProps) {
             <PlantsTab batchId={batchId} userId={userId} />
           </TabsContent>
         )}
+
+        {/* Activities Tab */}
+        <TabsContent value="activities" className="mt-6">
+          <BatchActivitiesTab batchId={batchId} />
+        </TabsContent>
+
+        {/* Quality Checks Tab */}
+        <TabsContent value="quality" className="mt-6">
+          <BatchQualityChecksTab batchId={batchId} />
+        </TabsContent>
+
+        {/* Genealogy Tab */}
+        <TabsContent value="genealogy" className="mt-6">
+          <BatchGenealogyTab
+            batch={{
+              _id: batchId,
+              parent_batch_id: batch.parent_batch_id,
+              merged_into_batch_id: batch.merged_into_batch_id,
+              batch_code: batch.batch_code,
+              company_id: batch.company_id,
+            }}
+          />
+        </TabsContent>
+
+        {/* Notes Tab */}
+        <TabsContent value="notes" className="mt-6">
+          <BatchNotesTab
+            batch={{
+              _id: batchId,
+              notes: batch.notes,
+              batch_code: batch.batch_code,
+            }}
+          />
+        </TabsContent>
 
         {/* Movements Tab */}
         <TabsContent value="movements" className="mt-6">
