@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Edit,
   Factory,
@@ -21,6 +22,7 @@ import {
   BarChart3,
   Star,
   RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { FACILITY_TYPES, LICENSE_TYPES } from '@/lib/validations/facilities';
@@ -128,6 +130,13 @@ export default function FacilityDetailPage() {
     LICENSE_TYPES.find((t) => t.value === facility.license_type)?.label ||
     facility.license_type ||
     'N/A';
+
+  // Calculate days until license expiry
+  const daysUntilExpiry = facility.license_expiry_date
+    ? Math.ceil((facility.license_expiry_date - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
+  const isLicenseExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+  const isLicenseExpired = daysUntilExpiry !== null && daysUntilExpiry <= 0;
 
   return (
     <div className="space-y-6">
@@ -346,6 +355,33 @@ export default function FacilityDetailPage() {
                 Información de Licencia
               </CardTitle>
             </CardHeader>
+
+            {/* Add expiry alerts here */}
+            {isLicenseExpired && (
+              <div className="px-6">
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Licencia Vencida</AlertTitle>
+                  <AlertDescription>
+                    La licencia de esta instalación venció hace {Math.abs(daysUntilExpiry!)} días.
+                    Renueva la licencia inmediatamente para continuar operando legalmente.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
+            {isLicenseExpiringSoon && (
+              <div className="px-6">
+                <Alert className="border-orange-500 bg-orange-50">
+                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                  <AlertTitle className="text-orange-900">Licencia Próxima a Vencer</AlertTitle>
+                  <AlertDescription className="text-orange-800">
+                    La licencia vencerá en {daysUntilExpiry} días. Inicia el proceso de renovación pronto.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
