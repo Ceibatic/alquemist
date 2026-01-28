@@ -27,9 +27,10 @@ export const list = query({
     const allFacilities = await facilitiesQuery.collect();
     let facilities = allFacilities;
 
-    // Filter by status if provided
-    if (args.status) {
-      facilities = facilities.filter(f => f.status === args.status);
+    // Filter by status - default to "active" if not specified
+    const statusFilter = args.status || "active";
+    if (statusFilter !== "all") {
+      facilities = facilities.filter(f => f.status === statusFilter);
     }
 
     // Apply pagination
@@ -291,17 +292,6 @@ export const remove = mutation({
       throw new Error("Facility not found or access denied");
     }
 
-    // Check if this is the only active facility for the company
-    const activeFacilities = await ctx.db
-      .query("facilities")
-      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
-      .filter((q) => q.neq(q.field("status"), "inactive"))
-      .collect();
-
-    if (activeFacilities.length === 1 && activeFacilities[0]._id === args.id) {
-      throw new Error("No puedes eliminar la última instalación de la empresa");
-    }
-
     // Check for active batches in this facility
     const activeBatches = await ctx.db
       .query("batches")
@@ -309,13 +299,32 @@ export const remove = mutation({
       .filter((q) =>
         q.or(
           q.eq(q.field("status"), "active"),
-          q.eq(q.field("status"), "planning")
+          q.eq(q.field("status"), "harvested"),
+          q.eq(q.field("status"), "split"),
+          q.eq(q.field("status"), "merged")
         )
       )
       .first();
 
     if (activeBatches) {
-      throw new Error("No puedes eliminar una instalación con lotes activos");
+      throw new Error(
+        "No puedes desactivar una instalación con lotes activos o en proceso. " +
+        "Archiva todos los lotes antes de desactivar la instalación."
+      );
+    }
+
+    // Check if this is the only active facility
+    const activeFacilities = await ctx.db
+      .query("facilities")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+
+    if (activeFacilities.length <= 1) {
+      throw new Error(
+        "No puedes desactivar tu única instalación activa. " +
+        "Crea otra instalación antes de desactivar esta."
+      );
     }
 
     // Check for active areas in this facility
