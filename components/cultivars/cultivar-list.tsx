@@ -352,15 +352,23 @@ export function CultivarList({ facilityId }: CultivarListProps) {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredCultivars.map((cultivar: any) => (
-            <CultivarCard
+            <div
               key={cultivar._id}
-              cultivar={cultivar}
-              isSystem={false}
-              cropTypeName={getCropTypeName(cultivar.crop_type_id)}
-              onView={() => handleViewCultivar(cultivar)}
-              onEdit={() => handleEditCultivar(cultivar)}
-              onDelete={() => handleDeleteCultivar(cultivar)}
-            />
+              className={
+                isDeleting && cultivarToDelete?._id === cultivar._id
+                  ? 'opacity-50 pointer-events-none'
+                  : ''
+              }
+            >
+              <CultivarCard
+                cultivar={cultivar}
+                isSystem={false}
+                cropTypeName={getCropTypeName(cultivar.crop_type_id)}
+                onView={() => handleViewCultivar(cultivar)}
+                onEdit={() => handleEditCultivar(cultivar)}
+                onDelete={() => handleDeleteCultivar(cultivar)}
+              />
+            </div>
           ))}
         </div>
       )}
