@@ -6,8 +6,10 @@
 
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
+  ...authTables,
   // ============================================================================
   // CORE SYSTEM TABLES (6)
   // ============================================================================
@@ -214,17 +216,11 @@ export default defineSchema({
     // Company & Authentication
     company_id: v.optional(v.id("companies")), // Optional during step 1
     email: v.string(),
-    password_hash: v.string(),
     email_verified: v.boolean(), // Default: false
     email_verified_at: v.optional(v.number()), // Timestamp when verified
 
-    // Email Verification (Simplified)
-    email_verification_token: v.optional(v.string()), // 6-digit token
-    token_expires_at: v.optional(v.number()), // 24-hour expiration
-
-    // Password Reset
-    password_reset_token: v.optional(v.string()), // 6-digit token
-    password_reset_expires_at: v.optional(v.number()), // 1-hour expiration
+    // Onboarding
+    onboarding_completed: v.optional(v.boolean()), // Default: false
 
     // Personal Information
     first_name: v.optional(v.string()),
@@ -273,8 +269,7 @@ export default defineSchema({
     .index("by_company", ["company_id"])
     .index("by_role", ["role_id"])
     .index("by_status", ["status"])
-    .index("by_email_verification_token", ["email_verification_token"])
-    .index("by_password_reset_token", ["password_reset_token"]),
+    .index("by_onboarding", ["onboarding_completed"]),
 
   sessions: defineTable({
     // Session Token Management (for Bubble.io API authentication)
@@ -586,6 +581,7 @@ export default defineSchema({
     .index("by_is_active", ["is_active"]),
 
   products: defineTable({
+    company_id: v.id("companies"),
     sku: v.string(), // Unique
     gtin: v.optional(v.string()),
     name: v.string(),
@@ -632,6 +628,7 @@ export default defineSchema({
     created_at: v.number(),
     updated_at: v.number(),
   })
+    .index("by_company", ["company_id"])
     .index("by_sku", ["sku"])
     .index("by_category", ["category"])
     .index("by_regulatory_registered", ["regulatory_registered"])

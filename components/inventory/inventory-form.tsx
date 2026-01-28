@@ -185,6 +185,7 @@ export function InventoryForm({
     setIsCreatingProduct(true);
     try {
       const productId = await createProduct({
+        companyId: currentCompanyId!,
         sku: data.sku,
         name: data.name,
         description: data.description || undefined,

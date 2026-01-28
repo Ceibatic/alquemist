@@ -6,7 +6,6 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/components/providers/user-provider';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,6 @@ interface ProductEditContentProps {
 export function ProductEditContent({ productId }: ProductEditContentProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const { userId } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const product = useQuery(api.products.getById, {
@@ -54,7 +52,6 @@ export function ProductEditContent({ productId }: ProductEditContentProps) {
         default_price: typeof data.default_price === 'number' ? data.default_price : undefined,
         price_unit: data.price_unit || undefined,
         // Price change tracking
-        userId: userId || undefined,
         priceChangeCategory: data.priceChangeCategory || undefined,
         priceChangeReason: data.priceChangeReason || undefined,
         priceChangeNotes: data.priceChangeNotes || undefined,

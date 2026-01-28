@@ -5,12 +5,14 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
  * List products with optional filters
  */
 export const list = query({
   args: {
+    companyId: v.id("companies"),
     category: v.optional(v.string()),
     status: v.optional(v.string()),
     search: v.optional(v.string()),
@@ -18,7 +20,9 @@ export const list = query({
     offset: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let productsQuery = ctx.db.query("products");
+    let productsQuery = ctx.db
+      .query("products")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId));
 
     // Apply category filter
     if (args.category) {
@@ -88,6 +92,7 @@ export const getById = query({
  */
 export const create = mutation({
   args: {
+    companyId: v.id("companies"),
     sku: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
@@ -118,6 +123,9 @@ export const create = mutation({
     price_unit: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const now = Date.now();
 
     // Check if SKU already exists
@@ -139,6 +147,7 @@ export const create = mutation({
     }
 
     const productId = await ctx.db.insert("products", {
+      company_id: args.companyId,
       sku: args.sku,
       gtin: args.gtin,
       name: args.name,
@@ -203,12 +212,14 @@ export const update = mutation({
     organic_cert_number: v.optional(v.string()),
     status: v.optional(v.string()),
     // Price history tracking (optional)
-    userId: v.optional(v.id("users")),
     priceChangeReason: v.optional(v.string()),
     priceChangeCategory: v.optional(v.string()),
     priceChangeNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const now = Date.now();
 
     // Verify product exists
@@ -230,7 +241,7 @@ export const update = mutation({
       args.default_price !== undefined &&
       args.default_price !== product.default_price;
 
-    if (priceChanged && args.userId) {
+    if (priceChanged) {
       await ctx.db.insert("product_price_history", {
         product_id: args.productId,
         old_price: product.default_price,
@@ -239,7 +250,7 @@ export const update = mutation({
         change_type: product.default_price === undefined ? "initial" : "update",
         change_reason: args.priceChangeReason,
         change_category: args.priceChangeCategory,
-        changed_by: args.userId,
+        changed_by: userId,
         changed_at: now,
         notes: args.priceChangeNotes,
       });
@@ -292,6 +303,9 @@ export const remove = mutation({
     productId: v.id("products"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const now = Date.now();
 
     // Verify product exists
@@ -355,15 +369,16 @@ export const remove = mutation({
  */
 export const getByCategory = query({
   args: {
+    companyId: v.id("companies"),
     category: v.string(),
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    let productsQuery = ctx.db
+    const products = await ctx.db
       .query("products")
-      .withIndex("by_category", (q) => q.eq("category", args.category));
-
-    const products = await productsQuery.collect();
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .filter((q) => q.eq(q.field("category"), args.category))
+      .collect();
 
     // Filter by status if provided
     if (args.status) {
@@ -379,6 +394,7 @@ export const getByCategory = query({
  */
 export const generateSku = query({
   args: {
+    companyId: v.id("companies"),
     category: v.string(),
     prefix: v.optional(v.string()),
   },
@@ -393,18 +409,19 @@ export const generateSku = query({
       container: "CON",
       tool: "HER",
       clone: "CLO",
-      seedling: "PLN",
+      seedling: "PLT",
       mother_plant: "MAD",
-      plant_material: "VEG",
+      plant_material: "MAT",
       other: "OTR",
     };
 
     const prefix = args.prefix || categoryPrefixes[args.category] || "PRD";
 
-    // Get count of products with this prefix
+    // Get count of products with this category in the company
     const products = await ctx.db
       .query("products")
-      .withIndex("by_category", (q) => q.eq("category", args.category))
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .filter((q) => q.eq(q.field("category"), args.category))
       .collect();
 
     const nextNumber = products.length + 1;
@@ -466,10 +483,12 @@ export const recordPriceChange = mutation({
     changeReason: v.optional(v.string()),
     changeCategory: v.optional(v.string()), // market_adjustment/supplier_change/inflation/promotion/error_correction
     notes: v.optional(v.string()),
-    userId: v.id("users"),
     effectiveDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const now = Date.now();
 
     // Get current product
@@ -487,7 +506,7 @@ export const recordPriceChange = mutation({
       change_type: args.changeType,
       change_reason: args.changeReason,
       change_category: args.changeCategory,
-      changed_by: args.userId,
+      changed_by: userId,
       changed_at: now,
       notes: args.notes,
       effective_date: args.effectiveDate,

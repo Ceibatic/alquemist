@@ -28,6 +28,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFacility } from '@/components/providers/facility-provider';
 
 interface ProductComboboxProps {
   value: string;
@@ -77,12 +78,15 @@ export function ProductCombobox({
 }: ProductComboboxProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { currentCompanyId } = useFacility();
 
   // Fetch products with search
-  const productsResult = useQuery(api.products.list, {
-    status: 'active',
-    limit: 100,
-  });
+  const productsResult = useQuery(
+    api.products.list,
+    currentCompanyId
+      ? { companyId: currentCompanyId, status: 'active', limit: 100 }
+      : 'skip'
+  );
 
   const products = productsResult?.products || [];
 

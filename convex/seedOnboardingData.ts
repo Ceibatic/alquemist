@@ -467,6 +467,7 @@ async function seedOnboardingSuppliers(
 
 async function seedOnboardingProducts(
   ctx: MutationCtx,
+  companyId: Id<"companies">,
   cropTypeId: Id<"crop_types">,
   suppliersByCategory: Record<string, Id<"suppliers">>,
   config: CropConfig
@@ -478,6 +479,7 @@ async function seedOnboardingProducts(
     const supplierId = suppliersByCategory[productConfig.supplier_category];
 
     const productId = await ctx.db.insert("products", {
+      company_id: companyId,
       sku: productConfig.sku,
       name: productConfig.name,
       description: `Producto de ejemplo: ${productConfig.name}`,
@@ -750,7 +752,7 @@ export const generateSampleDataForNewCompany = mutation({
 
           // 4. Seed Products
           try {
-            const productsResult = await seedOnboardingProducts(ctx, args.cropTypeId, suppliersResult.suppliersByCategory, config);
+            const productsResult = await seedOnboardingProducts(ctx, args.companyId, args.cropTypeId, suppliersResult.suppliersByCategory, config);
             results.products = { success: true, count: productsResult.count, error: null };
 
             // 5. Seed Inventory (requires storage area and products)

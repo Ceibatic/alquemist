@@ -47,6 +47,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFacility } from '@/components/providers/facility-provider';
 
 // Category options with Lucide icons
 const categoryOptions = [
@@ -71,6 +72,7 @@ const statusOptions = [
 export function ProductList() {
   const router = useRouter();
   const { toast } = useToast();
+  const { currentCompanyId } = useFacility();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,11 +87,17 @@ export function ProductList() {
   const removeProduct = useMutation(api.products.remove);
 
   // Fetch products
-  const productsData = useQuery(api.products.list, {
-    category: selectedCategory || undefined,
-    status: selectedStatus || undefined,
-    search: searchQuery || undefined,
-  });
+  const productsData = useQuery(
+    api.products.list,
+    currentCompanyId
+      ? {
+          companyId: currentCompanyId,
+          category: selectedCategory || undefined,
+          status: selectedStatus || undefined,
+          search: searchQuery || undefined,
+        }
+      : 'skip'
+  );
 
   const products = productsData?.products || [];
   const total = productsData?.total || 0;

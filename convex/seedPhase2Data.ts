@@ -1003,7 +1003,7 @@ export const seedProducts = mutation({
 
     const productIds: Id<"products">[] = [];
     for (const product of products) {
-      const id = await ctx.db.insert("products", product);
+      const id = await ctx.db.insert("products", { company_id: args.companyId, ...product });
       productIds.push(id);
     }
 

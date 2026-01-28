@@ -5,6 +5,7 @@ import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { useFacility } from '@/components/providers/facility-provider';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ interface ProductCreateModalProps {
 export function ProductCreateModal({ open, onOpenChange }: ProductCreateModalProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { currentCompanyId } = useFacility();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createProduct = useMutation(api.products.create);
@@ -52,7 +54,7 @@ export function ProductCreateModal({ open, onOpenChange }: ProductCreateModalPro
         price_unit: data.price_unit || undefined,
       };
 
-      const productId = await createProduct(cleanedData as any);
+      const productId = await createProduct({ ...cleanedData, companyId: currentCompanyId! } as any);
 
       toast({
         title: 'Producto creado',

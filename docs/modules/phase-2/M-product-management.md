@@ -27,7 +27,7 @@ El módulo de Productos permite gestionar el catálogo maestro de productos e in
 - [x] Stats: total productos, activos, descontinuados
 - [x] Estado vacío: mensaje + CTA "Crear Primer Producto"
 
-**Consulta:** `products.list({ category?, status?, search? })`
+**Consulta:** `products.list({ companyId, category?, status?, search? })`
 
 **Componentes:** [products/page.tsx](app/(dashboard)/products/page.tsx), [product-list.tsx](components/products/product-list.tsx)
 
@@ -64,7 +64,7 @@ El módulo de Productos permite gestionar el catálogo maestro de productos e in
 - [x] Toast de confirmación al crear
 - [x] Redirección a detalle del producto creado
 
-**Mutación:** `products.create({ sku, name, category, ... })`
+**Mutación:** `products.create({ companyId, sku, name, category, ... })` (requiere auth)
 
 **Componentes:** [product-create-modal.tsx](components/products/product-create-modal.tsx), [product-form.tsx](components/products/product-form.tsx)
 
@@ -106,7 +106,7 @@ El módulo de Productos permite gestionar el catálogo maestro de productos e in
 - [x] Toast de confirmación al guardar
 - [x] Redirección a detalle tras guardar
 
-**Mutación:** `products.update({ productId, name?, category?, ... })`
+**Mutación:** `products.update({ productId, name?, category?, ... })` (requiere auth)
 
 **Componentes:** [products/[id]/edit/page.tsx](app/(dashboard)/products/[id]/edit/page.tsx), [product-edit-content.tsx](app/(dashboard)/products/[id]/edit/product-edit-content.tsx)
 
@@ -124,7 +124,7 @@ El módulo de Productos permite gestionar el catálogo maestro de productos e in
 - [x] Toast de confirmación
 - [x] Mensaje informativo sobre comportamiento
 
-**Mutación:** `products.remove({ productId })`
+**Mutación:** `products.remove({ productId })` (requiere auth)
 
 **Componentes:** [product-list.tsx](components/products/product-list.tsx) (AlertDialog)
 
@@ -136,12 +136,17 @@ El módulo de Productos permite gestionar el catálogo maestro de productos e in
 
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
+| `company_id` | id | Referencia a la empresa (multi-tenant) |
 | `sku` | string | Código único (auto-generado o manual) |
+| `gtin` | string? | Global Trade Item Number |
 | `name` | string | Nombre del producto |
 | `description` | string? | Descripción |
-| `category` | string | seed/nutrient/pesticide/equipment/substrate/container/tool/other |
+| `category` | string | seed/nutrient/pesticide/equipment/substrate/container/tool/clone/seedling/mother_plant/plant_material/other |
 | `subcategory` | string? | Subcategoría opcional |
+| `default_unit` | string? | Unidad por defecto de inventario (kg/g/L/mL/unidades/etc) |
+| `applicable_crop_type_ids` | array(id) | Tipos de cultivo aplicables |
 | `preferred_supplier_id` | id? | Referencia a proveedor preferido |
+| `regional_suppliers` | array(id) | Proveedores regionales |
 | `manufacturer` | string? | Nombre del fabricante |
 | `brand_id` | string? | Marca |
 | `default_price` | number? | Precio base de catálogo |
@@ -149,6 +154,11 @@ El módulo de Productos permite gestionar el catálogo maestro de productos e in
 | `price_unit` | string? | Unidad de precio |
 | `weight_value` | number? | Peso |
 | `weight_unit` | string? | Unidad de peso |
+| `dimensions_length` | number? | Largo |
+| `dimensions_width` | number? | Ancho |
+| `dimensions_height` | number? | Alto |
+| `dimensions_unit` | string? | Unidad de dimensiones (cm/m/in) |
+| `product_metadata` | object? | Metadata flexible |
 | `regulatory_registered` | boolean | Tiene registro regulatorio |
 | `regulatory_registration_number` | string? | Número de registro |
 | `organic_certified` | boolean | Certificación orgánica |
@@ -156,6 +166,13 @@ El módulo de Productos permite gestionar el catálogo maestro de productos e in
 | `status` | string | active/discontinued |
 | `created_at` | number | Timestamp de creación |
 | `updated_at` | number | Timestamp de actualización |
+
+**Índices:**
+- `by_company` - company_id
+- `by_sku` - sku
+- `by_category` - category
+- `by_regulatory_registered` - regulatory_registered
+- `by_status` - status
 
 ---
 
@@ -209,6 +226,8 @@ Estas categorías permiten tracking de inventario sincronizado con las fases de 
 | mother_plant | MAD |
 | plant_material | MAT |
 
+> **Nota:** Los prefijos se generan con `products.generateSku({ companyId, category })`, scoped por empresa.
+
 ---
 
 ## Archivos del Módulo
@@ -230,6 +249,7 @@ Estas categorías permiten tracking de inventario sincronizado con las fases de 
 - `components/products/product-form.tsx` - Formulario de crear/editar (incluye campos de historial de precio)
 - `components/products/product-create-modal.tsx` - Modal de creación
 - `components/products/product-price-history.tsx` - Historial de cambios de precio
+- `components/inventory/product-combobox.tsx` - Selector searchable de productos (usado en inventario)
 
 ### Validaciones
 - `lib/validations/product.ts` - Schemas Zod

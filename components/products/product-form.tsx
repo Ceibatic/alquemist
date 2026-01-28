@@ -93,8 +93,11 @@ export function ProductForm({
     productId ? { productId: productId as Id<'products'> } : 'skip'
   );
 
-  // Generate SKU mutation
-  const generateSkuQuery = useQuery(api.products.generateSku, { category: 'other' });
+  // Generate SKU query
+  const generateSkuQuery = useQuery(
+    api.products.generateSku,
+    currentCompanyId ? { companyId: currentCompanyId, category: 'other' } : 'skip'
+  );
 
   const form = useForm<ProductFormInput>({
     resolver: zodResolver(productFormSchema),
