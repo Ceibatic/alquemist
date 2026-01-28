@@ -333,6 +333,27 @@ export default function FacilityDetailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Embedded Map */}
+              {facility.latitude && facility.longitude && (
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium text-gray-500 mb-2">
+                    Mapa de Ubicación
+                  </p>
+                  <div className="h-[400px] w-full rounded-lg overflow-hidden border">
+                    <iframe
+                      title="Mapa de ubicación de la instalación"
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      referrerPolicy="no-referrer"
+                      sandbox="allow-scripts allow-same-origin"
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(String(facility.longitude - 0.01))},${encodeURIComponent(String(facility.latitude - 0.01))},${encodeURIComponent(String(facility.longitude + 0.01))},${encodeURIComponent(String(facility.latitude + 0.01))}&layer=mapnik&marker=${encodeURIComponent(String(facility.latitude))},${encodeURIComponent(String(facility.longitude))}`}
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -410,7 +431,7 @@ export default function FacilityDetailPage() {
                 Áreas
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {facility.total_area_m2 && (
                   <div>
@@ -442,6 +463,51 @@ export default function FacilityDetailPage() {
                     <p className="text-2xl font-bold mt-1">
                       {facility.canopy_area_m2.toLocaleString('es-CO')} m²
                     </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Area Visualizations */}
+              <div className="space-y-4 pt-4 border-t">
+                {/* Cultivation Area Bar */}
+                {facility.cultivation_area_m2 && facility.total_area_m2 && facility.total_area_m2 > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Área de Cultivo</span>
+                      <span className="font-medium">
+                        {facility.cultivation_area_m2.toLocaleString('es-CO')} m² (
+                        {Math.round((facility.cultivation_area_m2 / facility.total_area_m2) * 100)}%)
+                      </span>
+                    </div>
+                    <div className="h-3 bg-gray-200 rounded-full w-full">
+                      <div
+                        className="h-3 bg-green-500 rounded-full transition-all"
+                        style={{
+                          width: `${Math.min((facility.cultivation_area_m2 / facility.total_area_m2) * 100, 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Canopy Area Bar */}
+                {facility.canopy_area_m2 && facility.cultivation_area_m2 && facility.cultivation_area_m2 > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Área de Dosel</span>
+                      <span className="font-medium">
+                        {facility.canopy_area_m2.toLocaleString('es-CO')} m² (
+                        {Math.round((facility.canopy_area_m2 / facility.cultivation_area_m2) * 100)}% del cultivo)
+                      </span>
+                    </div>
+                    <div className="h-3 bg-gray-200 rounded-full w-full">
+                      <div
+                        className="h-3 bg-amber-500 rounded-full transition-all"
+                        style={{
+                          width: `${Math.min((facility.canopy_area_m2 / facility.cultivation_area_m2) * 100, 100)}%`,
+                        }}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
