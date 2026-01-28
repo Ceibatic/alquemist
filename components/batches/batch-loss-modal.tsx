@@ -21,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import {
   Select,
@@ -33,7 +34,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, Skull } from 'lucide-react';
+import { AlertTriangle, Loader2, Skull, ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUser } from '@/components/providers/user-provider';
 
@@ -64,6 +65,7 @@ const lossTypeOptions = [
 export function BatchLossModal({ batch, open, onOpenChange }: BatchLossModalProps) {
   const { userId } = useUser();
   const [remainingQuantity, setRemainingQuantity] = useState(batch.current_quantity);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // Form validation schema - dynamically using batch.current_quantity
   const formSchema = z.object({
@@ -77,6 +79,7 @@ export function BatchLossModal({ batch, open, onOpenChange }: BatchLossModalProp
     reason: z.string().min(1, 'Razón requerida'),
     notes: z.string().optional(),
     lossDate: z.string().optional(),
+    photos: z.array(z.string()).optional(), // Array of file names or data URLs
   });
 
   type FormValues = z.infer<typeof formSchema>;
@@ -93,6 +96,7 @@ export function BatchLossModal({ batch, open, onOpenChange }: BatchLossModalProp
       reason: '',
       notes: '',
       lossDate: new Date().toISOString().split('T')[0], // Today in YYYY-MM-DD format
+      photos: [],
     },
   });
 
@@ -113,8 +117,10 @@ export function BatchLossModal({ batch, open, onOpenChange }: BatchLossModalProp
         reason: '',
         notes: '',
         lossDate: new Date().toISOString().split('T')[0],
+        photos: [],
       });
       setRemainingQuantity(batch.current_quantity);
+      setSelectedFiles([]);
     }
   }, [open, form, batch.current_quantity]);
 
@@ -317,6 +323,88 @@ export function BatchLossModal({ batch, open, onOpenChange }: BatchLossModalProp
                       {...field}
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Photo Upload */}
+            <FormField
+              control={form.control}
+              name="photos"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Fotos (opcional)</FormLabel>
+                  <FormDescription>
+                    Adjunta fotos que documenten la pérdida
+                  </FormDescription>
+                  <FormControl>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor="loss-photo-upload"
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer"
+                        >
+                          <ImagePlus className="h-4 w-4" />
+                          Seleccionar fotos
+                        </label>
+                        <input
+                          id="loss-photo-upload"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (files.length > 0) {
+                              setSelectedFiles((prev) => [...prev, ...files]);
+                              const fileNames = [...selectedFiles, ...files].map((f) => f.name);
+                              field.onChange(fileNames);
+                            }
+                          }}
+                          disabled={form.formState.isSubmitting}
+                        />
+                        {selectedFiles.length > 0 && (
+                          <span className="text-sm text-muted-foreground">
+                            {selectedFiles.length} {selectedFiles.length === 1 ? 'foto' : 'fotos'} seleccionada(s)
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Selected Files Preview */}
+                      {selectedFiles.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {selectedFiles.map((file, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center gap-2 p-2 bg-gray-50 rounded-md border border-gray-200"
+                            >
+                              <ImagePlus className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                              <span className="text-xs text-gray-700 truncate flex-1">
+                                {file.name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newFiles = selectedFiles.filter((_, i) => i !== index);
+                                  setSelectedFiles(newFiles);
+                                  field.onChange(newFiles.map((f) => f.name));
+                                }}
+                                className="text-gray-400 hover:text-red-600 flex-shrink-0"
+                                disabled={form.formState.isSubmitting}
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <p className="text-xs text-muted-foreground">
+                        Las fotos se almacenarán cuando se implemente la integración completa con Convex storage
+                      </p>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

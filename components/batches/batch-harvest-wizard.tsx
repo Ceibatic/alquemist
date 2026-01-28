@@ -42,6 +42,8 @@ import {
   Loader2,
   Info,
   Package,
+  ImagePlus,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUser } from '@/components/providers/user-provider';
@@ -76,6 +78,7 @@ const createFormSchema = (maxQuantity: number) => z.object({
   productId: z.string().min(1, 'Producto de inventario requerido'),
   storageAreaId: z.string().min(1, 'Ubicación de almacenamiento requerida'),
   notes: z.string().optional(),
+  photos: z.array(z.string()).optional(), // Array of file names or data URLs
 });
 
 type FormValues = z.infer<ReturnType<typeof createFormSchema>>;
@@ -92,6 +95,7 @@ const qualityGradeLabels: Record<string, string> = {
 export function BatchHarvestWizard({ batch, open, onOpenChange }: BatchHarvestWizardProps) {
   const { userId } = useUser();
   const [currentStep, setCurrentStep] = useState<WizardStep>('harvest_details');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // Query products
   const user = useQuery(api.users.getCurrentUser);
@@ -128,6 +132,7 @@ export function BatchHarvestWizard({ batch, open, onOpenChange }: BatchHarvestWi
       productId: '',
       storageAreaId: '',
       notes: '',
+      photos: [],
     },
     mode: 'onChange',
   });
@@ -143,7 +148,9 @@ export function BatchHarvestWizard({ batch, open, onOpenChange }: BatchHarvestWi
         productId: '',
         storageAreaId: '',
         notes: '',
+        photos: [],
       });
+      setSelectedFiles([]);
     }
   }, [open, batch.current_quantity, form]);
 
@@ -525,6 +532,88 @@ export function BatchHarvestWizard({ batch, open, onOpenChange }: BatchHarvestWi
                     </FormItem>
                   )}
                 />
+
+                {/* Photo Upload */}
+                <FormField
+                  control={form.control}
+                  name="photos"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fotos de la Cosecha (opcional)</FormLabel>
+                      <FormDescription>
+                        Documenta visualmente la calidad y cantidad de la cosecha
+                      </FormDescription>
+                      <FormControl>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <label
+                              htmlFor="harvest-photo-upload"
+                              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer"
+                            >
+                              <ImagePlus className="h-4 w-4" />
+                              Seleccionar fotos
+                            </label>
+                            <input
+                              id="harvest-photo-upload"
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                if (files.length > 0) {
+                                  setSelectedFiles((prev) => [...prev, ...files]);
+                                  const fileNames = [...selectedFiles, ...files].map((f) => f.name);
+                                  field.onChange(fileNames);
+                                }
+                              }}
+                              disabled={form.formState.isSubmitting}
+                            />
+                            {selectedFiles.length > 0 && (
+                              <span className="text-sm text-muted-foreground">
+                                {selectedFiles.length} {selectedFiles.length === 1 ? 'foto' : 'fotos'} seleccionada(s)
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Selected Files Preview */}
+                          {selectedFiles.length > 0 && (
+                            <div className="grid grid-cols-2 gap-2">
+                              {selectedFiles.map((file, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center gap-2 p-2 bg-gray-50 rounded-md border border-gray-200"
+                                >
+                                  <ImagePlus className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                  <span className="text-xs text-gray-700 truncate flex-1">
+                                    {file.name}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newFiles = selectedFiles.filter((_, i) => i !== index);
+                                      setSelectedFiles(newFiles);
+                                      field.onChange(newFiles.map((f) => f.name));
+                                    }}
+                                    className="text-gray-400 hover:text-red-600 flex-shrink-0"
+                                    disabled={form.formState.isSubmitting}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <p className="text-xs text-muted-foreground">
+                            Las fotos se almacenarán cuando se implemente la integración completa con Convex storage
+                          </p>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             )}
 
@@ -635,6 +724,23 @@ export function BatchHarvestWizard({ batch, open, onOpenChange }: BatchHarvestWi
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="text-sm font-semibold mb-1">Notas:</div>
                     <p className="text-sm text-gray-700">{watchedValues.notes}</p>
+                  </div>
+                )}
+
+                {/* Photos Summary */}
+                {selectedFiles.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="text-sm font-semibold mb-2">
+                      Fotos adjuntas ({selectedFiles.length}):
+                    </div>
+                    <div className="space-y-1">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center gap-2 text-sm text-gray-700">
+                          <ImagePlus className="h-3 w-3 text-gray-400" />
+                          <span className="truncate">{file.name}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
