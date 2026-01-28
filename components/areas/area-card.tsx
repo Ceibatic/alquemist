@@ -55,6 +55,7 @@ interface AreaData {
   total_area_m2?: number;
   current_occupancy: number;
   climate_controlled: boolean;
+  batchCount?: number;
   capacity_configurations?: {
     max_capacity?: number;
     container_type?: string;
@@ -194,7 +195,7 @@ export function AreaCard({ area, index }: AreaCardProps) {
         <div className="flex items-center gap-3 text-sm text-gray-600">
           <div className="flex items-center gap-1">
             <Layers className="h-3.5 w-3.5" />
-            <span>Lotes: 0</span>
+            <span>Lotes: {area.batchCount ?? 0}</span>
           </div>
           <span className="text-gray-300">|</span>
           <span>Area: {area.total_area_m2 || 0} m²</span>

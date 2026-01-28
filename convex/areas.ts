@@ -70,7 +70,21 @@ export const list = query({
       areas = areas.filter((area) => area.status === args.status);
     }
 
-    return areas;
+    // Enrich with batch counts
+    const areasWithCounts = await Promise.all(
+      areas.map(async (area) => {
+        const batches = await ctx.db
+          .query("batches")
+          .withIndex("by_area", (q) => q.eq("area_id", area._id))
+          .collect();
+        return {
+          ...area,
+          batchCount: batches.length,
+        };
+      })
+    );
+
+    return areasWithCounts;
   },
 });
 
@@ -187,6 +201,18 @@ export const create = mutation({
     const facility = await ctx.db.get(args.facilityId);
     if (!facility) {
       throw new Error("Instalación no encontrada");
+    }
+
+    // Verify name is unique within facility
+    const existingAreas = await ctx.db
+      .query("areas")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+    const nameExists = existingAreas.some(
+      (a) => a.name.toLowerCase() === args.name.trim().toLowerCase()
+    );
+    if (nameExists) {
+      throw new Error("Ya existe un área con ese nombre en esta instalación");
     }
 
     // Verify all crop types exist
@@ -310,6 +336,20 @@ export const update = mutation({
     const area = await ctx.db.get(id);
     if (!area) {
       throw new Error("Área no encontrada");
+    }
+
+    // Verify name uniqueness if name is being updated
+    if (updates.name !== undefined && updates.name !== area.name) {
+      const existingAreas = await ctx.db
+        .query("areas")
+        .withIndex("by_facility", (q) => q.eq("facility_id", area.facility_id))
+        .collect();
+      const nameExists = existingAreas.some(
+        (a) => a._id !== id && a.name.toLowerCase() === updates.name!.trim().toLowerCase()
+      );
+      if (nameExists) {
+        throw new Error("Ya existe un área con ese nombre en esta instalación");
+      }
     }
 
     // Build update object with proper field names
