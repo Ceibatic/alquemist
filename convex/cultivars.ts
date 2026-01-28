@@ -20,6 +20,15 @@ export const list = query({
     varietyType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated and has access to company
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const user = await ctx.db.get(userId);
+      if (user && user.company_id !== args.companyId) {
+        throw new Error("No tienes acceso a los cultivares de esta empresa");
+      }
+    }
+
     let cultivars;
 
     // Use company index first
@@ -67,6 +76,15 @@ export const getByCrop = query({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated and has access to company
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const user = await ctx.db.get(userId);
+      if (user && user.company_id !== args.companyId) {
+        throw new Error("No tienes acceso a los cultivares de esta empresa");
+      }
+    }
+
     const cultivars = await ctx.db
       .query("cultivars")
       .withIndex("by_company_crop", (q) =>
@@ -88,7 +106,19 @@ export const get = query({
     id: v.id("cultivars"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const cultivar = await ctx.db.get(args.id);
+    if (!cultivar) return null;
+
+    // Auth: Verify user is authenticated and has access to cultivar's company
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const user = await ctx.db.get(userId);
+      if (user && user.company_id !== cultivar.company_id) {
+        throw new Error("No tienes acceso a este cultivar");
+      }
+    }
+
+    return cultivar;
   },
 });
 
@@ -101,6 +131,18 @@ export const getByFacility = query({
     facilityId: v.id("facilities"),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated and has access to facility
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const facility = await ctx.db.get(args.facilityId);
+      if (facility) {
+        const user = await ctx.db.get(userId);
+        if (user && user.company_id !== facility.company_id) {
+          throw new Error("No tienes acceso a los cultivares de esta instalación");
+        }
+      }
+    }
+
     // Get all batches for this facility to find linked cultivars
     const batches = await ctx.db
       .query("batches")
