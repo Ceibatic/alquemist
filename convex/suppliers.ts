@@ -20,6 +20,15 @@ export const getByCompany = query({
     productCategory: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated and has access to the company
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const user = await ctx.db.get(userId);
+      if (user && user.company_id !== args.companyId) {
+        throw new Error("No tienes acceso a los proveedores de esta empresa");
+      }
+    }
+
     let suppliersQuery = ctx.db
       .query("suppliers")
       .withIndex("by_company", (q) => q.eq("company_id", args.companyId));
@@ -56,6 +65,15 @@ export const list = query({
     productCategory: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated and has access to the company
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const user = await ctx.db.get(userId);
+      if (user && user.company_id !== args.companyId) {
+        throw new Error("No tienes acceso a los proveedores de esta empresa");
+      }
+    }
+
     let suppliersQuery = ctx.db
       .query("suppliers")
       .withIndex("by_company", (q) => q.eq("company_id", args.companyId));
@@ -85,7 +103,19 @@ export const get = query({
     id: v.id("suppliers"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const supplier = await ctx.db.get(args.id);
+    if (!supplier) return null;
+
+    // Auth: Verify user is authenticated and has access to supplier's company
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const user = await ctx.db.get(userId);
+      if (user && user.company_id !== supplier.company_id) {
+        throw new Error("No tienes acceso a este proveedor");
+      }
+    }
+
+    return supplier;
   },
 });
 
