@@ -103,7 +103,7 @@ export function RoleSelector({
   useEffect(() => {
     const role = systemRoles.find((r) => r._id === value);
     setSelectedRole(role || null);
-  }, [value]);
+  }, [value, systemRoles]);
 
   // Filter roles based on current user's level
   const availableRoles = systemRoles.filter((role) => {
