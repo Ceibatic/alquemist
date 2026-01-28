@@ -623,6 +623,116 @@ export const updateSettings = mutation({
 });
 
 /**
+ * Update user preferences (specific validation for preference fields)
+ * Phase 2 Module 21 - Account Settings
+ */
+export const updatePreferences = mutation({
+  args: {
+    userId: v.id("users"),
+    locale: v.optional(v.string()),
+    theme: v.optional(v.string()),
+    date_format: v.optional(v.string()),
+    time_format: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    default_facility_id: v.optional(v.id("facilities")),
+  },
+  handler: async (ctx, args) => {
+    // Auth guard: verify authenticated user is updating their own preferences
+    const authenticatedUserId = await getAuthUserId(ctx);
+    if (!authenticatedUserId) {
+      throw new ConvexError("Not authenticated");
+    }
+
+    if (authenticatedUserId !== args.userId) {
+      throw new ConvexError("You can only update your own preferences");
+    }
+
+    const now = Date.now();
+
+    // Verify user exists
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new ConvexError("User not found");
+    }
+
+    const updates: any = {
+      updated_at: now,
+    };
+
+    // Validate and update locale
+    if (args.locale !== undefined) {
+      const validLocales = ["es", "en"];
+      if (!validLocales.includes(args.locale)) {
+        throw new ConvexError("Invalid locale. Must be 'es' or 'en'");
+      }
+      updates.locale = args.locale;
+    }
+
+    // Validate and update theme
+    if (args.theme !== undefined) {
+      const validThemes = ["light", "dark", "system"];
+      if (!validThemes.includes(args.theme)) {
+        throw new ConvexError("Invalid theme. Must be 'light', 'dark', or 'system'");
+      }
+      updates.theme = args.theme;
+    }
+
+    // Validate and update date_format
+    if (args.date_format !== undefined) {
+      const validFormats = ["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"];
+      if (!validFormats.includes(args.date_format)) {
+        throw new ConvexError("Invalid date format. Must be 'DD/MM/YYYY', 'MM/DD/YYYY', or 'YYYY-MM-DD'");
+      }
+      updates.date_format = args.date_format;
+    }
+
+    // Validate and update time_format
+    if (args.time_format !== undefined) {
+      const validFormats = ["12h", "24h"];
+      if (!validFormats.includes(args.time_format)) {
+        throw new ConvexError("Invalid time format. Must be '12h' or '24h'");
+      }
+      updates.time_format = args.time_format;
+    }
+
+    // Update timezone (no strict validation as there are many valid timezones)
+    if (args.timezone !== undefined) {
+      updates.timezone = args.timezone;
+    }
+
+    // Validate and update default_facility_id
+    if (args.default_facility_id !== undefined) {
+      // Verify facility exists
+      const facility = await ctx.db.get(args.default_facility_id);
+      if (!facility) {
+        throw new ConvexError("Facility not found");
+      }
+
+      // Verify facility belongs to user's company
+      if (facility.company_id !== user.company_id) {
+        throw new ConvexError("Facility does not belong to your company");
+      }
+
+      // Verify user has access to this facility
+      const hasAccess = user.accessible_facility_ids?.includes(args.default_facility_id);
+      if (!hasAccess) {
+        throw new ConvexError("You do not have access to this facility");
+      }
+
+      updates.primary_facility_id = args.default_facility_id;
+    }
+
+    // Apply updates
+    await ctx.db.patch(args.userId, updates);
+
+    return {
+      success: true,
+      message: "Preferences updated successfully",
+    };
+  },
+});
+
+/**
  * Update user profile information
  * Phase 2 Module 21 - Account Settings
  */
