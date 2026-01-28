@@ -304,30 +304,123 @@ export function AreaForm({
               Dimensiones
             </h3>
 
-            <FormField
-              control={form.control}
-              name="total_area_m2"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Área Total (m²) *</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="any"
-                      placeholder="Ej: 100"
-                      value={field.value ?? ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        // Parse and round to avoid floating point precision issues
-                        const num = parseFloat(val);
-                        field.onChange(val === '' ? undefined : (isNaN(num) ? undefined : Math.round(num * 100) / 100));
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-3 gap-3">
+              <FormField
+                control={form.control}
+                name="length_meters"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">Largo (m)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="any"
+                        placeholder="Ej: 10"
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const num = parseFloat(e.target.value);
+                          field.onChange(e.target.value === '' ? undefined : (isNaN(num) ? undefined : Math.round(num * 100) / 100));
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="width_meters"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">Ancho (m)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="any"
+                        placeholder="Ej: 10"
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const num = parseFloat(e.target.value);
+                          field.onChange(e.target.value === '' ? undefined : (isNaN(num) ? undefined : Math.round(num * 100) / 100));
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="height_meters"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">Alto (m)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="any"
+                        placeholder="Ej: 3"
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const num = parseFloat(e.target.value);
+                          field.onChange(e.target.value === '' ? undefined : (isNaN(num) ? undefined : Math.round(num * 100) / 100));
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="total_area_m2"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Área Total (m²) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="any"
+                        placeholder="Ej: 100"
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const num = parseFloat(val);
+                          field.onChange(val === '' ? undefined : (isNaN(num) ? undefined : Math.round(num * 100) / 100));
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="usable_area_m2"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Área Útil (m²)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="any"
+                        placeholder="Ej: 80"
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const num = parseFloat(val);
+                          field.onChange(val === '' ? undefined : (isNaN(num) ? undefined : Math.round(num * 100) / 100));
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Capacity Section - Unified Box */}
             <div className="rounded-lg border p-4 space-y-4">
@@ -740,6 +833,51 @@ export function AreaForm({
                 </div>
               )}
             </div>
+
+            {/* Lighting & Irrigation Toggles */}
+            <div className="rounded-lg border p-4 space-y-3">
+              <h4 className="font-semibold text-sm">Características Técnicas</h4>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="lighting-toggle" className="text-sm">
+                  Control de Iluminación
+                </Label>
+                <FormField
+                  control={form.control}
+                  name="lighting_controlled"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-y-0">
+                      <FormControl>
+                        <Switch
+                          id="lighting-toggle"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="irrigation-toggle" className="text-sm">
+                  Sistema de Riego
+                </Label>
+                <FormField
+                  control={form.control}
+                  name="irrigation_system"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-y-0">
+                      <FormControl>
+                        <Switch
+                          id="irrigation-toggle"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -755,7 +893,7 @@ export function AreaForm({
           </Button>
           <Button
             type="submit"
-            className="bg-green-900 hover:bg-green-800"
+            className="bg-amber-500 hover:bg-amber-600 text-white"
             disabled={isSubmitting}
           >
             {isSubmitting ? (

@@ -2,7 +2,7 @@
 
 ## Overview
 
-El modulo de Datos de Referencia gestiona informacion estatica del sistema que es compartida globalmente: ubicaciones geograficas (departamentos, municipios), tipos de cultivo, roles del sistema, y otros catalogos. Estos datos son pre-cargados y generalmente solo leidos por otros modulos.
+El modulo de Datos de Referencia gestiona informacion estatica del sistema que es compartida globalmente: ubicaciones geograficas (departamentos, municipios), tipos de cultivo, roles del sistema, unidades de medida, y otros catalogos. Estos datos son pre-cargados y generalmente solo leidos por otros modulos.
 
 **Estado**: Implementado
 
@@ -16,13 +16,13 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 **Para** que usuarios puedan seleccionar ubicaciones
 
 **Criterios de Aceptacion:**
-- [ ] Tabla `geographic_locations` con todos los departamentos
-- [ ] Tabla con todos los municipios vinculados a departamentos
-- [ ] Cada registro tiene: code, name, administrative_level, parent_code
-- [ ] Departamentos tienen timezone asociado
-- [ ] Datos cargados via seed script
+- [x] Tabla `geographic_locations` con todos los departamentos
+- [x] Tabla con todos los municipios vinculados a departamentos
+- [x] Cada registro tiene: country_code, administrative_level, division_1_code/name, division_2_code/name, parent_division_1_code
+- [x] Departamentos tienen timezone asociado
+- [x] Datos cargados via seed script
 
-**Seed:** `convex/seedGeography.ts`
+**Seed:** `convex/seedGeographic.ts` (tambien: `seedGeographicComplete.ts`, `seedGeographicSimple.ts`)
 
 ---
 
@@ -32,12 +32,12 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 **Para** mostrar en dropdown
 
 **Criterios de Aceptacion:**
-- [ ] Query retorna todos los departamentos (administrative_level = 1)
-- [ ] Ordenados alfabeticamente por nombre
-- [ ] Incluye code y name
-- [ ] Cache de resultados en cliente
+- [x] Query retorna todos los departamentos (administrative_level = 1)
+- [x] Ordenados alfabeticamente por nombre
+- [x] Incluye division_1_code y division_1_name
+- [x] Cache de resultados en cliente (Convex reactive queries)
 
-**Consulta:** `geography.getDepartments()`
+**Consulta:** `geographic.getDepartments({ countryCode })`
 
 ---
 
@@ -47,12 +47,12 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 **Para** mostrar opciones filtradas
 
 **Criterios de Aceptacion:**
-- [ ] Query recibe departmentCode como parametro
-- [ ] Retorna municipios con parent_code = departmentCode
-- [ ] Ordenados alfabeticamente
-- [ ] Respuesta rapida (< 100ms)
+- [x] Query recibe countryCode y departmentCode como parametros
+- [x] Retorna municipios con parent_division_1_code = departmentCode
+- [x] Ordenados alfabeticamente
+- [x] Respuesta rapida (Convex indexed query)
 
-**Consulta:** `geography.getMunicipalities({ departmentCode })`
+**Consulta:** `geographic.getMunicipalities({ countryCode, departmentCode })`
 
 ---
 
@@ -62,10 +62,10 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 **Para** que usuarios los seleccionen al configurar facilities y areas
 
 **Criterios de Aceptacion:**
-- [ ] Tabla `crop_types` con tipos: Cannabis, Cafe, Cacao, Flores
-- [ ] Cada registro tiene: name, code, status
-- [ ] Status puede ser active/inactive
-- [ ] Datos pre-cargados via seed
+- [x] Tabla `crop_types` con tipos: Cannabis, Coffee, Cocoa, Flowers
+- [x] Cada registro tiene: name, display_name_es, display_name_en, scientific_name, compliance_profile, default_phases
+- [x] is_active puede ser true/false
+- [x] Datos pre-cargados via seed
 
 **Seed:** `convex/seedCropTypes.ts`
 
@@ -77,9 +77,9 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 **Para** mostrar en checkboxes o dropdown
 
 **Criterios de Aceptacion:**
-- [ ] Query retorna todos los crop_types activos
-- [ ] Opcion para incluir inactivos (para admin)
-- [ ] Cada registro incluye id, name, code
+- [x] Query retorna todos los crop_types activos
+- [x] Opcion para incluir inactivos (para admin)
+- [x] Cada registro incluye _id, name, display_name_es/en
 
 **Consulta:** `crops.getCropTypes({ includeInactive?: boolean })`
 
@@ -91,10 +91,10 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 **Para** asignar permisos a usuarios
 
 **Criterios de Aceptacion:**
-- [ ] Tabla `roles` con roles: SUPER_ADMIN, COMPANY_OWNER, FACILITY_MANAGER, OPERATOR, VIEWER
-- [ ] Cada rol tiene: name, code, description, permissions[]
-- [ ] Roles son globales (no por empresa)
-- [ ] Datos pre-cargados via seed
+- [x] Tabla `roles` con roles: PLATFORM_ADMIN, COMPANY_OWNER, FACILITY_MANAGER, PRODUCTION_SUPERVISOR, WORKER, VIEWER
+- [x] Cada rol tiene: name, display_name_es, display_name_en, description, permissions, level, scope_level
+- [x] Roles son globales (is_system_role = true)
+- [x] Datos pre-cargados via seed
 
 **Seed:** `convex/seedRoles.ts`
 
@@ -106,12 +106,15 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 **Para** mostrar en dropdown
 
 **Criterios de Aceptacion:**
-- [ ] Query retorna roles segun nivel del usuario actual
-- [ ] COMPANY_OWNER puede asignar: FACILITY_MANAGER, OPERATOR, VIEWER
-- [ ] FACILITY_MANAGER puede asignar: OPERATOR, VIEWER
-- [ ] Excluye SUPER_ADMIN de seleccion normal
+- [x] Query retorna roles segun nivel del usuario actual (server-side)
+- [x] Filtra roles con level <= nivel del usuario autenticado
+- [x] Excluye PLATFORM_ADMIN de seleccion normal
+- [x] Funciona sin parametros (usa getAuthUserId internamente)
 
-**Consulta:** `roles.getAssignableRoles({ currentUserRole })`
+**Consultas:**
+- `roles.list()` — todos los roles activos del sistema
+- `roles.getAssignableRoles()` — roles asignables segun usuario autenticado
+- `roles.getById({ id })` — rol completo con permisos
 
 ---
 
@@ -121,10 +124,10 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 **Para** uso en inventario y produccion
 
 **Criterios de Aceptacion:**
-- [ ] Tabla `units` o catalogo con unidades
-- [ ] Categorias: peso, volumen, area, cantidad
-- [ ] Unidades comunes: kg, g, mg, L, mL, m², unidad, planta
-- [ ] Factores de conversion entre unidades relacionadas
+- [x] Tabla `units_of_measure` con unidades
+- [x] Categorias: weight, volume, area, quantity, time
+- [x] Unidades comunes: kg, g, mg, L, mL, m², unit, plant, seed, cutting
+- [x] Factores de conversion a unidad base por categoria
 
 **Seed:** `convex/seedUnits.ts`
 
@@ -136,33 +139,74 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 
 | Campo | Tipo | Descripcion |
 |-------|------|-------------|
-| `code` | `string` | Codigo unico (DANE) |
-| `name` | `string` | Nombre del lugar |
+| `country_code` | `string` | ISO 3166-1 alpha-2 (ej: "CO") |
+| `country_name` | `string` | Nombre del pais |
 | `administrative_level` | `number` | 1=departamento, 2=municipio |
-| `parent_code` | `string?` | Codigo del padre (depto para municipio) |
-| `timezone` | `string?` | Zona horaria (solo departamentos) |
-| `country` | `string` | Codigo pais (CO) |
+| `division_1_code` | `string?` | Codigo DANE del departamento |
+| `division_1_name` | `string?` | Nombre del departamento |
+| `division_2_code` | `string?` | Codigo DANE del municipio |
+| `division_2_name` | `string?` | Nombre del municipio |
+| `parent_division_1_code` | `string?` | Codigo del departamento padre |
+| `latitude` | `number?` | Latitud |
+| `longitude` | `number?` | Longitud |
+| `timezone` | `string?` | Zona horaria IANA |
+| `is_active` | `boolean` | Activo/inactivo |
+| `created_at` | `number` | Timestamp |
+
+**Indices:** `by_country`, `by_division_1`, `by_division_2`, `by_parent`, `by_is_active`
 
 ### Tabla: `crop_types`
 
 | Campo | Tipo | Descripcion |
 |-------|------|-------------|
-| `name` | `string` | Nombre del cultivo |
-| `code` | `string` | Codigo unico |
-| `description` | `string?` | Descripcion |
-| `status` | `string` | active/inactive |
+| `name` | `string` | Nombre unico (Cannabis, Coffee, etc.) |
+| `display_name_es` | `string` | Nombre en espanol |
+| `display_name_en` | `string` | Nombre en ingles |
+| `scientific_name` | `string?` | Nombre cientifico |
+| `default_tracking_level` | `string` | "batch" o "individual" |
+| `individual_tracking_optional` | `boolean` | Si tracking individual es opcional |
+| `compliance_profile` | `any` | Requisitos regulatorios regionales |
+| `default_phases` | `array<any>` | Fases de produccion |
+| `environmental_requirements` | `any?` | Requisitos ambientales |
+| `average_cycle_days` | `number?` | Dias promedio del ciclo |
+| `average_yield_per_plant` | `number?` | Rendimiento promedio |
+| `yield_unit` | `string?` | Unidad de rendimiento |
+| `is_active` | `boolean` | Activo/inactivo |
 | `created_at` | `number` | Timestamp |
+
+**Indices:** `by_name`, `by_is_active`
 
 ### Tabla: `roles`
 
 | Campo | Tipo | Descripcion |
 |-------|------|-------------|
-| `name` | `string` | Nombre visible |
-| `code` | `string` | Codigo unico |
+| `name` | `string` | Codigo del rol (COMPANY_OWNER, etc.) |
+| `display_name_es` | `string` | Nombre visible en espanol |
+| `display_name_en` | `string` | Nombre visible en ingles |
 | `description` | `string?` | Descripcion del rol |
-| `permissions` | `array<string>` | Lista de permisos |
-| `level` | `number` | Jerarquia (1=mas alto) |
-| `is_system` | `boolean` | Si es rol de sistema |
+| `level` | `number` | Jerarquia (10-1000, mayor = mas alto) |
+| `scope_level` | `string` | company/facility/area |
+| `permissions` | `any` | Matriz de permisos |
+| `inherits_from_role_ids` | `array<any>` | Roles de los que hereda |
+| `is_system_role` | `boolean` | Si es rol de sistema |
+| `is_active` | `boolean` | Activo/inactivo |
+| `created_at` | `number` | Timestamp |
+
+**Indices:** `by_name`, `by_level`, `by_is_active`
+
+### Tabla: `units_of_measure`
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| `name` | `string` | Nombre (ej: "kilogram") |
+| `symbol` | `string` | Simbolo (ej: "kg") |
+| `category` | `string` | weight/volume/area/quantity/time |
+| `base_unit_symbol` | `string?` | Simbolo de la unidad base |
+| `conversion_factor` | `number?` | Factor de conversion a unidad base |
+| `is_active` | `boolean` | Activo/inactivo |
+| `created_at` | `number` | Timestamp |
+
+**Indices:** `by_category`, `by_symbol`, `by_is_active`
 
 ---
 
@@ -175,31 +219,32 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 | 11 | Bogota D.C. |
 | 13 | Bolivar |
 | 15 | Boyaca |
-| ... | (32 departamentos) |
+| ... | (33 departamentos total) |
 | 99 | Vichada |
 
 ---
 
 ## Tipos de Cultivo
 
-| Code | Nombre ES | Nombre EN |
+| Name | Nombre ES | Nombre EN |
 |------|-----------|-----------|
-| `cannabis` | Cannabis | Cannabis |
-| `coffee` | Cafe | Coffee |
-| `cocoa` | Cacao | Cocoa |
-| `flowers` | Flores | Flowers |
+| `Cannabis` | Cannabis | Cannabis |
+| `Coffee` | Cafe | Coffee |
+| `Cocoa` | Cacao | Cocoa |
+| `Flowers` | Flores | Flowers |
 
 ---
 
 ## Roles del Sistema
 
-| Code | Nombre | Nivel | Descripcion |
-|------|--------|-------|-------------|
-| `SUPER_ADMIN` | Super Administrador | 1 | Acceso total al sistema |
-| `COMPANY_OWNER` | Dueno de Empresa | 2 | Administra toda la empresa |
-| `FACILITY_MANAGER` | Gerente de Instalacion | 3 | Administra facilities asignadas |
-| `OPERATOR` | Operador | 4 | Operaciones diarias |
-| `VIEWER` | Visualizador | 5 | Solo lectura |
+| Name | Nombre ES | Nivel | Scope | Descripcion |
+|------|-----------|-------|-------|-------------|
+| `PLATFORM_ADMIN` | Admin Plataforma | 1000 | company | Acceso total al sistema |
+| `COMPANY_OWNER` | Propietario | 1000 | company | Administra toda la empresa |
+| `FACILITY_MANAGER` | Gerente de Instalacion | 500 | facility | Administra facilities asignadas |
+| `PRODUCTION_SUPERVISOR` | Supervisor de Produccion | 300 | facility | Supervisa actividades de produccion |
+| `WORKER` | Trabajador | 100 | area | Operaciones diarias |
+| `VIEWER` | Observador | 10 | company | Solo lectura |
 
 ---
 
@@ -207,11 +252,11 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 
 | Category | Units |
 |----------|-------|
-| Peso | kg, g, mg, lb, oz |
-| Volumen | L, mL, gal |
+| Weight | kg, g, mg, lb, oz |
+| Volume | L, mL, gal |
 | Area | m², ha, ft² |
-| Cantidad | unidad, planta, semilla, esqueje |
-| Tiempo | dias, semanas, meses |
+| Quantity | unit, plant, seed, cutting |
+| Time | day, week, month |
 
 ---
 
@@ -229,25 +274,43 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 
 ## API Backend
 
-### Geography Queries
+### Geography Queries (`convex/geographic.ts`)
 | Funcion | Parametros | Retorna |
 |---------|------------|---------|
-| `getDepartments` | - | `[{ code, name }]` |
-| `getMunicipalities` | `departmentCode` | `[{ code, name }]` |
-| `getLocation` | `code` | Location completo |
+| `getDepartments` | `countryCode` | `[{ division_1_code, division_1_name, ... }]` |
+| `getMunicipalities` | `countryCode, departmentCode` | `[{ division_2_code, division_2_name, ... }]` |
+| `getLocationByCode` | `countryCode, divisionCode` | Location completo |
 
-### Crop Types Queries
+### Crop Types Queries (`convex/crops.ts`)
 | Funcion | Parametros | Retorna |
 |---------|------------|---------|
-| `getCropTypes` | `includeInactive?` | `[{ id, name, code }]` |
-| `getCropType` | `id` | CropType completo |
+| `getCropTypes` | `includeInactive?` | `[CropType]` |
+| `getCropTypeById` | `id` | CropType completo |
+| `getCropTypeByName` | `name` | CropType o null |
 
-### Roles Queries
+### Roles Queries (`convex/roles.ts`)
 | Funcion | Parametros | Retorna |
 |---------|------------|---------|
-| `getRoles` | - | `[{ id, name, code, level }]` |
-| `getAssignableRoles` | `currentUserRole` | Roles que puede asignar |
-| `getRole` | `id` | Role completo con permisos |
+| `list` | - | `[{ _id, name, display_name_es/en, level, scope_level }]` |
+| `getById` | `id` | Role completo con permisos |
+| `getAssignableRoles` | - (usa auth) | Roles asignables segun nivel del usuario |
+
+### Units Queries (`convex/units.ts`)
+| Funcion | Parametros | Retorna |
+|---------|------------|---------|
+| `getUnits` | `category?, includeInactive?` | `[Unit]` |
+| `getById` | `id` | Unit completo |
+| `getBySymbol` | `symbol` | Unit o null |
+| `getCategories` | - | `[string]` categorias disponibles |
+
+---
+
+## Frontend Components
+
+| Componente | Path | Uso |
+|------------|------|-----|
+| `CascadingSelect` | `components/shared/cascading-select.tsx` | Dropdown departamento > municipio |
+| `RoleSelector` | `components/users/role-selector.tsx` | Selector de roles con filtro por nivel |
 
 ---
 
@@ -257,17 +320,17 @@ El modulo de Datos de Referencia gestiona informacion estatica del sistema que e
 
 ```bash
 # Cargar todos los datos de referencia
-npx convex run seedAll
+npx convex run seedAll:seedAllReferenceData
 
 # O individualmente
-npx convex run seedGeography
-npx convex run seedCropTypes
-npx convex run seedRoles
-npx convex run seedUnits
+npx convex run seedGeographic:seedColombianGeography
+npx convex run seedCropTypes:seedCropTypes
+npx convex run seedRoles:seedSystemRoles
+npx convex run seedUnits:seedUnits
 ```
 
 ### Orden de Ejecucion
-1. `seedGeography` - Primero (sin dependencias)
+1. `seedGeographic` - Primero (sin dependencias)
 2. `seedCropTypes` - Segundo (sin dependencias)
 3. `seedRoles` - Tercero (sin dependencias)
 4. `seedUnits` - Cuarto (sin dependencias)
@@ -278,7 +341,8 @@ npx convex run seedUnits
 ## Notas
 
 - Datos de referencia son **read-only** para usuarios normales
-- Solo SUPER_ADMIN puede modificar datos de referencia
+- Solo PLATFORM_ADMIN puede modificar datos de referencia
 - Cambios a crop_types activos pueden afectar registros existentes
 - Geography data basada en codigos DANE oficiales
 - Roles son fijos en MVP, extensibles en futuras fases
+- Unidades de medida incluyen factores de conversion a unidad base por categoria
