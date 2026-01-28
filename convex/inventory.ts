@@ -636,3 +636,43 @@ export const getTransactionTypeLabels = query({
     ];
   },
 });
+
+/**
+ * Count inventory items by product
+ * Returns statistics about inventory for a specific product
+ * Used in product detail page (US-PRD.4)
+ */
+export const countByProduct = query({
+  args: {
+    productId: v.id("products"),
+  },
+  handler: async (ctx, args) => {
+    const items = await ctx.db
+      .query("inventory_items")
+      .filter((q) => q.eq(q.field("product_id"), args.productId))
+      .collect();
+
+    // Count total items
+    const totalItems = items.length;
+
+    // Count active items (quantity > 0 and not discontinued/consumed)
+    const activeItems = items.filter(
+      (item) =>
+        item.quantity_available > 0 &&
+        item.transformation_status !== "consumed" &&
+        item.lot_status !== "discontinued"
+    ).length;
+
+    // Sum total quantity available
+    const totalQuantity = items.reduce(
+      (sum, item) => sum + (item.quantity_available || 0),
+      0
+    );
+
+    return {
+      totalItems,
+      activeItems,
+      totalQuantity,
+    };
+  },
+});
