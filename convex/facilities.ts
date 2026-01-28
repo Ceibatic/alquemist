@@ -306,16 +306,14 @@ export const remove = mutation({
     const activeBatches = await ctx.db
       .query("batches")
       .withIndex("by_facility", (q) => q.eq("facility_id", args.id))
-      .filter((q) =>
-        q.or(
-          q.eq(q.field("status"), "active"),
-          q.eq(q.field("status"), "planning")
-        )
-      )
+      .filter((q) => q.neq(q.field("status"), "completed"))
       .first();
 
     if (activeBatches) {
-      throw new Error("No puedes eliminar una instalación con lotes activos");
+      throw new Error(
+        "No puedes desactivar una instalación con lotes activos. " +
+        "Completa o cancela todos los lotes antes de desactivar la instalación."
+      );
     }
 
     // Check for active areas in this facility
