@@ -97,6 +97,41 @@ export function PreferencesForm({ userId, user }: PreferencesFormProps) {
   const theme = watch('theme');
   const defaultFacilityId = watch('default_facility_id');
 
+  // Format date based on selected format
+  const formatDatePreview = (format: string): string => {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+
+    switch (format) {
+      case 'DD/MM/YYYY':
+        return `${day}/${month}/${year}`;
+      case 'MM/DD/YYYY':
+        return `${month}/${day}/${year}`;
+      case 'YYYY-MM-DD':
+        return `${year}-${month}-${day}`;
+      default:
+        return `${day}/${month}/${year}`;
+    }
+  };
+
+  // Format time based on selected format
+  const formatTimePreview = (format: string): string => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+
+    if (format === '12h') {
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const hours12 = hours % 12 || 12;
+      return `${hours12}:${minutes} ${period}`;
+    } else {
+      const hours24 = String(hours).padStart(2, '0');
+      return `${hours24}:${minutes}`;
+    }
+  };
+
   const onSubmit = async (data: UserProfileSettingsInput) => {
     try {
       await updatePreferences({
@@ -192,6 +227,9 @@ export function PreferencesForm({ userId, user }: PreferencesFormProps) {
             ))}
           </SelectContent>
         </Select>
+        <p className="text-xs text-muted-foreground mt-1">
+          Ejemplo: {formatDatePreview(dateFormat)}
+        </p>
       </div>
 
       {/* Time Format */}
@@ -215,6 +253,9 @@ export function PreferencesForm({ userId, user }: PreferencesFormProps) {
             ))}
           </SelectContent>
         </Select>
+        <p className="text-xs text-muted-foreground mt-1">
+          Ejemplo: {formatTimePreview(timeFormat)}
+        </p>
       </div>
 
       {/* Timezone */}
