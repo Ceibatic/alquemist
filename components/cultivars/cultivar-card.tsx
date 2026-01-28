@@ -18,6 +18,7 @@ import {
   Clock,
   Flower2,
   Activity,
+  RefreshCw,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ interface CultivarCardProps {
   onView?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onReactivate?: () => void;
 }
 
 export function CultivarCard({
@@ -39,6 +41,7 @@ export function CultivarCard({
   onView,
   onEdit,
   onDelete,
+  onReactivate,
 }: CultivarCardProps) {
   const router = useRouter();
 
@@ -147,7 +150,7 @@ export function CultivarCard({
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <span className="font-bold text-lg text-gray-900 truncate">{cultivar.name}</span>
           </div>
-          {(onEdit || onDelete) && (
+          {(onEdit || onDelete || onReactivate) && (
             <DropdownMenu>
               <DropdownMenuTrigger
                 data-dropdown-menu
@@ -157,6 +160,18 @@ export function CultivarCard({
                 <MoreVertical className="h-4 w-4 text-gray-500" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {onReactivate && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReactivate();
+                    }}
+                    className="text-green-600 focus:text-green-600"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Reactivar
+                  </DropdownMenuItem>
+                )}
                 {onEdit && (
                   <DropdownMenuItem
                     onClick={(e) => {

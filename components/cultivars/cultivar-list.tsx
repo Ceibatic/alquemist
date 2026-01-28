@@ -9,6 +9,8 @@ import { CultivarCreateModal } from './cultivar-create-modal';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +55,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
   // Filter states
   const [selectedCropType, setSelectedCropType] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDiscontinued, setShowDiscontinued] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Delete dialog state
@@ -67,6 +70,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
       ? {
           companyId: currentCompanyId,
           cropTypeId: selectedCropType ? (selectedCropType as Id<'crop_types'>) : undefined,
+          status: showDiscontinued ? undefined : 'active',
         }
       : 'skip'
   );
@@ -76,6 +80,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
   // Mutations
   const createCultivar = useMutation(api.cultivars.create);
   const deleteCultivar = useMutation(api.cultivars.remove);
+  const reactivateCultivar = useMutation(api.cultivars.reactivate);
 
   // Filter cultivars
   const filteredCultivars = useMemo(() => {
@@ -101,6 +106,25 @@ export function CultivarList({ facilityId }: CultivarListProps) {
   const clearAllFilters = () => {
     setSearchQuery('');
     setSelectedCropType(null);
+    setShowDiscontinued(false);
+  };
+
+  const handleReactivateCultivar = async (cultivar: any) => {
+    try {
+      await reactivateCultivar({ id: cultivar._id });
+      toast({
+        title: 'Cultivar reactivado',
+        description: `${cultivar.name} ha sido reactivado correctamente.`,
+      });
+    } catch (error) {
+      console.error('Error reactivating cultivar:', error);
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo reactivar el cultivar. Intenta de nuevo.';
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    }
   };
 
   // Get crop type name helper
@@ -152,9 +176,10 @@ export function CultivarList({ facilityId }: CultivarListProps) {
       setCultivarToDelete(null);
     } catch (error) {
       console.error('Error deleting cultivar:', error);
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo eliminar el cultivar. Intenta de nuevo.';
       toast({
         title: 'Error',
-        description: 'No se pudo eliminar el cultivar. Intenta de nuevo.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -194,9 +219,10 @@ export function CultivarList({ facilityId }: CultivarListProps) {
       });
     } catch (error) {
       console.error('Error creating cultivar:', error);
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el cultivar. Intenta de nuevo.';
       toast({
         title: 'Error',
-        description: 'No se pudo crear el cultivar. Intenta de nuevo.',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
@@ -221,7 +247,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
   }
 
   // Empty state (no cultivars at all)
-  if (cultivars.length === 0 && !selectedCropType && !searchQuery) {
+  if (cultivars.length === 0 && !selectedCropType && !searchQuery && !showDiscontinued) {
     return (
       <div className="space-y-6">
         <div className="flex justify-end">
@@ -265,67 +291,84 @@ export function CultivarList({ facilityId }: CultivarListProps) {
 
   return (
     <div className="space-y-6">
-      {/* Compact Filter Bar - Single Line */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        {/* Left: Type Dropdown */}
-        <div className="flex items-center gap-2">
-          {/* Crop Type Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2 min-w-[160px] justify-between">
-                <span className="flex items-center gap-2">
-                  <SelectedIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{selectedCropTypeOption.label}</span>
-                  <span className="sm:hidden">Tipo</span>
-                </span>
-                <ChevronDown className="h-4 w-4 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[200px]">
-              {cropTypeOptions.map((option) => {
-                const Icon = option.icon;
-                return (
-                  <DropdownMenuItem
-                    key={option.value || 'all'}
-                    onClick={() => setSelectedCropType(option.value)}
-                    className={selectedCropType === option.value ? 'bg-gray-100' : ''}
-                  >
-                    <Icon className="mr-2 h-4 w-4" />
-                    {option.label}
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+      {/* Compact Filter Bar */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          {/* Left: Type Dropdown */}
+          <div className="flex items-center gap-2">
+            {/* Crop Type Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2 min-w-[160px] justify-between">
+                  <span className="flex items-center gap-2">
+                    <SelectedIcon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{selectedCropTypeOption.label}</span>
+                    <span className="sm:hidden">Tipo</span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[200px]">
+                {cropTypeOptions.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={option.value || 'all'}
+                      onClick={() => setSelectedCropType(option.value)}
+                      className={selectedCropType === option.value ? 'bg-gray-100' : ''}
+                    >
+                      <Icon className="mr-2 h-4 w-4" />
+                      {option.label}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Center: Search Input */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Buscar cultivares..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-9"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Right: Create Button */}
+          <Button
+            onClick={() => setCreateModalOpen(true)}
+            className="bg-amber-500 hover:bg-amber-600 text-white shrink-0"
+          >
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Crear Cultivar</span>
+          </Button>
         </div>
 
-        {/* Center: Search Input */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="Buscar cultivares..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-9"
+        {/* Show Discontinued Checkbox */}
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="show-discontinued"
+            checked={showDiscontinued}
+            onCheckedChange={(checked) => setShowDiscontinued(checked as boolean)}
           />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+          <Label
+            htmlFor="show-discontinued"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            Mostrar cultivares descontinuados
+          </Label>
         </div>
-
-        {/* Right: Create Button */}
-        <Button
-          onClick={() => setCreateModalOpen(true)}
-          className="bg-amber-500 hover:bg-amber-600 text-white shrink-0"
-        >
-          <Plus className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Crear Cultivar</span>
-        </Button>
       </div>
 
       {/* Cultivars Grid */}
@@ -336,7 +379,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
             <p className="text-sm text-gray-600">
               No se encontraron cultivares que coincidan con tu búsqueda
             </p>
-            {(searchQuery || selectedCropType) && (
+            {(searchQuery || selectedCropType || showDiscontinued) && (
               <Button
                 variant="link"
                 className="mt-2 text-green-700"
@@ -350,15 +393,24 @@ export function CultivarList({ facilityId }: CultivarListProps) {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredCultivars.map((cultivar: any) => (
-            <CultivarCard
+            <div
               key={cultivar._id}
-              cultivar={cultivar}
-              isSystem={false}
-              cropTypeName={getCropTypeName(cultivar.crop_type_id)}
-              onView={() => handleViewCultivar(cultivar)}
-              onEdit={() => handleEditCultivar(cultivar)}
-              onDelete={() => handleDeleteCultivar(cultivar)}
-            />
+              className={
+                isDeleting && cultivarToDelete?._id === cultivar._id
+                  ? 'opacity-50 pointer-events-none'
+                  : ''
+              }
+            >
+              <CultivarCard
+                cultivar={cultivar}
+                isSystem={false}
+                cropTypeName={getCropTypeName(cultivar.crop_type_id)}
+                onView={() => handleViewCultivar(cultivar)}
+                onEdit={() => handleEditCultivar(cultivar)}
+                onDelete={() => handleDeleteCultivar(cultivar)}
+                onReactivate={cultivar.status === 'discontinued' ? () => handleReactivateCultivar(cultivar) : undefined}
+              />
+            </div>
           ))}
         </div>
       )}

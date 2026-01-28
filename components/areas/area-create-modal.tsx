@@ -63,11 +63,11 @@ export function AreaCreateModal({
       });
 
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating area:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo crear el área. Por favor, intenta nuevamente.',
+        title: 'Error al crear área',
+        description: error?.message || 'No se pudo crear el área. Por favor, intenta nuevamente.',
         variant: 'destructive',
       });
     } finally {
