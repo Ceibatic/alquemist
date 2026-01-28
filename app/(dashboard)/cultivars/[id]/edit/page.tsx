@@ -10,11 +10,13 @@ import { useRouter, useParams } from 'next/navigation';
 import { Id } from '@/convex/_generated/dataModel';
 import type { CreateCustomCultivarInput } from '@/lib/validations/cultivar';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 export default function CultivarEditPage() {
   const router = useRouter();
   const params = useParams();
   const cultivarId = params.id as Id<'cultivars'>;
+  const { toast } = useToast();
 
   // Fetch data
   const cultivar = useQuery(api.cultivars.get, { id: cultivarId });
@@ -63,10 +65,18 @@ export default function CultivarEditPage() {
         cbdMax: data.cbd_max,
         notes: data.notes,
       });
+      toast({
+        title: 'Cultivar actualizado',
+        description: `${data.name} ha sido actualizado correctamente.`,
+      });
       router.push(`/cultivars/${cultivarId}`);
     } catch (error) {
       console.error('Error updating cultivar:', error);
-      alert('Error al actualizar el cultivar. Por favor intenta de nuevo.');
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo actualizar el cultivar. Intenta de nuevo.',
+        variant: 'destructive',
+      });
     }
   };
 
