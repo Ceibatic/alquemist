@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, User, Mail, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CountdownTimer } from '@/components/shared/countdown-timer';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -80,6 +81,7 @@ function AcceptInvitationContent() {
 
       if (result.success) {
         sessionStorage.removeItem('invitationToken');
+        toast.success('Invitación rechazada');
         router.push('/login');
       } else {
         setError(result.error || 'Error al rechazar la invitacion');

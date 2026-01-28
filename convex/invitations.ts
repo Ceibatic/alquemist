@@ -5,12 +5,17 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query, action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { mutation, query, action, internalMutation } from "./_generated/server";
+import { api, internal } from "./_generated/api";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import {
   validateEmail,
   formatColombianPhone,
 } from "./validation";
+import {
+  generateInvitationEmailHTML,
+  sendEmailViaResend,
+} from "./email";
 
 // ============================================================================
 // INVITATION VALIDATION & ACCEPTANCE
@@ -52,6 +57,13 @@ export const validate = query({
       return {
         valid: false,
         error: "Esta invitación ha sido rechazada",
+      };
+    }
+
+    if (invitation.status === "revoked") {
+      return {
+        valid: false,
+        error: "Esta invitación ha sido revocada por el administrador",
       };
     }
 
@@ -146,7 +158,7 @@ export const accept = action({
 
     // 2. Get invitation record (need to do this in mutation)
     const invitationData: any = await ctx.runMutation(
-      api.invitations.getInvitationByToken,
+      internal.invitations.getInvitationByToken,
       {
         token: args.token,
       }
@@ -172,7 +184,7 @@ export const accept = action({
 
     // 4. Create user account (without password — Convex Auth handles auth)
     const userResult: any = await ctx.runMutation(
-      api.invitations.createUserFromInvitation,
+      internal.invitations.createUserFromInvitation,
       {
         email: invitationData.email,
         phone: args.phone ? formatColombianPhone(args.phone) : undefined,
@@ -184,7 +196,7 @@ export const accept = action({
     );
 
     // 5. Update invitation status
-    await ctx.runMutation(api.invitations.markInvitationAccepted, {
+    await ctx.runMutation(internal.invitations.markInvitationAccepted, {
       token: args.token,
     });
 
@@ -255,9 +267,9 @@ export const reject = mutation({
 
 /**
  * Get invitation by token
- * Helper for the accept action
+ * Internal helper for the accept action
  */
-export const getInvitationByToken = mutation({
+export const getInvitationByToken = internalMutation({
   args: {
     token: v.string(),
   },
@@ -285,7 +297,7 @@ export const getInvitationByToken = mutation({
  * Create user account from invitation
  * Helper mutation for accept action
  */
-export const createUserFromInvitation = mutation({
+export const createUserFromInvitation = internalMutation({
   args: {
     email: v.string(),
     phone: v.optional(v.string()),
@@ -337,6 +349,16 @@ export const createUserFromInvitation = mutation({
       updated_at: now,
     });
 
+    // Insert facility_users records
+    for (const facilityId of args.facilityIds) {
+      await ctx.db.insert("facility_users", {
+        facility_id: facilityId,
+        user_id: userId,
+        role_id: args.roleId,
+        created_at: now,
+      });
+    }
+
     return {
       userId,
       sessionToken: "convex-auth-managed",
@@ -348,7 +370,7 @@ export const createUserFromInvitation = mutation({
  * Mark invitation as accepted
  * Helper mutation for accept action
  */
-export const markInvitationAccepted = mutation({
+export const markInvitationAccepted = internalMutation({
   args: {
     token: v.string(),
   },
@@ -376,15 +398,14 @@ export const markInvitationAccepted = mutation({
 // ============================================================================
 
 /**
- * Create invitation for a new team member
- * Phase 2: Will be called by company owners to invite users
+ * Create invitation record (internal)
  */
-export const create = mutation({
+export const _createInvitationRecord = internalMutation({
   args: {
     email: v.string(),
     roleId: v.id("roles"),
     facilityIds: v.array(v.id("facilities")),
-    invitedBy: v.id("users"), // Current user creating the invitation
+    invitedByUserId: v.id("users"),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -395,7 +416,7 @@ export const create = mutation({
     }
 
     // 2. Get inviter to get company
-    const inviter = await ctx.db.get(args.invitedBy);
+    const inviter = await ctx.db.get(args.invitedByUserId);
     if (!inviter || !inviter.company_id) {
       throw new Error("Usuario invitador no encontrado o sin empresa");
     }
@@ -433,6 +454,7 @@ export const create = mutation({
     }
 
     // 6. Verify all facilities exist and belong to company
+    const facilityNames: string[] = [];
     for (const facilityId of args.facilityIds) {
       const facility = await ctx.db.get(facilityId);
       if (!facility) {
@@ -441,13 +463,14 @@ export const create = mutation({
       if (facility.company_id !== inviter.company_id) {
         throw new Error("Todas las instalaciones deben pertenecer a tu empresa");
       }
+      facilityNames.push(facility.name);
     }
 
     // 7. Generate unique invitation token
     const token = crypto.randomUUID();
 
     // 8. Set expiration to 72 hours
-    const expiresAt = now + 72 * 60 * 60 * 1000; // 72 hours
+    const expiresAt = now + 72 * 60 * 60 * 1000;
 
     // 9. Create invitation record
     const invitationId = await ctx.db.insert("invitations", {
@@ -457,17 +480,82 @@ export const create = mutation({
       facility_ids: args.facilityIds,
       token,
       expires_at: expiresAt,
-      invited_by: args.invitedBy,
+      invited_by: args.invitedByUserId,
       status: "pending",
       created_at: now,
     });
 
+    const inviterName = `${inviter.first_name || ""} ${inviter.last_name || ""}`.trim() || "Un miembro del equipo";
+
     return {
-      success: true,
       invitationId,
       token,
       email: args.email.toLowerCase(),
       expiresAt,
+      companyName: inviter.company_id ? (await ctx.db.get(inviter.company_id))?.name || "" : "",
+      roleName: role.display_name_es,
+      inviterName,
+      facilityNames,
+    };
+  },
+});
+
+/**
+ * Create invitation for a new team member and send email
+ */
+export const create = action({
+  args: {
+    email: v.string(),
+    roleId: v.id("roles"),
+    facilityIds: v.array(v.id("facilities")),
+  },
+  handler: async (ctx, args) => {
+    // Auth is checked inside the internal mutation via the invitedByUserId
+    // But we need the userId here for the mutation arg
+    // Actions don't have getAuthUserId — we get it from a query
+    const currentUser: any = await ctx.runQuery(api.users.getCurrentUser, {});
+    if (!currentUser) {
+      throw new Error("No autenticado");
+    }
+
+    // 1. Create invitation record
+    const result: any = await ctx.runMutation(
+      internal.invitations._createInvitationRecord,
+      {
+        email: args.email,
+        roleId: args.roleId,
+        facilityIds: args.facilityIds,
+        invitedByUserId: currentUser._id,
+      }
+    );
+
+    // 2. Send invitation email
+    const { html, text } = generateInvitationEmailHTML({
+      inviteeEmail: result.email,
+      companyName: result.companyName,
+      inviterName: result.inviterName,
+      roleName: result.roleName,
+      facilities: result.facilityNames,
+      token: result.token,
+    });
+
+    const emailResult = await sendEmailViaResend({
+      to: result.email,
+      subject: `Has sido invitado a ${result.companyName} en Alquemist`,
+      html,
+      text,
+    });
+
+    if (!emailResult.success) {
+      console.error("[INVITATIONS] Failed to send invitation email:", emailResult.error);
+    }
+
+    return {
+      success: true,
+      invitationId: result.invitationId,
+      email: result.email,
+      expiresAt: result.expiresAt,
+      emailSent: emailResult.success,
       message: "Invitación creada exitosamente",
     };
   },
@@ -486,6 +574,9 @@ export const getByCompany = query({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const invitations = await ctx.db
       .query("invitations")
       .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
@@ -530,6 +621,9 @@ export const getPendingByCompany = query({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const now = Date.now();
 
     const invitations = await ctx.db
@@ -567,16 +661,14 @@ export const getPendingByCompany = query({
 });
 
 /**
- * Resend invitation email
- * Phase 2 Module 18
+ * Resend invitation — regenerate token, reset expiry, send email
  */
-export const resend = mutation({
+export const _resendInvitationRecord = internalMutation({
   args: {
     invitationId: v.id("invitations"),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-
     const invitation = await ctx.db.get(args.invitationId);
 
     if (!invitation) {
@@ -587,12 +679,16 @@ export const resend = mutation({
       throw new Error("Solo se pueden reenviar invitaciones pendientes");
     }
 
-    // Check if already expired
-    if (invitation.expires_at < now) {
-      throw new Error("Esta invitación ha expirado. Por favor crea una nueva.");
-    }
+    // Generate new token and reset expiry
+    const newToken = crypto.randomUUID();
+    const newExpiresAt = now + 72 * 60 * 60 * 1000;
 
-    // Get company, role, and facilities for email
+    await ctx.db.patch(args.invitationId, {
+      token: newToken,
+      expires_at: newExpiresAt,
+    });
+
+    // Get details for email
     const company = await ctx.db.get(invitation.company_id);
     const role = await ctx.db.get(invitation.role_id);
     const facilities = await Promise.all(
@@ -604,21 +700,58 @@ export const resend = mutation({
       throw new Error("Datos de invitación incompletos");
     }
 
-    const facilityNames = facilities.filter((f) => f !== null).map((f) => f!.name);
-    const inviterName = inviter
-      ? `${inviter.first_name || ""} ${inviter.last_name || ""}`.trim()
-      : "Un miembro del equipo";
-
     return {
-      success: true,
-      invitationId: args.invitationId,
-      token: invitation.token,
+      token: newToken,
       email: invitation.email,
       companyName: company.name,
       roleName: role.display_name_es,
-      inviterName,
-      facilities: facilityNames,
-      expiresAt: invitation.expires_at,
+      inviterName: inviter
+        ? `${inviter.first_name || ""} ${inviter.last_name || ""}`.trim()
+        : "Un miembro del equipo",
+      facilityNames: facilities.filter((f) => f !== null).map((f) => f!.name),
+      expiresAt: newExpiresAt,
+    };
+  },
+});
+
+export const resend = action({
+  args: {
+    invitationId: v.id("invitations"),
+  },
+  handler: async (ctx, args) => {
+    // Auth check via getCurrentUser
+    const currentUser: any = await ctx.runQuery(api.users.getCurrentUser, {});
+    if (!currentUser) throw new Error("No autenticado");
+
+    const result: any = await ctx.runMutation(
+      internal.invitations._resendInvitationRecord,
+      { invitationId: args.invitationId }
+    );
+
+    // Send email
+    const { html, text } = generateInvitationEmailHTML({
+      inviteeEmail: result.email,
+      companyName: result.companyName,
+      inviterName: result.inviterName,
+      roleName: result.roleName,
+      facilities: result.facilityNames,
+      token: result.token,
+    });
+
+    const emailResult = await sendEmailViaResend({
+      to: result.email,
+      subject: `Recordatorio: Has sido invitado a ${result.companyName} en Alquemist`,
+      html,
+      text,
+    });
+
+    if (!emailResult.success) {
+      console.error("[INVITATIONS] Failed to resend invitation email:", emailResult.error);
+    }
+
+    return {
+      success: true,
+      emailSent: emailResult.success,
       message: "Invitación reenviada exitosamente",
     };
   },
@@ -633,6 +766,9 @@ export const cancel = mutation({
     invitationId: v.id("invitations"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
     const invitation = await ctx.db.get(args.invitationId);
 
     if (!invitation) {
@@ -644,13 +780,13 @@ export const cancel = mutation({
     }
 
     await ctx.db.patch(args.invitationId, {
-      status: "rejected",
+      status: "revoked",
       rejected_at: Date.now(),
     });
 
     return {
       success: true,
-      message: "Invitación cancelada exitosamente",
+      message: "Invitación revocada exitosamente",
     };
   },
 });
