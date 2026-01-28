@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Layers, Loader2 } from 'lucide-react';
+import { Layers, Loader2, AlertCircle, Info } from 'lucide-react';
 import { useUser } from '@/components/providers/user-provider';
 
 interface BatchCreateModalProps {
@@ -61,6 +61,13 @@ export function BatchCreateModal({
   const [currentPhase, setCurrentPhase] = useState<string>('germination');
   const [notes, setNotes] = useState('');
 
+  // New fields for US-25.3
+  const [useAutoCode, setUseAutoCode] = useState(true);
+  const [customCode, setCustomCode] = useState('');
+  const [supplierId, setSupplierId] = useState<string>('');
+  const [germinationDate, setGerminationDate] = useState<string>('');
+  const [productionOrderId, setProductionOrderId] = useState<string>(orderId || '');
+
   // Fetch data
   const facilities = useQuery(api.facilities.list, { companyId });
   const areas = useQuery(
@@ -72,9 +79,37 @@ export function BatchCreateModal({
     api.cultivars.getByCrop,
     selectedCropType ? { companyId, cropTypeId: selectedCropType as Id<'crop_types'> } : 'skip'
   );
+  const suppliers = useQuery(api.suppliers.list, { companyId });
+  const productionOrders = useQuery(
+    api.productionOrders.list,
+    selectedFacility
+      ? {
+          companyId,
+          facilityId: selectedFacility as Id<'facilities'>,
+          status: 'active',
+        }
+      : 'skip'
+  );
 
   // Mutations
   const createBatch = useMutation(api.batches.create);
+
+  // Generate preview of auto-generated code
+  const autoCodePreview = () => {
+    if (!useAutoCode) return '';
+
+    const cultivarCode = selectedCultivar
+      ? cultivars?.find((c) => c._id === selectedCultivar)?.name.substring(0, 3).toUpperCase()
+      : 'GEN';
+
+    const now = new Date();
+    const dateStr =
+      now.getFullYear().toString().slice(-2) +
+      (now.getMonth() + 1).toString().padStart(2, '0') +
+      now.getDate().toString().padStart(2, '0');
+
+    return `${cultivarCode}-${dateStr}-XXX`;
+  };
 
   // Reset form when modal closes
   const handleOpenChange = (newOpen: boolean) => {
@@ -89,6 +124,11 @@ export function BatchCreateModal({
       setEnableIndividualTracking(false);
       setCurrentPhase('germination');
       setNotes('');
+      setUseAutoCode(true);
+      setCustomCode('');
+      setSupplierId('');
+      setGerminationDate('');
+      setProductionOrderId(orderId || '');
     }
     onOpenChange(newOpen);
   };
@@ -133,6 +173,26 @@ export function BatchCreateModal({
       return;
     }
 
+    // Validate custom code if not using auto-generate
+    if (!useAutoCode && !customCode.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Ingresa un codigo personalizado o activa la generacion automatica',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate supplier for purchases
+    if (sourceType === 'purchase' && !supplierId) {
+      toast({
+        title: 'Error',
+        description: 'Selecciona un proveedor para compras externas',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -144,7 +204,9 @@ export function BatchCreateModal({
         cultivarId: selectedCultivar
           ? (selectedCultivar as Id<'cultivars'>)
           : undefined,
-        orderId: orderId || undefined,
+        orderId: productionOrderId
+          ? (productionOrderId as Id<'production_orders'>)
+          : undefined,
         batchType,
         sourceType,
         plannedQuantity: parseInt(plannedQuantity),
@@ -153,6 +215,9 @@ export function BatchCreateModal({
         currentPhase,
         notes: notes || undefined,
         createdBy: userId as Id<'users'>,
+        // New fields
+        supplierId: supplierId ? (supplierId as Id<'suppliers'>) : undefined,
+        germinationDate: germinationDate ? new Date(germinationDate).getTime() : undefined,
       });
 
       toast({
@@ -173,6 +238,16 @@ export function BatchCreateModal({
     }
   };
 
+  // Get label for germination date based on source type
+  const getGerminationDateLabel = () => {
+    if (sourceType === 'seed') return 'Fecha de Germinacion';
+    if (sourceType === 'clone') return 'Fecha de Clonacion';
+    return 'Fecha de Inicio';
+  };
+
+  // Check if quantity is high for individual tracking warning
+  const showTrackingWarning = enableIndividualTracking && parseInt(initialQuantity) > 100;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -191,6 +266,53 @@ export function BatchCreateModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Batch Code Configuration */}
+          <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-base font-medium">Codigo de Lote</Label>
+                <p className="text-sm text-gray-500">
+                  Configura como se generara el codigo
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="auto-code" className="text-sm">
+                  Generar automatico
+                </Label>
+                <Switch
+                  id="auto-code"
+                  checked={useAutoCode}
+                  onCheckedChange={setUseAutoCode}
+                />
+              </div>
+            </div>
+
+            {useAutoCode ? (
+              <div className="space-y-2">
+                <Label className="text-sm text-gray-600">Vista previa del codigo</Label>
+                <div className="p-3 bg-white border rounded-md">
+                  <p className="text-sm font-mono text-gray-700">
+                    {autoCodePreview() || 'Selecciona un cultivar para ver la vista previa'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Formato: CULTIVAR-AAMMDD-XXX
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="custom-code">Codigo Personalizado *</Label>
+                <Input
+                  id="custom-code"
+                  value={customCode}
+                  onChange={(e) => setCustomCode(e.target.value)}
+                  placeholder="Ej: CUSTOM-2026-001"
+                  required={!useAutoCode}
+                />
+              </div>
+            )}
+          </div>
+
           {/* Facility Selection (if not already selected) */}
           {!facilityId && (
             <div className="space-y-2">
@@ -306,12 +428,68 @@ export function BatchCreateModal({
                 <SelectContent>
                   <SelectItem value="seed">Semilla</SelectItem>
                   <SelectItem value="clone">Clon</SelectItem>
-                  <SelectItem value="purchase">Compra Externa</SelectItem>
+                  <SelectItem value="purchase">Compra</SelectItem>
                   <SelectItem value="rescue">Rescate</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
+
+          {/* Supplier Field (conditional) */}
+          {sourceType === 'purchase' && (
+            <div className="space-y-2">
+              <Label>Proveedor *</Label>
+              <Select value={supplierId} onValueChange={setSupplierId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar proveedor..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {suppliers?.suppliers?.map((supplier) => (
+                    <SelectItem key={supplier._id} value={supplier._id}>
+                      {supplier.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Germination/Cloning Date */}
+          <div className="space-y-2">
+            <Label htmlFor="germination-date">{getGerminationDateLabel()}</Label>
+            <Input
+              id="germination-date"
+              type="date"
+              value={germinationDate}
+              onChange={(e) => setGerminationDate(e.target.value)}
+            />
+            <p className="text-xs text-gray-500">
+              Opcional - Registra la fecha de inicio del cultivo
+            </p>
+          </div>
+
+          {/* Production Order Link (optional) */}
+          {!orderId && productionOrders && productionOrders.length > 0 && (
+            <div className="space-y-2">
+              <Label>Orden de Produccion (Opcional)</Label>
+              <Select value={productionOrderId} onValueChange={setProductionOrderId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin vincular..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sin vincular</SelectItem>
+                  {productionOrders.map((order) => (
+                    <SelectItem key={order._id} value={order._id}>
+                      {order.orderNumber} - {order.cultivarName || order.cropTypeName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Vincula este lote a una orden de produccion existente
+              </p>
+            </div>
+          )}
 
           {/* Quantities */}
           <div className="grid grid-cols-2 gap-4">
@@ -366,12 +544,36 @@ export function BatchCreateModal({
             </div>
           </div>
 
+          {/* Individual Tracking Info/Warning */}
           {enableIndividualTracking && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-sm text-amber-700">
-                Se crearan {initialQuantity} registros de plantas individuales. Esto puede
-                tomar unos segundos.
-              </p>
+            <div
+              className={`p-3 border rounded-lg flex items-start gap-2 ${
+                showTrackingWarning
+                  ? 'bg-amber-50 border-amber-200'
+                  : 'bg-blue-50 border-blue-200'
+              }`}
+            >
+              {showTrackingWarning ? (
+                <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              ) : (
+                <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              )}
+              <div>
+                <p className={`text-sm ${showTrackingWarning ? 'text-amber-700' : 'text-blue-700'}`}>
+                  {showTrackingWarning ? (
+                    <>
+                      <strong>No recomendado para lotes grandes:</strong> Se crearan{' '}
+                      {initialQuantity} registros individuales. Esto puede tomar varios segundos y
+                      aumentar la complejidad de gestion.
+                    </>
+                  ) : (
+                    <>
+                      Se crearan {initialQuantity} registros de plantas individuales. Esto permite
+                      rastrear cada planta por separado (recomendado para lotes pequeños).
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
           )}
 
