@@ -865,21 +865,116 @@ export const updateProfile = mutation({
     quiet_hours_end: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Auth guard: verify authenticated user is updating their own profile
+    const authenticatedUserId = await getAuthUserId(ctx);
+    if (!authenticatedUserId) {
+      throw new ConvexError("No autenticado");
+    }
+
+    if (authenticatedUserId !== args.userId) {
+      throw new ConvexError("Solo puedes actualizar tu propio perfil");
+    }
+
     const now = Date.now();
 
     // Verify user exists
     const user = await ctx.db.get(args.userId);
     if (!user) {
-      throw new Error("User not found");
+      throw new ConvexError("Usuario no encontrado");
     }
+
+    // ============================================================================
+    // VALIDATIONS - Execute before any updates
+    // ============================================================================
+
+    // Validate first_name
+    if (args.first_name !== undefined) {
+      if (args.first_name.trim().length < 2) {
+        throw new ConvexError("El nombre debe tener al menos 2 caracteres");
+      }
+    }
+
+    // Validate last_name
+    if (args.last_name !== undefined) {
+      if (args.last_name.trim().length < 2) {
+        throw new ConvexError("El apellido debe tener al menos 2 caracteres");
+      }
+    }
+
+    // Validate theme
+    if (args.theme !== undefined) {
+      const validThemes = ["light", "dark", "system"];
+      if (!validThemes.includes(args.theme)) {
+        throw new ConvexError("El tema debe ser 'light', 'dark' o 'system'");
+      }
+    }
+
+    // Validate date_format
+    if (args.date_format !== undefined) {
+      const validFormats = ["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"];
+      if (!validFormats.includes(args.date_format)) {
+        throw new ConvexError("El formato de fecha debe ser 'DD/MM/YYYY', 'MM/DD/YYYY' o 'YYYY-MM-DD'");
+      }
+    }
+
+    // Validate time_format
+    if (args.time_format !== undefined) {
+      const validFormats = ["12h", "24h"];
+      if (!validFormats.includes(args.time_format)) {
+        throw new ConvexError("El formato de hora debe ser '12h' o '24h'");
+      }
+    }
+
+    // Validate locale
+    if (args.locale !== undefined) {
+      const validLocales = ["es", "en"];
+      if (!validLocales.includes(args.locale)) {
+        throw new ConvexError("El idioma debe ser 'es' o 'en'");
+      }
+    }
+
+    // Validate quiet_hours_start
+    if (args.quiet_hours_start !== undefined) {
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(args.quiet_hours_start)) {
+        throw new ConvexError("El formato de hora de inicio debe ser HH:MM (ej: 22:00)");
+      }
+    }
+
+    // Validate quiet_hours_end
+    if (args.quiet_hours_end !== undefined) {
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(args.quiet_hours_end)) {
+        throw new ConvexError("El formato de hora de fin debe ser HH:MM (ej: 08:00)");
+      }
+    }
+
+    // Validate that quiet_hours_end is not the same as quiet_hours_start
+    const startTime = args.quiet_hours_start ?? user.quiet_hours_start;
+    const endTime = args.quiet_hours_end ?? user.quiet_hours_end;
+
+    if (startTime && endTime) {
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+
+      if (startMinutes === endMinutes) {
+        throw new ConvexError("La hora de inicio y fin del modo silencioso no pueden ser iguales");
+      }
+    }
+
+    // ============================================================================
+    // BUILD UPDATES OBJECT
+    // ============================================================================
 
     const updates: any = {
       updated_at: now,
     };
 
-    // Update fields if provided
-    if (args.first_name !== undefined) updates.first_name = args.first_name;
-    if (args.last_name !== undefined) updates.last_name = args.last_name;
+    // Update fields if provided (after validation)
+    if (args.first_name !== undefined) updates.first_name = args.first_name.trim();
+    if (args.last_name !== undefined) updates.last_name = args.last_name.trim();
     if (args.phone !== undefined) updates.phone = args.phone;
     if (args.identification_type !== undefined) updates.identification_type = args.identification_type;
     if (args.identification_number !== undefined) updates.identification_number = args.identification_number;
@@ -900,7 +995,7 @@ export const updateProfile = mutation({
 
     return {
       success: true,
-      message: "Profile updated successfully",
+      message: "Perfil actualizado exitosamente",
     };
   },
 });
