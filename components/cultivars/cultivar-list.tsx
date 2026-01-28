@@ -152,9 +152,10 @@ export function CultivarList({ facilityId }: CultivarListProps) {
       setCultivarToDelete(null);
     } catch (error) {
       console.error('Error deleting cultivar:', error);
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo eliminar el cultivar. Intenta de nuevo.';
       toast({
         title: 'Error',
-        description: 'No se pudo eliminar el cultivar. Intenta de nuevo.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -194,9 +195,10 @@ export function CultivarList({ facilityId }: CultivarListProps) {
       });
     } catch (error) {
       console.error('Error creating cultivar:', error);
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el cultivar. Intenta de nuevo.';
       toast({
         title: 'Error',
-        description: 'No se pudo crear el cultivar. Intenta de nuevo.',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
