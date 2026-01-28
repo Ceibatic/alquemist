@@ -80,7 +80,8 @@ export function CultivarList({ facilityId }: CultivarListProps) {
   // Mutations
   const createCultivar = useMutation(api.cultivars.create);
   const deleteCultivar = useMutation(api.cultivars.remove);
-  const reactivateCultivar = useMutation(api.cultivars.reactivate);
+  // TODO: Implement reactivate mutation in backend
+  // const reactivateCultivar = useMutation(api.cultivars.reactivate);
 
   // Filter cultivars
   const filteredCultivars = useMemo(() => {
@@ -109,23 +110,24 @@ export function CultivarList({ facilityId }: CultivarListProps) {
     setShowDiscontinued(false);
   };
 
-  const handleReactivateCultivar = async (cultivar: any) => {
-    try {
-      await reactivateCultivar({ id: cultivar._id });
-      toast({
-        title: 'Cultivar reactivado',
-        description: `${cultivar.name} ha sido reactivado correctamente.`,
-      });
-    } catch (error) {
-      console.error('Error reactivating cultivar:', error);
-      const errorMessage = error instanceof Error ? error.message : 'No se pudo reactivar el cultivar. Intenta de nuevo.';
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    }
-  };
+  // TODO: Uncomment when reactivate mutation is implemented
+  // const handleReactivateCultivar = async (cultivar: any) => {
+  //   try {
+  //     await reactivateCultivar({ id: cultivar._id });
+  //     toast({
+  //       title: 'Cultivar reactivado',
+  //       description: `${cultivar.name} ha sido reactivado correctamente.`,
+  //     });
+  //   } catch (error) {
+  //     console.error('Error reactivating cultivar:', error);
+  //     const errorMessage = error instanceof Error ? error.message : 'No se pudo reactivar el cultivar. Intenta de nuevo.';
+  //     toast({
+  //       title: 'Error',
+  //       description: errorMessage,
+  //       variant: 'destructive',
+  //     });
+  //   }
+  // };
 
   // Get crop type name helper
   const getCropTypeName = (cropTypeId: Id<'crop_types'>) => {
@@ -408,7 +410,8 @@ export function CultivarList({ facilityId }: CultivarListProps) {
                 onView={() => handleViewCultivar(cultivar)}
                 onEdit={() => handleEditCultivar(cultivar)}
                 onDelete={() => handleDeleteCultivar(cultivar)}
-                onReactivate={cultivar.status === 'discontinued' ? () => handleReactivateCultivar(cultivar) : undefined}
+                // TODO: Enable when reactivate mutation is implemented
+                // onReactivate={cultivar.status === 'discontinued' ? () => handleReactivateCultivar(cultivar) : undefined}
               />
             </div>
           ))}
