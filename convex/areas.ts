@@ -5,6 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
  * Get areas by facility
@@ -183,10 +184,32 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
 
-    // Verify facility exists
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
+    // Auth: Verify user belongs to facility's company
     const facility = await ctx.db.get(args.facilityId);
     if (!facility) {
       throw new Error("Instalación no encontrada");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== facility.company_id) {
+      throw new Error("No tienes permiso para crear áreas en esta instalación");
+    }
+
+    // Validation: Check unique name per facility
+    const existingArea = await ctx.db
+      .query("areas")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .filter((q) => q.eq(q.field("name"), args.name))
+      .first();
+
+    if (existingArea) {
+      throw new Error("Ya existe un área con ese nombre en esta instalación");
     }
 
     // Verify all crop types exist
@@ -248,10 +271,27 @@ export const updateStatus = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
 
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
     // Verify area exists
     const area = await ctx.db.get(args.areaId);
     if (!area) {
       throw new Error("Área no encontrada");
+    }
+
+    // Auth: Verify user belongs to facility's company
+    const facility = await ctx.db.get(area.facility_id);
+    if (!facility) {
+      throw new Error("Instalación no encontrada");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== facility.company_id) {
+      throw new Error("No tienes permiso para modificar esta área");
     }
 
     // Validate status
@@ -306,10 +346,40 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
 
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
     // Verify area exists
     const area = await ctx.db.get(id);
     if (!area) {
       throw new Error("Área no encontrada");
+    }
+
+    // Auth: Verify user belongs to facility's company
+    const facility = await ctx.db.get(area.facility_id);
+    if (!facility) {
+      throw new Error("Instalación no encontrada");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== facility.company_id) {
+      throw new Error("No tienes permiso para modificar esta área");
+    }
+
+    // Validation: Check unique name per facility (if name is being updated)
+    if (updates.name && updates.name !== area.name) {
+      const existingArea = await ctx.db
+        .query("areas")
+        .withIndex("by_facility", (q) => q.eq("facility_id", area.facility_id))
+        .filter((q) => q.eq(q.field("name"), updates.name))
+        .first();
+
+      if (existingArea && existingArea._id !== id) {
+        throw new Error("Ya existe un área con ese nombre en esta instalación");
+      }
     }
 
     // Build update object with proper field names
@@ -370,10 +440,27 @@ export const remove = mutation({
     id: v.id("areas"),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
     // Verify area exists
     const area = await ctx.db.get(args.id);
     if (!area) {
       throw new Error("Área no encontrada");
+    }
+
+    // Auth: Verify user belongs to facility's company
+    const facility = await ctx.db.get(area.facility_id);
+    if (!facility) {
+      throw new Error("Instalación no encontrada");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== facility.company_id) {
+      throw new Error("No tienes permiso para eliminar esta área");
     }
 
     // Check if area has active batches
