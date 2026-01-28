@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Loader2, Shield, ShieldCheck, ShieldAlert, Info } from 'lucide-react';
 import { changePasswordSchema, type ChangePasswordInput } from '@/lib/validations/settings';
+import { parseConvexError } from '@/lib/utils/error-handler';
 
 interface SecurityFormProps {
   userId: Id<'users'>;
@@ -29,6 +30,7 @@ export function SecurityForm({ userId, user }: SecurityFormProps) {
     handleSubmit,
     watch,
     reset,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<ChangePasswordInput>({
     resolver: zodResolver(changePasswordSchema),
@@ -76,7 +78,39 @@ export function SecurityForm({ userId, user }: SecurityFormProps) {
       toast.success('Contraseña actualizada exitosamente');
       reset();
     } catch (error) {
-      toast.error('Error al cambiar contraseña. Verifica tu contraseña actual.');
+      const parsedError = parseConvexError(error);
+
+      // Show specific toast based on error type
+      switch (parsedError.type) {
+        case 'network':
+          toast.error(parsedError.message);
+          break;
+        case 'validation':
+          toast.error(parsedError.message);
+          // Set field-specific error if available
+          if (parsedError.field) {
+            setError(parsedError.field as any, {
+              type: 'manual',
+              message: parsedError.message,
+            });
+          }
+          break;
+        case 'server':
+          // For password errors, provide more context
+          if (error?.message?.includes('password') || error?.message?.includes('incorrect')) {
+            toast.error('Contraseña actual incorrecta. Verifica e intenta de nuevo.');
+            setError('current_password', {
+              type: 'manual',
+              message: 'Contraseña incorrecta',
+            });
+          } else {
+            toast.error(parsedError.message);
+          }
+          break;
+        default:
+          toast.error('Error al cambiar contraseña');
+      }
+
       console.error('Error changing password:', error);
     }
   };

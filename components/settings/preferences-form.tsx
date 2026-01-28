@@ -18,6 +18,7 @@ import {
 import { toast } from 'sonner';
 import { Loader2, Globe, Calendar, Clock, Palette, Building2 } from 'lucide-react';
 import { userProfileSettingsSchema, type UserProfileSettingsInput } from '@/lib/validations/settings';
+import { parseConvexError } from '@/lib/utils/error-handler';
 
 interface PreferencesFormProps {
   userId: Id<'users'>;
@@ -73,6 +74,7 @@ export function PreferencesForm({ userId, user }: PreferencesFormProps) {
     handleSubmit,
     setValue,
     watch,
+    setError,
     formState: { isSubmitting },
   } = useForm<UserProfileSettingsInput>({
     resolver: zodResolver(userProfileSettingsSchema),
@@ -109,7 +111,30 @@ export function PreferencesForm({ userId, user }: PreferencesFormProps) {
 
       toast.success('Preferencias actualizadas exitosamente');
     } catch (error) {
-      toast.error('Error al actualizar preferencias');
+      const parsedError = parseConvexError(error);
+
+      // Show specific toast based on error type
+      switch (parsedError.type) {
+        case 'network':
+          toast.error(parsedError.message);
+          break;
+        case 'validation':
+          toast.error(parsedError.message);
+          // Set field-specific error if available
+          if (parsedError.field) {
+            setError(parsedError.field as any, {
+              type: 'manual',
+              message: parsedError.message,
+            });
+          }
+          break;
+        case 'server':
+          toast.error(parsedError.message);
+          break;
+        default:
+          toast.error('Error al actualizar preferencias');
+      }
+
       console.error('Error updating preferences:', error);
     }
   };
