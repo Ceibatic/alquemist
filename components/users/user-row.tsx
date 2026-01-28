@@ -6,6 +6,7 @@ import { api } from '@/convex/_generated/api';
 import { MoreVertical, UserX, Edit2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,20 +36,25 @@ interface UserRowData {
   firstName?: string;
   lastName?: string;
   roleName: string;
+  roleId?: Id<'roles'>;
   status: string;
   lastLogin?: number;
+  accessibleFacilityIds?: string[];
 }
 
 interface UserRowProps {
   user: UserRowData;
+  companyId?: Id<'companies'>;
+  onEditRole?: (user: UserRowData) => void;
 }
 
-export function UserRow({ user }: UserRowProps) {
+export function UserRow({ user, companyId, onEditRole }: UserRowProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
   const [isDeactivating, setIsDeactivating] = useState(false);
 
   const { toast } = useToast();
+  const router = useRouter();
   const deactivateUser = useMutation(api.users.deactivateUser);
 
   // Generate initials
@@ -101,8 +107,27 @@ export function UserRow({ user }: UserRowProps) {
     }
   };
 
+  const handleEditRole = () => {
+    setIsOpen(false);
+    if (onEditRole) {
+      onEditRole(user);
+    }
+  };
+
+  const handleRowClick = (e: React.MouseEvent) => {
+    // Avoid navigation if clicking on buttons or menu
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[role="menuitem"]')) {
+      return;
+    }
+    router.push(`/users/${user.id}`);
+  };
+
   return (
-    <div className="flex items-center justify-between border-b p-4 last:border-b-0 hover:bg-gray-50">
+    <div
+      className="flex items-center justify-between border-b p-4 last:border-b-0 hover:bg-gray-50 cursor-pointer transition-colors"
+      onClick={handleRowClick}
+    >
       <div className="flex items-center gap-4">
         {/* Avatar */}
         <Avatar className="h-10 w-10">
@@ -154,28 +179,42 @@ export function UserRow({ user }: UserRowProps) {
         </div>
 
         {/* Actions */}
-        {!isOwner && (
-          <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>
-                <Edit2 className="mr-2 h-4 w-4" />
-                Editar Rol
+        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            {isOwner ? (
+              <DropdownMenuItem disabled>
+                El propietario no puede ser editado
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setIsDeactivateDialogOpen(true)}
-                className="text-red-600 focus:text-red-600"
-              >
-                <UserX className="mr-2 h-4 w-4" />
-                Desactivar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+            ) : (
+              <>
+                <DropdownMenuItem onClick={handleEditRole}>
+                  <Edit2 className="mr-2 h-4 w-4" />
+                  Editar Rol
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDeactivateDialogOpen(true);
+                  }}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <UserX className="mr-2 h-4 w-4" />
+                  Desactivar
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Deactivate Confirmation Dialog */}

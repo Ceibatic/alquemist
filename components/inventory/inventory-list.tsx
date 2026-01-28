@@ -54,6 +54,9 @@ import {
   FileText,
   LayoutGrid,
   Truck,
+  CheckCircle2,
+  Lock,
+  AlertCircle,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -75,6 +78,15 @@ const categoryOptions = [
   { value: 'other', label: 'Otros', icon: FileText },
 ];
 
+// Lot status options with Lucide icons
+const lotStatusOptions = [
+  { value: 'available', label: 'Disponible', icon: CheckCircle2 },
+  { value: 'reserved', label: 'Reservado', icon: Lock },
+  { value: 'expired', label: 'Expirado', icon: AlertCircle },
+  { value: 'quarantine', label: 'Cuarentena', icon: AlertTriangle },
+  { value: 'discontinued', label: 'Descontinuado', icon: XCircle },
+];
+
 type StockFilter = 'normal' | 'low' | 'critical' | 'out_of_stock';
 
 export function InventoryList({ facilityId }: InventoryListProps) {
@@ -92,6 +104,7 @@ export function InventoryList({ facilityId }: InventoryListProps) {
     'critical',
     'out_of_stock',
   ]);
+  const [lotStatusFilter, setLotStatusFilter] = useState<string[]>([]);
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -146,7 +159,8 @@ export function InventoryList({ facilityId }: InventoryListProps) {
       result = result.filter(
         (item) =>
           item.productName?.toLowerCase().includes(query) ||
-          item.productSku?.toLowerCase().includes(query)
+          item.productSku?.toLowerCase().includes(query) ||
+          item.batch_number?.toLowerCase().includes(query)
       );
     }
 
@@ -158,8 +172,15 @@ export function InventoryList({ facilityId }: InventoryListProps) {
       });
     }
 
+    // Filter by lot status
+    if (lotStatusFilter.length > 0) {
+      result = result.filter((item) =>
+        lotStatusFilter.includes(item.lot_status)
+      );
+    }
+
     return result;
-  }, [enrichedItems, searchQuery, stockFilters]);
+  }, [enrichedItems, searchQuery, stockFilters, lotStatusFilter]);
 
   // Calculate metrics
   const metrics = useMemo(() => {
@@ -185,14 +206,24 @@ export function InventoryList({ facilityId }: InventoryListProps) {
     }
   };
 
+  const handleLotStatusFilterChange = (status: string, checked: boolean) => {
+    if (checked) {
+      setLotStatusFilter((prev) => [...prev, status]);
+    } else {
+      setLotStatusFilter((prev) => prev.filter((s) => s !== status));
+    }
+  };
+
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (stockFilters.length < 4) count++;
+    if (lotStatusFilter.length > 0) count++;
     return count;
-  }, [stockFilters]);
+  }, [stockFilters, lotStatusFilter]);
 
   const clearAllFilters = () => {
     setStockFilters(['normal', 'low', 'critical', 'out_of_stock']);
+    setLotStatusFilter([]);
     setSearchQuery('');
     setSelectedCategory(null);
   };
@@ -429,6 +460,31 @@ export function InventoryList({ facilityId }: InventoryListProps) {
                     </div>
                   </div>
                 </div>
+
+                {/* Lot Status Filter */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600">Estado de Lote</Label>
+                  <div className="space-y-2">
+                    {lotStatusOptions.map((option) => {
+                      const Icon = option.icon;
+                      return (
+                        <div key={option.value} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`lot-${option.value}`}
+                            checked={lotStatusFilter.includes(option.value)}
+                            onCheckedChange={(checked) =>
+                              handleLotStatusFilterChange(option.value, checked as boolean)
+                            }
+                          />
+                          <label htmlFor={`lot-${option.value}`} className="text-sm flex items-center gap-2">
+                            <Icon className="h-3.5 w-3.5" />
+                            {option.label}
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </PopoverContent>
           </Popover>
@@ -467,7 +523,7 @@ export function InventoryList({ facilityId }: InventoryListProps) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
-            placeholder="Buscar por nombre o SKU..."
+            placeholder="Buscar por nombre, SKU o lote..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 pr-9"
@@ -573,23 +629,33 @@ export function InventoryList({ facilityId }: InventoryListProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar item de inventario?</AlertDialogTitle>
             <AlertDialogDescription>
-              {itemToDelete && (
-                <>
-                  ¿Estas seguro de que deseas eliminar{' '}
-                  <strong>{itemToDelete.productName}</strong> del inventario?
-                  <br /><br />
-                  {itemToDelete.quantity_available > 0 ? (
-                    <span className="text-orange-600">
-                      Este item tiene {itemToDelete.quantity_available} {itemToDelete.quantity_unit} en stock.
-                      Sera marcado como descontinuado pero los registros se mantendran.
-                    </span>
-                  ) : (
-                    <span>
-                      Este item sera eliminado permanentemente.
-                    </span>
-                  )}
-                </>
-              )}
+              {itemToDelete && (() => {
+                const willBeHardDeleted =
+                  itemToDelete.quantity_available === 0 &&
+                  (itemToDelete.quantity_reserved === 0 || itemToDelete.quantity_reserved === undefined) &&
+                  (itemToDelete.quantity_committed === 0 || itemToDelete.quantity_committed === undefined);
+
+                return (
+                  <>
+                    ¿Estas seguro de que deseas eliminar{' '}
+                    <strong>{itemToDelete.productName}</strong> del inventario?
+                    <br /><br />
+                    {willBeHardDeleted ? (
+                      <>
+                        <span className="text-destructive font-semibold">
+                          Este item será eliminado permanentemente
+                        </span>
+                        {' '}porque no tiene stock ni transacciones. Esta acción no se puede deshacer.
+                      </>
+                    ) : (
+                      <>
+                        Este item será marcado como descontinuado porque tiene stock o historial de transacciones.
+                        Dejará de aparecer en la lista activa pero mantendrá su historial.
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -599,7 +665,14 @@ export function InventoryList({ facilityId }: InventoryListProps) {
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isDeleting ? 'Eliminando...' : 'Eliminar'}
+              {isDeleting ? 'Eliminando...' : (() => {
+                if (!itemToDelete) return 'Eliminar';
+                const willBeHardDeleted =
+                  itemToDelete.quantity_available === 0 &&
+                  (itemToDelete.quantity_reserved === 0 || itemToDelete.quantity_reserved === undefined) &&
+                  (itemToDelete.quantity_committed === 0 || itemToDelete.quantity_committed === undefined);
+                return willBeHardDeleted ? 'Eliminar permanentemente' : 'Marcar como descontinuado';
+              })()}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
