@@ -201,7 +201,7 @@ El modulo de Inventario permite gestionar el stock de productos, insumos y mater
 - Stock suficiente para consumo/desperdicio/transferencia
 - adjustmentType valido
 
-**Componentes:** [adjust-stock-modal.tsx](components/inventory/adjust-stock-modal.tsx)
+**Componentes:** [inventory-movement-modal.tsx](components/inventory/inventory-movement-modal.tsx) (Phase E - centralizado via actividades)
 
 ---
 
