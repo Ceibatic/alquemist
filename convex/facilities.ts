@@ -302,20 +302,25 @@ export const remove = mutation({
       throw new Error("No puedes eliminar la última instalación de la empresa");
     }
 
-    // Check for active batches in this facility
+    // Check for active batches - prevent deletion if batches are in progress
     const activeBatches = await ctx.db
       .query("batches")
       .withIndex("by_facility", (q) => q.eq("facility_id", args.id))
       .filter((q) =>
         q.or(
           q.eq(q.field("status"), "active"),
-          q.eq(q.field("status"), "planning")
+          q.eq(q.field("status"), "harvested"),
+          q.eq(q.field("status"), "split"),
+          q.eq(q.field("status"), "merged")
         )
       )
       .first();
 
     if (activeBatches) {
-      throw new Error("No puedes eliminar una instalación con lotes activos");
+      throw new Error(
+        "No puedes desactivar una instalación con lotes activos o en proceso. " +
+        "Archiva todos los lotes antes de desactivar la instalación."
+      );
     }
 
     // Check for active areas in this facility
