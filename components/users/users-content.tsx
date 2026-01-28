@@ -27,6 +27,8 @@ import {
   PaginationNext,
   PaginationEllipsis,
 } from '@/components/ui/pagination';
+import { ErrorBoundary } from '@/components/error-boundary';
+import { UserErrorFallback } from './user-error-fallback';
 
 interface UserData {
   id: Id<'users'>;
@@ -272,11 +274,13 @@ export function UsersContent() {
             </Card>
           ) : (
             <>
-              <UserTable
-                users={paginatedUsers}
-                companyId={companyId as Id<'companies'>}
-                onEditRole={handleEditRole}
-              />
+              <ErrorBoundary fallback={<UserErrorFallback />}>
+                <UserTable
+                  users={paginatedUsers}
+                  companyId={companyId as Id<'companies'>}
+                  onEditRole={handleEditRole}
+                />
+              </ErrorBoundary>
 
               {/* Pagination */}
               {totalPages > 1 && (
@@ -406,7 +410,9 @@ export function UsersContent() {
               />
             </Card>
           ) : (
-            <PendingInvitations invitations={pendingInvitations} />
+            <ErrorBoundary fallback={<UserErrorFallback />}>
+              <PendingInvitations invitations={pendingInvitations} />
+            </ErrorBoundary>
           )}
         </TabsContent>
       </Tabs>
