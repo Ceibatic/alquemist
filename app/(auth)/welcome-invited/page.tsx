@@ -159,7 +159,7 @@ export default function WelcomeInvitedPage() {
       <div className="space-y-3">
         <Button
           onClick={handleContinue}
-          className="w-full"
+          className="w-full bg-amber-500 hover:bg-amber-600 text-white"
           size="lg"
         >
           IR AL PANEL DE CONTROL

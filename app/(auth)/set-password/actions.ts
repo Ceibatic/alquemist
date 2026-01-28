@@ -10,7 +10,7 @@ interface AcceptInvitationData extends InvitationAcceptFormValues {
 
 interface AcceptInvitationResult {
   success: boolean;
-  sessionToken?: string;
+  email?: string;
   userId?: string;
   companyId?: string;
   invitation?: {
@@ -44,7 +44,7 @@ export async function acceptInvitation(
 
     return {
       success: true,
-      sessionToken: result.sessionToken,
+      email: result.email,
       userId: result.userId,
       companyId: result.companyId,
       invitation: result.invitation,

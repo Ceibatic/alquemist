@@ -24,10 +24,12 @@ import { PhoneInput } from '@/components/shared/phone-input';
 import { PasswordRequirements } from '@/components/shared/password-requirements';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { useAuthActions } from '@convex-dev/auth/react';
 import { acceptInvitation } from './actions';
 
 export default function SetPasswordPage() {
   const router = useRouter();
+  const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -67,19 +69,16 @@ export default function SetPasswordPage() {
     try {
       const result = await acceptInvitation({ ...data, token });
 
-      if (result.success) {
-        // Store session data
-        if (result.sessionToken) {
-          localStorage.setItem('sessionToken', result.sessionToken);
-        }
-        if (result.userId) {
-          sessionStorage.setItem('userId', result.userId);
-        }
-        if (result.companyId) {
-          sessionStorage.setItem('companyId', result.companyId);
-        }
+      if (result.success && result.email) {
+        // Sign in via Convex Auth to create a real session
+        // The account was already created by the accept action using createAccount()
+        await signIn('password', {
+          email: result.email,
+          password: data.password,
+          flow: 'signIn',
+        });
 
-        // Store invitation data for welcome page
+        // Store welcome data for the welcome page
         if (result.invitation) {
           sessionStorage.setItem('welcomeData', JSON.stringify({
             companyName: result.invitation.companyName,

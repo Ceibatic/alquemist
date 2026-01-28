@@ -298,6 +298,8 @@ export default defineSchema({
     // Company & Invitation Details
     company_id: v.id("companies"),
     email: v.string(), // Email of the invited user
+    first_name: v.optional(v.string()),
+    last_name: v.optional(v.string()),
     role_id: v.id("roles"), // Role to assign to the user
     facility_ids: v.array(v.id("facilities")), // Facilities the user will have access to
 

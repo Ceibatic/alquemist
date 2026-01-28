@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from 'convex/react';
+import { useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { createInvitationSchema, type CreateInvitationInput } from '@/lib/validations/invitation';
 import {
@@ -41,7 +41,7 @@ export function InviteUserModal({
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
   const { toast } = useToast();
 
-  const createInvitation = useMutation(api.invitations.create);
+  const createInvitation = useAction(api.invitations.create);
 
   const {
     register,
@@ -90,7 +90,6 @@ export function InviteUserModal({
         email: data.email,
         roleId: data.role_id as Id<'roles'>,
         facilityIds: data.facility_ids as Id<'facilities'>[],
-        invitedBy: currentUserId,
       });
 
       toast({
