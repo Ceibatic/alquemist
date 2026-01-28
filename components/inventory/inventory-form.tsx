@@ -194,7 +194,7 @@ export function InventoryForm({
         preferred_supplier_id: (data.preferred_supplier_id as any) || undefined,
         manufacturer: data.manufacturer || undefined,
         default_price: typeof data.default_price === 'number' ? data.default_price : undefined,
-        price_currency: data.price_currency,
+        price_currency: (data.price_currency as 'COP' | 'USD' | 'EUR' | undefined) || undefined,
         price_unit: data.price_unit || undefined,
         weight_value: typeof data.weight_value === 'number' ? data.weight_value : undefined,
         weight_unit: data.weight_unit || undefined,
