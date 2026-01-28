@@ -106,11 +106,11 @@ export default function AreaEditPage() {
       });
 
       router.push(`/areas/${areaId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating area:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el area. Por favor, intenta nuevamente.',
+        title: 'Error al actualizar área',
+        description: error?.message || 'No se pudo actualizar el área. Por favor, intenta nuevamente.',
         variant: 'destructive',
       });
     } finally {
