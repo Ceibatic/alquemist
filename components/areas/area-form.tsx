@@ -833,6 +833,51 @@ export function AreaForm({
                 </div>
               )}
             </div>
+
+            {/* Lighting & Irrigation Toggles */}
+            <div className="rounded-lg border p-4 space-y-3">
+              <h4 className="font-semibold text-sm">Características Técnicas</h4>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="lighting-toggle" className="text-sm">
+                  Control de Iluminación
+                </Label>
+                <FormField
+                  control={form.control}
+                  name="lighting_controlled"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-y-0">
+                      <FormControl>
+                        <Switch
+                          id="lighting-toggle"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="irrigation-toggle" className="text-sm">
+                  Sistema de Riego
+                </Label>
+                <FormField
+                  control={form.control}
+                  name="irrigation_system"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-y-0">
+                      <FormControl>
+                        <Switch
+                          id="irrigation-toggle"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -848,7 +893,7 @@ export function AreaForm({
           </Button>
           <Button
             type="submit"
-            className="bg-green-900 hover:bg-green-800"
+            className="bg-amber-500 hover:bg-amber-600 text-white"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
