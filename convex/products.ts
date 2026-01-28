@@ -378,6 +378,17 @@ export const remove = mutation({
       throw new Error("Product not found");
     }
 
+    // Multi-tenant security: verify ownership
+    const user = await ctx.db.get(userId);
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    if (product.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para eliminar este producto");
+    }
+
     // Check if product has inventory items
     const inventoryItems = await ctx.db
       .query("inventory_items")

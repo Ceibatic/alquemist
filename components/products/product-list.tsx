@@ -45,6 +45,10 @@ import {
   FileText,
   CheckCircle,
   XCircle,
+  Plant,
+  Seedling,
+  Tree,
+  Leaf,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFacility } from '@/components/providers/facility-provider';
@@ -59,6 +63,10 @@ const categoryOptions = [
   { value: 'substrate', label: 'Sustratos', icon: Layers },
   { value: 'container', label: 'Contenedores', icon: Container },
   { value: 'tool', label: 'Herramientas', icon: Wrench },
+  { value: 'clone', label: 'Esquejes', icon: Plant },
+  { value: 'seedling', label: 'Plántulas', icon: Seedling },
+  { value: 'mother_plant', label: 'Plantas Madre', icon: Tree },
+  { value: 'plant_material', label: 'Material Vegetal', icon: Leaf },
   { value: 'other', label: 'Otros', icon: FileText },
 ];
 

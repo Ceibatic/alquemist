@@ -308,6 +308,11 @@ export const create = mutation({
     createdBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     // Generate batch code

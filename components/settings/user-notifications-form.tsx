@@ -18,9 +18,10 @@ import { parseConvexError } from '@/lib/utils/error-handler';
 interface UserNotificationsFormProps {
   userId: Id<'users'>;
   user: any;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export function UserNotificationsForm({ userId, user }: UserNotificationsFormProps) {
+export function UserNotificationsForm({ userId, user, onDirtyChange }: UserNotificationsFormProps) {
   const updateNotificationSettings = useMutation(api.users.updateNotificationSettings);
 
   const {
@@ -28,7 +29,8 @@ export function UserNotificationsForm({ userId, user }: UserNotificationsFormPro
     setValue,
     watch,
     setError,
-    formState: { isSubmitting },
+    reset,
+    formState: { isSubmitting, isDirty },
   } = useForm<NotificationPreferencesInput>({
     resolver: zodResolver(notificationPreferencesSchema),
     defaultValues: {
@@ -58,6 +60,11 @@ export function UserNotificationsForm({ userId, user }: UserNotificationsFormPro
     },
   });
 
+  // Report dirty state changes to parent
+  React.useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
   const emailNotifications = watch('email_notifications');
   const smsNotifications = watch('sms_notifications');
   const notificationTypes = watch('notification_types');
@@ -78,6 +85,8 @@ export function UserNotificationsForm({ userId, user }: UserNotificationsFormPro
       });
 
       toast.success('Preferencias de notificaciones actualizadas exitosamente');
+      // Reset form to mark as not dirty
+      reset(data);
     } catch (error) {
       const parsedError = parseConvexError(error);
 

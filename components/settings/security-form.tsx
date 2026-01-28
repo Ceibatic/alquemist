@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from 'convex/react';
+import { useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
@@ -20,10 +20,11 @@ import { parseConvexError } from '@/lib/utils/error-handler';
 interface SecurityFormProps {
   userId: Id<'users'>;
   user: any;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export function SecurityForm({ userId, user }: SecurityFormProps) {
-  const changePassword = useMutation(api.users.changePassword);
+export function SecurityForm({ userId, user, onDirtyChange }: SecurityFormProps) {
+  const changePassword = useAction(api.users.changePassword);
 
   const {
     register,
@@ -31,7 +32,7 @@ export function SecurityForm({ userId, user }: SecurityFormProps) {
     watch,
     reset,
     setError,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<ChangePasswordInput>({
     resolver: zodResolver(changePasswordSchema),
     defaultValues: {
@@ -40,6 +41,11 @@ export function SecurityForm({ userId, user }: SecurityFormProps) {
       confirm_new_password: '',
     },
   });
+
+  // Report dirty state changes to parent
+  React.useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const newPassword = watch('new_password');
 
@@ -97,7 +103,8 @@ export function SecurityForm({ userId, user }: SecurityFormProps) {
           break;
         case 'server':
           // For password errors, provide more context
-          if (error?.message?.includes('password') || error?.message?.includes('incorrect')) {
+          const errorMessage = (error as any)?.message || '';
+          if (errorMessage.includes('password') || errorMessage.includes('incorrect')) {
             toast.error('Contraseña actual incorrecta. Verifica e intenta de nuevo.');
             setError('current_password', {
               type: 'manual',

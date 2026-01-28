@@ -23,6 +23,7 @@ import { parseConvexError } from '@/lib/utils/error-handler';
 interface PreferencesFormProps {
   userId: Id<'users'>;
   user: any;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const LANGUAGES = [
@@ -55,7 +56,7 @@ const TIMEZONES = [
   { value: 'America/Mexico_City', label: 'Ciudad de México (América/Mexico_City)' },
 ];
 
-export function PreferencesForm({ userId, user }: PreferencesFormProps) {
+export function PreferencesForm({ userId, user, onDirtyChange }: PreferencesFormProps) {
   const updatePreferences = useMutation(api.users.updatePreferences);
 
   // Fetch accessible facilities for the user
@@ -75,7 +76,8 @@ export function PreferencesForm({ userId, user }: PreferencesFormProps) {
     setValue,
     watch,
     setError,
-    formState: { isSubmitting },
+    reset,
+    formState: { isSubmitting, isDirty },
   } = useForm<UserProfileSettingsInput>({
     resolver: zodResolver(userProfileSettingsSchema),
     defaultValues: {
@@ -89,6 +91,11 @@ export function PreferencesForm({ userId, user }: PreferencesFormProps) {
       default_facility_id: user.primary_facility_id || undefined,
     },
   });
+
+  // Report dirty state changes to parent
+  React.useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const locale = watch('locale');
   const timezone = watch('timezone');
@@ -145,6 +152,8 @@ export function PreferencesForm({ userId, user }: PreferencesFormProps) {
       });
 
       toast.success('Preferencias actualizadas exitosamente');
+      // Reset form to mark as not dirty
+      reset(data);
     } catch (error) {
       const parsedError = parseConvexError(error);
 
