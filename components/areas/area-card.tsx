@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useToast } from '@/hooks/use-toast';
@@ -94,6 +94,11 @@ export function AreaCard({ area, index }: AreaCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const removeArea = useMutation(api.areas.remove);
+
+  // Fetch real batch count for this area
+  const batchCount = useQuery(api.areas.getBatchCount, {
+    areaId: area._id as Id<'areas'>
+  });
 
   const maxCapacity = area.capacity_configurations?.max_capacity || 0;
   const hasContainerConfig = !!area.capacity_configurations?.container_type;
@@ -194,7 +199,7 @@ export function AreaCard({ area, index }: AreaCardProps) {
         <div className="flex items-center gap-3 text-sm text-gray-600">
           <div className="flex items-center gap-1">
             <Layers className="h-3.5 w-3.5" />
-            <span>Lotes: 0</span>
+            <span>Lotes: {batchCount ?? 0}</span>
           </div>
           <span className="text-gray-300">|</span>
           <span>Area: {area.total_area_m2 || 0} m²</span>

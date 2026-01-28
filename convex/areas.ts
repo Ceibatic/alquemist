@@ -109,6 +109,26 @@ export const getById = query({
 });
 
 /**
+ * Get batch count for an area
+ * Returns count of active batches in the area
+ */
+export const getBatchCount = query({
+  args: {
+    areaId: v.id("areas"),
+  },
+  handler: async (ctx, args) => {
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_area", (q) => q.eq("area_id", args.areaId))
+      .filter((q) => q.neq(q.field("status"), "completed"))
+      .filter((q) => q.neq(q.field("status"), "archived"))
+      .collect();
+
+    return batches.length;
+  },
+});
+
+/**
  * Get area statistics for a facility
  * Phase 2 Module 14
  */
