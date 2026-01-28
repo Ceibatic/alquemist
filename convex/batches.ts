@@ -899,10 +899,7 @@ export const merge = mutation({
     }
 
     // Verify ownership: both batches belong to user's company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
