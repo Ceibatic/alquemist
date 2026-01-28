@@ -6,6 +6,7 @@ import { api } from '@/convex/_generated/api';
 import { MoreVertical, UserX, Edit2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +50,7 @@ export function UserRow({ user }: UserRowProps) {
   const [isDeactivating, setIsDeactivating] = useState(false);
 
   const { toast } = useToast();
+  const router = useRouter();
   const deactivateUser = useMutation(api.users.deactivateUser);
 
   // Generate initials
@@ -101,8 +103,15 @@ export function UserRow({ user }: UserRowProps) {
     }
   };
 
+  const handleRowClick = () => {
+    router.push(`/users/${user.id}`);
+  };
+
   return (
-    <div className="flex items-center justify-between border-b p-4 last:border-b-0 hover:bg-gray-50">
+    <div
+      className="flex items-center justify-between border-b p-4 last:border-b-0 hover:bg-gray-50 cursor-pointer transition-colors"
+      onClick={handleRowClick}
+    >
       <div className="flex items-center gap-4">
         {/* Avatar */}
         <Avatar className="h-10 w-10">
@@ -157,17 +166,25 @@ export function UserRow({ user }: UserRowProps) {
         {!isOwner && (
           <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem>
                 <Edit2 className="mr-2 h-4 w-4" />
                 Editar Rol
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => setIsDeactivateDialogOpen(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDeactivateDialogOpen(true);
+                }}
                 className="text-red-600 focus:text-red-600"
               >
                 <UserX className="mr-2 h-4 w-4" />
