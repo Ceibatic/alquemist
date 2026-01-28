@@ -105,7 +105,7 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
     // Filter by areas
     if (selectedAreas.length > 0) {
       result = result.filter((batch) =>
-        batch.current_area_id && selectedAreas.includes(batch.current_area_id)
+        batch.area_id && selectedAreas.includes(batch.area_id)
       );
     }
 
