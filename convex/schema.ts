@@ -658,7 +658,8 @@ export default defineSchema({
     .index("by_sku", ["sku"])
     .index("by_category", ["category"])
     .index("by_regulatory_registered", ["regulatory_registered"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_company_status", ["company_id", "status"]),
 
   // Product Price History - Audit trail for price changes
   product_price_history: defineTable({
