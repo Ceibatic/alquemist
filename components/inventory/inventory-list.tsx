@@ -629,23 +629,33 @@ export function InventoryList({ facilityId }: InventoryListProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar item de inventario?</AlertDialogTitle>
             <AlertDialogDescription>
-              {itemToDelete && (
-                <>
-                  ¿Estas seguro de que deseas eliminar{' '}
-                  <strong>{itemToDelete.productName}</strong> del inventario?
-                  <br /><br />
-                  {itemToDelete.quantity_available > 0 ? (
-                    <span className="text-orange-600">
-                      Este item tiene {itemToDelete.quantity_available} {itemToDelete.quantity_unit} en stock.
-                      Sera marcado como descontinuado pero los registros se mantendran.
-                    </span>
-                  ) : (
-                    <span>
-                      Este item sera eliminado permanentemente.
-                    </span>
-                  )}
-                </>
-              )}
+              {itemToDelete && (() => {
+                const willBeHardDeleted =
+                  itemToDelete.quantity_available === 0 &&
+                  (itemToDelete.quantity_reserved === 0 || itemToDelete.quantity_reserved === undefined) &&
+                  (itemToDelete.quantity_committed === 0 || itemToDelete.quantity_committed === undefined);
+
+                return (
+                  <>
+                    ¿Estas seguro de que deseas eliminar{' '}
+                    <strong>{itemToDelete.productName}</strong> del inventario?
+                    <br /><br />
+                    {willBeHardDeleted ? (
+                      <>
+                        <span className="text-destructive font-semibold">
+                          Este item será eliminado permanentemente
+                        </span>
+                        {' '}porque no tiene stock ni transacciones. Esta acción no se puede deshacer.
+                      </>
+                    ) : (
+                      <>
+                        Este item será marcado como descontinuado porque tiene stock o historial de transacciones.
+                        Dejará de aparecer en la lista activa pero mantendrá su historial.
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -655,7 +665,14 @@ export function InventoryList({ facilityId }: InventoryListProps) {
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700"
             >
-              {isDeleting ? 'Eliminando...' : 'Eliminar'}
+              {isDeleting ? 'Eliminando...' : (() => {
+                if (!itemToDelete) return 'Eliminar';
+                const willBeHardDeleted =
+                  itemToDelete.quantity_available === 0 &&
+                  (itemToDelete.quantity_reserved === 0 || itemToDelete.quantity_reserved === undefined) &&
+                  (itemToDelete.quantity_committed === 0 || itemToDelete.quantity_committed === undefined);
+                return willBeHardDeleted ? 'Eliminar permanentemente' : 'Marcar como descontinuado';
+              })()}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
