@@ -5,7 +5,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,6 @@ interface ProductEditContentProps {
 
 export function ProductEditContent({ productId }: ProductEditContentProps) {
   const router = useRouter();
-  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const product = useQuery(api.products.getById, {
@@ -59,18 +58,19 @@ export function ProductEditContent({ productId }: ProductEditContentProps) {
 
       await updateProduct(cleanedData);
 
-      toast({
-        title: 'Producto actualizado',
+      toast.success('Producto actualizado', {
         description: `"${data.name}" ha sido actualizado exitosamente.`,
       });
 
       router.push(`/products/${productId}`);
     } catch (error: any) {
       console.error('Error updating product:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'No se pudo actualizar el producto.',
-        variant: 'destructive',
+      toast.error('Error al actualizar producto', {
+        description: error.message || 'Intenta nuevamente',
+        action: {
+          label: 'Reintentar',
+          onClick: () => handleSubmit(data),
+        },
       });
     } finally {
       setIsSubmitting(false);

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useFacility } from '@/components/providers/facility-provider';
 import {
@@ -23,7 +23,6 @@ interface ProductCreateModalProps {
 
 export function ProductCreateModal({ open, onOpenChange }: ProductCreateModalProps) {
   const router = useRouter();
-  const { toast } = useToast();
   const { currentCompanyId } = useFacility();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -56,8 +55,7 @@ export function ProductCreateModal({ open, onOpenChange }: ProductCreateModalPro
 
       const productId = await createProduct({ ...cleanedData, companyId: currentCompanyId! } as any);
 
-      toast({
-        title: 'Producto creado',
+      toast.success('Producto creado', {
         description: `"${data.name}" ha sido creado exitosamente.`,
       });
 
@@ -65,10 +63,12 @@ export function ProductCreateModal({ open, onOpenChange }: ProductCreateModalPro
       router.push(`/products/${productId}`);
     } catch (error: any) {
       console.error('Error creating product:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'No se pudo crear el producto.',
-        variant: 'destructive',
+      toast.error('Error al crear producto', {
+        description: error.message || 'Intenta nuevamente',
+        action: {
+          label: 'Reintentar',
+          onClick: () => handleSubmit(data),
+        },
       });
     } finally {
       setIsSubmitting(false);
