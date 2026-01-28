@@ -25,9 +25,10 @@ import { parseConvexError } from '@/lib/utils/error-handler';
 interface ProfileFormProps {
   userId: Id<'users'>;
   user: any;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export function ProfileForm({ userId, user }: ProfileFormProps) {
+export function ProfileForm({ userId, user, onDirtyChange }: ProfileFormProps) {
   const updateUser = useMutation(api.users.updateProfile);
 
   const {
@@ -35,7 +36,8 @@ export function ProfileForm({ userId, user }: ProfileFormProps) {
     handleSubmit,
     setValue,
     setError,
-    formState: { errors, isSubmitting },
+    reset,
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<UserProfileSettingsInput>({
     resolver: zodResolver(userProfileSettingsSchema),
     defaultValues: {
@@ -46,6 +48,11 @@ export function ProfileForm({ userId, user }: ProfileFormProps) {
       identification_number: user.identification_number || '',
     },
   });
+
+  // Report dirty state changes to parent
+  React.useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const onSubmit = async (data: UserProfileSettingsInput) => {
     try {
@@ -59,6 +66,8 @@ export function ProfileForm({ userId, user }: ProfileFormProps) {
       });
 
       toast.success('Perfil actualizado exitosamente');
+      // Reset form to mark as not dirty
+      reset(data);
     } catch (error) {
       const parsedError = parseConvexError(error);
 
