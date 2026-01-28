@@ -106,6 +106,23 @@ export function PreferencesForm({ userId, user, onDirtyChange }: PreferencesForm
     }
   }, [user.theme, setTheme]);
 
+  // Reactive form synchronization: update form when user data changes externally
+  React.useEffect(() => {
+    if (user && !isDirty) {
+      const newDefaults = {
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        locale: user.locale || 'es',
+        timezone: user.timezone || 'America/Bogota',
+        date_format: user.date_format || 'DD/MM/YYYY',
+        time_format: user.time_format || '24h',
+        theme: user.theme || 'light',
+        default_facility_id: user.primary_facility_id || undefined,
+      };
+      reset(newDefaults);
+    }
+  }, [user, isDirty, reset]);
+
   const locale = watch('locale');
   const timezone = watch('timezone');
   const dateFormat = watch('date_format');

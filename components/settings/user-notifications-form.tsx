@@ -65,6 +65,38 @@ export function UserNotificationsForm({ userId, user, onDirtyChange }: UserNotif
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
+  // Reactive form synchronization: update form when user data changes externally
+  React.useEffect(() => {
+    if (user && !isDirty) {
+      const newDefaults = {
+        email_notifications: user.email_notifications ?? true,
+        sms_notifications: user.sms_notifications ?? false,
+        notification_types: {
+          low_stock: user.notification_types?.low_stock ?? true,
+          overdue_activities: user.notification_types?.overdue_activities ?? true,
+          compliance_alerts: user.notification_types?.compliance_alerts ?? true,
+          system_updates: user.notification_types?.system_updates ?? true,
+          team_mentions: user.notification_types?.team_mentions ?? true,
+          batch_status_changes: user.notification_types?.batch_status_changes ?? true,
+          quality_check_reminders: user.notification_types?.quality_check_reminders ?? true,
+          harvest_reminders: user.notification_types?.harvest_reminders ?? true,
+          license_expiration: user.notification_types?.license_expiration ?? true,
+          pest_disease_alerts: user.notification_types?.pest_disease_alerts ?? true,
+        },
+        notification_delivery: {
+          immediate: user.notification_delivery?.immediate ?? true,
+          daily_digest: user.notification_delivery?.daily_digest ?? false,
+          weekly_digest: user.notification_delivery?.weekly_digest ?? false,
+          digest_time: user.notification_delivery?.digest_time || '08:00',
+        },
+        quiet_hours_enabled: user.quiet_hours_enabled ?? false,
+        quiet_hours_start: user.quiet_hours_start || '20:00',
+        quiet_hours_end: user.quiet_hours_end || '08:00',
+      };
+      reset(newDefaults);
+    }
+  }, [user, isDirty, reset]);
+
   const emailNotifications = watch('email_notifications');
   const smsNotifications = watch('sms_notifications');
   const notificationTypes = watch('notification_types');

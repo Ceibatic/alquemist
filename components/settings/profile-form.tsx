@@ -54,6 +54,20 @@ export function ProfileForm({ userId, user, onDirtyChange }: ProfileFormProps) {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
+  // Reactive form synchronization: update form when user data changes externally
+  React.useEffect(() => {
+    if (user && !isDirty) {
+      const newDefaults = {
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        phone: user.phone || '',
+        identification_type: user.identification_type || undefined,
+        identification_number: user.identification_number || '',
+      };
+      reset(newDefaults);
+    }
+  }, [user, isDirty, reset]);
+
   const onSubmit = async (data: UserProfileSettingsInput) => {
     try {
       await updateUser({
