@@ -68,12 +68,19 @@ export default function FacilityBasicPage() {
     },
   });
 
-  // Verify company setup is complete
+  // Verify company setup is complete and facility not already created
   useEffect(() => {
     const companyId = sessionStorage.getItem('companyId');
     if (!companyId) {
-      // Redirect to company setup if not completed
       router.push('/company-setup');
+      return;
+    }
+
+    // If facility already created, skip to setup-complete
+    const facilityId = sessionStorage.getItem('facilityId');
+    if (facilityId) {
+      router.push('/setup-complete');
+      return;
     }
 
     // Load saved data if exists
@@ -202,7 +209,6 @@ export default function FacilityBasicPage() {
         <div className="space-y-2">
           <Label htmlFor="licensedArea">
             Área Licenciada (m²)
-            <span className="text-destructive ml-1">*</span>
           </Label>
           <Input
             id="licensedArea"
