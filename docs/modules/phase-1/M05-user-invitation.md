@@ -4,7 +4,7 @@
 
 El modulo de Invitaciones permite a administradores invitar nuevos usuarios a unirse a su empresa. Los usuarios invitados reciben un email con un link unico, y al aceptar, configuran su contrasena y se unen automaticamente a la empresa y sus instalaciones asignadas. Este flujo es alternativo al registro normal (M01-M04).
 
-**Estado**: Parcialmente Implementado
+**Estado**: Implementado (Convex Auth session pendiente)
 
 ---
 
@@ -16,22 +16,23 @@ El modulo de Invitaciones permite a administradores invitar nuevos usuarios a un
 **Para** que se una a nuestra organizacion
 
 **Criterios de Aceptacion:**
-- [ ] Boton "Invitar Usuario" en pagina de Team (M17)
-- [ ] Modal con formulario de invitacion:
+- [x] Boton "Invitar Usuario" en pagina de Team (M17)
+- [x] Modal con formulario de invitacion:
   - Email* (formato valido, no existente en sistema)
-  - Nombre (opcional, se puede completar al aceptar)
-  - Apellido (opcional)
-  - Rol* (select de roles disponibles para la empresa)
-  - Instalaciones* (multi-select de facilities accesibles)
-- [ ] Validacion: email no existe en sistema
-- [ ] Genera token unico de invitacion
-- [ ] Token expira en 72 horas
-- [ ] Envia email con link de invitacion
-- [ ] Toast de confirmacion "Invitacion enviada a [email]"
+  - Nombre (opcional — campo en schema, no en UI aun)
+  - Apellido (opcional — campo en schema, no en UI aun)
+  - Rol* (RoleSelector component)
+  - Instalaciones* (FacilityAccessSelect multi-select)
+  - Mensaje personalizado (opcional)
+- [x] Validacion: email no existe en sistema + no pending invitation
+- [x] Genera token unico de invitacion (UUID)
+- [x] Token expira en 72 horas
+- [x] Envia email con link de invitacion via Resend
+- [x] Toast de confirmacion "Invitación enviada a [email]"
 
-**Escribe:** `invitations.create({ email, firstName?, lastName?, roleId, facilityIds, invitedBy })`
+**Escribe:** `invitations.create({ email, roleId, facilityIds })` (action, auth-based)
 
-**Componentes:** Ver M17-Team Management
+**Componentes:** [invite-user-modal.tsx](components/users/invite-user-modal.tsx), [role-selector.tsx](components/users/role-selector.tsx), [facility-access-select.tsx](components/users/facility-access-select.tsx)
 
 ---
 
@@ -41,18 +42,19 @@ El modulo de Invitaciones permite a administradores invitar nuevos usuarios a un
 **Para** decidir si la acepto
 
 **Criterios de Aceptacion:**
-- [ ] Pagina accesible en `/accept-invitation?token=XXX`
-- [ ] Valida token al cargar la pagina
-- [ ] Si token invalido/expirado → redirige a `/invitation-invalid`
-- [ ] Muestra informacion de la invitacion:
-  - Logo de Alquemist
-  - "Has sido invitado(a) a:"
+- [x] Pagina accesible en `/accept-invitation?token=XXX`
+- [x] Valida token al cargar la pagina
+- [x] Si token invalido/expirado → redirige a `/invitation-invalid`
+- [x] Muestra informacion de la invitacion:
+  - CheckCircle2 icon verde
+  - "Has sido invitado a unirte a una empresa en Alquemist"
   - Nombre de la empresa
   - Rol asignado
   - Nombre del invitador
-  - Cantidad de instalaciones
-- [ ] Email del usuario invitado (read-only)
-- [ ] Botones "Aceptar Invitacion" y "Rechazar"
+  - Lista de instalaciones asignadas
+  - Countdown timer de expiracion
+- [x] Email del usuario invitado (read-only)
+- [x] Botones "Aceptar Invitacion" (amber-500) y "Rechazar"
 
 **Consulta:** `invitations.validate({ token })`
 
@@ -66,11 +68,11 @@ El modulo de Invitaciones permite a administradores invitar nuevos usuarios a un
 **Para** declinar unirme a la empresa
 
 **Criterios de Aceptacion:**
-- [ ] Boton "Rechazar" abre dialogo de confirmacion
-- [ ] Mensaje "Esta seguro que desea rechazar esta invitacion?"
-- [ ] Al confirmar, marca invitacion como rejected
-- [ ] Toast "Invitacion rechazada"
-- [ ] Redirige a `/login`
+- [x] Boton "Rechazar" abre dialogo de confirmacion
+- [x] Mensaje "Estas seguro que deseas rechazar esta invitacion?"
+- [x] Al confirmar, marca invitacion como rejected
+- [x] Toast "Invitación rechazada"
+- [x] Redirige a `/login`
 - [ ] Invitador recibe notificacion (opcional, futuro)
 
 **Escribe:** `invitations.reject({ token })`
@@ -83,17 +85,17 @@ El modulo de Invitaciones permite a administradores invitar nuevos usuarios a un
 **Para** activar mi cuenta
 
 **Criterios de Aceptacion:**
-- [ ] Formulario mostrado al hacer clic en "Aceptar Invitacion"
-- [ ] **Campos del formulario:**
+- [x] Formulario en pagina `/set-password` al hacer clic en "Aceptar Invitacion"
+- [x] **Campos del formulario:**
   - Contrasena* (mismos requisitos que registro)
   - Confirmar Contrasena*
-  - Telefono (opcional)
-  - Idioma Preferido (Espanol/English)
-- [ ] Indicador de fortaleza de contrasena
-- [ ] Lista de requisitos de contrasena
-- [ ] Botones "Volver" y "Crear Cuenta"
+  - Telefono (opcional, PhoneInput)
+  - Idioma Preferido (radio: Espanol/English)
+- [x] PasswordRequirements component con indicador de fortaleza
+- [x] Lista de requisitos de contrasena
+- [x] Botones "Volver" y "Crear Cuenta" (amber-500)
 
-**Componentes:** [accept-invitation/page.tsx](app/(auth)/accept-invitation/page.tsx), [invitation-password-form.tsx](components/auth/invitation-password-form.tsx)
+**Componentes:** [set-password/page.tsx](app/(auth)/set-password/page.tsx), [set-password/actions.ts](app/(auth)/set-password/actions.ts)
 
 ---
 
@@ -103,14 +105,14 @@ El modulo de Invitaciones permite a administradores invitar nuevos usuarios a un
 **Para** tener acceso a la plataforma
 
 **Criterios de Aceptacion:**
-- [ ] Crea usuario en tabla `users`
-- [ ] Usuario automaticamente verificado (email_verified = true)
-- [ ] Vincula a company_id de la invitacion
-- [ ] Asigna rol especificado
-- [ ] Vincula a facilities especificadas via `facility_users`
-- [ ] Marca invitacion como accepted
-- [ ] Genera session token automaticamente (auto-login)
-- [ ] Redirige a `/welcome-invited`
+- [x] Crea usuario en tabla `users`
+- [x] Usuario automaticamente verificado (email_verified = true)
+- [x] Vincula a company_id de la invitacion
+- [x] Asigna rol especificado
+- [x] Vincula a facilities especificadas via `facility_users`
+- [x] Marca invitacion como accepted
+- [ ] Genera session token via Convex Auth (pendiente — actualmente placeholder)
+- [x] Redirige a `/welcome-invited`
 
 **Escribe:** `invitations.accept({ token, password, phone?, language? })`
 
@@ -122,16 +124,16 @@ El modulo de Invitaciones permite a administradores invitar nuevos usuarios a un
 **Para** saber que tengo acceso
 
 **Criterios de Aceptacion:**
-- [ ] Pagina `/welcome-invited`
-- [ ] Icono de check verde
-- [ ] Titulo "Bienvenido(a)!"
-- [ ] "Cuenta Creada!" con check
-- [ ] Muestra empresa a la que se unio
-- [ ] Muestra rol asignado
-- [ ] Lista de instalaciones con acceso
-- [ ] Mensaje "Puedes empezar a trabajar inmediatamente"
-- [ ] Boton "Ir al Panel de Control"
-- [ ] Redirige a `/dashboard`
+- [x] Pagina `/welcome-invited`
+- [x] Icono de check verde grande
+- [x] Titulo "¡Bienvenido a Alquemist!"
+- [x] "Tu cuenta ha sido creada exitosamente"
+- [x] Muestra empresa a la que se unio
+- [x] Muestra rol asignado
+- [x] Lista de instalaciones con acceso
+- [x] Proximos pasos (explorar panel, familiarizarse, revisar permisos, contactar admin)
+- [x] Boton "Ir al Panel de Control" (amber-500)
+- [x] Redirige a `/dashboard`
 
 **Componentes:** [welcome-invited/page.tsx](app/(auth)/welcome-invited/page.tsx)
 
@@ -143,16 +145,17 @@ El modulo de Invitaciones permite a administradores invitar nuevos usuarios a un
 **Para** saber que hacer
 
 **Criterios de Aceptacion:**
-- [ ] Pagina `/invitation-invalid`
-- [ ] Icono de advertencia
-- [ ] Titulo "Invitacion No Valida"
-- [ ] Mensaje descriptivo
-- [ ] Lista de posibles razones:
-  - El enlace ya fue usado
-  - Han pasado mas de 72 horas
-  - La invitacion fue revocada
-- [ ] Instruccion de contactar al administrador
-- [ ] Boton "Ir a Inicio de Sesion"
+- [x] Pagina `/invitation-invalid`
+- [x] Icono de advertencia (AlertTriangle amber)
+- [x] Titulo "Invitación No Válida"
+- [x] Mensaje descriptivo
+- [x] Lista de posibles razones:
+  - El enlace ha expirado (72 horas)
+  - La invitacion ya fue utilizada
+  - El enlace es incorrecto o modificado
+  - La invitacion fue rechazada o cancelada
+- [x] Instruccion de contactar al administrador + link soporte
+- [x] Boton "Ir a Iniciar Sesión"
 
 **Componentes:** [invitation-invalid/page.tsx](app/(auth)/invitation-invalid/page.tsx)
 
@@ -164,11 +167,11 @@ El modulo de Invitaciones permite a administradores invitar nuevos usuarios a un
 **Para** recordar al usuario
 
 **Criterios de Aceptacion:**
-- [ ] Boton "Reenviar" en lista de invitaciones pendientes
-- [ ] Genera nuevo token (invalida el anterior)
-- [ ] Nuevo expiry de 72 horas
-- [ ] Envia nuevo email
-- [ ] Toast de confirmacion
+- [x] Boton "Reenviar" en InvitationCard
+- [x] Genera nuevo token (invalida el anterior)
+- [x] Nuevo expiry de 72 horas
+- [x] Envia nuevo email via Resend
+- [x] Toast de confirmacion
 
 **Escribe:** `invitations.resend({ invitationId })`
 
@@ -180,13 +183,13 @@ El modulo de Invitaciones permite a administradores invitar nuevos usuarios a un
 **Para** prevenir acceso no deseado
 
 **Criterios de Aceptacion:**
-- [ ] Boton "Revocar" en lista de invitaciones
-- [ ] Dialogo de confirmacion
-- [ ] Marca invitacion como revoked
-- [ ] Token ya no es valido
-- [ ] Toast de confirmacion
+- [x] Boton "Cancelar" en InvitationCard (nombrado `cancel` en implementacion)
+- [x] Dialogo de confirmacion (AlertDialog)
+- [x] Marca invitacion como revoked
+- [x] Token ya no es valido (validate query checks revoked status)
+- [x] Toast de confirmacion
 
-**Escribe:** `invitations.revoke({ invitationId })`
+**Escribe:** `invitations.cancel({ invitationId })` (mutation, auth-based)
 
 ---
 
@@ -266,21 +269,34 @@ El modulo de Invitaciones permite a administradores invitar nuevos usuarios a un
 
 ## API Backend
 
+### Actions (side effects — email)
+| Funcion | Parametros | Retorna |
+|---------|------------|---------|
+| `create` | `email, roleId, facilityIds` | `{ invitationId, token }` — auth-based, sends email via Resend |
+| `accept` | `token, password, phone?, language?` | `{ userId, sessionToken }` — creates user + facility_users |
+| `resend` | `invitationId` | `{ newToken }` — auth-based, regenerates token + sends email |
+
 ### Mutations
 | Funcion | Parametros | Retorna |
 |---------|------------|---------|
-| `create` | `email, firstName?, lastName?, roleId, facilityIds, invitedBy` | `{ invitationId, token }` |
-| `accept` | `token, password, phone?, language?` | `{ userId, sessionToken }` |
 | `reject` | `token` | `{ success }` |
-| `resend` | `invitationId` | `{ newToken }` |
-| `revoke` | `invitationId` | `{ success }` |
+| `cancel` | `invitationId` | `void` — auth-based, sets status to revoked |
+
+### Internal Mutations (not publicly exposed)
+| Funcion | Descripcion |
+|---------|-------------|
+| `_createInvitationRecord` | Insert invitation row (called by create action) |
+| `_resendInvitationRecord` | Update token + expiry (called by resend action) |
+| `getInvitationByToken` | Fetch invitation by token |
+| `createUserFromInvitation` | Create user + facility_users records |
+| `markInvitationAccepted` | Set status=accepted |
 
 ### Queries
 | Funcion | Parametros | Retorna |
 |---------|------------|---------|
-| `validate` | `token` | `{ valid, invitation?, reason? }` |
-| `listByCompany` | `companyId, status?` | Lista de invitaciones |
-| `getByToken` | `token` | Invitacion con detalles |
+| `validate` | `token` | `{ valid, invitation?, reason? }` — checks expired/revoked |
+| `getByCompany` | `companyId` | All invitations — auth-based |
+| `getPendingByCompany` | `companyId` | Pending invitations — auth-based |
 
 ---
 
