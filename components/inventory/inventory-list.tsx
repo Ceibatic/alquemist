@@ -54,6 +54,9 @@ import {
   FileText,
   LayoutGrid,
   Truck,
+  CheckCircle2,
+  Lock,
+  AlertCircle,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -75,6 +78,15 @@ const categoryOptions = [
   { value: 'other', label: 'Otros', icon: FileText },
 ];
 
+// Lot status options with Lucide icons
+const lotStatusOptions = [
+  { value: 'available', label: 'Disponible', icon: CheckCircle2 },
+  { value: 'reserved', label: 'Reservado', icon: Lock },
+  { value: 'expired', label: 'Expirado', icon: AlertCircle },
+  { value: 'quarantine', label: 'Cuarentena', icon: AlertTriangle },
+  { value: 'discontinued', label: 'Descontinuado', icon: XCircle },
+];
+
 type StockFilter = 'normal' | 'low' | 'critical' | 'out_of_stock';
 
 export function InventoryList({ facilityId }: InventoryListProps) {
@@ -92,6 +104,7 @@ export function InventoryList({ facilityId }: InventoryListProps) {
     'critical',
     'out_of_stock',
   ]);
+  const [lotStatusFilter, setLotStatusFilter] = useState<string[]>([]);
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -159,8 +172,15 @@ export function InventoryList({ facilityId }: InventoryListProps) {
       });
     }
 
+    // Filter by lot status
+    if (lotStatusFilter.length > 0) {
+      result = result.filter((item) =>
+        lotStatusFilter.includes(item.lot_status)
+      );
+    }
+
     return result;
-  }, [enrichedItems, searchQuery, stockFilters]);
+  }, [enrichedItems, searchQuery, stockFilters, lotStatusFilter]);
 
   // Calculate metrics
   const metrics = useMemo(() => {
@@ -186,14 +206,24 @@ export function InventoryList({ facilityId }: InventoryListProps) {
     }
   };
 
+  const handleLotStatusFilterChange = (status: string, checked: boolean) => {
+    if (checked) {
+      setLotStatusFilter((prev) => [...prev, status]);
+    } else {
+      setLotStatusFilter((prev) => prev.filter((s) => s !== status));
+    }
+  };
+
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (stockFilters.length < 4) count++;
+    if (lotStatusFilter.length > 0) count++;
     return count;
-  }, [stockFilters]);
+  }, [stockFilters, lotStatusFilter]);
 
   const clearAllFilters = () => {
     setStockFilters(['normal', 'low', 'critical', 'out_of_stock']);
+    setLotStatusFilter([]);
     setSearchQuery('');
     setSelectedCategory(null);
   };
@@ -428,6 +458,31 @@ export function InventoryList({ facilityId }: InventoryListProps) {
                         Sin Stock
                       </label>
                     </div>
+                  </div>
+                </div>
+
+                {/* Lot Status Filter */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600">Estado de Lote</Label>
+                  <div className="space-y-2">
+                    {lotStatusOptions.map((option) => {
+                      const Icon = option.icon;
+                      return (
+                        <div key={option.value} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`lot-${option.value}`}
+                            checked={lotStatusFilter.includes(option.value)}
+                            onCheckedChange={(checked) =>
+                              handleLotStatusFilterChange(option.value, checked as boolean)
+                            }
+                          />
+                          <label htmlFor={`lot-${option.value}`} className="text-sm flex items-center gap-2">
+                            <Icon className="h-3.5 w-3.5" />
+                            {option.label}
+                          </label>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
