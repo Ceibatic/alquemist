@@ -26,6 +26,10 @@ import {
   Container,
   Wrench,
   FileText,
+  Plant,
+  Seedling,
+  Tree,
+  Leaf,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFacility } from '@/components/providers/facility-provider';
@@ -54,6 +58,10 @@ const categoryIcons: Record<string, React.ComponentType<{ className?: string }>>
   substrate: Layers,
   container: Container,
   tool: Wrench,
+  clone: Plant,
+  seedling: Seedling,
+  mother_plant: Tree,
+  plant_material: Leaf,
   other: FileText,
 };
 
@@ -65,6 +73,10 @@ const categoryLabels: Record<string, string> = {
   substrate: 'Sustratos',
   container: 'Contenedores',
   tool: 'Herramientas',
+  clone: 'Esquejes',
+  seedling: 'Plántulas',
+  mother_plant: 'Plantas Madre',
+  plant_material: 'Material Vegetal',
   other: 'Otros',
 };
 

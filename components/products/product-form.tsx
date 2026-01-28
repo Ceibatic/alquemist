@@ -55,6 +55,10 @@ const categories = [
   'substrate',
   'container',
   'tool',
+  'clone',
+  'seedling',
+  'mother_plant',
+  'plant_material',
   'other',
 ] as const;
 
@@ -174,6 +178,10 @@ export function ProductForm({
       substrate: 'SUS',
       container: 'CON',
       tool: 'HER',
+      clone: 'CLO',
+      seedling: 'PLA',
+      mother_plant: 'MAD',
+      plant_material: 'MAT',
       other: 'OTR',
     };
     const prefix = categoryPrefixes[category] || 'PRD';
