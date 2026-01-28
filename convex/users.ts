@@ -3,9 +3,10 @@
  * User management functions for Phase 1
  */
 
-import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { v, ConvexError } from "convex/values";
+import { mutation, query, action, internalMutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 
 // ============================================================================
 // CONVEX AUTH: CURRENT USER QUERIES
@@ -690,29 +691,181 @@ export const updateProfile = mutation({
 /**
  * Change user password
  * Phase 2 Module 21 - Security Settings
+ *
+ * IMPLEMENTATION NOTE:
+ * Convex Auth's Password provider uses Scrypt (from the Lucia auth library) for password
+ * hashing and stores credentials in the authAccounts table. Since Convex Auth doesn't
+ * expose a public API for password verification or updates, this implementation uses an
+ * internal mutation to access the authAccounts table directly.
+ *
+ * Security considerations:
+ * - Current password is verified using Scrypt.verify from Lucia (same as Convex Auth)
+ * - New password is validated against requirements (min 8 chars, uppercase, lowercase, number, special char)
+ * - New password is hashed using Scrypt before storage
+ * - Uses internal mutations to prevent unauthorized access
  */
-export const changePassword = mutation({
+export const changePassword = action({
   args: {
     userId: v.id("users"),
     currentPassword: v.string(),
     newPassword: v.string(),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-
-    // Verify user exists
-    const user = await ctx.db.get(args.userId);
-    if (!user) {
-      throw new Error("User not found");
+    // 1. Validate that new password is different from current
+    if (args.currentPassword === args.newPassword) {
+      throw new ConvexError("La nueva contraseña debe ser diferente a la actual");
     }
 
-    // Note: In a real implementation, you would verify the current password
-    // against a hashed version stored in the database. For now, we'll just
-    // update the password (this is a placeholder for the actual authentication logic)
+    // 2. Validate new password requirements
+    validatePasswordRequirements(args.newPassword);
 
-    // TODO: Implement proper password hashing and verification
-    // This should integrate with your authentication provider (Clerk, Auth0, etc.)
+    // 3. Verify current password and update to new password
+    // This is done in a single internal mutation for security
+    const result = await ctx.runMutation(
+      internal.users.verifyAndUpdatePassword,
+      {
+        userId: args.userId,
+        currentPassword: args.currentPassword,
+        newPassword: args.newPassword,
+      }
+    );
 
-    throw new Error("Password change must be handled through the authentication provider");
+    if (!result.success) {
+      throw new ConvexError(result.error || "Error al cambiar la contraseña");
+    }
+
+    return {
+      success: true,
+      message: "Contraseña actualizada exitosamente",
+    };
   },
 });
+
+/**
+ * Validate password requirements (matches validation in auth.ts)
+ */
+function validatePasswordRequirements(password: string): void {
+  if (password.length < 8) {
+    throw new ConvexError("La contraseña debe tener al menos 8 caracteres");
+  }
+  if (!/[A-Z]/.test(password)) {
+    throw new ConvexError("La contraseña debe incluir al menos una mayúscula");
+  }
+  if (!/[a-z]/.test(password)) {
+    throw new ConvexError("La contraseña debe incluir al menos una minúscula");
+  }
+  if (!/[0-9]/.test(password)) {
+    throw new ConvexError("La contraseña debe incluir al menos un número");
+  }
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    throw new ConvexError("La contraseña debe incluir al menos un carácter especial");
+  }
+}
+
+/**
+ * Internal mutation to verify current password and update to new password
+ *
+ * This implementation uses Scrypt from Lucia, which is the same library
+ * that Convex Auth's Password provider uses internally.
+ *
+ * @returns { success: boolean, error?: string }
+ */
+export const verifyAndUpdatePassword = internalMutation({
+  args: {
+    userId: v.id("users"),
+    currentPassword: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean; error?: string }> => {
+    // 1. Verify user exists
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      return {
+        success: false,
+        error: "Usuario no encontrado",
+      };
+    }
+
+    // 2. Get the user's auth account
+    const authAccounts = await ctx.db
+      .query("authAccounts")
+      .withIndex("userIdAndProvider", (q) =>
+        q.eq("userId", args.userId).eq("provider", "password")
+      )
+      .collect();
+
+    if (authAccounts.length === 0) {
+      return {
+        success: false,
+        error: "Cuenta de autenticación no encontrada",
+      };
+    }
+
+    const authAccount = authAccounts[0];
+    const storedHash = authAccount.secret as string | undefined;
+
+    if (!storedHash) {
+      return {
+        success: false,
+        error: "Contraseña no configurada para esta cuenta",
+      };
+    }
+
+    // Verify current password using the same method as Convex Auth
+    // Convex Auth uses Scrypt from Lucia for password hashing
+    try {
+      const isValid = await verifyPassword(args.currentPassword, storedHash);
+
+      if (!isValid) {
+        return {
+          success: false,
+          error: "La contraseña actual es incorrecta",
+        };
+      }
+
+      // Hash the new password
+      const newPasswordHash = await hashPassword(args.newPassword);
+
+      // Update the auth account with new password hash
+      await ctx.db.patch(authAccount._id, {
+        secret: newPasswordHash,
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error changing password:", error);
+      return {
+        success: false,
+        error: "Error al procesar la contraseña",
+      };
+    }
+  },
+});
+
+/**
+ * Hash password using Scrypt from Lucia (same as Convex Auth Password provider)
+ * Convex Auth uses the Scrypt implementation from the Lucia auth library
+ */
+async function hashPassword(password: string): Promise<string> {
+  const { Scrypt } = await import("lucia");
+
+  const scrypt = new Scrypt();
+  const hash = await scrypt.hash(password);
+
+  return hash;
+}
+
+/**
+ * Verify password against Scrypt hash using Lucia
+ */
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  try {
+    const { Scrypt } = await import("lucia");
+
+    const scrypt = new Scrypt();
+    return await scrypt.verify(hash, password);
+  } catch (error) {
+    console.error("Error verifying password:", error);
+    return false;
+  }
+}
