@@ -91,7 +91,7 @@ El modulo de Configuracion de Empresa permite al primer usuario (fundador) crear
 - [ ] Plan de suscripcion: "trial" (30 dias)
 - [ ] Limites iniciales: max_facilities = 1, max_users = 3
 - [ ] Toast de exito "Empresa creada correctamente"
-- [ ] Redirige automaticamente a `/facility-setup`
+- [ ] Redirige automaticamente a `/facility-basic`
 
 **Escribe:**
 - `companies.create(...)` → crea empresa
@@ -217,7 +217,7 @@ El modulo de Configuracion de Empresa permite al primer usuario (fundador) crear
 [Empresa creada]
     |
     v
-/facility-setup (M04)
+/facility-basic (M04)
 ```
 
 ---
