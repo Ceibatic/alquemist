@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from 'convex/react';
+import { useTheme } from 'next-themes';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ const TIMEZONES = [
 
 export function PreferencesForm({ userId, user, onDirtyChange }: PreferencesFormProps) {
   const updatePreferences = useMutation(api.users.updatePreferences);
+  const { setTheme } = useTheme();
 
   // Fetch accessible facilities for the user
   const facilities = useQuery(
@@ -97,12 +99,26 @@ export function PreferencesForm({ userId, user, onDirtyChange }: PreferencesForm
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
+  // Sync theme with user's saved preference on mount
+  React.useEffect(() => {
+    if (user.theme) {
+      setTheme(user.theme);
+    }
+  }, [user.theme, setTheme]);
+
   const locale = watch('locale');
   const timezone = watch('timezone');
   const dateFormat = watch('date_format');
   const timeFormat = watch('time_format');
   const theme = watch('theme');
   const defaultFacilityId = watch('default_facility_id');
+
+  // Handler for theme changes - applies immediately
+  const handleThemeChange = React.useCallback((value: string) => {
+    const themeValue = value as 'light' | 'dark' | 'system';
+    setValue('theme', themeValue);
+    setTheme(themeValue);
+  }, [setValue, setTheme]);
 
   // Format date based on selected format
   const formatDatePreview = (format: string): string => {
@@ -324,7 +340,7 @@ export function PreferencesForm({ userId, user, onDirtyChange }: PreferencesForm
         </div>
         <Select
           value={theme}
-          onValueChange={(value: any) => setValue('theme', value)}
+          onValueChange={handleThemeChange}
         >
           <SelectTrigger id="theme">
             <SelectValue placeholder="Selecciona tema" />
@@ -338,7 +354,7 @@ export function PreferencesForm({ userId, user, onDirtyChange }: PreferencesForm
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          El tema oscuro estará disponible en versiones futuras
+          Cambios aplicados inmediatamente. Haz clic en "Guardar Cambios" para persistir tu preferencia.
         </p>
       </div>
 
