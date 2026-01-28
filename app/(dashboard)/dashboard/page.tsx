@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Id } from '@/convex/_generated/dataModel';
 import { PageHeader } from '@/components/layout/page-header';
 import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist';
@@ -20,50 +19,16 @@ import { api } from '@/convex/_generated/api';
 import { useDashboard } from '@/hooks/use-dashboard';
 
 export default function DashboardPage() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [error, setError] = useState<Error | null>(null);
+  // Get current user via Convex Auth (no cookies)
+  const user = useQuery(api.users.getCurrentUser);
 
-  // Get user ID from cookies on mount
-  useEffect(() => {
-    const userDataCookie = document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('user_data='));
-
-    if (userDataCookie) {
-      try {
-        const userData = JSON.parse(
-          decodeURIComponent(userDataCookie.split('=')[1])
-        );
-        setUserId(userData.userId);
-      } catch {
-        setError(new Error('Error al cargar datos del usuario'));
-      }
-    } else {
-      setError(new Error('No se encontro informacion del usuario'));
-    }
-  }, []);
-
-  // Get user data to access facility and company IDs
-  const user = useQuery(
-    api.users.getUserById,
-    userId ? { userId: userId as Id<'users'> } : 'skip'
-  );
-
-  // Get facility ID
-  const primaryFacilityId =
-    user?.accessibleFacilityIds && user.accessibleFacilityIds.length > 0
-      ? user.accessibleFacilityIds[0]
-      : null;
-
-  const companyId = user?.companyId;
+  const primaryFacilityId = user?.primaryFacilityId ?? null;
+  const companyId = user?.companyId ?? null;
 
   // Fetch role-based home dashboard data (consolidated query)
   const { data: dashboardData, roleInfo, isLoading: isHomeLoading } = useHomeDashboard(
-    userId && primaryFacilityId
-      ? {
-          userId: userId as Id<'users'>,
-          facilityId: primaryFacilityId as Id<'facilities'>,
-        }
+    primaryFacilityId
+      ? { facilityId: primaryFacilityId as Id<'facilities'> }
       : 'skip'
   );
 
@@ -78,12 +43,12 @@ export default function DashboardPage() {
   );
 
   // Loading state
-  if (!userId || !user || isHomeLoading) {
+  if (user === undefined || isHomeLoading) {
     return <DashboardLoading />;
   }
 
   // Error state
-  if (error || !primaryFacilityId || !companyId) {
+  if (!user || !primaryFacilityId || !companyId) {
     return (
       <div className="space-y-6">
         <PageHeader
@@ -92,7 +57,7 @@ export default function DashboardPage() {
           description="Vista general de tu instalacion"
         />
         <DashboardError
-          error={error || new Error('No se encontro una instalacion activa')}
+          error={new Error('No se encontro una instalacion activa')}
         />
       </div>
     );

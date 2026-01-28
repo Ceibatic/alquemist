@@ -84,7 +84,6 @@ export interface OperativeDashboardData {
 export type HomeDashboardData = AdminDashboardData | OperativeDashboardData;
 
 export interface UseHomeDashboardOptions {
-  userId: Id<'users'>;
   facilityId?: Id<'facilities'>;
 }
 
@@ -112,20 +111,17 @@ export interface UseHomeDashboardResult {
 export function useHomeDashboard(
   options: UseHomeDashboardOptions | 'skip'
 ): UseHomeDashboardResult {
-  // Fetch role info first (lightweight query)
+  // Fetch role info first (lightweight query, uses auth internally)
   const roleInfo = useQuery(
     api.home.getUserRoleType,
-    options !== 'skip' ? { userId: options.userId } : 'skip'
+    options !== 'skip' ? {} : 'skip'
   );
 
-  // Fetch consolidated dashboard data
+  // Fetch consolidated dashboard data (uses auth internally)
   const dashboardData = useQuery(
     api.home.getDashboard,
     options !== 'skip'
-      ? {
-          userId: options.userId,
-          facilityId: options.facilityId,
-        }
+      ? { facilityId: options.facilityId }
       : 'skip'
   );
 

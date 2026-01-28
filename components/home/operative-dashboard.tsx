@@ -429,9 +429,7 @@ function BatchCard({ batch }: BatchCardProps) {
             <span className="font-mono text-sm font-semibold text-gray-900">
               {batch.batchCode}
             </span>
-            <Badge variant="secondary" className="bg-green-100 text-green-700">
-              Activo
-            </Badge>
+            <BatchStatusBadge status={batch.status} />
           </div>
           <p className="text-sm text-gray-600 mb-3">
             {batch.cultivarName || 'Sin cultivar'}
@@ -504,5 +502,20 @@ function EmptyState({ icon: Icon, message }: EmptyStateProps) {
       <Icon className="h-8 w-8 mb-2" />
       <span className="text-sm">{message}</span>
     </div>
+  );
+}
+
+function BatchStatusBadge({ status }: { status: string }) {
+  const config: Record<string, { label: string; className: string }> = {
+    active: { label: 'Activo', className: 'bg-green-100 text-green-700' },
+    completed: { label: 'Completado', className: 'bg-blue-100 text-blue-700' },
+    cancelled: { label: 'Cancelado', className: 'bg-red-100 text-red-700' },
+    planning: { label: 'Planificacion', className: 'bg-gray-100 text-gray-700' },
+  };
+  const { label, className } = config[status] ?? { label: status, className: 'bg-gray-100 text-gray-700' };
+  return (
+    <Badge variant="secondary" className={className}>
+      {label}
+    </Badge>
   );
 }

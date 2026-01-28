@@ -10,8 +10,9 @@
  */
 
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { query, QueryCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 // ============================================================================
 // TYPES
@@ -125,12 +126,14 @@ function getRoleType(roleName: string, roleLevel: number): RoleType {
  */
 export const getDashboard = query({
   args: {
-    userId: v.id("users"),
     facilityId: v.optional(v.id("facilities")),
   },
   handler: async (ctx, args) => {
+    const authUserId = await getAuthUserId(ctx);
+    if (!authUserId) throw new Error("No autenticado");
+
     // Get user with role information
-    const user = await ctx.db.get(args.userId);
+    const user = await ctx.db.get(authUserId);
     if (!user || !user.company_id) {
       throw new Error("Usuario no encontrado o sin empresa asignada");
     }
@@ -158,7 +161,7 @@ export const getDashboard = query({
     if (roleType === "administrative") {
       return await getAdminDashboard(ctx, user.company_id, facilityId);
     } else {
-      return await getOperativeDashboard(ctx, args.userId, user.company_id, facilityId);
+      return await getOperativeDashboard(ctx, authUserId, user.company_id, facilityId);
     }
   },
 });
@@ -168,7 +171,7 @@ export const getDashboard = query({
 // ============================================================================
 
 async function getAdminDashboard(
-  ctx: any,
+  ctx: QueryCtx,
   companyId: Id<"companies">,
   facilityId: Id<"facilities">
 ): Promise<AdminDashboardData> {
@@ -248,7 +251,7 @@ async function getAdminDashboard(
       .slice(0, 5)
       .map(async (order: any) => {
         const cultivar = order.cultivar_id
-          ? await ctx.db.get(order.cultivar_id)
+          ? await ctx.db.get(order.cultivar_id) as any
           : null;
         return {
           id: order._id,
@@ -287,7 +290,7 @@ async function getAdminDashboard(
 }
 
 async function generateAdminAlerts(
-  ctx: any,
+  ctx: QueryCtx,
   facility: any,
   areas: any[],
   batches: any[],
@@ -366,16 +369,20 @@ async function generateAdminAlerts(
     });
   }
 
-  // Check low stock (simplified - check inventory in areas)
-  const areaIds = areas.map((a: any) => a._id);
-  const inventoryItems = await ctx.db.query("inventory_items").collect();
-  const facilityInventory = inventoryItems.filter(
-    (item: any) => item.area_id && areaIds.includes(item.area_id)
-  );
-  const lowStockItems = facilityInventory.filter((item: any) => {
-    const reorderPoint = item.reorder_point || 0;
-    return item.quantity_available <= reorderPoint;
-  });
+  // Check low stock (using by_area index per area)
+  const lowStockItems: any[] = [];
+  for (const area of areas) {
+    const areaItems = await ctx.db
+      .query("inventory_items")
+      .withIndex("by_area", (q: any) => q.eq("area_id", area._id))
+      .collect();
+    for (const item of areaItems) {
+      const reorderPoint = item.reorder_point || 0;
+      if (item.quantity_available <= reorderPoint) {
+        lowStockItems.push(item);
+      }
+    }
+  }
 
   if (lowStockItems.length > 0) {
     alerts.push({
@@ -399,7 +406,7 @@ async function generateAdminAlerts(
 // ============================================================================
 
 async function getOperativeDashboard(
-  ctx: any,
+  ctx: QueryCtx,
   userId: Id<"users">,
   companyId: Id<"companies">,
   facilityId: Id<"facilities">
@@ -469,8 +476,8 @@ async function getOperativeDashboard(
   const enrichedBatches = await Promise.all(
     myBatches.slice(0, 10).map(async (batch: any) => {
       const [area, cultivar] = await Promise.all([
-        batch.area_id ? ctx.db.get(batch.area_id) : null,
-        batch.cultivar_id ? ctx.db.get(batch.cultivar_id) : null,
+        batch.area_id ? ctx.db.get(batch.area_id) as any : null,
+        batch.cultivar_id ? ctx.db.get(batch.cultivar_id) as any : null,
       ]);
 
       const daysInProduction = Math.floor(
@@ -503,7 +510,7 @@ async function getOperativeDashboard(
       .map(async (activity: any) => {
         let batchCode = null;
         if (activity.batch_id) {
-          const batch = await ctx.db.get(activity.batch_id);
+          const batch = await ctx.db.get(activity.batch_id) as any;
           batchCode = batch?.batch_code || null;
         }
         return {
@@ -522,7 +529,7 @@ async function getOperativeDashboard(
     completedActivities.slice(0, 5).map(async (activity: any) => {
       let batchCode = null;
       if (activity.entity_type === "batch" && activity.entity_id) {
-        const batch = await ctx.db.get(activity.entity_id as Id<"batches">);
+        const batch = await ctx.db.get(activity.entity_id as Id<"batches">) as any;
         batchCode = batch?.batch_code || null;
       }
       return {
@@ -571,6 +578,9 @@ export const getAlertCount = query({
     facilityId: v.id("facilities"),
   },
   handler: async (ctx, args) => {
+    const authUserId = await getAuthUserId(ctx);
+    if (!authUserId) return { total: 0, critical: 0 };
+
     const facility = await ctx.db.get(args.facilityId);
     if (!facility) return { total: 0, critical: 0 };
 
@@ -589,18 +599,24 @@ export const getAlertCount = query({
       }
     }
 
-    // Low stock check
+    // Low stock check (using by_area index)
     const areas = await ctx.db
       .query("areas")
       .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
       .collect();
 
-    const areaIds = areas.map((a) => a._id);
-    const inventoryItems = await ctx.db.query("inventory_items").collect();
-    const lowStockCount = inventoryItems.filter((item) => {
-      if (!item.area_id || !areaIds.includes(item.area_id)) return false;
-      return item.quantity_available <= (item.reorder_point || 0);
-    }).length;
+    let lowStockCount = 0;
+    for (const area of areas) {
+      const areaItems = await ctx.db
+        .query("inventory_items")
+        .withIndex("by_area", (q) => q.eq("area_id", area._id))
+        .collect();
+      for (const item of areaItems) {
+        if (item.quantity_available <= (item.reorder_point || 0)) {
+          lowStockCount++;
+        }
+      }
+    }
 
     if (lowStockCount > 0) alertCount++;
 
@@ -612,11 +628,12 @@ export const getAlertCount = query({
  * Get user's role type for conditional rendering
  */
 export const getUserRoleType = query({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
+  args: {},
+  handler: async (ctx) => {
+    const authUserId = await getAuthUserId(ctx);
+    if (!authUserId) return null;
+
+    const user = await ctx.db.get(authUserId);
     if (!user) return null;
 
     const role = user.role_id ? await ctx.db.get(user.role_id) : null;
@@ -660,6 +677,11 @@ export const getDashboardTrends = query({
     days: v.optional(v.number()), // Default 30 days
   },
   handler: async (ctx, args): Promise<DashboardTrends> => {
+    const authUserId = await getAuthUserId(ctx);
+    if (!authUserId) {
+      return { productionTrend: [], batchTrend: [], activityTrend: [], plantHealthTrend: [] };
+    }
+
     const daysToFetch = args.days || 30;
     const now = Date.now();
     const startDate = now - daysToFetch * 24 * 60 * 60 * 1000;
