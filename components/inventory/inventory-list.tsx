@@ -146,7 +146,8 @@ export function InventoryList({ facilityId }: InventoryListProps) {
       result = result.filter(
         (item) =>
           item.productName?.toLowerCase().includes(query) ||
-          item.productSku?.toLowerCase().includes(query)
+          item.productSku?.toLowerCase().includes(query) ||
+          item.batch_number?.toLowerCase().includes(query)
       );
     }
 
@@ -467,7 +468,7 @@ export function InventoryList({ facilityId }: InventoryListProps) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
-            placeholder="Buscar por nombre o SKU..."
+            placeholder="Buscar por nombre, SKU o lote..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 pr-9"
