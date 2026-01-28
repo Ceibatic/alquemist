@@ -6,6 +6,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
  * List cultivars by company with optional filters
@@ -19,6 +20,15 @@ export const list = query({
     varietyType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated and has access to company
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const user = await ctx.db.get(userId);
+      if (user && user.company_id !== args.companyId) {
+        throw new Error("No tienes acceso a los cultivares de esta empresa");
+      }
+    }
+
     let cultivars;
 
     // Use company index first
@@ -66,6 +76,15 @@ export const getByCrop = query({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated and has access to company
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const user = await ctx.db.get(userId);
+      if (user && user.company_id !== args.companyId) {
+        throw new Error("No tienes acceso a los cultivares de esta empresa");
+      }
+    }
+
     const cultivars = await ctx.db
       .query("cultivars")
       .withIndex("by_company_crop", (q) =>
@@ -87,7 +106,19 @@ export const get = query({
     id: v.id("cultivars"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const cultivar = await ctx.db.get(args.id);
+    if (!cultivar) return null;
+
+    // Auth: Verify user is authenticated and has access to cultivar's company
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const user = await ctx.db.get(userId);
+      if (user && user.company_id !== cultivar.company_id) {
+        throw new Error("No tienes acceso a este cultivar");
+      }
+    }
+
+    return cultivar;
   },
 });
 
@@ -100,6 +131,18 @@ export const getByFacility = query({
     facilityId: v.id("facilities"),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated and has access to facility
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const facility = await ctx.db.get(args.facilityId);
+      if (facility) {
+        const user = await ctx.db.get(userId);
+        if (user && user.company_id !== facility.company_id) {
+          throw new Error("No tienes acceso a los cultivares de esta instalación");
+        }
+      }
+    }
+
     // Get all batches for this facility to find linked cultivars
     const batches = await ctx.db
       .query("batches")
@@ -146,10 +189,22 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
 
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
     // Verify company exists
     const company = await ctx.db.get(args.companyId);
     if (!company) {
       throw new Error("Empresa no encontrada");
+    }
+
+    // Auth: Verify user belongs to company
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== args.companyId) {
+      throw new Error("No tienes permiso para crear cultivares en esta empresa");
     }
 
     // Verify crop type exists
@@ -166,9 +221,21 @@ export const create = mutation({
       }
     }
 
-    // Validate name length
-    if (args.name.length < 2) {
+    // Sanitize and validate name
+    const sanitizedName = args.name.trim();
+    if (sanitizedName.length < 2) {
       throw new Error("El nombre debe tener al menos 2 caracteres");
+    }
+
+    // Validation: Check unique name per company
+    const existingCultivar = await ctx.db
+      .query("cultivars")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .filter((q) => q.eq(q.field("name"), sanitizedName))
+      .first();
+
+    if (existingCultivar && existingCultivar.status === "active") {
+      throw new Error("Ya existe un cultivar activo con ese nombre en tu empresa");
     }
 
     // Validate THC range
@@ -187,10 +254,10 @@ export const create = mutation({
 
     const cultivarId = await ctx.db.insert("cultivars", {
       company_id: args.companyId,
-      name: args.name,
+      name: sanitizedName,
       crop_type_id: args.cropTypeId,
-      variety_type: args.varietyType,
-      genetic_lineage: args.geneticLineage,
+      variety_type: args.varietyType?.trim(),
+      genetic_lineage: args.geneticLineage?.trim(),
       flowering_time_days: args.floweringTimeDays,
       supplier_id: args.supplierId,
       thc_min: args.thcMin,
@@ -199,7 +266,7 @@ export const create = mutation({
       cbd_max: args.cbdMax,
       performance_metrics: {},
       status: "active",
-      notes: args.notes,
+      notes: args.notes?.trim(),
       created_at: now,
       updated_at: now,
     });
@@ -228,10 +295,22 @@ export const createCustom = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
 
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
     // Verify company exists
     const company = await ctx.db.get(args.companyId);
     if (!company) {
       throw new Error("Empresa no encontrada");
+    }
+
+    // Auth: Verify user belongs to company
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== args.companyId) {
+      throw new Error("No tienes permiso para crear cultivares en esta empresa");
     }
 
     // Verify crop type exists
@@ -240,17 +319,29 @@ export const createCustom = mutation({
       throw new Error("Tipo de cultivo no encontrado");
     }
 
-    // Validate name length
-    if (args.name.length < 2) {
+    // Sanitize and validate name
+    const sanitizedName = args.name.trim();
+    if (sanitizedName.length < 2) {
       throw new Error("El nombre debe tener al menos 2 caracteres");
+    }
+
+    // Validation: Check unique name per company
+    const existingCultivar = await ctx.db
+      .query("cultivars")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .filter((q) => q.eq(q.field("name"), sanitizedName))
+      .first();
+
+    if (existingCultivar && existingCultivar.status === "active") {
+      throw new Error("Ya existe un cultivar activo con ese nombre en tu empresa");
     }
 
     const cultivarId = await ctx.db.insert("cultivars", {
       company_id: args.companyId,
-      name: args.name,
+      name: sanitizedName,
       crop_type_id: args.cropTypeId,
-      variety_type: args.varietyType,
-      genetic_lineage: args.geneticLineage,
+      variety_type: args.varietyType?.trim(),
+      genetic_lineage: args.geneticLineage?.trim(),
       flowering_time_days: args.floweringTimeDays,
       supplier_id: undefined,
       thc_min: args.thcMin,
@@ -259,7 +350,7 @@ export const createCustom = mutation({
       cbd_max: args.cbdMax,
       performance_metrics: {},
       status: "active",
-      notes: args.notes,
+      notes: args.notes?.trim(),
       created_at: now,
       updated_at: now,
     });
@@ -289,10 +380,22 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
 
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
     // Verify cultivar exists
     const cultivar = await ctx.db.get(id);
     if (!cultivar) {
       throw new Error("Cultivar no encontrado");
+    }
+
+    // Auth: Verify user belongs to cultivar's company
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== cultivar.company_id) {
+      throw new Error("No tienes permiso para editar este cultivar");
     }
 
     // Verify supplier exists if being updated
@@ -300,6 +403,26 @@ export const update = mutation({
       const supplier = await ctx.db.get(updates.supplierId);
       if (!supplier) {
         throw new Error("Proveedor no encontrado");
+      }
+    }
+
+    // Sanitize name if provided and check uniqueness
+    let sanitizedName: string | undefined;
+    if (updates.name) {
+      sanitizedName = updates.name.trim();
+      if (sanitizedName.length < 2) {
+        throw new Error("El nombre debe tener al menos 2 caracteres");
+      }
+
+      // Check unique name per company (excluding current cultivar)
+      const existingCultivar = await ctx.db
+        .query("cultivars")
+        .withIndex("by_company", (q) => q.eq("company_id", cultivar.company_id))
+        .filter((q) => q.eq(q.field("name"), sanitizedName!))
+        .first();
+
+      if (existingCultivar && existingCultivar._id !== id && existingCultivar.status === "active") {
+        throw new Error("Ya existe un cultivar activo con ese nombre en tu empresa");
       }
     }
 
@@ -326,9 +449,9 @@ export const update = mutation({
       updated_at: Date.now(),
     };
 
-    if (updates.name !== undefined) updateData.name = updates.name;
-    if (updates.varietyType !== undefined) updateData.variety_type = updates.varietyType;
-    if (updates.geneticLineage !== undefined) updateData.genetic_lineage = updates.geneticLineage;
+    if (sanitizedName !== undefined) updateData.name = sanitizedName;
+    if (updates.varietyType !== undefined) updateData.variety_type = updates.varietyType.trim();
+    if (updates.geneticLineage !== undefined) updateData.genetic_lineage = updates.geneticLineage.trim();
     if (updates.floweringTimeDays !== undefined)
       updateData.flowering_time_days = updates.floweringTimeDays;
     if (updates.supplierId !== undefined) updateData.supplier_id = updates.supplierId;
@@ -337,7 +460,7 @@ export const update = mutation({
     if (updates.cbdMin !== undefined) updateData.cbd_min = updates.cbdMin;
     if (updates.cbdMax !== undefined) updateData.cbd_max = updates.cbdMax;
     if (updates.status !== undefined) updateData.status = updates.status;
-    if (updates.notes !== undefined) updateData.notes = updates.notes;
+    if (updates.notes !== undefined) updateData.notes = updates.notes.trim();
 
     await ctx.db.patch(id, updateData);
 
@@ -353,10 +476,22 @@ export const remove = mutation({
     id: v.id("cultivars"),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
     // Verify cultivar exists
     const cultivar = await ctx.db.get(args.id);
     if (!cultivar) {
       throw new Error("Cultivar no encontrado");
+    }
+
+    // Auth: Verify user belongs to cultivar's company
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== cultivar.company_id) {
+      throw new Error("No tienes permiso para eliminar este cultivar");
     }
 
     // Soft delete by changing status to discontinued
@@ -377,9 +512,21 @@ export const hardDelete = mutation({
     id: v.id("cultivars"),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
     const cultivar = await ctx.db.get(args.id);
     if (!cultivar) {
       throw new Error("Cultivar no encontrado");
+    }
+
+    // Auth: Verify user belongs to cultivar's company
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== cultivar.company_id) {
+      throw new Error("No tienes permiso para eliminar este cultivar");
     }
 
     await ctx.db.delete(args.id);
@@ -395,6 +542,18 @@ export const deleteDemoCultivars = mutation({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
+    // Auth: Verify user belongs to company
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== args.companyId) {
+      throw new Error("No tienes permiso para eliminar cultivares de esta empresa");
+    }
+
     const cultivars = await ctx.db
       .query("cultivars")
       .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
