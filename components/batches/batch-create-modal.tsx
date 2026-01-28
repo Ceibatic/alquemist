@@ -444,7 +444,7 @@ export function BatchCreateModal({
                   <SelectValue placeholder="Seleccionar proveedor..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {suppliers?.suppliers?.map((supplier) => (
+                  {suppliers?.map((supplier) => (
                     <SelectItem key={supplier._id} value={supplier._id}>
                       {supplier.name}
                     </SelectItem>
@@ -480,7 +480,7 @@ export function BatchCreateModal({
                   <SelectItem value="">Sin vincular</SelectItem>
                   {productionOrders.map((order) => (
                     <SelectItem key={order._id} value={order._id}>
-                      {order.orderNumber} - {order.cultivarName || order.cropTypeName}
+                      {order.order_number} - {order.cultivarName || order.cropTypeName}
                     </SelectItem>
                   ))}
                 </SelectContent>
