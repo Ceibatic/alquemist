@@ -5,6 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
  * List inventory items
@@ -19,6 +20,11 @@ export const list = query({
     offset: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
     let itemsQuery = ctx.db.query("inventory_items");
 
     // Apply filters
@@ -166,6 +172,11 @@ export const getByFacility = query({
     productId: v.optional(v.id("products")),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
     // Get all areas for this facility first
     const areas = await ctx.db
       .query("areas")
@@ -251,6 +262,11 @@ export const getByCategory = query({
     category: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
     return await ctx.runQuery("inventory:getByFacility" as any, {
       facilityId: args.facilityId,
       category: args.category,
@@ -267,6 +283,11 @@ export const getById = query({
     inventoryId: v.id("inventory_items"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
     const item = await ctx.db.get(args.inventoryId);
     if (!item) {
       return null;
@@ -323,12 +344,36 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
     const now = Date.now();
 
     // Verify item exists
     const item = await ctx.db.get(args.inventoryId);
     if (!item) {
       throw new Error("Inventory item not found");
+    }
+
+    // Verify ownership: check if user has access to the facility
+    if (item.area_id) {
+      const area = await ctx.db.get(item.area_id);
+      if (!area) {
+        throw new Error("Area not found");
+      }
+
+      // Get user to check facility access
+      const user = await ctx.db.get(userId);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // Check if user has access to this facility
+      if (!user.facility_ids?.includes(area.facility_id)) {
+        throw new Error("Access denied: you do not have access to this facility");
+      }
     }
 
     const updates: any = {
@@ -453,6 +498,11 @@ export const getLowStock = query({
     facilityId: v.id("facilities"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
     // Get all inventory for facility
     const items = await ctx.runQuery("inventory:getByFacility" as any, {
       facilityId: args.facilityId,
@@ -486,12 +536,36 @@ export const remove = mutation({
     inventoryId: v.id("inventory_items"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
     const now = Date.now();
 
     // Verify item exists
     const item = await ctx.db.get(args.inventoryId);
     if (!item) {
       throw new Error("Inventory item not found");
+    }
+
+    // Verify ownership: check if user has access to the facility
+    if (item.area_id) {
+      const area = await ctx.db.get(item.area_id);
+      if (!area) {
+        throw new Error("Area not found");
+      }
+
+      // Get user to check facility access
+      const user = await ctx.db.get(userId);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // Check if user has access to this facility
+      if (!user.facility_ids?.includes(area.facility_id)) {
+        throw new Error("Access denied: you do not have access to this facility");
+      }
     }
 
     // Check if item has stock or transaction history
@@ -531,6 +605,11 @@ export const getTransactionHistory = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
     const limit = args.limit || 50;
 
     const transactions = await ctx.db
@@ -587,6 +666,11 @@ export const getProductTransactionHistory = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
     const limit = args.limit || 100;
 
     const transactions = await ctx.db
