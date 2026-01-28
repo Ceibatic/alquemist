@@ -21,6 +21,62 @@ interface InventoryCreateModalProps {
   facilityId: string;
 }
 
+// Error message mapping for user-friendly feedback
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+
+    // Map backend errors to user-friendly Spanish messages
+    if (message.includes('insufficient stock') || message.includes('insuficiente')) {
+      return 'Stock insuficiente para realizar esta operación';
+    }
+    if (message.includes('not found') || message.includes('no existe') || message.includes('does not exist')) {
+      return 'El item de inventario no fue encontrado';
+    }
+    if (message.includes('product') && (message.includes('not found') || message.includes('does not exist'))) {
+      return 'El producto seleccionado no existe. Por favor selecciona otro';
+    }
+    if (message.includes('area') && (message.includes('not found') || message.includes('does not exist'))) {
+      return 'El área seleccionada no existe. Por favor selecciona otra';
+    }
+    if (message.includes('supplier') && (message.includes('not found') || message.includes('does not exist'))) {
+      return 'El proveedor seleccionado no existe. Por favor selecciona otro';
+    }
+    if (message.includes('unauthorized') || message.includes('access denied') || message.includes('permission')) {
+      return 'No tienes permiso para realizar esta operación';
+    }
+    if (message.includes('invalid') && message.includes('quantity')) {
+      return 'La cantidad ingresada es inválida. Debe ser mayor a 0';
+    }
+    if (message.includes('invalid') && message.includes('date')) {
+      return 'Una o más fechas son inválidas. Verifica las fechas ingresadas';
+    }
+    if (message.includes('invalid') && message.includes('price')) {
+      return 'El precio ingresado es inválido. Debe ser mayor a 0';
+    }
+    if (message.includes('invalid')) {
+      return 'Datos inválidos. Verifica los campos e intenta nuevamente';
+    }
+    if (message.includes('network') || message.includes('fetch') || message.includes('timeout')) {
+      return 'Error de conexión. Verifica tu conexión a internet e intenta nuevamente';
+    }
+    if (message.includes('duplicate') && message.includes('batch')) {
+      return 'Ya existe un lote con este número. Usa un número diferente';
+    }
+    if (message.includes('duplicate')) {
+      return 'Ya existe un registro similar. Verifica los datos';
+    }
+    if (message.includes('expired')) {
+      return 'No se puede crear un item de inventario con producto ya vencido';
+    }
+
+    // Return original message if it's already user-friendly
+    return error.message;
+  }
+
+  return 'Ocurrió un error inesperado. Intenta nuevamente';
+};
+
 export function InventoryCreateModal({
   open,
   onOpenChange,
@@ -53,7 +109,8 @@ export function InventoryCreateModal({
       onOpenChange(false);
     } catch (error) {
       console.error('Error creating inventory item:', error);
-      toast.error('Error al crear el item de inventario');
+      const userMessage = getErrorMessage(error);
+      toast.error(userMessage);
     } finally {
       setIsSubmitting(false);
     }

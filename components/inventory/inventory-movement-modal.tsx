@@ -156,6 +156,44 @@ const REASONS = {
   ],
 };
 
+// Error message mapping for user-friendly feedback
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+
+    // Map backend errors to user-friendly Spanish messages
+    if (message.includes('insufficient stock') || message.includes('insuficiente')) {
+      return 'Stock insuficiente para realizar esta operación';
+    }
+    if (message.includes('not found') || message.includes('no existe') || message.includes('does not exist')) {
+      return 'El item de inventario no fue encontrado';
+    }
+    if (message.includes('unauthorized') || message.includes('access denied') || message.includes('permission')) {
+      return 'No tienes permiso para realizar esta operación';
+    }
+    if (message.includes('invalid') && message.includes('quantity')) {
+      return 'La cantidad ingresada es inválida. Verifica el valor';
+    }
+    if (message.includes('invalid') && message.includes('area')) {
+      return 'El área seleccionada no es válida';
+    }
+    if (message.includes('invalid')) {
+      return 'Datos inválidos. Verifica los campos e intenta nuevamente';
+    }
+    if (message.includes('network') || message.includes('fetch') || message.includes('timeout')) {
+      return 'Error de conexión. Verifica tu conexión a internet e intenta nuevamente';
+    }
+    if (message.includes('duplicate')) {
+      return 'Ya existe un registro similar. Verifica los datos';
+    }
+
+    // Return original message if it's already user-friendly
+    return error.message;
+  }
+
+  return 'Ocurrió un error inesperado. Intenta nuevamente';
+};
+
 export function InventoryMovementModal({
   open,
   onOpenChange,
@@ -307,9 +345,10 @@ export function InventoryMovementModal({
       toast.success(`${typeLabels[data.movement_type]} registrado exitosamente`);
       onOpenChange(false);
       form.reset();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error registering movement:', error);
-      toast.error(error.message || 'Error al registrar el movimiento');
+      const userMessage = getErrorMessage(error);
+      toast.error(userMessage);
     } finally {
       setIsSubmitting(false);
     }
