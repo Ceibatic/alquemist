@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { StockStatus } from './stock-status';
+import { TransformationStatusBadge } from './transformation-status-badge';
 import { getCategoryIcon, getCategoryLabel } from './category-tabs';
 import { cn } from '@/lib/utils';
 
@@ -33,6 +34,7 @@ interface InventoryTableItem {
   expiration_date?: number;
   stockStatus: string;
   lot_status: string;
+  transformation_status?: 'active' | 'transformed' | 'consumed' | 'harvested' | 'expired' | 'waste';
 }
 
 interface InventoryTableProps {
@@ -126,10 +128,18 @@ export function InventoryTable({
       },
       {
         accessorKey: 'stockStatus',
-        header: 'Estado',
+        header: 'Estado Stock',
         cell: ({ row }) => {
           const status = row.original.stockStatus as any;
           return <StockStatus status={status} />;
+        },
+      },
+      {
+        accessorKey: 'transformation_status',
+        header: 'Estado Transformación',
+        cell: ({ row }) => {
+          const status = row.original.transformation_status || 'active';
+          return <TransformationStatusBadge status={status} />;
         },
       },
       {
