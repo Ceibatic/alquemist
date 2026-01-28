@@ -505,6 +505,68 @@ export default function FacilityDetailPage() {
                   </div>
                 )}
               </div>
+
+              {/* Proportional visualization */}
+              {facility.total_area_m2 && (
+                <div className="border-t pt-6 space-y-3">
+                  <p className="text-sm font-medium text-gray-700">
+                    Distribución de Áreas
+                  </p>
+
+                  {/* Total Area Bar */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Área Total</span>
+                      <span className="font-medium">
+                        {facility.total_area_m2.toLocaleString('es-CO')} m² (100%)
+                      </span>
+                    </div>
+                    <div className="h-3 bg-blue-200 rounded-full w-full" />
+                  </div>
+
+                  {/* Cultivation Area Bar */}
+                  {facility.cultivation_area_m2 && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Área de Cultivo</span>
+                        <span className="font-medium">
+                          {facility.cultivation_area_m2.toLocaleString('es-CO')} m² (
+                          {Math.round((facility.cultivation_area_m2 / facility.total_area_m2) * 100)}%)
+                        </span>
+                      </div>
+                      <div className="h-3 bg-gray-200 rounded-full w-full">
+                        <div
+                          className="h-3 bg-green-500 rounded-full transition-all"
+                          style={{
+                            width: `${(facility.cultivation_area_m2 / facility.total_area_m2) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Canopy Area Bar */}
+                  {facility.canopy_area_m2 && facility.cultivation_area_m2 && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Área de Dosel</span>
+                        <span className="font-medium">
+                          {facility.canopy_area_m2.toLocaleString('es-CO')} m² (
+                          {Math.round((facility.canopy_area_m2 / facility.cultivation_area_m2) * 100)}% del cultivo)
+                        </span>
+                      </div>
+                      <div className="h-3 bg-gray-200 rounded-full w-full">
+                        <div
+                          className="h-3 bg-amber-500 rounded-full transition-all"
+                          style={{
+                            width: `${(facility.canopy_area_m2 / facility.cultivation_area_m2) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
