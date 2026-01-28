@@ -464,6 +464,36 @@ export const generateSku = query({
   },
 });
 
+/**
+ * Check if SKU exists for a company (for real-time validation)
+ */
+export const checkSkuExists = query({
+  args: {
+    sku: v.string(),
+    companyId: v.id("companies"),
+    productId: v.optional(v.id("products")), // Para excluir el producto actual en edición
+  },
+  handler: async (ctx, args) => {
+    // Normalize SKU (trim and uppercase)
+    const normalizedSku = args.sku.trim().toUpperCase();
+
+    // Query by company and SKU
+    const existingProduct = await ctx.db
+      .query("products")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .filter((q) => q.eq(q.field("sku"), normalizedSku))
+      .first();
+
+    // If editing, ignore the current product
+    if (existingProduct && args.productId) {
+      return existingProduct._id !== args.productId;
+    }
+
+    // Return true if SKU exists
+    return existingProduct !== null;
+  },
+});
+
 // ============================================================================
 // PRICE HISTORY
 // ============================================================================
