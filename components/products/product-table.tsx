@@ -41,6 +41,7 @@ interface Product {
   category: string;
   default_price?: number;
   price_currency?: string;
+  default_unit?: string;
   manufacturer?: string;
   status: string;
   preferredSupplierName?: string | null;
@@ -95,6 +96,7 @@ export function ProductTable({
           <TableHead>Nombre</TableHead>
           <TableHead>Categoría</TableHead>
           <TableHead>Precio Base</TableHead>
+          <TableHead>Unidad</TableHead>
           <TableHead>Fabricante</TableHead>
           <TableHead>Proveedor</TableHead>
           <TableHead>Estado</TableHead>
@@ -124,6 +126,11 @@ export function ProductTable({
               </TableCell>
               <TableCell>
                 {formatPrice(product.default_price, product.price_currency)}
+              </TableCell>
+              <TableCell>
+                <div className="text-sm">
+                  {product.default_unit || <span className="text-muted-foreground">-</span>}
+                </div>
               </TableCell>
               <TableCell className="text-gray-600">
                 {product.manufacturer || '-'}
