@@ -3,9 +3,10 @@
  * User management functions for Phase 1
  */
 
-import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { v, ConvexError } from "convex/values";
+import { mutation, query, action, internalMutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 
 // ============================================================================
 // CONVEX AUTH: CURRENT USER QUERIES
@@ -622,6 +623,223 @@ export const updateSettings = mutation({
 });
 
 /**
+ * Update user preferences (specific validation for preference fields)
+ * Phase 2 Module 21 - Account Settings
+ */
+export const updatePreferences = mutation({
+  args: {
+    userId: v.id("users"),
+    locale: v.optional(v.string()),
+    theme: v.optional(v.string()),
+    date_format: v.optional(v.string()),
+    time_format: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    default_facility_id: v.optional(v.id("facilities")),
+  },
+  handler: async (ctx, args) => {
+    // Auth guard: verify authenticated user is updating their own preferences
+    const authenticatedUserId = await getAuthUserId(ctx);
+    if (!authenticatedUserId) {
+      throw new ConvexError("Not authenticated");
+    }
+
+    if (authenticatedUserId !== args.userId) {
+      throw new ConvexError("You can only update your own preferences");
+    }
+
+    const now = Date.now();
+
+    // Verify user exists
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new ConvexError("User not found");
+    }
+
+    const updates: any = {
+      updated_at: now,
+    };
+
+    // Validate and update locale
+    if (args.locale !== undefined) {
+      const validLocales = ["es", "en"];
+      if (!validLocales.includes(args.locale)) {
+        throw new ConvexError("Invalid locale. Must be 'es' or 'en'");
+      }
+      updates.locale = args.locale;
+    }
+
+    // Validate and update theme
+    if (args.theme !== undefined) {
+      const validThemes = ["light", "dark", "system"];
+      if (!validThemes.includes(args.theme)) {
+        throw new ConvexError("Invalid theme. Must be 'light', 'dark', or 'system'");
+      }
+      updates.theme = args.theme;
+    }
+
+    // Validate and update date_format
+    if (args.date_format !== undefined) {
+      const validFormats = ["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"];
+      if (!validFormats.includes(args.date_format)) {
+        throw new ConvexError("Invalid date format. Must be 'DD/MM/YYYY', 'MM/DD/YYYY', or 'YYYY-MM-DD'");
+      }
+      updates.date_format = args.date_format;
+    }
+
+    // Validate and update time_format
+    if (args.time_format !== undefined) {
+      const validFormats = ["12h", "24h"];
+      if (!validFormats.includes(args.time_format)) {
+        throw new ConvexError("Invalid time format. Must be '12h' or '24h'");
+      }
+      updates.time_format = args.time_format;
+    }
+
+    // Update timezone (no strict validation as there are many valid timezones)
+    if (args.timezone !== undefined) {
+      updates.timezone = args.timezone;
+    }
+
+    // Validate and update default_facility_id
+    if (args.default_facility_id !== undefined) {
+      // Verify facility exists
+      const facility = await ctx.db.get(args.default_facility_id);
+      if (!facility) {
+        throw new ConvexError("Facility not found");
+      }
+
+      // Verify facility belongs to user's company
+      if (facility.company_id !== user.company_id) {
+        throw new ConvexError("Facility does not belong to your company");
+      }
+
+      // Verify user has access to this facility
+      const hasAccess = user.accessible_facility_ids?.includes(args.default_facility_id);
+      if (!hasAccess) {
+        throw new ConvexError("You do not have access to this facility");
+      }
+
+      updates.primary_facility_id = args.default_facility_id;
+    }
+
+    // Apply updates
+    await ctx.db.patch(args.userId, updates);
+
+    return {
+      success: true,
+      message: "Preferences updated successfully",
+    };
+  },
+});
+
+/**
+ * Update notification settings for a user
+ * Phase 2 Module 21 - Account Settings
+ * Specific validations for notification preferences
+ */
+export const updateNotificationSettings = mutation({
+  args: {
+    userId: v.id("users"),
+    email_notifications: v.optional(v.boolean()),
+    sms_notifications: v.optional(v.boolean()),
+    notification_types: v.optional(v.any()),
+    notification_delivery: v.optional(v.any()),
+    quiet_hours_enabled: v.optional(v.boolean()),
+    quiet_hours_start: v.optional(v.string()),
+    quiet_hours_end: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Auth guard: verify authenticated user is updating their own settings
+    const authenticatedUserId = await getAuthUserId(ctx);
+    if (!authenticatedUserId) {
+      throw new ConvexError("Not authenticated");
+    }
+
+    if (authenticatedUserId !== args.userId) {
+      throw new ConvexError("You can only update your own notification settings");
+    }
+
+    const now = Date.now();
+
+    // Verify user exists
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new ConvexError("User not found");
+    }
+
+    const updates: any = {
+      updated_at: now,
+    };
+
+    // Update notification toggles
+    if (args.email_notifications !== undefined) {
+      updates.email_notifications = args.email_notifications;
+    }
+
+    if (args.sms_notifications !== undefined) {
+      updates.sms_notifications = args.sms_notifications;
+    }
+
+    if (args.notification_types !== undefined) {
+      updates.notification_types = args.notification_types;
+    }
+
+    if (args.notification_delivery !== undefined) {
+      updates.notification_delivery = args.notification_delivery;
+    }
+
+    if (args.quiet_hours_enabled !== undefined) {
+      updates.quiet_hours_enabled = args.quiet_hours_enabled;
+    }
+
+    // Validate and update quiet hours
+    if (args.quiet_hours_start !== undefined) {
+      // Validate HH:MM format
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(args.quiet_hours_start)) {
+        throw new ConvexError("Invalid quiet_hours_start format. Must be HH:MM (e.g., 22:00)");
+      }
+      updates.quiet_hours_start = args.quiet_hours_start;
+    }
+
+    if (args.quiet_hours_end !== undefined) {
+      // Validate HH:MM format
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(args.quiet_hours_end)) {
+        throw new ConvexError("Invalid quiet_hours_end format. Must be HH:MM (e.g., 08:00)");
+      }
+      updates.quiet_hours_end = args.quiet_hours_end;
+    }
+
+    // Validate that quiet_hours_end is after quiet_hours_start (if both provided)
+    const startTime = args.quiet_hours_start ?? user.quiet_hours_start;
+    const endTime = args.quiet_hours_end ?? user.quiet_hours_end;
+
+    if (startTime && endTime) {
+      // Convert to minutes for comparison
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+
+      // Allow wrap-around (e.g., 22:00 to 08:00 next day)
+      // Only error if they're the same time
+      if (startMinutes === endMinutes) {
+        throw new ConvexError("Quiet hours start and end times cannot be the same");
+      }
+    }
+
+    // Apply updates
+    await ctx.db.patch(args.userId, updates);
+
+    return {
+      success: true,
+      message: "Notification settings updated successfully",
+    };
+  },
+});
+
+/**
  * Update user profile information
  * Phase 2 Module 21 - Account Settings
  */
@@ -647,21 +865,116 @@ export const updateProfile = mutation({
     quiet_hours_end: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Auth guard: verify authenticated user is updating their own profile
+    const authenticatedUserId = await getAuthUserId(ctx);
+    if (!authenticatedUserId) {
+      throw new ConvexError("No autenticado");
+    }
+
+    if (authenticatedUserId !== args.userId) {
+      throw new ConvexError("Solo puedes actualizar tu propio perfil");
+    }
+
     const now = Date.now();
 
     // Verify user exists
     const user = await ctx.db.get(args.userId);
     if (!user) {
-      throw new Error("User not found");
+      throw new ConvexError("Usuario no encontrado");
     }
+
+    // ============================================================================
+    // VALIDATIONS - Execute before any updates
+    // ============================================================================
+
+    // Validate first_name
+    if (args.first_name !== undefined) {
+      if (args.first_name.trim().length < 2) {
+        throw new ConvexError("El nombre debe tener al menos 2 caracteres");
+      }
+    }
+
+    // Validate last_name
+    if (args.last_name !== undefined) {
+      if (args.last_name.trim().length < 2) {
+        throw new ConvexError("El apellido debe tener al menos 2 caracteres");
+      }
+    }
+
+    // Validate theme
+    if (args.theme !== undefined) {
+      const validThemes = ["light", "dark", "system"];
+      if (!validThemes.includes(args.theme)) {
+        throw new ConvexError("El tema debe ser 'light', 'dark' o 'system'");
+      }
+    }
+
+    // Validate date_format
+    if (args.date_format !== undefined) {
+      const validFormats = ["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"];
+      if (!validFormats.includes(args.date_format)) {
+        throw new ConvexError("El formato de fecha debe ser 'DD/MM/YYYY', 'MM/DD/YYYY' o 'YYYY-MM-DD'");
+      }
+    }
+
+    // Validate time_format
+    if (args.time_format !== undefined) {
+      const validFormats = ["12h", "24h"];
+      if (!validFormats.includes(args.time_format)) {
+        throw new ConvexError("El formato de hora debe ser '12h' o '24h'");
+      }
+    }
+
+    // Validate locale
+    if (args.locale !== undefined) {
+      const validLocales = ["es", "en"];
+      if (!validLocales.includes(args.locale)) {
+        throw new ConvexError("El idioma debe ser 'es' o 'en'");
+      }
+    }
+
+    // Validate quiet_hours_start
+    if (args.quiet_hours_start !== undefined) {
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(args.quiet_hours_start)) {
+        throw new ConvexError("El formato de hora de inicio debe ser HH:MM (ej: 22:00)");
+      }
+    }
+
+    // Validate quiet_hours_end
+    if (args.quiet_hours_end !== undefined) {
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(args.quiet_hours_end)) {
+        throw new ConvexError("El formato de hora de fin debe ser HH:MM (ej: 08:00)");
+      }
+    }
+
+    // Validate that quiet_hours_end is not the same as quiet_hours_start
+    const startTime = args.quiet_hours_start ?? user.quiet_hours_start;
+    const endTime = args.quiet_hours_end ?? user.quiet_hours_end;
+
+    if (startTime && endTime) {
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+
+      if (startMinutes === endMinutes) {
+        throw new ConvexError("La hora de inicio y fin del modo silencioso no pueden ser iguales");
+      }
+    }
+
+    // ============================================================================
+    // BUILD UPDATES OBJECT
+    // ============================================================================
 
     const updates: any = {
       updated_at: now,
     };
 
-    // Update fields if provided
-    if (args.first_name !== undefined) updates.first_name = args.first_name;
-    if (args.last_name !== undefined) updates.last_name = args.last_name;
+    // Update fields if provided (after validation)
+    if (args.first_name !== undefined) updates.first_name = args.first_name.trim();
+    if (args.last_name !== undefined) updates.last_name = args.last_name.trim();
     if (args.phone !== undefined) updates.phone = args.phone;
     if (args.identification_type !== undefined) updates.identification_type = args.identification_type;
     if (args.identification_number !== undefined) updates.identification_number = args.identification_number;
@@ -682,7 +995,7 @@ export const updateProfile = mutation({
 
     return {
       success: true,
-      message: "Profile updated successfully",
+      message: "Perfil actualizado exitosamente",
     };
   },
 });
@@ -690,29 +1003,181 @@ export const updateProfile = mutation({
 /**
  * Change user password
  * Phase 2 Module 21 - Security Settings
+ *
+ * IMPLEMENTATION NOTE:
+ * Convex Auth's Password provider uses Scrypt (from the Lucia auth library) for password
+ * hashing and stores credentials in the authAccounts table. Since Convex Auth doesn't
+ * expose a public API for password verification or updates, this implementation uses an
+ * internal mutation to access the authAccounts table directly.
+ *
+ * Security considerations:
+ * - Current password is verified using Scrypt.verify from Lucia (same as Convex Auth)
+ * - New password is validated against requirements (min 8 chars, uppercase, lowercase, number, special char)
+ * - New password is hashed using Scrypt before storage
+ * - Uses internal mutations to prevent unauthorized access
  */
-export const changePassword = mutation({
+export const changePassword = action({
   args: {
     userId: v.id("users"),
     currentPassword: v.string(),
     newPassword: v.string(),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-
-    // Verify user exists
-    const user = await ctx.db.get(args.userId);
-    if (!user) {
-      throw new Error("User not found");
+    // 1. Validate that new password is different from current
+    if (args.currentPassword === args.newPassword) {
+      throw new ConvexError("La nueva contraseña debe ser diferente a la actual");
     }
 
-    // Note: In a real implementation, you would verify the current password
-    // against a hashed version stored in the database. For now, we'll just
-    // update the password (this is a placeholder for the actual authentication logic)
+    // 2. Validate new password requirements
+    validatePasswordRequirements(args.newPassword);
 
-    // TODO: Implement proper password hashing and verification
-    // This should integrate with your authentication provider (Clerk, Auth0, etc.)
+    // 3. Verify current password and update to new password
+    // This is done in a single internal mutation for security
+    const result = await ctx.runMutation(
+      internal.users.verifyAndUpdatePassword,
+      {
+        userId: args.userId,
+        currentPassword: args.currentPassword,
+        newPassword: args.newPassword,
+      }
+    );
 
-    throw new Error("Password change must be handled through the authentication provider");
+    if (!result.success) {
+      throw new ConvexError(result.error || "Error al cambiar la contraseña");
+    }
+
+    return {
+      success: true,
+      message: "Contraseña actualizada exitosamente",
+    };
   },
 });
+
+/**
+ * Validate password requirements (matches validation in auth.ts)
+ */
+function validatePasswordRequirements(password: string): void {
+  if (password.length < 8) {
+    throw new ConvexError("La contraseña debe tener al menos 8 caracteres");
+  }
+  if (!/[A-Z]/.test(password)) {
+    throw new ConvexError("La contraseña debe incluir al menos una mayúscula");
+  }
+  if (!/[a-z]/.test(password)) {
+    throw new ConvexError("La contraseña debe incluir al menos una minúscula");
+  }
+  if (!/[0-9]/.test(password)) {
+    throw new ConvexError("La contraseña debe incluir al menos un número");
+  }
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    throw new ConvexError("La contraseña debe incluir al menos un carácter especial");
+  }
+}
+
+/**
+ * Internal mutation to verify current password and update to new password
+ *
+ * This implementation uses Scrypt from Lucia, which is the same library
+ * that Convex Auth's Password provider uses internally.
+ *
+ * @returns { success: boolean, error?: string }
+ */
+export const verifyAndUpdatePassword = internalMutation({
+  args: {
+    userId: v.id("users"),
+    currentPassword: v.string(),
+    newPassword: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean; error?: string }> => {
+    // 1. Verify user exists
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      return {
+        success: false,
+        error: "Usuario no encontrado",
+      };
+    }
+
+    // 2. Get the user's auth account
+    const authAccounts = await ctx.db
+      .query("authAccounts")
+      .withIndex("userIdAndProvider", (q) =>
+        q.eq("userId", args.userId).eq("provider", "password")
+      )
+      .collect();
+
+    if (authAccounts.length === 0) {
+      return {
+        success: false,
+        error: "Cuenta de autenticación no encontrada",
+      };
+    }
+
+    const authAccount = authAccounts[0];
+    const storedHash = authAccount.secret as string | undefined;
+
+    if (!storedHash) {
+      return {
+        success: false,
+        error: "Contraseña no configurada para esta cuenta",
+      };
+    }
+
+    // Verify current password using the same method as Convex Auth
+    // Convex Auth uses Scrypt from Lucia for password hashing
+    try {
+      const isValid = await verifyPassword(args.currentPassword, storedHash);
+
+      if (!isValid) {
+        return {
+          success: false,
+          error: "La contraseña actual es incorrecta",
+        };
+      }
+
+      // Hash the new password
+      const newPasswordHash = await hashPassword(args.newPassword);
+
+      // Update the auth account with new password hash
+      await ctx.db.patch(authAccount._id, {
+        secret: newPasswordHash,
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error changing password:", error);
+      return {
+        success: false,
+        error: "Error al procesar la contraseña",
+      };
+    }
+  },
+});
+
+/**
+ * Hash password using Scrypt from Lucia (same as Convex Auth Password provider)
+ * Convex Auth uses the Scrypt implementation from the Lucia auth library
+ */
+async function hashPassword(password: string): Promise<string> {
+  const { Scrypt } = await import("lucia");
+
+  const scrypt = new Scrypt();
+  const hash = await scrypt.hash(password);
+
+  return hash;
+}
+
+/**
+ * Verify password against Scrypt hash using Lucia
+ */
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  try {
+    const { Scrypt } = await import("lucia");
+
+    const scrypt = new Scrypt();
+    return await scrypt.verify(hash, password);
+  } catch (error) {
+    console.error("Error verifying password:", error);
+    return false;
+  }
+}

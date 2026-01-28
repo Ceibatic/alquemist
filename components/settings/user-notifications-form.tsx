@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Loader2, Bell, Mail, Smartphone } from 'lucide-react';
 import { notificationPreferencesSchema, type NotificationPreferencesInput } from '@/lib/validations/settings';
+import { parseConvexError } from '@/lib/utils/error-handler';
 
 interface UserNotificationsFormProps {
   userId: Id<'users'>;
@@ -20,12 +21,13 @@ interface UserNotificationsFormProps {
 }
 
 export function UserNotificationsForm({ userId, user }: UserNotificationsFormProps) {
-  const updateUser = useMutation(api.users.updateProfile);
+  const updateNotificationSettings = useMutation(api.users.updateNotificationSettings);
 
   const {
     handleSubmit,
     setValue,
     watch,
+    setError,
     formState: { isSubmitting },
   } = useForm<NotificationPreferencesInput>({
     resolver: zodResolver(notificationPreferencesSchema),
@@ -64,7 +66,7 @@ export function UserNotificationsForm({ userId, user }: UserNotificationsFormPro
 
   const onSubmit = async (data: NotificationPreferencesInput) => {
     try {
-      await updateUser({
+      await updateNotificationSettings({
         userId,
         email_notifications: data.email_notifications,
         sms_notifications: data.sms_notifications,
@@ -77,7 +79,30 @@ export function UserNotificationsForm({ userId, user }: UserNotificationsFormPro
 
       toast.success('Preferencias de notificaciones actualizadas exitosamente');
     } catch (error) {
-      toast.error('Error al actualizar notificaciones');
+      const parsedError = parseConvexError(error);
+
+      // Show specific toast based on error type
+      switch (parsedError.type) {
+        case 'network':
+          toast.error(parsedError.message);
+          break;
+        case 'validation':
+          toast.error(parsedError.message);
+          // Set field-specific error if available
+          if (parsedError.field) {
+            setError(parsedError.field as any, {
+              type: 'manual',
+              message: parsedError.message,
+            });
+          }
+          break;
+        case 'server':
+          toast.error(parsedError.message);
+          break;
+        default:
+          toast.error('Error al actualizar notificaciones');
+      }
+
       console.error('Error updating notifications:', error);
     }
   };

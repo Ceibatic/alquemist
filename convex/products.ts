@@ -96,7 +96,20 @@ export const create = mutation({
     sku: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
-    category: v.string(),
+    category: v.union(
+      v.literal("seed"),
+      v.literal("nutrient"),
+      v.literal("pesticide"),
+      v.literal("equipment"),
+      v.literal("substrate"),
+      v.literal("container"),
+      v.literal("tool"),
+      v.literal("clone"),
+      v.literal("seedling"),
+      v.literal("mother_plant"),
+      v.literal("plant_material"),
+      v.literal("other")
+    ),
     subcategory: v.optional(v.string()),
     default_unit: v.optional(v.string()),
 
@@ -119,7 +132,9 @@ export const create = mutation({
 
     // Pricing
     default_price: v.optional(v.number()),
-    price_currency: v.optional(v.string()),
+    price_currency: v.optional(
+      v.union(v.literal("COP"), v.literal("USD"), v.literal("EUR"))
+    ),
     price_unit: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -128,14 +143,26 @@ export const create = mutation({
 
     const now = Date.now();
 
+    // Sanitize string inputs
+    const sanitizedData = {
+      sku: args.sku.trim().toUpperCase(),
+      name: args.name.trim(),
+      description: args.description?.trim(),
+      manufacturer: args.manufacturer?.trim(),
+      brand_id: args.brand_id?.trim(),
+      subcategory: args.subcategory?.trim(),
+      regulatory_registration_number: args.regulatory_registration_number?.trim(),
+      organic_cert_number: args.organic_cert_number?.trim(),
+    };
+
     // Check if SKU already exists
     const existingProduct = await ctx.db
       .query("products")
-      .withIndex("by_sku", (q) => q.eq("sku", args.sku))
+      .withIndex("by_sku", (q) => q.eq("sku", sanitizedData.sku))
       .first();
 
     if (existingProduct) {
-      throw new Error(`Product with SKU "${args.sku}" already exists`);
+      throw new Error(`Product with SKU "${sanitizedData.sku}" already exists`);
     }
 
     // Validate supplier if provided
@@ -148,18 +175,18 @@ export const create = mutation({
 
     const productId = await ctx.db.insert("products", {
       company_id: args.companyId,
-      sku: args.sku,
+      sku: sanitizedData.sku,
       gtin: args.gtin,
-      name: args.name,
-      description: args.description,
+      name: sanitizedData.name,
+      description: sanitizedData.description,
       category: args.category,
-      subcategory: args.subcategory,
+      subcategory: sanitizedData.subcategory,
       default_unit: args.default_unit,
 
       applicable_crop_type_ids: args.applicable_crop_type_ids || [],
 
-      brand_id: args.brand_id,
-      manufacturer: args.manufacturer,
+      brand_id: sanitizedData.brand_id,
+      manufacturer: sanitizedData.manufacturer,
       preferred_supplier_id: args.preferred_supplier_id,
       regional_suppliers: [],
 
@@ -173,9 +200,9 @@ export const create = mutation({
       product_metadata: undefined,
 
       regulatory_registered: args.regulatory_registered || false,
-      regulatory_registration_number: args.regulatory_registration_number,
+      regulatory_registration_number: sanitizedData.regulatory_registration_number,
       organic_certified: args.organic_certified || false,
-      organic_cert_number: args.organic_cert_number,
+      organic_cert_number: sanitizedData.organic_cert_number,
 
       default_price: args.default_price,
       price_currency: args.price_currency || "COP",
@@ -198,11 +225,29 @@ export const update = mutation({
     productId: v.id("products"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
-    category: v.optional(v.string()),
+    category: v.optional(
+      v.union(
+        v.literal("seed"),
+        v.literal("nutrient"),
+        v.literal("pesticide"),
+        v.literal("equipment"),
+        v.literal("substrate"),
+        v.literal("container"),
+        v.literal("tool"),
+        v.literal("clone"),
+        v.literal("seedling"),
+        v.literal("mother_plant"),
+        v.literal("plant_material"),
+        v.literal("other")
+      )
+    ),
     subcategory: v.optional(v.string()),
     default_unit: v.optional(v.string()),
     preferred_supplier_id: v.optional(v.id("suppliers")),
     default_price: v.optional(v.number()),
+    price_currency: v.optional(
+      v.union(v.literal("COP"), v.literal("USD"), v.literal("EUR"))
+    ),
     price_unit: v.optional(v.string()),
     weight_value: v.optional(v.number()),
     weight_unit: v.optional(v.string()),
@@ -210,7 +255,7 @@ export const update = mutation({
     regulatory_registration_number: v.optional(v.string()),
     organic_certified: v.optional(v.boolean()),
     organic_cert_number: v.optional(v.string()),
-    status: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("active"), v.literal("discontinued"))),
     // Price history tracking (optional)
     priceChangeReason: v.optional(v.string()),
     priceChangeCategory: v.optional(v.string()),
@@ -221,6 +266,25 @@ export const update = mutation({
     if (!userId) throw new Error("No autenticado");
 
     const now = Date.now();
+
+    // Sanitize string inputs if provided
+    const sanitizedData: Partial<{
+      name: string;
+      description: string | undefined;
+      subcategory: string | undefined;
+      regulatory_registration_number: string | undefined;
+      organic_cert_number: string | undefined;
+    }> = {};
+
+    if (args.name !== undefined) sanitizedData.name = args.name.trim();
+    if (args.description !== undefined) sanitizedData.description = args.description?.trim();
+    if (args.subcategory !== undefined) sanitizedData.subcategory = args.subcategory?.trim();
+    if (args.regulatory_registration_number !== undefined) {
+      sanitizedData.regulatory_registration_number = args.regulatory_registration_number?.trim();
+    }
+    if (args.organic_cert_number !== undefined) {
+      sanitizedData.organic_cert_number = args.organic_cert_number?.trim();
+    }
 
     // Verify product exists
     const product = await ctx.db.get(args.productId);
@@ -260,11 +324,11 @@ export const update = mutation({
       updated_at: now,
     };
 
-    // Only update fields that are provided
-    if (args.name !== undefined) updates.name = args.name;
-    if (args.description !== undefined) updates.description = args.description;
+    // Only update fields that are provided (use sanitized data)
+    if (sanitizedData.name !== undefined) updates.name = sanitizedData.name;
+    if (sanitizedData.description !== undefined) updates.description = sanitizedData.description;
     if (args.category !== undefined) updates.category = args.category;
-    if (args.subcategory !== undefined) updates.subcategory = args.subcategory;
+    if (sanitizedData.subcategory !== undefined) updates.subcategory = sanitizedData.subcategory;
     if (args.default_unit !== undefined) updates.default_unit = args.default_unit;
     if (args.preferred_supplier_id !== undefined)
       updates.preferred_supplier_id = args.preferred_supplier_id;
@@ -276,13 +340,13 @@ export const update = mutation({
     if (args.weight_unit !== undefined) updates.weight_unit = args.weight_unit;
     if (args.regulatory_registered !== undefined)
       updates.regulatory_registered = args.regulatory_registered;
-    if (args.regulatory_registration_number !== undefined)
+    if (sanitizedData.regulatory_registration_number !== undefined)
       updates.regulatory_registration_number =
-        args.regulatory_registration_number;
+        sanitizedData.regulatory_registration_number;
     if (args.organic_certified !== undefined)
       updates.organic_certified = args.organic_certified;
-    if (args.organic_cert_number !== undefined)
-      updates.organic_cert_number = args.organic_cert_number;
+    if (sanitizedData.organic_cert_number !== undefined)
+      updates.organic_cert_number = sanitizedData.organic_cert_number;
     if (args.status !== undefined) updates.status = args.status;
 
     await ctx.db.patch(args.productId, updates);
@@ -442,6 +506,36 @@ export const generateSku = query({
     const paddedNumber = String(nextNumber).padStart(4, "0");
 
     return `${prefix}-${paddedNumber}`;
+  },
+});
+
+/**
+ * Check if SKU exists for a company (for real-time validation)
+ */
+export const checkSkuExists = query({
+  args: {
+    sku: v.string(),
+    companyId: v.id("companies"),
+    productId: v.optional(v.id("products")), // Para excluir el producto actual en edición
+  },
+  handler: async (ctx, args) => {
+    // Normalize SKU (trim and uppercase)
+    const normalizedSku = args.sku.trim().toUpperCase();
+
+    // Query by company and SKU
+    const existingProduct = await ctx.db
+      .query("products")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .filter((q) => q.eq(q.field("sku"), normalizedSku))
+      .first();
+
+    // If editing, ignore the current product
+    if (existingProduct && args.productId) {
+      return existingProduct._id !== args.productId;
+    }
+
+    // Return true if SKU exists
+    return existingProduct !== null;
   },
 });
 

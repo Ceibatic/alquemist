@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Loader2, User } from 'lucide-react';
 import { userProfileSettingsSchema, type UserProfileSettingsInput } from '@/lib/validations/settings';
+import { parseConvexError } from '@/lib/utils/error-handler';
 
 interface ProfileFormProps {
   userId: Id<'users'>;
@@ -33,6 +34,7 @@ export function ProfileForm({ userId, user }: ProfileFormProps) {
     register,
     handleSubmit,
     setValue,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<UserProfileSettingsInput>({
     resolver: zodResolver(userProfileSettingsSchema),
@@ -58,7 +60,30 @@ export function ProfileForm({ userId, user }: ProfileFormProps) {
 
       toast.success('Perfil actualizado exitosamente');
     } catch (error) {
-      toast.error('Error al actualizar perfil');
+      const parsedError = parseConvexError(error);
+
+      // Show specific toast based on error type
+      switch (parsedError.type) {
+        case 'network':
+          toast.error(parsedError.message);
+          break;
+        case 'validation':
+          toast.error(parsedError.message);
+          // Set field-specific error if available
+          if (parsedError.field) {
+            setError(parsedError.field as any, {
+              type: 'manual',
+              message: parsedError.message,
+            });
+          }
+          break;
+        case 'server':
+          toast.error(parsedError.message);
+          break;
+        default:
+          toast.error('Error al actualizar perfil');
+      }
+
       console.error('Error updating profile:', error);
     }
   };

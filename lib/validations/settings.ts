@@ -185,6 +185,7 @@ export const userProfileSettingsSchema = z.object({
     .default('DD/MM/YYYY'),
   time_format: z.enum(['12h', '24h']).default('24h'),
   theme: z.enum(['light', 'dark', 'system']).default('light'),
+  default_facility_id: z.string().optional(),
 });
 
 // ============================================================================

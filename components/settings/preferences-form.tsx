@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
@@ -16,8 +16,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Globe, Calendar, Clock, Palette } from 'lucide-react';
+import { Loader2, Globe, Calendar, Clock, Palette, Building2 } from 'lucide-react';
 import { userProfileSettingsSchema, type UserProfileSettingsInput } from '@/lib/validations/settings';
+import { parseConvexError } from '@/lib/utils/error-handler';
 
 interface PreferencesFormProps {
   userId: Id<'users'>;
@@ -55,12 +56,25 @@ const TIMEZONES = [
 ];
 
 export function PreferencesForm({ userId, user }: PreferencesFormProps) {
-  const updateUser = useMutation(api.users.updateProfile);
+  const updatePreferences = useMutation(api.users.updatePreferences);
+
+  // Fetch accessible facilities for the user
+  const facilities = useQuery(
+    api.facilities.getFacilitiesByCompany,
+    user.company_id ? { companyId: user.company_id } : 'skip'
+  );
+
+  // Filter facilities by user's accessible_facility_ids
+  const accessibleFacilities = React.useMemo(() => {
+    if (!facilities || !user.accessible_facility_ids) return [];
+    return facilities.filter((f) => user.accessible_facility_ids.includes(f._id));
+  }, [facilities, user.accessible_facility_ids]);
 
   const {
     handleSubmit,
     setValue,
     watch,
+    setError,
     formState: { isSubmitting },
   } = useForm<UserProfileSettingsInput>({
     resolver: zodResolver(userProfileSettingsSchema),
@@ -72,6 +86,7 @@ export function PreferencesForm({ userId, user }: PreferencesFormProps) {
       date_format: user.date_format || 'DD/MM/YYYY',
       time_format: user.time_format || '24h',
       theme: user.theme || 'light',
+      default_facility_id: user.primary_facility_id || undefined,
     },
   });
 
@@ -80,23 +95,46 @@ export function PreferencesForm({ userId, user }: PreferencesFormProps) {
   const dateFormat = watch('date_format');
   const timeFormat = watch('time_format');
   const theme = watch('theme');
+  const defaultFacilityId = watch('default_facility_id');
 
   const onSubmit = async (data: UserProfileSettingsInput) => {
     try {
-      await updateUser({
+      await updatePreferences({
         userId,
-        first_name: user.first_name,
-        last_name: user.last_name,
         locale: data.locale,
         timezone: data.timezone,
         date_format: data.date_format,
         time_format: data.time_format,
         theme: data.theme,
+        default_facility_id: data.default_facility_id as Id<'facilities'> | undefined,
       });
 
       toast.success('Preferencias actualizadas exitosamente');
     } catch (error) {
-      toast.error('Error al actualizar preferencias');
+      const parsedError = parseConvexError(error);
+
+      // Show specific toast based on error type
+      switch (parsedError.type) {
+        case 'network':
+          toast.error(parsedError.message);
+          break;
+        case 'validation':
+          toast.error(parsedError.message);
+          // Set field-specific error if available
+          if (parsedError.field) {
+            setError(parsedError.field as any, {
+              type: 'manual',
+              message: parsedError.message,
+            });
+          }
+          break;
+        case 'server':
+          toast.error(parsedError.message);
+          break;
+        default:
+          toast.error('Error al actualizar preferencias');
+      }
+
       console.error('Error updating preferences:', error);
     }
   };
@@ -200,6 +238,32 @@ export function PreferencesForm({ userId, user }: PreferencesFormProps) {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Default Facility */}
+      <div className="space-y-2">
+        <div className="flex items-center space-x-2">
+          <Building2 className="h-4 w-4 text-muted-foreground" />
+          <Label htmlFor="default_facility_id">Instalación por defecto</Label>
+        </div>
+        <Select
+          value={defaultFacilityId || ''}
+          onValueChange={(value) => setValue('default_facility_id', value || undefined)}
+        >
+          <SelectTrigger id="default_facility_id">
+            <SelectValue placeholder="Selecciona instalación por defecto" />
+          </SelectTrigger>
+          <SelectContent>
+            {accessibleFacilities.map((facility) => (
+              <SelectItem key={facility._id} value={facility._id}>
+                {facility.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Instalación que se seleccionará por defecto al iniciar sesión
+        </p>
       </div>
 
       {/* Theme */}

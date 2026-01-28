@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import {
   productFormSchema,
   productCategoryLabels,
@@ -38,7 +38,8 @@ import {
 } from '@/lib/validations/product';
 import { useFacility } from '@/components/providers/facility-provider';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { useDebounce } from '@/hooks/use-debounce';
+import { cn } from '@/lib/utils';
 
 interface ProductFormProps {
   productId?: string;
@@ -130,6 +131,21 @@ export function ProductForm({
     },
   });
 
+  // Real-time SKU validation
+  const skuValue = form.watch('sku');
+  const debouncedSku = useDebounce(skuValue, 500);
+
+  const skuExists = useQuery(
+    api.products.checkSkuExists,
+    debouncedSku && debouncedSku.length >= 2 && currentCompanyId
+      ? {
+          sku: debouncedSku,
+          companyId: currentCompanyId,
+          productId: productId as Id<'products'> | undefined,
+        }
+      : 'skip'
+  );
+
   // Populate form when editing
   useEffect(() => {
     if (existingProduct) {
@@ -213,12 +229,32 @@ export function ProductForm({
                   <FormLabel>SKU *</FormLabel>
                   <div className="flex gap-2">
                     <FormControl>
-                      <Input
-                        placeholder="PRD-0001"
-                        {...field}
-                        className="uppercase"
-                        disabled={!!productId}
-                      />
+                      <div className="relative flex-1">
+                        <Input
+                          placeholder="PRD-0001"
+                          {...field}
+                          onChange={(e) => {
+                            const upper = e.target.value.toUpperCase();
+                            field.onChange(upper);
+                          }}
+                          disabled={isSubmitting || !!productId}
+                          className={cn(
+                            skuExists && !productId && 'border-red-500',
+                            skuExists === false && !productId && 'border-green-500'
+                          )}
+                        />
+                        {skuValue && skuValue.length >= 2 && !productId && (
+                          <div className="absolute right-2 top-2.5">
+                            {skuExists === undefined ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                            ) : skuExists ? (
+                              <AlertCircle className="h-4 w-4 text-red-500" />
+                            ) : (
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </FormControl>
                     {!productId && (
                       <Button
@@ -231,6 +267,14 @@ export function ProductForm({
                       </Button>
                     )}
                   </div>
+                  {skuExists && !productId && (
+                    <p className="text-sm text-red-500">
+                      Este SKU ya existe en el catálogo
+                    </p>
+                  )}
+                  {skuExists === false && !productId && (
+                    <p className="text-sm text-green-600">SKU disponible</p>
+                  )}
                   <FormDescription>
                     Código único de identificación del producto
                   </FormDescription>

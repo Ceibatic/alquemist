@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -63,8 +64,11 @@ export function ProductDetailContent({ productId }: ProductDetailContentProps) {
     productId: productId as Id<'products'>,
   });
 
-  // Note: Inventory items can be viewed from the inventory page filtered by product
-  // For now, we skip the query to avoid complexity with companyId requirements
+  // Inventory count query
+  const inventoryStats = useQuery(
+    api.inventory.countByProduct,
+    product ? { productId: product._id } : 'skip'
+  );
 
   if (product === undefined) {
     return (
@@ -85,33 +89,15 @@ export function ProductDetailContent({ productId }: ProductDetailContentProps) {
   }
 
   if (product === null) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Producto no encontrado"
-          icon={ShoppingCart}
-          breadcrumbs={[
-            { label: 'Inicio', href: '/dashboard' },
-            { label: 'Productos', href: '/products' },
-            { label: 'No encontrado' },
-          ]}
-        />
-        <Card>
-          <CardContent className="py-12 text-center">
-            <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">El producto solicitado no existe o fue eliminado.</p>
-            <Button
-              variant="link"
-              onClick={() => router.push('/products')}
-              className="mt-4"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver a productos
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    // Product not found - redirect to products list
+    useEffect(() => {
+      toast.error('Producto no encontrado', {
+        description: 'El producto que buscas no existe o fue eliminado',
+      });
+      router.push('/products');
+    }, [router]);
+
+    return null; // Return null while redirect happens
   }
 
   const CategoryIcon = categoryIcons[product.category] || FileText;
@@ -366,37 +352,73 @@ export function ProductDetailContent({ productId }: ProductDetailContentProps) {
             </CardContent>
           </Card>
 
-          {/* Inventory Items Card */}
+          {/* Inventario Asociado */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Inventario
+              <CardTitle className="text-lg flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Inventario Asociado
+                </span>
+                {inventoryStats && inventoryStats.totalItems > 0 && (
+                  <Badge variant="outline" className="text-sm">
+                    {inventoryStats.activeItems} activos
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {currentFacilityId && (
-                <Button
-                  size="sm"
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  onClick={() => setReceiptModalOpen(true)}
-                >
-                  <Truck className="mr-2 h-4 w-4" />
-                  Agregar al Inventario
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => router.push(`/inventory`)}
-              >
-                Ver Inventario
-              </Button>
-              {!currentFacilityId && (
-                <p className="text-xs text-amber-600 text-center">
-                  Selecciona una instalación para agregar al inventario
-                </p>
+            <CardContent className="space-y-4">
+              {inventoryStats === undefined ? (
+                // Loading skeleton
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ) : inventoryStats.totalItems === 0 ? (
+                // Empty state
+                <div className="text-center py-4 text-muted-foreground">
+                  <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No hay items de inventario para este producto</p>
+                </div>
+              ) : (
+                // Stats display
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Total de lotes:</span>
+                    <span className="font-semibold">{inventoryStats.totalItems}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Lotes activos:</span>
+                    <span className="font-semibold text-green-600">
+                      {inventoryStats.activeItems}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Cantidad total:</span>
+                    <span className="font-semibold">
+                      {inventoryStats.totalQuantity} {product.default_unit || 'unidades'}
+                    </span>
+                  </div>
+                  <Separator />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => router.push(`/inventory?product=${product._id}`)}
+                    >
+                      Ver Inventario
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="flex-1 bg-amber-500 hover:bg-amber-600"
+                      onClick={() => setReceiptModalOpen(true)}
+                    >
+                      Agregar Stock
+                    </Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
