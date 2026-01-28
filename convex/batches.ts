@@ -6,6 +6,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
  * Generate batch code in format {CULTIVAR}-{YYMMDD}-{XXX}
@@ -469,11 +470,30 @@ export const move = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const batch = await ctx.db.get(args.batchId);
     if (!batch) {
       throw new Error("Batch not found");
+    }
+
+    // Verify ownership: batch belongs to user's company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    if (batch.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar este lote");
     }
 
     if (batch.status !== "active") {
@@ -579,11 +599,30 @@ export const recordLoss = mutation({
     recordedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const batch = await ctx.db.get(args.batchId);
     if (!batch) {
       throw new Error("Batch not found");
+    }
+
+    // Verify ownership: batch belongs to user's company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    if (batch.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar este lote");
     }
 
     if (args.quantity > batch.current_quantity) {
@@ -679,11 +718,30 @@ export const split = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const batch = await ctx.db.get(args.batchId);
     if (!batch) {
       throw new Error("Batch not found");
+    }
+
+    // Verify ownership: batch belongs to user's company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    if (batch.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar este lote");
     }
 
     if (batch.status !== "active") {
@@ -830,6 +888,11 @@ export const merge = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const primaryBatch = await ctx.db.get(args.primaryBatchId);
@@ -837,6 +900,24 @@ export const merge = mutation({
 
     if (!primaryBatch || !secondaryBatch) {
       throw new Error("One or both batches not found");
+    }
+
+    // Verify ownership: both batches belong to user's company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    if (primaryBatch.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar el lote principal");
+    }
+
+    if (secondaryBatch.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar el lote secundario");
     }
 
     if (
@@ -998,11 +1079,30 @@ export const harvest = mutation({
     harvestedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const batch = await ctx.db.get(args.batchId);
     if (!batch) {
       throw new Error("Batch not found");
+    }
+
+    // Verify ownership: batch belongs to user's company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    if (batch.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar este lote");
     }
 
     if (batch.status !== "active") {
@@ -1096,11 +1196,30 @@ export const archive = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const batch = await ctx.db.get(args.batchId);
     if (!batch) {
       throw new Error("Batch not found");
+    }
+
+    // Verify ownership: batch belongs to user's company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    if (batch.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar este lote");
     }
 
     const allowedStatuses = ["harvested", "lost", "split", "merged"];
@@ -1131,11 +1250,30 @@ export const updatePhase = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const batch = await ctx.db.get(args.batchId);
     if (!batch) {
       throw new Error("Batch not found");
+    }
+
+    // Verify ownership: batch belongs to user's company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    if (batch.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar este lote");
     }
 
     if (batch.status !== "active") {
