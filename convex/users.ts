@@ -5,6 +5,83 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
+
+// ============================================================================
+// CONVEX AUTH: CURRENT USER QUERIES
+// ============================================================================
+
+/**
+ * Get the current authenticated user
+ */
+export const getCurrentUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    const user = await ctx.db.get(userId);
+    if (!user) return null;
+
+    const role = user.role_id ? await ctx.db.get(user.role_id) : null;
+    const company = user.company_id ? await ctx.db.get(user.company_id) : null;
+
+    return {
+      userId: user._id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      companyId: user.company_id,
+      roleId: user.role_id,
+      roleName: role?.display_name_es || role?.name,
+      companyName: company?.name,
+      primaryFacilityId: user.primary_facility_id,
+      onboardingCompleted: user.onboarding_completed ?? false,
+      locale: user.locale,
+      timezone: user.timezone,
+      status: user.status,
+    };
+  },
+});
+
+/**
+ * Get onboarding status for the current user
+ */
+export const getOnboardingStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    const user = await ctx.db.get(userId);
+    if (!user) return null;
+
+    return {
+      hasCompany: !!user.company_id,
+      onboardingCompleted: user.onboarding_completed ?? false,
+      userId: user._id,
+      email: user.email,
+    };
+  },
+});
+
+/**
+ * Mark onboarding as completed for the current user
+ */
+export const completeOnboarding = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("No autenticado");
+
+    await ctx.db.patch(userId, {
+      onboarding_completed: true,
+      updated_at: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
 
 // ============================================================================
 // MODULE 4: USER ROLE ASSIGNMENT

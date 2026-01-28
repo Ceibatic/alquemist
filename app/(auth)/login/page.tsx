@@ -6,16 +6,17 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LogIn } from 'lucide-react';
+import { useAuthActions } from '@convex-dev/auth/react';
 import { loginSchema, type LoginFormValues } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PasswordInput } from '@/components/shared/password-input';
-import { authenticateUser, setSessionCookies } from './actions';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
@@ -33,30 +34,17 @@ export default function LoginPage() {
     setGlobalError(null);
 
     try {
-      const result = await authenticateUser(data, rememberMe);
+      await signIn('password', {
+        email: data.email,
+        password: data.password,
+        flow: 'signIn',
+      });
 
-      if (!result.success) {
-        setGlobalError(result.error || 'Error al iniciar sesión');
-        return;
-      }
-
-      // Set HTTP-only cookies for server-side auth
-      if (result.sessionToken && result.userId && result.user) {
-        await setSessionCookies({
-          sessionToken: result.sessionToken,
-          userId: result.userId,
-          email: result.user.email,
-          companyId: result.companyId,
-          roleId: result.user.role_id,
-          primaryFacilityId: result.primaryFacilityId,
-        });
-      }
-
-      // Navigate to dashboard (backend only allows login for complete users)
+      // Convex Auth handles session automatically
       router.push('/dashboard');
-    } catch (error) {
-      console.error('Error in login:', error);
-      setGlobalError('Error inesperado. Por favor intenta de nuevo.');
+    } catch (err: any) {
+      const message = err?.message || 'Correo electrónico o contraseña incorrectos';
+      setGlobalError(message);
     } finally {
       setIsSubmitting(false);
     }

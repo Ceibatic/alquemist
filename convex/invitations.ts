@@ -8,13 +8,9 @@ import { v } from "convex/values";
 import { mutation, query, action } from "./_generated/server";
 import { api } from "./_generated/api";
 import {
-  hashPassword,
   validateEmail,
-  validatePassword,
   formatColombianPhone,
-  generateSessionToken,
-  getSessionExpiration,
-} from "./auth";
+} from "./validation";
 
 // ============================================================================
 // INVITATION VALIDATION & ACCEPTANCE
@@ -160,13 +156,7 @@ export const accept = action({
       throw new Error("Invitación no encontrada");
     }
 
-    // 3. Validate password
-    const passwordError = validatePassword(args.password);
-    if (passwordError) {
-      throw new Error(passwordError);
-    }
-
-    // 4. Check if user already exists
+    // 3. Check if user already exists
     const existingUser = await ctx.runQuery(
       api.registration.getUserByEmail,
       {
@@ -180,15 +170,11 @@ export const accept = action({
       );
     }
 
-    // 5. Hash password
-    const passwordHash = await hashPassword(args.password);
-
-    // 6. Create user account
+    // 4. Create user account (without password — Convex Auth handles auth)
     const userResult: any = await ctx.runMutation(
       api.invitations.createUserFromInvitation,
       {
         email: invitationData.email,
-        passwordHash,
         phone: args.phone ? formatColombianPhone(args.phone) : undefined,
         language: args.language || "es",
         companyId: invitationData.company_id,
@@ -197,7 +183,7 @@ export const accept = action({
       }
     );
 
-    // 7. Update invitation status
+    // 5. Update invitation status
     await ctx.runMutation(api.invitations.markInvitationAccepted, {
       token: args.token,
     });
@@ -302,7 +288,6 @@ export const getInvitationByToken = mutation({
 export const createUserFromInvitation = mutation({
   args: {
     email: v.string(),
-    passwordHash: v.string(),
     phone: v.optional(v.string()),
     language: v.string(),
     companyId: v.id("companies"),
@@ -322,13 +307,9 @@ export const createUserFromInvitation = mutation({
     const userId = await ctx.db.insert("users", {
       company_id: args.companyId,
       email: args.email.toLowerCase(),
-      password_hash: args.passwordHash,
       email_verified: true, // Auto-verified via invitation link
       email_verified_at: now,
-
-      // No verification token needed
-      email_verification_token: undefined,
-      token_expires_at: undefined,
+      onboarding_completed: true, // Invited users skip onboarding
 
       // Personal info will be completed later
       first_name: undefined,
@@ -356,21 +337,9 @@ export const createUserFromInvitation = mutation({
       updated_at: now,
     });
 
-    // Generate session token (30-day validity)
-    const sessionToken = generateSessionToken();
-    const sessionExpiration = getSessionExpiration(30);
-
-    await ctx.db.insert("sessions", {
-      user_id: userId,
-      token: sessionToken,
-      expires_at: sessionExpiration,
-      is_active: true,
-      created_at: now,
-    });
-
     return {
       userId,
-      sessionToken,
+      sessionToken: "convex-auth-managed",
     };
   },
 });

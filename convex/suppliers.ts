@@ -5,7 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { validateEmail, formatColombianPhone } from "./auth";
+import { validateEmail, formatColombianPhone } from "./validation";
 
 /**
  * Get suppliers by company (alias for list)

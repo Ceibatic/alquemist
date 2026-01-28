@@ -9,8 +9,12 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
+import { auth } from "./auth";
 
 const http = httpRouter();
+
+// Convex Auth HTTP routes
+auth.addHttpRoutes(http);
 
 // ============================================================================
 // CORS Configuration
@@ -184,193 +188,10 @@ http.route({
   }),
 });
 
-/**
- * POST /registration/register-step-1
- * Step 1: Create user account only (no company yet)
- *
- * IMPORTANT: Email is now sent by Bubble (not Convex)
- * This endpoint returns email content for Bubble to send via native action
- *
- * Body: {
- *   email, password, firstName, lastName, phone (optional)
- * }
- * Response: {
- *   success, userId, token, message, verificationToken,
- *   emailHtml, emailText, emailSubject
- * }
- */
-http.route({
-  path: "/registration/register-step-1",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const body = await request.json();
+// REMOVED: /registration/register-step-1 — now handled by Convex Auth signUp flow
 
-    // Validate required fields
-    const requiredFields = ["email", "password", "firstName", "lastName"];
-    const missingFields = requiredFields.filter(field => !body[field]);
-
-    if (missingFields.length > 0) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: `Campos requeridos faltantes: ${missingFields.join(", ")}`
-        }),
-        {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
-      );
-    }
-
-    try {
-      const result = await ctx.runAction(api.registration.registerUserStep1, body);
-
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      });
-    } catch (error: any) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: error.message
-        }),
-        {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
-      );
-    }
-  }),
-});
-
-/**
- * POST /registration/verify-email
- * Verify email token and mark email as verified
- *
- * Body: { token }
- * Response: { success, message, userId }
- */
-http.route({
-  path: "/registration/verify-email",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const { token } = await request.json();
-
-    if (!token) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Token es requerido"
-        }),
-        {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
-      );
-    }
-
-    try {
-      const result = await ctx.runMutation(api.emailVerification.verifyEmailToken, {
-        token,
-      });
-
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      });
-    } catch (error: any) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: error.message
-        }),
-        {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
-      );
-    }
-  }),
-});
-
-/**
- * POST /registration/resend-verification
- * Resend verification email with new token
- *
- * Body: { email }
- * Response: { success, email, token, emailHtml, emailText, emailSubject, message }
- */
-http.route({
-  path: "/registration/resend-verification",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const body = await request.json();
-    const { email } = body;
-
-    if (!email) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Email es requerido"
-        }),
-        {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
-      );
-    }
-
-    try {
-      const result = await ctx.runAction(api.emailVerification.resendVerificationEmail, {
-        email,
-      });
-
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      });
-    } catch (error: any) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: error.message
-        }),
-        {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
-      );
-    }
-  }),
-});
+// REMOVED: /registration/verify-email — now handled by Convex Auth
+// REMOVED: /registration/resend-verification — now handled by Convex Auth
 
 /**
  * POST /registration/register-step-2
@@ -440,65 +261,7 @@ http.route({
   }),
 });
 
-/**
- * POST /registration/login
- * Simple login for testing (Clerk will replace in production)
- *
- * Body: { "email": "user@example.com", "password": "password" }
- * Response: { success, userId, companyId, user, company }
- */
-http.route({
-  path: "/registration/login",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    const { email, password } = await request.json();
-
-    if (!email || !password) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "email y password son requeridos"
-        }),
-        {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
-      );
-    }
-
-    try {
-      const result = await ctx.runMutation(api.registration.login, {
-        email,
-        password,
-      });
-
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      });
-    } catch (error: any) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: error.message
-        }),
-        {
-          status: 401,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
-      );
-    }
-  }),
-});
+// REMOVED: /registration/login — now handled by Convex Auth signIn flow
 
 // ============================================================================
 // AUTO-LOGIN AFTER SIGNUP (Module 1 + Module 2 Complete)

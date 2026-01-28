@@ -2,14 +2,15 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, Mail, CheckCircle } from 'lucide-react';
+import { useAuthActions } from '@convex-dev/auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { requestPasswordReset } from './actions';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Ingresa un correo electrónico válido'),
@@ -18,6 +19,8 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
+  const { signIn } = useAuthActions();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -34,16 +37,19 @@ export default function ForgotPasswordPage() {
     setGlobalError(null);
 
     try {
-      const result = await requestPasswordReset(data.email);
+      // Store email for reset-password page
+      sessionStorage.setItem('resetEmail', data.email);
 
-      if (result.success) {
-        setIsSuccess(true);
-      } else {
-        setGlobalError(result.error || 'Error al procesar la solicitud');
-      }
-    } catch (error) {
-      console.error('Error requesting password reset:', error);
-      setGlobalError('Error al procesar la solicitud. Por favor intenta de nuevo.');
+      // Use Convex Auth to request password reset OTP
+      await signIn('password', {
+        email: data.email,
+        flow: 'reset',
+      });
+
+      setIsSuccess(true);
+    } catch (err: any) {
+      // Always show success to prevent email enumeration
+      setIsSuccess(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -58,11 +64,18 @@ export default function ForgotPasswordPage() {
           </div>
           <h2 className="text-2xl font-bold">Revisa tu correo</h2>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            Si el correo electrónico está registrado, recibirás instrucciones para restablecer tu contraseña.
+            Si el correo electrónico está registrado, recibirás un código para restablecer tu contraseña.
           </p>
         </div>
 
         <div className="space-y-4">
+          <Button
+            className="w-full"
+            onClick={() => router.push('/reset-password')}
+          >
+            Tengo el código
+          </Button>
+
           <p className="text-sm text-center text-muted-foreground">
             ¿No recibiste el correo? Revisa tu carpeta de spam o{' '}
             <button
@@ -100,7 +113,7 @@ export default function ForgotPasswordPage() {
         </div>
         <h2 className="text-2xl font-bold">¿Olvidaste tu contraseña?</h2>
         <p className="text-sm text-muted-foreground">
-          Ingresa tu correo electrónico y te enviaremos instrucciones para restablecerla
+          Ingresa tu correo electrónico y te enviaremos un código para restablecerla
         </p>
       </div>
 
@@ -138,7 +151,7 @@ export default function ForgotPasswordPage() {
           size="lg"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Enviando...' : 'Enviar Instrucciones'}
+          {isSubmitting ? 'Enviando...' : 'Enviar Código'}
         </Button>
       </form>
 

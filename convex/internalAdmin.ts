@@ -617,7 +617,6 @@ export const createPlatformAdmin = mutation({
     const userId = await ctx.db.insert("users", {
       company_id: undefined, // Platform admins don't belong to a company
       email: args.email.toLowerCase(),
-      password_hash: args.passwordHash,
       email_verified: true, // Auto-verify admin accounts
       email_verified_at: now,
       first_name: args.firstName,

@@ -4,50 +4,42 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, ArrowRight, Building2, Factory, Loader2 } from 'lucide-react';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { Button } from '@/components/ui/button';
-import { establishSession } from './actions';
 
 export default function SetupCompletePage() {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const completeOnboarding = useMutation(api.users.completeOnboarding);
 
   useEffect(() => {
     // Verify that setup was actually completed
     const companyId = sessionStorage.getItem('companyId');
     const facilityId = sessionStorage.getItem('facilityId');
-    const storedUserId = sessionStorage.getItem('signupUserId');
 
-    if (!companyId || !facilityId || !storedUserId) {
-      // If setup not complete, redirect to start
+    if (!companyId || !facilityId) {
       router.push('/company-setup');
-      return;
     }
-
-    setUserId(storedUserId);
   }, [router]);
 
   const handleContinue = async () => {
-    if (!userId) return;
-
     setIsNavigating(true);
 
     try {
-      // Establish session with HTTP-only cookies
-      const result = await establishSession(userId);
-
-      if (!result.success) {
-        console.error('Failed to establish session:', result.error);
-        // Still try to navigate, login page will handle re-auth
-      }
+      // Mark onboarding as completed in the database
+      await completeOnboarding();
 
       // Clear onboarding session data
       sessionStorage.removeItem('companyId');
       sessionStorage.removeItem('facilityId');
       sessionStorage.removeItem('signupUserId');
       sessionStorage.removeItem('signupEmail');
+      sessionStorage.removeItem('signupFirstName');
+      sessionStorage.removeItem('signupLastName');
+      sessionStorage.removeItem('signupPhone');
 
-      // Navigate to dashboard
+      // Navigate to dashboard — user is already authenticated via Convex Auth
       router.push('/dashboard');
     } catch (error) {
       console.error('Error navigating to dashboard:', error);
@@ -137,7 +129,7 @@ export default function SetupCompletePage() {
           onClick={handleContinue}
           className="w-full"
           size="lg"
-          disabled={isNavigating || !userId}
+          disabled={isNavigating}
         >
           {isNavigating ? (
             <>

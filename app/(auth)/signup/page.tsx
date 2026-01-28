@@ -6,6 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuthActions } from '@convex-dev/auth/react';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 
 import { signupSchema, type SignupFormValues, allPasswordRequirementsMet } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
@@ -22,10 +25,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { PasswordInput } from '@/components/shared/password-input';
 import { PhoneInput } from '@/components/shared/phone-input';
 import { PasswordRequirements } from '@/components/shared/password-requirements';
-import { checkEmailAvailability, registerUser } from './actions';
+import { checkEmailAvailability } from './actions';
 
 export default function SignupPage() {
   const router = useRouter();
+  const { signIn } = useAuthActions();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [emailAvailable, setEmailAvailable] = React.useState<boolean | null>(null);
   const [checkingEmail, setCheckingEmail] = React.useState(false);
@@ -77,17 +81,27 @@ export default function SignupPage() {
     setError(null);
 
     try {
-      const result = await registerUser(data);
+      // Store data for post-verification onboarding
+      sessionStorage.setItem('signupEmail', data.email);
+      sessionStorage.setItem('signupFirstName', data.firstName);
+      sessionStorage.setItem('signupLastName', data.lastName);
+      if (data.phone) sessionStorage.setItem('signupPhone', data.phone);
 
-      if (result.success) {
-        // Store email in sessionStorage for next page
-        sessionStorage.setItem('signupEmail', data.email);
-        router.push('/verify-email');
-      } else {
-        setError(result.error || 'Error al crear la cuenta');
-      }
-    } catch (err) {
-      setError('Error inesperado. Por favor intenta de nuevo.');
+      // Use Convex Auth to sign up with password + email verification
+      await signIn('password', {
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone || '',
+        flow: 'signUp',
+      });
+
+      // Convex Auth sends OTP automatically via ResendOTP provider
+      router.push('/verify-email');
+    } catch (err: any) {
+      const message = err?.message || 'Error inesperado. Por favor intenta de nuevo.';
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }

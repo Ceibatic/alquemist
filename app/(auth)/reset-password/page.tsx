@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, KeyRound, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, KeyRound, CheckCircle } from 'lucide-react';
+import { useAuthActions } from '@convex-dev/auth/react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/shared/password-input';
-import { verifyResetToken, resetPassword } from './actions';
+import { CodeInput } from '@/components/shared/code-input';
 
 const resetPasswordSchema = z.object({
   password: z
@@ -18,7 +19,8 @@ const resetPasswordSchema = z.object({
     .min(8, 'La contraseña debe tener al menos 8 caracteres')
     .regex(/[A-Z]/, 'Debe incluir al menos una mayúscula')
     .regex(/[a-z]/, 'Debe incluir al menos una minúscula')
-    .regex(/[0-9]/, 'Debe incluir al menos un número'),
+    .regex(/[0-9]/, 'Debe incluir al menos un número')
+    .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Debe incluir al menos un carácter especial'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Las contraseñas no coinciden',
@@ -30,17 +32,18 @@ type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token') || '';
+  const { signIn } = useAuthActions();
 
+  const [code, setCode] = useState(searchParams.get('token') || '');
+  const [email] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('resetEmail') || '';
+    }
+    return '';
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [tokenValidation, setTokenValidation] = useState<{
-    valid: boolean;
-    email?: string;
-    error?: string;
-  } | null>(null);
 
   const form = useForm<ResetPasswordValues>({
     resolver: zodResolver(resetPasswordSchema),
@@ -50,46 +53,37 @@ function ResetPasswordContent() {
     },
   });
 
-  // Verify token on mount
-  useEffect(() => {
-    async function checkToken() {
-      if (!token) {
-        setTokenValidation({ valid: false, error: 'Código inválido' });
-        setIsLoading(false);
-        return;
-      }
-
-      const result = await verifyResetToken(token);
-      setTokenValidation(result);
-      setIsLoading(false);
+  const onSubmit = async (data: ResetPasswordValues) => {
+    if (code.length !== 6) {
+      setGlobalError('Por favor ingresa el código de 6 dígitos');
+      return;
     }
 
-    checkToken();
-  }, [token]);
-
-  const onSubmit = async (data: ResetPasswordValues) => {
-    if (!token) return;
+    if (!email) {
+      setGlobalError('Email no encontrado. Por favor solicita un nuevo código.');
+      return;
+    }
 
     setIsSubmitting(true);
     setGlobalError(null);
 
     try {
-      const result = await resetPassword(token, data.password);
+      // Use Convex Auth to verify code and set new password
+      await signIn('password', {
+        email,
+        code,
+        newPassword: data.password,
+        flow: 'reset-verification',
+      });
 
-      if (result.success) {
-        setIsSuccess(true);
-      } else {
-        setGlobalError(result.error || 'Error al restablecer la contraseña');
-      }
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      setGlobalError('Error al restablecer la contraseña. Por favor intenta de nuevo.');
+      setIsSuccess(true);
+    } catch (err: any) {
+      setGlobalError(err?.message || 'Error al restablecer la contraseña. Código inválido o expirado.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Success state
   if (isSuccess) {
     return (
       <div className="space-y-6">
@@ -114,55 +108,6 @@ function ResetPasswordContent() {
     );
   }
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="text-center space-y-4">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-green-600 mx-auto" />
-          <p className="text-sm text-muted-foreground">Verificando código...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Invalid token state
-  if (!token || !tokenValidation?.valid) {
-    return (
-      <div className="space-y-6">
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full">
-            <AlertCircle className="w-8 h-8 text-red-600" />
-          </div>
-          <h2 className="text-2xl font-bold">Enlace inválido</h2>
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            {tokenValidation?.error || 'El enlace de recuperación es inválido o ha expirado.'}
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          <Button
-            className="w-full"
-            variant="outline"
-            onClick={() => router.push('/forgot-password')}
-          >
-            Solicitar nuevo enlace
-          </Button>
-          <div className="text-center">
-            <Link
-              href="/login"
-              className="inline-flex items-center text-sm text-primary hover:underline"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver a Iniciar Sesión
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Form state
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -172,7 +117,7 @@ function ResetPasswordContent() {
         </div>
         <h2 className="text-2xl font-bold">Nueva Contraseña</h2>
         <p className="text-sm text-muted-foreground">
-          Ingresa tu nueva contraseña para <strong>{tokenValidation.email}</strong>
+          Ingresa el código que recibiste y tu nueva contraseña
         </p>
       </div>
 
@@ -184,6 +129,16 @@ function ResetPasswordContent() {
             {globalError}
           </div>
         )}
+
+        {/* OTP Code */}
+        <div className="space-y-2">
+          <Label>Código de verificación</Label>
+          <CodeInput
+            length={6}
+            value={code}
+            onChange={setCode}
+          />
+        </div>
 
         {/* Password */}
         <div className="space-y-2">
@@ -201,7 +156,7 @@ function ResetPasswordContent() {
             </p>
           )}
           <p className="text-xs text-muted-foreground">
-            Debe incluir mayúsculas, minúsculas y números
+            Debe incluir mayúsculas, minúsculas, números y carácter especial
           </p>
         </div>
 
@@ -227,7 +182,7 @@ function ResetPasswordContent() {
           type="submit"
           className="w-full"
           size="lg"
-          disabled={isSubmitting}
+          disabled={isSubmitting || code.length !== 6}
         >
           {isSubmitting ? 'Actualizando...' : 'Restablecer Contraseña'}
         </Button>
