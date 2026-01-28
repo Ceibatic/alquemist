@@ -7,7 +7,7 @@
 import { v } from "convex/values";
 import { mutation, query, action, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthUserId, createAccount } from "@convex-dev/auth/server";
 import {
   validateEmail,
   formatColombianPhone,
@@ -141,10 +141,9 @@ export const accept = action({
   },
   handler: async (ctx, args): Promise<{
     success: boolean;
-    sessionToken: string;
+    email: string;
     userId: string;
     companyId: string;
-    user: { email: string; roleId: string; locale: string };
     invitation: any;
   }> => {
     // 1. Validate invitation using the query
@@ -156,40 +155,58 @@ export const accept = action({
       throw new Error(validationResult.error || "Invitación inválida");
     }
 
-    // 2. Get invitation record (need to do this in mutation)
+    // 2. Get invitation record
     const invitationData: any = await ctx.runMutation(
       internal.invitations.getInvitationByToken,
-      {
-        token: args.token,
-      }
+      { token: args.token }
     );
 
     if (!invitationData) {
       throw new Error("Invitación no encontrada");
     }
 
-    // 3. Check if user already exists
-    const existingUser = await ctx.runQuery(
-      api.registration.getUserByEmail,
-      {
-        email: invitationData.email,
-      }
-    );
+    // 3. Create auth account via Convex Auth (hashes password, creates authAccounts + users entries)
+    const email = invitationData.email.toLowerCase();
+    const language = args.language || "es";
+    const phone = args.phone ? formatColombianPhone(args.phone) : undefined;
+    const now = Date.now();
 
-    if (existingUser) {
-      throw new Error(
-        "Ya existe una cuenta con este correo electrónico. Por favor inicia sesión."
-      );
-    }
+    const { user: authUser } = await createAccount(ctx, {
+      provider: "password",
+      account: { id: email, secret: args.password },
+      profile: {
+        // emailVerified is extracted by Convex Auth to set authAccounts.emailVerified
+        emailVerified: true,
+        // All required fields for our custom users table
+        email,
+        email_verified: true,
+        email_verified_at: now,
+        onboarding_completed: true,
+        phone,
+        company_id: invitationData.company_id,
+        role_id: invitationData.role_id,
+        additional_role_ids: [],
+        primary_facility_id: invitationData.facility_ids[0],
+        accessible_facility_ids: invitationData.facility_ids,
+        accessible_area_ids: [],
+        locale: language,
+        timezone: invitationData.company_timezone,
+        preferred_language: language,
+        mfa_enabled: false,
+        failed_login_attempts: 0,
+        status: "active",
+        created_at: now,
+        updated_at: now,
+      } as any,
+      shouldLinkViaEmail: true, // Needed so emailVerified is set on authAccount (prevents OTP on signIn)
+      shouldLinkViaPhone: false,
+    });
 
-    // 4. Create user account (without password — Convex Auth handles auth)
-    const userResult: any = await ctx.runMutation(
-      internal.invitations.createUserFromInvitation,
+    // 5. Insert facility_users records
+    await ctx.runMutation(
+      internal.invitations._setupFacilityUsers,
       {
-        email: invitationData.email,
-        phone: args.phone ? formatColombianPhone(args.phone) : undefined,
-        language: args.language || "es",
-        companyId: invitationData.company_id,
+        userId: authUser._id as any,
         roleId: invitationData.role_id,
         facilityIds: invitationData.facility_ids,
       }
@@ -202,14 +219,9 @@ export const accept = action({
 
     return {
       success: true,
-      sessionToken: userResult.sessionToken,
-      userId: userResult.userId,
+      email,
+      userId: authUser._id as string,
       companyId: invitationData.company_id,
-      user: {
-        email: invitationData.email,
-        roleId: invitationData.role_id,
-        locale: args.language || "es",
-      },
       invitation: validationResult.invitation,
     };
   },
@@ -283,86 +295,39 @@ export const getInvitationByToken = internalMutation({
       return null;
     }
 
+    const company = await ctx.db.get(invitation.company_id);
+
     return {
       email: invitation.email,
       company_id: invitation.company_id,
       role_id: invitation.role_id,
       facility_ids: invitation.facility_ids,
       invited_by: invitation.invited_by,
+      company_timezone: company?.default_timezone || "America/Bogota",
     };
   },
 });
 
 /**
- * Create user account from invitation
- * Helper mutation for accept action
+ * Insert facility_users records for an invited user.
+ * Called after createAccount() which already creates the user with all fields.
  */
-export const createUserFromInvitation = internalMutation({
+export const _setupFacilityUsers = internalMutation({
   args: {
-    email: v.string(),
-    phone: v.optional(v.string()),
-    language: v.string(),
-    companyId: v.id("companies"),
+    userId: v.id("users"),
     roleId: v.id("roles"),
     facilityIds: v.array(v.id("facilities")),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
-
-    // Get company to inherit timezone
-    const company = await ctx.db.get(args.companyId);
-    if (!company) {
-      throw new Error("Empresa no encontrada");
-    }
-
-    // Create user with email already verified (they clicked the invitation link)
-    const userId = await ctx.db.insert("users", {
-      company_id: args.companyId,
-      email: args.email.toLowerCase(),
-      email_verified: true, // Auto-verified via invitation link
-      email_verified_at: now,
-      onboarding_completed: true, // Invited users skip onboarding
-
-      // Personal info will be completed later
-      first_name: undefined,
-      last_name: undefined,
-      phone: args.phone,
-
-      // Role and access
-      role_id: args.roleId,
-      additional_role_ids: [],
-      primary_facility_id: args.facilityIds[0], // First facility as primary
-      accessible_facility_ids: args.facilityIds,
-      accessible_area_ids: [],
-
-      // Preferences
-      locale: args.language as "es" | "en",
-      timezone: company.default_timezone || "America/Bogota",
-      preferred_language: args.language,
-
-      // Security
-      mfa_enabled: false,
-      failed_login_attempts: 0,
-
-      status: "active",
-      created_at: now,
-      updated_at: now,
-    });
-
-    // Insert facility_users records
     for (const facilityId of args.facilityIds) {
       await ctx.db.insert("facility_users", {
         facility_id: facilityId,
-        user_id: userId,
+        user_id: args.userId,
         role_id: args.roleId,
         created_at: now,
       });
     }
-
-    return {
-      userId,
-      sessionToken: "convex-auth-managed",
-    };
   },
 });
 
