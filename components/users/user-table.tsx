@@ -31,14 +31,14 @@ export function UserTable({ users, companyId, onEditRole }: UserTableProps) {
     {
       id: 'user',
       header: 'Usuario',
-      cell: ({ row }) => <UserRow user={row.original} companyId={companyId} onEditRole={onEditRole} />,
+      cell: ({ row }) => <UserRow user={row.original} companyId={companyId} onEditRole={onEditRole as any} />,
     },
   ];
 
   return (
     <div className="rounded-lg border bg-white">
       {users.map((user) => (
-        <UserRow key={user.id} user={user} companyId={companyId} onEditRole={onEditRole} />
+        <UserRow key={user.id} user={user} companyId={companyId} onEditRole={onEditRole as any} />
       ))}
     </div>
   );

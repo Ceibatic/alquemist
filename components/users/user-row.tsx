@@ -32,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface UserRowData {
   id: Id<'users'>;
+  type?: 'user';
   email: string;
   firstName?: string;
   lastName?: string;
@@ -39,6 +40,7 @@ interface UserRowData {
   roleId?: Id<'roles'>;
   status: string;
   lastLogin?: number;
+  createdAt?: number;
   accessibleFacilityIds?: string[];
 }
 

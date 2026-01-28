@@ -1,6 +1,7 @@
 import { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { ReactNode } from 'react';
 
 export interface EmptyStateProps {
   icon?: LucideIcon;
@@ -10,7 +11,7 @@ export interface EmptyStateProps {
     label: string;
     href?: string;
     onClick?: () => void;
-  };
+  } | ReactNode;
 }
 
 export function EmptyState({
@@ -30,18 +31,22 @@ export function EmptyState({
       <p className="mb-6 max-w-md text-sm text-gray-600">{description}</p>
       {action && (
         <>
-          {action.href ? (
-            <Button asChild className="bg-green-900 hover:bg-green-800">
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              <Link href={action.href as any}>{action.label}</Link>
-            </Button>
+          {typeof action === 'object' && 'label' in action ? (
+            action.href ? (
+              <Button asChild className="bg-green-900 hover:bg-green-800">
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <Link href={action.href as any}>{action.label}</Link>
+              </Button>
+            ) : (
+              <Button
+                onClick={action.onClick}
+                className="bg-green-900 hover:bg-green-800"
+              >
+                {action.label}
+              </Button>
+            )
           ) : (
-            <Button
-              onClick={action.onClick}
-              className="bg-green-900 hover:bg-green-800"
-            >
-              {action.label}
-            </Button>
+            action
           )}
         </>
       )}
