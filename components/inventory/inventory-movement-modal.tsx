@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Loader2,
   Minus,
@@ -66,10 +67,10 @@ const movementSchema = z.object({
   movement_type: z.enum(['consumption', 'correction', 'waste', 'transfer', 'return'], {
     required_error: 'Debes seleccionar un tipo de movimiento',
   }),
-  quantity: z.number().min(0, 'La cantidad debe ser mayor o igual a 0'),
+  quantity: z.number().min(0.01, 'La cantidad debe ser mayor a 0'),
   new_quantity: z.number().min(0).optional(),
   destination_area_id: z.string().optional(),
-  reason: z.string().min(1, 'Razón es requerida'),
+  reason: z.string().min(10, 'La razón debe tener al menos 10 caracteres'),
   notes: z.string().max(1000).optional(),
 });
 
@@ -184,6 +185,7 @@ export function InventoryMovementModal({
   const movementType = form.watch('movement_type');
   const quantity = form.watch('quantity');
   const newQuantity = form.watch('new_quantity');
+  const reason = form.watch('reason');
 
   // Calculate new stock based on movement type
   const calculatedNewStock = useMemo(() => {
@@ -213,6 +215,20 @@ export function InventoryMovementModal({
     }
   };
 
+  // Real-time validation for stock availability
+  useEffect(() => {
+    if (['consumption', 'waste', 'transfer', 'return'].includes(movementType)) {
+      if (quantity > item.quantity_available && quantity > 0) {
+        form.setError('quantity', {
+          type: 'manual',
+          message: `Stock insuficiente. Disponible: ${item.quantity_available}`,
+        });
+      } else {
+        form.clearErrors('quantity');
+      }
+    }
+  }, [quantity, movementType, item.quantity_available, form]);
+
   const handleSubmit = async (data: MovementInput) => {
     if (!userId) {
       toast.error('Debe estar autenticado para registrar movimientos');
@@ -222,14 +238,36 @@ export function InventoryMovementModal({
     // Validate sufficient stock for deduction movements
     if (['consumption', 'waste', 'transfer', 'return'].includes(data.movement_type)) {
       if (data.quantity > item.quantity_available) {
+        form.setError('quantity', {
+          type: 'manual',
+          message: `Stock insuficiente. Disponible: ${item.quantity_available}`,
+        });
         toast.error(`Stock insuficiente. Disponible: ${item.quantity_available}`);
         return;
       }
     }
 
+    // Validate quantity > 0
+    if (data.movement_type !== 'correction' && data.quantity <= 0) {
+      form.setError('quantity', {
+        type: 'manual',
+        message: 'La cantidad debe ser mayor a 0',
+      });
+      return;
+    }
+
     // Validate destination for transfer
     if (data.movement_type === 'transfer' && !data.destination_area_id) {
       toast.error('Debes seleccionar un área de destino');
+      return;
+    }
+
+    // Validate reason minimum length
+    if (data.reason.length < 10) {
+      form.setError('reason', {
+        type: 'manual',
+        message: 'La razón debe tener al menos 10 caracteres',
+      });
       return;
     }
 
@@ -481,6 +519,18 @@ export function InventoryMovementModal({
                 </FormItem>
               )}
             />
+
+            {/* Warning for consuming all stock */}
+            {['consumption', 'waste', 'transfer'].includes(movementType) &&
+              quantity === item.quantity_available &&
+              quantity > 0 && (
+                <Alert variant="warning">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Vas a {movementType === 'consumption' ? 'consumir' : movementType === 'waste' ? 'dar de baja' : 'transferir'} todo el stock disponible de este item. ¿Estás seguro?
+                  </AlertDescription>
+                </Alert>
+              )}
 
             {/* New Stock Preview */}
             <div className="rounded-lg border bg-gray-50 p-4">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from 'convex/react';
@@ -34,7 +34,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Package, Truck, Calendar, DollarSign, FileText } from 'lucide-react';
+import { Loader2, Package, Truck, Calendar, DollarSign, FileText, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ProductCombobox } from './product-combobox';
 import { inventoryReceiptSchema, InventoryReceiptInput } from '@/lib/validations/inventory';
 import { inventoryUnitLabels } from '@/lib/validations/product';
@@ -115,6 +116,9 @@ export function InventoryReceiptModal({
   const selectedProductId = form.watch('product_id');
   const quantity = form.watch('quantity');
   const purchasePrice = form.watch('purchase_price');
+  const receivedDate = form.watch('received_date');
+  const manufacturingDate = form.watch('manufacturing_date');
+  const expirationDate = form.watch('expiration_date');
 
   // Fetch the selected product to get its default_unit
   const selectedProduct = useQuery(
@@ -146,9 +150,80 @@ export function InventoryReceiptModal({
     }
   };
 
+  // Real-time validation for dates
+  useEffect(() => {
+    const now = Date.now();
+
+    // Validate received_date not in future
+    if (receivedDate && receivedDate > now) {
+      form.setError('received_date', {
+        type: 'manual',
+        message: 'La fecha de recepción no puede ser en el futuro',
+      });
+    } else {
+      form.clearErrors('received_date');
+    }
+
+    // Validate manufacturing_date not in future
+    if (manufacturingDate && manufacturingDate > now) {
+      form.setError('manufacturing_date', {
+        type: 'manual',
+        message: 'La fecha de manufactura no puede ser en el futuro',
+      });
+    } else {
+      form.clearErrors('manufacturing_date');
+    }
+
+    // Validate expiration > manufacturing
+    if (manufacturingDate && expirationDate && expirationDate <= manufacturingDate) {
+      form.setError('expiration_date', {
+        type: 'manual',
+        message: 'La fecha de vencimiento debe ser posterior a la fecha de manufactura',
+      });
+    } else if (form.formState.errors.expiration_date?.message === 'La fecha de vencimiento debe ser posterior a la fecha de manufactura') {
+      form.clearErrors('expiration_date');
+    }
+  }, [receivedDate, manufacturingDate, expirationDate, form]);
+
+  // Check if expiration date is near (< 30 days)
+  const isExpirationNear = expirationDate && (expirationDate - Date.now()) < 30 * 24 * 60 * 60 * 1000;
+
+  // Check if purchase price and cost per unit have significant mismatch
+  const hasPriceMismatch = purchasePrice && quantity > 0 && costPerUnit
+    ? Math.abs(purchasePrice - (costPerUnit * quantity)) / purchasePrice > 0.05
+    : false;
+
   const handleSubmit = async (data: InventoryReceiptInput) => {
     if (!userId) {
       toast.error('Debe estar autenticado para registrar entradas');
+      return;
+    }
+
+    const now = Date.now();
+
+    // Validate dates not in future
+    if (data.received_date && data.received_date > now) {
+      form.setError('received_date', {
+        type: 'manual',
+        message: 'La fecha de recepción no puede ser en el futuro',
+      });
+      return;
+    }
+
+    if (data.manufacturing_date && data.manufacturing_date > now) {
+      form.setError('manufacturing_date', {
+        type: 'manual',
+        message: 'La fecha de manufactura no puede ser en el futuro',
+      });
+      return;
+    }
+
+    // Validate expiration > manufacturing
+    if (data.manufacturing_date && data.expiration_date && data.expiration_date <= data.manufacturing_date) {
+      form.setError('expiration_date', {
+        type: 'manual',
+        message: 'La fecha de vencimiento debe ser posterior a la fecha de manufactura',
+      });
       return;
     }
 
@@ -521,6 +596,16 @@ export function InventoryReceiptModal({
                   />
                 </div>
 
+                {/* Warning for near expiration */}
+                {isExpirationNear && expirationDate && (
+                  <Alert variant="warning">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      Este producto vence en menos de 30 días ({format(new Date(expirationDate), 'PPP', { locale: es })})
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <div className="flex justify-between">
                   <Button
                     type="button"
@@ -611,6 +696,17 @@ export function InventoryReceiptModal({
                     </p>
                   </div>
                 </div>
+
+                {/* Warning for price mismatch */}
+                {hasPriceMismatch && (
+                  <Alert variant="warning">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      El precio de compra total y el costo por unidad multiplicado por la cantidad difieren en más del 5%.
+                      Verifica que los valores sean correctos.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <FormField
                   control={form.control}
