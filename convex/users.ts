@@ -733,6 +733,113 @@ export const updatePreferences = mutation({
 });
 
 /**
+ * Update notification settings for a user
+ * Phase 2 Module 21 - Account Settings
+ * Specific validations for notification preferences
+ */
+export const updateNotificationSettings = mutation({
+  args: {
+    userId: v.id("users"),
+    email_notifications: v.optional(v.boolean()),
+    sms_notifications: v.optional(v.boolean()),
+    notification_types: v.optional(v.any()),
+    notification_delivery: v.optional(v.any()),
+    quiet_hours_enabled: v.optional(v.boolean()),
+    quiet_hours_start: v.optional(v.string()),
+    quiet_hours_end: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Auth guard: verify authenticated user is updating their own settings
+    const authenticatedUserId = await getAuthUserId(ctx);
+    if (!authenticatedUserId) {
+      throw new ConvexError("Not authenticated");
+    }
+
+    if (authenticatedUserId !== args.userId) {
+      throw new ConvexError("You can only update your own notification settings");
+    }
+
+    const now = Date.now();
+
+    // Verify user exists
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new ConvexError("User not found");
+    }
+
+    const updates: any = {
+      updated_at: now,
+    };
+
+    // Update notification toggles
+    if (args.email_notifications !== undefined) {
+      updates.email_notifications = args.email_notifications;
+    }
+
+    if (args.sms_notifications !== undefined) {
+      updates.sms_notifications = args.sms_notifications;
+    }
+
+    if (args.notification_types !== undefined) {
+      updates.notification_types = args.notification_types;
+    }
+
+    if (args.notification_delivery !== undefined) {
+      updates.notification_delivery = args.notification_delivery;
+    }
+
+    if (args.quiet_hours_enabled !== undefined) {
+      updates.quiet_hours_enabled = args.quiet_hours_enabled;
+    }
+
+    // Validate and update quiet hours
+    if (args.quiet_hours_start !== undefined) {
+      // Validate HH:MM format
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(args.quiet_hours_start)) {
+        throw new ConvexError("Invalid quiet_hours_start format. Must be HH:MM (e.g., 22:00)");
+      }
+      updates.quiet_hours_start = args.quiet_hours_start;
+    }
+
+    if (args.quiet_hours_end !== undefined) {
+      // Validate HH:MM format
+      const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+      if (!timeRegex.test(args.quiet_hours_end)) {
+        throw new ConvexError("Invalid quiet_hours_end format. Must be HH:MM (e.g., 08:00)");
+      }
+      updates.quiet_hours_end = args.quiet_hours_end;
+    }
+
+    // Validate that quiet_hours_end is after quiet_hours_start (if both provided)
+    const startTime = args.quiet_hours_start ?? user.quiet_hours_start;
+    const endTime = args.quiet_hours_end ?? user.quiet_hours_end;
+
+    if (startTime && endTime) {
+      // Convert to minutes for comparison
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+
+      // Allow wrap-around (e.g., 22:00 to 08:00 next day)
+      // Only error if they're the same time
+      if (startMinutes === endMinutes) {
+        throw new ConvexError("Quiet hours start and end times cannot be the same");
+      }
+    }
+
+    // Apply updates
+    await ctx.db.patch(args.userId, updates);
+
+    return {
+      success: true,
+      message: "Notification settings updated successfully",
+    };
+  },
+});
+
+/**
  * Update user profile information
  * Phase 2 Module 21 - Account Settings
  */
