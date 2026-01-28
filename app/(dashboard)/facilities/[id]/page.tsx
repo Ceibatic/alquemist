@@ -340,6 +340,30 @@ export default function FacilityDetailPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Embedded Map */}
+                  {facility.latitude && facility.longitude && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-gray-500 mb-2">
+                        Ubicación en el Mapa
+                      </p>
+                      <div className="relative w-full h-64 rounded-lg overflow-hidden border border-gray-200">
+                        <iframe
+                          title="Mapa de ubicación de la instalación"
+                          width="100%"
+                          height="100%"
+                          frameBorder="0"
+                          style={{ border: 0 }}
+                          referrerPolicy="no-referrer-when-downgrade"
+                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${facility.longitude - 0.01},${facility.latitude - 0.01},${facility.longitude + 0.01},${facility.latitude + 0.01}&layer=mapnik&marker=${facility.latitude},${facility.longitude}`}
+                          allowFullScreen
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Vista proporcionada por OpenStreetMap
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
