@@ -100,9 +100,16 @@ export const registerCompanyStep2 = mutation({
       updated_at: now,
     });
 
-    // 5. Update user with company reference and timezone
+    // 4. Assign COMPANY_OWNER role
+    const ownerRole = await ctx.db
+      .query("roles")
+      .filter((q) => q.eq(q.field("name"), "COMPANY_OWNER"))
+      .first();
+
+    // 5. Update user with company reference, role, and timezone
     await ctx.db.patch(args.userId, {
       company_id: companyId,
+      ...(ownerRole ? { role_id: ownerRole._id } : {}),
       timezone: municipality.timezone || "America/Bogota",
       updated_at: now,
     });

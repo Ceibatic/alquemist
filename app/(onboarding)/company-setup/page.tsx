@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Building2, ArrowRight, Loader2 } from 'lucide-react';
+import { Building2, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   companySetupSchema,
   type CompanySetupFormValues,
@@ -105,10 +106,11 @@ export default function CompanySetupPage() {
         sessionStorage.setItem('companyId', result.companyId);
       }
 
+      toast.success('Empresa creada correctamente');
+
       // Navigate to facility setup
       router.push('/facility-basic');
-    } catch (error) {
-      console.error('Error in form submission:', error);
+    } catch {
       setGlobalError('Error inesperado. Por favor intenta de nuevo.');
     } finally {
       setIsSubmitting(false);
@@ -131,11 +133,11 @@ export default function CompanySetupPage() {
         <div className="inline-flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mb-2">
           <Building2 className="w-6 h-6 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold">Información de la Empresa</h2>
+        <h2 className="text-2xl font-bold">Crea tu Empresa</h2>
         <p className="text-sm text-muted-foreground">
           Configura los datos de tu empresa para continuar
         </p>
-        <ProgressIndicator currentStep={2} totalSteps={4} />
+        <ProgressIndicator currentStep={1} totalSteps={2} />
       </div>
 
       {/* Form */}
@@ -245,24 +247,21 @@ export default function CompanySetupPage() {
         {/* Submit Button */}
         <Button
           type="submit"
-          className="w-full"
+          className="w-full bg-amber-500 hover:bg-amber-600 text-white"
           size="lg"
           disabled={isSubmitting}
         >
           {isSubmitting ? (
-            'Guardando...'
+            'Creando empresa...'
           ) : (
-            <>
-              Continuar
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </>
+            'Crear Empresa'
           )}
         </Button>
       </form>
 
       {/* Footer */}
       <p className="text-xs text-center text-muted-foreground">
-        Paso 2 de 4 - Información de la Empresa
+        Paso 1 de 2 - Crea tu Empresa
       </p>
     </div>
   );

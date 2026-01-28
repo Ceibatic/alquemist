@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { Toaster } from 'sonner';
 import { ConvexClientProvider } from '@/components/providers/convex-client-provider';
 
 export default function OnboardingLayout({
@@ -29,6 +30,7 @@ export default function OnboardingLayout({
           {/* Onboarding Content */}
           <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">{children}</div>
         </div>
+        <Toaster richColors position="top-center" />
       </div>
     </ConvexClientProvider>
   );

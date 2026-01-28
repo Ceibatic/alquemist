@@ -18,15 +18,6 @@ export async function createCompany(
     // Validate the data
     const validated = companySetupSchema.parse(data);
 
-    console.log('[createCompany] Starting company creation:', {
-      userId,
-      companyName: validated.name,
-      businessType: validated.businessType,
-      industry: validated.industry,
-      departmentCode: validated.departmentCode,
-      municipalityCode: validated.municipalityCode,
-    });
-
     // Map frontend field names to backend field names
     // Frontend: businessType, industry
     // Backend: businessEntityType, companyType
@@ -49,13 +40,7 @@ export async function createCompany(
     const mappedBusinessEntityType = businessEntityTypeMap[validated.businessType] || validated.businessType;
     const mappedCompanyType = companyTypeMap[validated.industry] || validated.industry.toLowerCase();
 
-    console.log('[createCompany] Mapped values:', {
-      businessEntityType: mappedBusinessEntityType,
-      companyType: mappedCompanyType,
-    });
-
     // Call Convex mutation to create company
-    console.log('[createCompany] Calling registerCompanyStep2 mutation...');
     const result = await convex.mutation(api.registration.registerCompanyStep2, {
       userId: userId as Id<'users'>,
       companyName: validated.name,
@@ -67,17 +52,11 @@ export async function createCompany(
     });
 
     if (!result.success) {
-      console.error('[createCompany] Mutation returned failure:', result);
       return {
         success: false,
         error: 'Error al crear la empresa',
       };
     }
-
-    console.log('[createCompany] Company created successfully:', {
-      userId: result.userId,
-      companyId: result.companyId,
-    });
 
     return {
       success: true,
@@ -86,10 +65,7 @@ export async function createCompany(
       message: result.message,
     };
   } catch (error) {
-    console.error('[createCompany] Error:', error);
-
     if (error instanceof z.ZodError) {
-      console.error('[createCompany] Validation errors:', error.errors);
       return {
         success: false,
         error: 'Datos inválidos. Por favor verifica el formulario.',
@@ -97,9 +73,7 @@ export async function createCompany(
       };
     }
 
-    // Extract meaningful error message
     const errorMessage = getConvexErrorMessage(error);
-    console.error('[createCompany] Convex error message:', errorMessage);
 
     return {
       success: false,

@@ -70,7 +70,7 @@ export type EmailVerificationFormValues = z.infer<
 export const companySetupSchema = z.object({
   name: z
     .string()
-    .min(3, 'El nombre de la empresa debe tener al menos 3 caracteres')
+    .min(2, 'Nombre de empresa muy corto')
     .max(100, 'El nombre no puede exceder 100 caracteres')
     .trim(),
   businessType: z.enum(['SAS', 'SA', 'LTDA', 'EU', 'PersonaNatural'], {
