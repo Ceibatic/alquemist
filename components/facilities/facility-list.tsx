@@ -261,6 +261,25 @@ export function FacilityList({ userId, companyId }: FacilityListProps) {
         companyId: companyId as Id<'companies'>,
       });
 
+      // If we deleted the current facility, switch to another one
+      if (facilityToDelete._id === currentFacilityId) {
+        const otherActiveFacility = enrichedFacilities.find(
+          (f) => f._id !== facilityToDelete._id && f.status === 'active'
+        );
+
+        if (otherActiveFacility) {
+          await setCurrentFacility({
+            userId: userId as Id<'users'>,
+            facilityId: otherActiveFacility._id as Id<'facilities'>,
+          });
+
+          toast({
+            title: 'Instalación cambiada',
+            description: `Se cambió automáticamente a: ${otherActiveFacility.name}`,
+          });
+        }
+      }
+
       toast({
         title: 'Instalación desactivada',
         description: `La instalación "${facilityToDelete.name}" ha sido desactivada.`,
