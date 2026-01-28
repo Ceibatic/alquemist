@@ -6,7 +6,7 @@
 import { v, ConvexError } from "convex/values";
 import { mutation, query, action, internalMutation } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 
 // ============================================================================
 // CONVEX AUTH: CURRENT USER QUERIES
@@ -1091,6 +1091,7 @@ export const updateProfile = mutation({
  * - New password is validated against requirements (min 8 chars, uppercase, lowercase, number, special char)
  * - New password is hashed using Scrypt before storage
  * - Uses internal mutations to prevent unauthorized access
+ * - Sends email notification to user after successful password change
  */
 export const changePassword = action({
   args: {
@@ -1132,6 +1133,55 @@ export const changePassword = action({
         });
       }
       throw new ConvexError(result.error || "Error al cambiar la contraseña");
+    }
+
+    // 4. Get user details for email notification
+    const user = await ctx.runQuery(api.users.getUserById, {
+      userId: args.userId,
+    });
+
+    if (!user) {
+      throw new ConvexError("Usuario no encontrado");
+    }
+
+    // 5. Log password change
+    const now = new Date();
+    console.log('[SECURITY] Password changed:', {
+      userId: args.userId,
+      email: user.email,
+      timestamp: now.toISOString(),
+      date: now.toLocaleString('es-CO', { timeZone: 'America/Bogota' }),
+    });
+
+    // 6. Send password change notification email
+    try {
+      const { sendEmailViaResend, generatePasswordChangedEmailHTML } = await import("./email");
+      const emailContent = generatePasswordChangedEmailHTML({
+        firstName: user.firstName || "Usuario",
+        email: user.email,
+        changeDate: now.toLocaleString('es-CO', {
+          timeZone: 'America/Bogota',
+          dateStyle: 'full',
+          timeStyle: 'short',
+        }),
+      });
+
+      const emailResult = await sendEmailViaResend({
+        to: user.email,
+        subject: "Contraseña actualizada - Alquemist",
+        html: emailContent.html,
+        text: emailContent.text,
+      });
+
+      if (!emailResult.success) {
+        console.error('[EMAIL] Failed to send password change notification:', emailResult.error);
+        // Don't fail the password change if email fails
+      } else {
+        console.log('[EMAIL] Password change notification sent to:', user.email);
+      }
+    } catch (error) {
+      console.error('[EMAIL] Exception sending password change notification:', error);
+      // Don't fail the password change if email fails
     }
 
     return {
