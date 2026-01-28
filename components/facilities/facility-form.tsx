@@ -124,17 +124,19 @@ export function FacilityForm({
             <Label htmlFor="license_number">
               Número de Licencia
               <span className="text-destructive ml-1">*</span>
-              {isEditMode && (
-                <span className="text-muted-foreground text-xs ml-2">(No editable)</span>
-              )}
             </Label>
             <Input
               id="license_number"
               {...register('license_number')}
               placeholder="Ej: INV-2024-001"
               disabled={isEditMode}
-              className={errors.license_number ? 'border-destructive' : ''}
+              className={`${errors.license_number ? 'border-destructive' : ''} ${isEditMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             />
+            {isEditMode && (
+              <p className="text-xs text-gray-500">
+                El número de licencia no se puede modificar
+              </p>
+            )}
             {errors.license_number && (
               <p className="text-sm text-destructive">
                 {errors.license_number.message}
