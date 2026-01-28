@@ -483,10 +483,7 @@ export const move = mutation({
     }
 
     // Verify ownership: batch belongs to user's company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -612,10 +609,7 @@ export const recordLoss = mutation({
     }
 
     // Verify ownership: batch belongs to user's company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -731,10 +725,7 @@ export const split = mutation({
     }
 
     // Verify ownership: batch belongs to user's company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -1092,10 +1083,7 @@ export const harvest = mutation({
     }
 
     // Verify ownership: batch belongs to user's company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -1209,10 +1197,7 @@ export const archive = mutation({
     }
 
     // Verify ownership: batch belongs to user's company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -1263,10 +1248,7 @@ export const updatePhase = mutation({
     }
 
     // Verify ownership: batch belongs to user's company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
