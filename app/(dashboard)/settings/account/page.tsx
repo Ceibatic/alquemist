@@ -7,42 +7,23 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useEffect, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function AccountSettingsPage() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [error, setError] = useState<Error | null>(null);
+  // Get current authenticated user from Convex Auth
+  const currentUser = useQuery(api.users.getCurrentUser);
 
-  useEffect(() => {
-    // Get user data from cookies
-    const userDataCookie = document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('user_data='));
-
-    if (userDataCookie) {
-      try {
-        const userData = JSON.parse(
-          decodeURIComponent(userDataCookie.split('=')[1])
-        );
-        setUserId(userData.userId);
-      } catch (err) {
-        setError(new Error('Error al cargar datos del usuario'));
-      }
-    } else {
-      setError(new Error('No se encontró información del usuario'));
-    }
-  }, []);
-
-  // Get user data
+  // Get full user details
   const user = useQuery(
     api.users.getUserById,
-    userId ? { userId: userId as Id<'users'> } : 'skip'
+    currentUser?.userId ? { userId: currentUser.userId as Id<'users'> } : 'skip'
   );
 
   // Loading state
-  if (!userId || !user) {
+  if (currentUser === undefined || user === undefined) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-32" />
@@ -51,8 +32,33 @@ export default function AccountSettingsPage() {
     );
   }
 
-  // Error state
-  if (error) {
+  // Not authenticated state
+  if (currentUser === null) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Mi Cuenta"
+          breadcrumbs={[
+            { label: 'Inicio', href: '/dashboard' },
+            { label: 'Configuración', href: '/settings' },
+            { label: 'Mi Cuenta' },
+          ]}
+        />
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>No estás autenticado. Por favor, inicia sesión para acceder a tu cuenta.</span>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/login">Ir a Login</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // User data not found
+  if (!user) {
     return (
       <div className="space-y-6">
         <PageHeader
@@ -66,7 +72,7 @@ export default function AccountSettingsPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {error?.message || 'No se pudo cargar la información del usuario'}
+            No se pudo cargar la información del usuario.
           </AlertDescription>
         </Alert>
       </div>
@@ -90,7 +96,7 @@ export default function AccountSettingsPage() {
       <Card>
         <CardContent className="p-6">
           <AccountSettingsTabs
-            userId={userId as Id<'users'>}
+            userId={currentUser.userId as Id<'users'>}
             user={user}
           />
         </CardContent>
