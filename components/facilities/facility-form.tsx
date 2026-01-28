@@ -57,6 +57,9 @@ export function FacilityForm({
     },
   });
 
+  // Detect edit mode - if defaultValues has a license_number, we're editing
+  const isEditMode = !!defaultValues?.license_number;
+
   // Fetch crop types for multi-select
   const cropTypes = useQuery(api.crops.getCropTypes, {});
 
@@ -126,8 +129,14 @@ export function FacilityForm({
               id="license_number"
               {...register('license_number')}
               placeholder="Ej: INV-2024-001"
-              className={errors.license_number ? 'border-destructive' : ''}
+              disabled={isEditMode}
+              className={`${errors.license_number ? 'border-destructive' : ''} ${isEditMode ? 'bg-gray-50 cursor-not-allowed' : ''}`}
             />
+            {isEditMode && (
+              <p className="text-xs text-gray-500">
+                El número de licencia no se puede modificar
+              </p>
+            )}
             {errors.license_number && (
               <p className="text-sm text-destructive">
                 {errors.license_number.message}

@@ -261,6 +261,33 @@ export function FacilityList({ userId, companyId }: FacilityListProps) {
         companyId: companyId as Id<'companies'>,
       });
 
+      // If we deleted the current facility, switch to another one
+      if (facilityToDelete._id === currentFacilityId) {
+        // Find another active facility, excluding the one we just deleted
+        const otherActiveFacility = enrichedFacilities.find(
+          (f) =>
+            f._id !== facilityToDelete._id &&
+            f.status === 'active'
+        );
+
+        if (otherActiveFacility) {
+          try {
+            await setCurrentFacility({
+              userId: userId as Id<'users'>,
+              facilityId: otherActiveFacility._id as Id<'facilities'>,
+            });
+
+            toast({
+              title: 'Instalación cambiada',
+              description: `Se cambió automáticamente a: ${otherActiveFacility.name}`,
+            });
+          } catch (error) {
+            console.error('Error auto-selecting facility:', error);
+            // Don't block the deletion if auto-select fails
+          }
+        }
+      }
+
       toast({
         title: 'Instalación desactivada',
         description: `La instalación "${facilityToDelete.name}" ha sido desactivada.`,

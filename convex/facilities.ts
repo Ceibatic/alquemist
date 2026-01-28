@@ -27,9 +27,10 @@ export const list = query({
     const allFacilities = await facilitiesQuery.collect();
     let facilities = allFacilities;
 
-    // Filter by status if provided
-    if (args.status) {
-      facilities = facilities.filter(f => f.status === args.status);
+    // Filter by status - default to "active" if not specified
+    const statusFilter = args.status || "active";
+    if (statusFilter !== "all") {
+      facilities = facilities.filter(f => f.status === statusFilter);
     }
 
     // Apply pagination
@@ -291,11 +292,78 @@ export const remove = mutation({
       throw new Error("Facility not found or access denied");
     }
 
+    // Check for active batches in this facility
+    const activeBatches = await ctx.db
+      .query("batches")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.id))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "active"),
+          q.eq(q.field("status"), "harvested"),
+          q.eq(q.field("status"), "split"),
+          q.eq(q.field("status"), "merged")
+        )
+      )
+      .first();
+
+    if (activeBatches) {
+      throw new Error(
+        "No puedes desactivar una instalación con lotes activos o en proceso. " +
+        "Archiva todos los lotes antes de desactivar la instalación."
+      );
+    }
+
+    // Check if this is the only active facility
+    const activeFacilities = await ctx.db
+      .query("facilities")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+
+    if (activeFacilities.length <= 1) {
+      throw new Error(
+        "No puedes desactivar tu única instalación activa. " +
+        "Crea otra instalación antes de desactivar esta."
+      );
+    }
+
+    // Check for active areas in this facility
+    const activeAreas = await ctx.db
+      .query("areas")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.id))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .first();
+
+    if (activeAreas) {
+      throw new Error("No puedes eliminar una instalación con áreas activas");
+    }
+
     // Soft delete by setting status to inactive
     await ctx.db.patch(args.id, {
       status: "inactive",
       updated_at: Date.now(),
     });
+
+    // Auto-reassign users who have this as their current facility
+    const usersWithThisFacility = await ctx.db
+      .query("users")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .filter((q) => q.eq(q.field("primary_facility_id"), args.id))
+      .collect();
+
+    if (usersWithThisFacility.length > 0) {
+      // Find another active facility to reassign to
+      const anotherFacility = activeFacilities.find((f) => f._id !== args.id);
+
+      if (anotherFacility) {
+        // Reassign all affected users to the new facility
+        for (const user of usersWithThisFacility) {
+          await ctx.db.patch(user._id, {
+            primary_facility_id: anotherFacility._id,
+          });
+        }
+      }
+    }
 
     return args.id;
   },
@@ -430,9 +498,18 @@ export const getSettings = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
+    // Get user to verify company membership
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Usuario no encontrado");
+
     const facility = await ctx.db.get(args.facilityId);
     if (!facility) {
       throw new Error("Facility not found");
+    }
+
+    // Verify user belongs to facility's company
+    if (facility.company_id !== user.company_id) {
+      throw new Error("No tienes acceso a los ajustes de esta instalación");
     }
 
     // Return facility settings
