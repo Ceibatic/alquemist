@@ -27,9 +27,10 @@ export const list = query({
     const allFacilities = await facilitiesQuery.collect();
     let facilities = allFacilities;
 
-    // Filter by status if provided
-    if (args.status) {
-      facilities = facilities.filter(f => f.status === args.status);
+    // Filter by status - default to "active" if not specified
+    const statusFilter = args.status || "active";
+    if (statusFilter !== "all") {
+      facilities = facilities.filter(f => f.status === statusFilter);
     }
 
     // Apply pagination
