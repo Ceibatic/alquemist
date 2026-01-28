@@ -31,9 +31,6 @@ import {
   Container,
   Wrench,
   FileText,
-  Plant,
-  Seedling,
-  Tree,
   Leaf,
 } from 'lucide-react';
 import { productCategoryLabels, productStatusLabels } from '@/lib/validations/product';
@@ -67,9 +64,9 @@ const categoryIcons: Record<string, React.ComponentType<{ className?: string }>>
   substrate: Layers,
   container: Container,
   tool: Wrench,
-  clone: Plant,
-  seedling: Seedling,
-  mother_plant: Tree,
+  clone: Sprout,
+  seedling: Sprout,
+  mother_plant: Sprout,
   plant_material: Leaf,
   other: FileText,
 };
