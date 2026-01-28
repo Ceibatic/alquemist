@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation, useAction } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Mail, Clock, X, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -42,7 +42,7 @@ export function InvitationCard({ invitation }: InvitationCardProps) {
   const [isCanceling, setIsCanceling] = useState(false);
 
   const { toast } = useToast();
-  const resendMutation = useMutation(api.invitations.resend);
+  const resendAction = useAction(api.invitations.resend);
   const cancelMutation = useMutation(api.invitations.cancel);
 
   // Calculate time until expiration
@@ -55,7 +55,7 @@ export function InvitationCard({ invitation }: InvitationCardProps) {
   const handleResend = async () => {
     setIsResending(true);
     try {
-      await resendMutation({ invitationId: invitation.id });
+      await resendAction({ invitationId: invitation.id });
       toast({
         title: 'Invitación reenviada',
         description: `Se ha reenviado la invitación a ${invitation.email}`,
@@ -105,6 +105,8 @@ export function InvitationCard({ invitation }: InvitationCardProps) {
                 <div className="font-medium text-gray-900">{invitation.email}</div>
                 <div className="text-sm text-gray-600">
                   Rol: <span className="font-medium">{invitation.roleName}</span>
+                  {' · '}
+                  Invitado por: <span className="font-medium">{invitation.inviterName}</span>
                 </div>
               </div>
 

@@ -17,25 +17,28 @@ interface UserTableData {
   status: string;
   lastLogin?: number;
   createdAt: number;
+  accessibleFacilityIds?: string[];
 }
 
 interface UserTableProps {
   users: UserTableData[];
+  companyId?: Id<'companies'>;
+  onEditRole?: (user: UserTableData) => void;
 }
 
-export function UserTable({ users }: UserTableProps) {
+export function UserTable({ users, companyId, onEditRole }: UserTableProps) {
   const columns: ColumnDef<UserTableData>[] = [
     {
       id: 'user',
       header: 'Usuario',
-      cell: ({ row }) => <UserRow user={row.original} />,
+      cell: ({ row }) => <UserRow user={row.original} companyId={companyId} onEditRole={onEditRole} />,
     },
   ];
 
   return (
     <div className="rounded-lg border bg-white">
       {users.map((user) => (
-        <UserRow key={user.id} user={user} />
+        <UserRow key={user.id} user={user} companyId={companyId} onEditRole={onEditRole} />
       ))}
     </div>
   );
