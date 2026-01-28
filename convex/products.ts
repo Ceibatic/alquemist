@@ -96,7 +96,20 @@ export const create = mutation({
     sku: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
-    category: v.string(),
+    category: v.union(
+      v.literal("seed"),
+      v.literal("nutrient"),
+      v.literal("pesticide"),
+      v.literal("equipment"),
+      v.literal("substrate"),
+      v.literal("container"),
+      v.literal("tool"),
+      v.literal("clone"),
+      v.literal("seedling"),
+      v.literal("mother_plant"),
+      v.literal("plant_material"),
+      v.literal("other")
+    ),
     subcategory: v.optional(v.string()),
     default_unit: v.optional(v.string()),
 
@@ -119,7 +132,9 @@ export const create = mutation({
 
     // Pricing
     default_price: v.optional(v.number()),
-    price_currency: v.optional(v.string()),
+    price_currency: v.optional(
+      v.union(v.literal("COP"), v.literal("USD"), v.literal("EUR"))
+    ),
     price_unit: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -198,11 +213,29 @@ export const update = mutation({
     productId: v.id("products"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
-    category: v.optional(v.string()),
+    category: v.optional(
+      v.union(
+        v.literal("seed"),
+        v.literal("nutrient"),
+        v.literal("pesticide"),
+        v.literal("equipment"),
+        v.literal("substrate"),
+        v.literal("container"),
+        v.literal("tool"),
+        v.literal("clone"),
+        v.literal("seedling"),
+        v.literal("mother_plant"),
+        v.literal("plant_material"),
+        v.literal("other")
+      )
+    ),
     subcategory: v.optional(v.string()),
     default_unit: v.optional(v.string()),
     preferred_supplier_id: v.optional(v.id("suppliers")),
     default_price: v.optional(v.number()),
+    price_currency: v.optional(
+      v.union(v.literal("COP"), v.literal("USD"), v.literal("EUR"))
+    ),
     price_unit: v.optional(v.string()),
     weight_value: v.optional(v.number()),
     weight_unit: v.optional(v.string()),
@@ -210,7 +243,7 @@ export const update = mutation({
     regulatory_registration_number: v.optional(v.string()),
     organic_certified: v.optional(v.boolean()),
     organic_cert_number: v.optional(v.string()),
-    status: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("active"), v.literal("discontinued"))),
     // Price history tracking (optional)
     priceChangeReason: v.optional(v.string()),
     priceChangeCategory: v.optional(v.string()),
