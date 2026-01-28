@@ -97,8 +97,8 @@ export function BatchHarvestWizard({ batch, open, onOpenChange }: BatchHarvestWi
   const user = useQuery(api.users.getCurrentUser);
   const products = useQuery(
     api.products.list,
-    open && user?.company_id
-      ? { companyId: user.company_id }
+    open && user?.companyId
+      ? { companyId: user.companyId }
       : 'skip'
   );
 
@@ -160,7 +160,7 @@ export function BatchHarvestWizard({ batch, open, onOpenChange }: BatchHarvestWi
 
   // Get product name helper
   const getProductName = (productId: string) => {
-    const product = products?.items?.find(p => p._id === productId);
+    const product = products?.products?.find(p => p._id === productId);
     return product ? product.name : '';
   };
 
@@ -463,7 +463,7 @@ export function BatchHarvestWizard({ batch, open, onOpenChange }: BatchHarvestWi
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {products?.items?.map((product) => (
+                          {products?.products?.map((product) => (
                             <SelectItem key={product._id} value={product._id}>
                               {product.name} - {product.sku}
                             </SelectItem>

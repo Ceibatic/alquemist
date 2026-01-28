@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Progress } from '@/components/ui/progress';
@@ -22,11 +23,19 @@ import {
   MapPin,
   Calendar,
   AlertTriangle,
+  Archive,
 } from 'lucide-react';
+import { BatchMoveModal } from './batch-move-modal';
+import { BatchSplitWizard } from './batch-split-wizard';
+import { BatchLossModal } from './batch-loss-modal';
+import { BatchHarvestWizard } from './batch-harvest-wizard';
+import { BatchMergeModal } from './batch-merge-modal';
+import { BatchArchiveModal } from './batch-archive-modal';
+import { Id } from '@/convex/_generated/dataModel';
 
 interface BatchCardProps {
   batch: {
-    _id: string;
+    _id: Id<'batches'>;
     batch_code: string;
     status: string;
     batch_type: string;
@@ -42,11 +51,31 @@ interface BatchCardProps {
     current_phase?: string;
     daysInProduction: number;
     created_date: number;
+    current_area_id?: Id<'areas'>;
+    area_id?: Id<'areas'>; // Required by modals
+    cultivar_id?: Id<'cultivars'> | null;
+    crop_type_id?: Id<'crop_types'>;
+    facility_id: Id<'facilities'>;
+    company_id: Id<'companies'>;
+    enable_individual_tracking?: boolean;
+    germination_date?: number;
+    notes?: string;
+    source_type?: string;
+    production_order_id?: Id<'production_orders'>;
+    unit_of_measure?: string; // Required by modals
   };
   onClick: () => void;
 }
 
 export function BatchCard({ batch, onClick }: BatchCardProps) {
+  // Modal state management
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [splitModalOpen, setSplitModalOpen] = useState(false);
+  const [lossModalOpen, setLossModalOpen] = useState(false);
+  const [harvestModalOpen, setHarvestModalOpen] = useState(false);
+  const [mergeModalOpen, setMergeModalOpen] = useState(false);
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('es-ES', {
       day: '2-digit',
@@ -141,25 +170,35 @@ export function BatchCard({ batch, onClick }: BatchCardProps) {
               </DropdownMenuItem>
               {batch.status === 'active' && (
                 <>
-                  <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setMoveModalOpen(true); }}>
                     <ArrowRight className="h-4 w-4 mr-2" />
                     Mover
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSplitModalOpen(true); }}>
                     <Split className="h-4 w-4 mr-2" />
                     Dividir
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setMergeModalOpen(true); }}>
                     <Merge className="h-4 w-4 mr-2" />
                     Fusionar
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setHarvestModalOpen(true); }}>
+                    <Leaf className="h-4 w-4 mr-2" />
+                    Cosechar
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); setLossModalOpen(true); }}
                     className="text-red-600"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Registrar Perdida
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => { e.stopPropagation(); setArchiveModalOpen(true); }}
+                  >
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archivar
                   </DropdownMenuItem>
                 </>
               )}
@@ -239,6 +278,38 @@ export function BatchCard({ batch, onClick }: BatchCardProps) {
           </div>
         </div>
       </CardContent>
+
+      {/* Modals */}
+      <BatchMoveModal
+        batch={batch as any}
+        open={moveModalOpen}
+        onOpenChange={setMoveModalOpen}
+      />
+      <BatchSplitWizard
+        batch={batch as any}
+        open={splitModalOpen}
+        onOpenChange={setSplitModalOpen}
+      />
+      <BatchLossModal
+        batch={batch as any}
+        open={lossModalOpen}
+        onOpenChange={setLossModalOpen}
+      />
+      <BatchHarvestWizard
+        batch={batch as any}
+        open={harvestModalOpen}
+        onOpenChange={setHarvestModalOpen}
+      />
+      <BatchMergeModal
+        batch={batch as any}
+        open={mergeModalOpen}
+        onOpenChange={setMergeModalOpen}
+      />
+      <BatchArchiveModal
+        batch={batch as any}
+        open={archiveModalOpen}
+        onOpenChange={setArchiveModalOpen}
+      />
     </Card>
   );
 }

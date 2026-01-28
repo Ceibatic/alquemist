@@ -15,6 +15,12 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { PlantsTab } from '@/components/plants';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { BatchMoveModal } from '@/components/batches/batch-move-modal';
+import { BatchSplitWizard } from '@/components/batches/batch-split-wizard';
+import { BatchLossModal } from '@/components/batches/batch-loss-modal';
+import { BatchHarvestWizard } from '@/components/batches/batch-harvest-wizard';
+import { BatchMergeModal } from '@/components/batches/batch-merge-modal';
+import { BatchArchiveModal } from '@/components/batches/batch-archive-modal';
 import {
   Layers,
   Leaf,
@@ -26,6 +32,8 @@ import {
   ArrowRight,
   History,
   Scissors,
+  Merge,
+  Archive,
 } from 'lucide-react';
 
 interface PageProps {
@@ -38,6 +46,14 @@ export default function BatchDetailPage({ params }: PageProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [userId, setUserId] = useState<Id<'users'> | null>(null);
+
+  // Modal state management
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [splitModalOpen, setSplitModalOpen] = useState(false);
+  const [lossModalOpen, setLossModalOpen] = useState(false);
+  const [harvestModalOpen, setHarvestModalOpen] = useState(false);
+  const [mergeModalOpen, setMergeModalOpen] = useState(false);
+  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
 
   // Get user ID from cookies
   useEffect(() => {
@@ -145,14 +161,30 @@ export default function BatchDetailPage({ params }: PageProps) {
         description={`${batch.cultivarName || batch.cropTypeName || 'Sin cultivar'} - ${batch.areaName || 'Sin area'}`}
         action={
           batch.status === 'active' ? (
-            <div className="flex gap-2">
-              <Button variant="outline">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => setMoveModalOpen(true)}>
                 <ArrowRight className="h-4 w-4 mr-2" />
                 Mover
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" onClick={() => setSplitModalOpen(true)}>
                 <Scissors className="h-4 w-4 mr-2" />
                 Dividir
+              </Button>
+              <Button variant="outline" onClick={() => setMergeModalOpen(true)}>
+                <Merge className="h-4 w-4 mr-2" />
+                Fusionar
+              </Button>
+              <Button variant="outline" onClick={() => setHarvestModalOpen(true)}>
+                <Leaf className="h-4 w-4 mr-2" />
+                Cosechar
+              </Button>
+              <Button variant="outline" onClick={() => setLossModalOpen(true)} className="text-red-600 hover:text-red-700">
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Perdida
+              </Button>
+              <Button variant="outline" onClick={() => setArchiveModalOpen(true)}>
+                <Archive className="h-4 w-4 mr-2" />
+                Archivar
               </Button>
             </div>
           ) : undefined
@@ -498,6 +530,42 @@ export default function BatchDetailPage({ params }: PageProps) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Operation Modals */}
+      {batch && (
+        <>
+          <BatchMoveModal
+            batch={batch as any}
+            open={moveModalOpen}
+            onOpenChange={setMoveModalOpen}
+          />
+          <BatchSplitWizard
+            batch={batch as any}
+            open={splitModalOpen}
+            onOpenChange={setSplitModalOpen}
+          />
+          <BatchLossModal
+            batch={batch as any}
+            open={lossModalOpen}
+            onOpenChange={setLossModalOpen}
+          />
+          <BatchHarvestWizard
+            batch={batch as any}
+            open={harvestModalOpen}
+            onOpenChange={setHarvestModalOpen}
+          />
+          <BatchMergeModal
+            batch={batch as any}
+            open={mergeModalOpen}
+            onOpenChange={setMergeModalOpen}
+          />
+          <BatchArchiveModal
+            batch={batch as any}
+            open={archiveModalOpen}
+            onOpenChange={setArchiveModalOpen}
+          />
+        </>
+      )}
     </div>
   );
 }
