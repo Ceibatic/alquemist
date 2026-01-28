@@ -57,6 +57,9 @@ export function FacilityForm({
     },
   });
 
+  // Detect edit mode - if defaultValues has a license_number, we're editing
+  const isEditMode = !!defaultValues?.license_number;
+
   // Fetch crop types for multi-select
   const cropTypes = useQuery(api.crops.getCropTypes, {});
 
@@ -121,11 +124,15 @@ export function FacilityForm({
             <Label htmlFor="license_number">
               Número de Licencia
               <span className="text-destructive ml-1">*</span>
+              {isEditMode && (
+                <span className="text-muted-foreground text-xs ml-2">(No editable)</span>
+              )}
             </Label>
             <Input
               id="license_number"
               {...register('license_number')}
               placeholder="Ej: INV-2024-001"
+              disabled={isEditMode}
               className={errors.license_number ? 'border-destructive' : ''}
             />
             {errors.license_number && (
