@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -88,33 +89,15 @@ export function ProductDetailContent({ productId }: ProductDetailContentProps) {
   }
 
   if (product === null) {
-    return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Producto no encontrado"
-          icon={ShoppingCart}
-          breadcrumbs={[
-            { label: 'Inicio', href: '/dashboard' },
-            { label: 'Productos', href: '/products' },
-            { label: 'No encontrado' },
-          ]}
-        />
-        <Card>
-          <CardContent className="py-12 text-center">
-            <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">El producto solicitado no existe o fue eliminado.</p>
-            <Button
-              variant="link"
-              onClick={() => router.push('/products')}
-              className="mt-4"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver a productos
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    // Product not found - redirect to products list
+    useEffect(() => {
+      toast.error('Producto no encontrado', {
+        description: 'El producto que buscas no existe o fue eliminado',
+      });
+      router.push('/products');
+    }, [router]);
+
+    return null; // Return null while redirect happens
   }
 
   const CategoryIcon = categoryIcons[product.category] || FileText;
