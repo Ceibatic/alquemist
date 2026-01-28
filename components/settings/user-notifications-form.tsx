@@ -20,7 +20,7 @@ interface UserNotificationsFormProps {
 }
 
 export function UserNotificationsForm({ userId, user }: UserNotificationsFormProps) {
-  const updateUser = useMutation(api.users.updateProfile);
+  const updateNotificationSettings = useMutation(api.users.updateNotificationSettings);
 
   const {
     handleSubmit,
@@ -64,7 +64,7 @@ export function UserNotificationsForm({ userId, user }: UserNotificationsFormPro
 
   const onSubmit = async (data: NotificationPreferencesInput) => {
     try {
-      await updateUser({
+      await updateNotificationSettings({
         userId,
         email_notifications: data.email_notifications,
         sms_notifications: data.sms_notifications,

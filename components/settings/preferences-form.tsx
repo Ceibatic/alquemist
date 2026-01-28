@@ -55,7 +55,7 @@ const TIMEZONES = [
 ];
 
 export function PreferencesForm({ userId, user }: PreferencesFormProps) {
-  const updateUser = useMutation(api.users.updateProfile);
+  const updatePreferences = useMutation(api.users.updatePreferences);
 
   const {
     handleSubmit,
@@ -83,10 +83,8 @@ export function PreferencesForm({ userId, user }: PreferencesFormProps) {
 
   const onSubmit = async (data: UserProfileSettingsInput) => {
     try {
-      await updateUser({
+      await updatePreferences({
         userId,
-        first_name: user.first_name,
-        last_name: user.last_name,
         locale: data.locale,
         timezone: data.timezone,
         date_format: data.date_format,
