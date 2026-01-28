@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MapPin, ArrowRight, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   facilityLocationSchema,
   type FacilityLocationFormValues,
@@ -135,6 +136,8 @@ export default function FacilityLocationPage() {
         return;
       }
 
+      toast.success('Instalación creada correctamente');
+
       // Clear sessionStorage data
       sessionStorage.removeItem('facilityBasicData');
       sessionStorage.removeItem('facilityLocationData');
@@ -199,7 +202,6 @@ export default function FacilityLocationPage() {
         <div className="space-y-2">
           <Label htmlFor="address">
             Dirección
-            <span className="text-destructive ml-1">*</span>
           </Label>
           <Input
             id="address"
@@ -218,7 +220,6 @@ export default function FacilityLocationPage() {
         <div className="space-y-2">
           <Label>
             Coordenadas GPS
-            <span className="text-destructive ml-1">*</span>
           </Label>
           <GeolocationButton
             coordinates={coordinates}

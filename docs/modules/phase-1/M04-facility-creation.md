@@ -16,15 +16,15 @@ El modulo de Creacion de Instalacion permite al fundador crear su primera instal
 **Para** registrar mi primer lugar de operaciones
 
 **Criterios de Aceptacion:**
-- [ ] Pagina accesible en `/facility-setup`
-- [ ] Solo accesible para usuarios con empresa pero sin facility
-- [ ] Redirige a dashboard si ya tiene facility
-- [ ] Titulo "Agregar Instalacion"
-- [ ] Indicador de progreso (Paso 2 de 2 - Onboarding)
-- [ ] Indicador de sub-paso (1 de 2 - Facility)
+- [x] Pagina accesible en `/facility-basic`
+- [x] Solo accesible para usuarios con empresa pero sin facility (redirect guard via sessionStorage)
+- [x] Redirige a setup-complete si ya tiene facility
+- [x] Titulo "Información Básica de la Instalación"
+- [x] Indicador de progreso (Paso 3 de 4)
+- [x] Indicador de sub-paso (1/2 - Facility)
 - [ ] Formulario en dos columnas (desktop) o una columna (mobile)
 
-**Componentes:** [facility-setup/page.tsx](app/(onboarding)/facility-setup/page.tsx), [facility-basic-form.tsx](components/onboarding/facility-basic-form.tsx)
+**Componentes:** [facility-basic/page.tsx](app/(onboarding)/facility-basic/page.tsx)
 
 ---
 
@@ -34,18 +34,18 @@ El modulo de Creacion de Instalacion permite al fundador crear su primera instal
 **Para** identificarla en el sistema
 
 **Criterios de Aceptacion:**
-- [ ] **Campos del formulario:**
-  - Nombre de la Instalacion* (ej: "Finca Norte")
+- [x] **Campos del formulario:**
+  - Nombre de la Instalacion* (ej: "Finca La Esperanza")
   - Numero de Licencia* (alfanumerico, unico)
-  - Tipo de Licencia* (radio: Cultivo Comercial, Investigacion, Procesamiento, Otro)
+  - Tipo de Licencia* (select: Cultivo Comercial, Investigacion, Procesamiento, Otro)
   - Area Licenciada (m²) (numerico, opcional)
   - Cultivos Principales* (checkboxes multi-select: Cannabis, Cafe, Cacao, Flores)
-- [ ] Al menos un cultivo debe estar seleccionado
-- [ ] Validacion en tiempo real
-- [ ] Boton "Continuar" navega al paso 2
-- [ ] Datos se guardan temporalmente (no se envian aun)
+- [x] Al menos un cultivo debe estar seleccionado
+- [x] Validacion en tiempo real (Zod + React Hook Form)
+- [x] Boton "Continuar a Ubicación" navega al paso 2
+- [x] Datos se guardan temporalmente en sessionStorage
 
-**Componentes:** [facility-basic-form.tsx](components/onboarding/facility-basic-form.tsx)
+**Componentes:** [facility-basic/page.tsx](app/(onboarding)/facility-basic/page.tsx)
 
 ---
 
@@ -55,19 +55,19 @@ El modulo de Creacion de Instalacion permite al fundador crear su primera instal
 **Para** establecer su contexto geografico
 
 **Criterios de Aceptacion:**
-- [ ] Pagina o seccion `/facility-setup/location` o mismo componente
-- [ ] **Campos del formulario:**
-  - Departamento* (pre-llenado desde empresa, editable)
+- [x] Pagina `/facility-location`
+- [x] **Campos del formulario:**
+  - Departamento* (cascading select)
   - Municipio* (filtrado por departamento)
   - Direccion (texto libre, opcional)
   - Latitud (numerico, opcional)
   - Longitud (numerico, opcional)
-  - Zona Climatica* (radio: Tropical, Subtropical, Templado)
-- [ ] Boton "Obtener Mi Ubicacion" para GPS automatico
+  - Zona Climatica* (select: Tropical, Subtropical, Templado)
+- [x] Boton "Obtener Mi Ubicacion" para GPS automatico (GeolocationButton)
 - [ ] Mapa de preview (opcional, futuro)
-- [ ] Botones "Atras" y "Crear Instalacion"
+- [x] Botones "Volver a Información Básica" y "Completar Configuración"
 
-**Componentes:** [facility-location-form.tsx](components/onboarding/facility-location-form.tsx)
+**Componentes:** [facility-location/page.tsx](app/(onboarding)/facility-location/page.tsx), [actions.ts](app/(onboarding)/facility-location/actions.ts)
 
 ---
 
@@ -77,14 +77,14 @@ El modulo de Creacion de Instalacion permite al fundador crear su primera instal
 **Para** no tener que ingresarlas manualmente
 
 **Criterios de Aceptacion:**
-- [ ] Boton "Obtener Mi Ubicacion" con icono MapPin
-- [ ] Solicita permiso de geolocalizacion al navegador
-- [ ] Muestra estado de carga mientras obtiene coordenadas
-- [ ] Llena campos de latitud y longitud automaticamente
-- [ ] Mensaje de error si se niega permiso o falla
-- [ ] Precision de al menos 6 decimales
+- [x] Boton "Obtener Mi Ubicacion" con icono MapPin
+- [x] Solicita permiso de geolocalizacion al navegador
+- [x] Muestra estado de carga mientras obtiene coordenadas
+- [x] Llena campos de latitud y longitud automaticamente
+- [x] Mensaje de error si se niega permiso o falla
+- [x] Precision de al menos 6 decimales
 
-**Componentes:** [facility-location-form.tsx](components/onboarding/facility-location-form.tsx)
+**Componentes:** [facility-location/page.tsx](app/(onboarding)/facility-location/page.tsx), [geolocation-button.tsx](components/shared/geolocation-button.tsx)
 
 ---
 
@@ -94,13 +94,13 @@ El modulo de Creacion de Instalacion permite al fundador crear su primera instal
 **Para** comenzar a operar en la plataforma
 
 **Criterios de Aceptacion:**
-- [ ] Instalacion creada en tabla `facilities`
-- [ ] Vinculada a la empresa del usuario
-- [ ] Usuario agregado a `facility_users` con rol heredado
-- [ ] Usuario actualizado con `currentFacilityId`
-- [ ] Tipos de cultivo vinculados a la instalacion
-- [ ] Toast de exito "Instalacion creada correctamente"
-- [ ] Redirige a `/onboarding-complete`
+- [x] Instalacion creada en tabla `facilities`
+- [x] Vinculada a la empresa del usuario
+- [x] Usuario agregado a `facility_users` con rol heredado
+- [x] Usuario actualizado con `primaryFacilityId`
+- [x] Tipos de cultivo vinculados a la instalacion
+- [x] Toast de exito "Instalación creada correctamente"
+- [x] Redirige a `/setup-complete`
 
 **Escribe:**
 - `facilities.create(...)` → crea instalacion
@@ -154,18 +154,19 @@ El modulo de Creacion de Instalacion permite al fundador crear su primera instal
 **Para** confirmar que todo esta listo
 
 **Criterios de Aceptacion:**
-- [ ] Pagina `/onboarding-complete`
-- [ ] Icono de check verde grande
-- [ ] Titulo "Instalacion Creada!"
-- [ ] Resumen: Empresa + Instalacion creadas
-- [ ] Lista de proximos pasos sugeridos:
+- [x] Pagina `/setup-complete`
+- [x] Icono de check verde grande
+- [x] Titulo "¡Configuración Completa!"
+- [x] Resumen: Empresa Registrada + Instalación Configurada
+- [x] Lista de proximos pasos sugeridos:
   - Crear areas de cultivo
-  - Registrar cultivares
-  - Agregar proveedores (opcional)
-- [ ] Boton "Ir al Panel de Control" (amber-500)
-- [ ] Redirige a `/dashboard`
+  - Agregar cultivares
+  - Registrar inventario inicial
+  - Invitar equipo
+- [x] Boton "Ir al Dashboard"
+- [x] Redirige a `/dashboard`
 
-**Componentes:** [onboarding-complete/page.tsx](app/(onboarding)/onboarding-complete/page.tsx)
+**Componentes:** [setup-complete/page.tsx](app/(onboarding)/setup-complete/page.tsx)
 
 ---
 
@@ -175,10 +176,10 @@ El modulo de Creacion de Instalacion permite al fundador crear su primera instal
 **Para** respetar los limites del plan
 
 **Criterios de Aceptacion:**
-- [ ] Verifica company.max_facilities antes de crear
-- [ ] Si limite alcanzado, muestra error descriptivo
-- [ ] Sugiere actualizar plan si es trial
-- [ ] En onboarding, siempre permite la primera facility
+- [x] Verifica company.max_facilities antes de crear
+- [x] Si limite alcanzado, muestra error descriptivo
+- [x] Sugiere actualizar plan si es trial
+- [x] Valida automaticamente contando facilities existentes (sin skipLimitValidation)
 
 **Validaciones backend:**
 - Cuenta facilities existentes de la empresa
@@ -199,8 +200,9 @@ El modulo de Creacion de Instalacion permite al fundador crear su primera instal
 | `license_type` | `string` | Tipo de licencia |
 | `total_area_m2` | `number?` | Area total en m² |
 | `primary_crop_type_ids` | `array<id>` | IDs de tipos de cultivo |
-| `department_code` | `string` | Codigo departamento |
-| `municipality_code` | `string` | Codigo municipio |
+| `administrative_division_1` | `string?` | Nombre departamento |
+| `administrative_division_2` | `string?` | Nombre municipio |
+| `regional_code` | `string?` | Codigo DANE municipio |
 | `address` | `string?` | Direccion fisica |
 | `latitude` | `number?` | Coordenada GPS |
 | `longitude` | `number?` | Coordenada GPS |
@@ -273,9 +275,11 @@ El modulo de Creacion de Instalacion permite al fundador crear su primera instal
 ### Queries
 | Funcion | Parametros | Retorna |
 |---------|------------|---------|
-| `get` | `facilityId, companyId` | Facility completo |
-| `listByCompany` | `companyId` | Lista de facilities |
-| `countByCompany` | `companyId` | Numero de facilities |
+| `get` | `id, companyId` | Facility completo |
+| `list` | `companyId, status?, limit?, offset?` | Lista paginada de facilities |
+| `getFacilitiesByCompany` | `companyId` | Lista de facilities |
+| `getById` | `facilityId, companyId` | Facility completo |
+| `checkLicenseAvailability` | `licenseNumber` | `{ available, licenseNumber }` |
 
 ---
 
@@ -285,16 +289,16 @@ El modulo de Creacion de Instalacion permite al fundador crear su primera instal
 /company-setup (completado)
     |
     v
-/facility-setup (Paso 1: Info Basica)
+/facility-basic (Paso 1: Info Basica)
     |
     v
-/facility-setup (Paso 2: Ubicacion)
+/facility-location (Paso 2: Ubicacion + Datos de Ejemplo)
     |
     v
-[Facility creada]
+[Facility creada + seed data]
     |
     v
-/onboarding-complete
+/setup-complete
     |
     v
 /dashboard

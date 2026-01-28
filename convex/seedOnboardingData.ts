@@ -210,6 +210,28 @@ const cannabisConfig: CropConfig = {
       cbd_max: 1,
       notes: "Genética nativa colombiana, perfectamente adaptada al clima local.",
     },
+    {
+      name: "White Widow (Demo)",
+      variety_type: "hybrid",
+      genetic_lineage: "Brazilian Sativa x South Indian Indica",
+      flowering_time_days: 60,
+      thc_min: 18,
+      thc_max: 25,
+      cbd_min: 0.1,
+      cbd_max: 0.2,
+      notes: "Aromas: earthy, woody, pungent. Alta resina, ideal para extracción.",
+    },
+    {
+      name: "Critical Mass (Demo)",
+      variety_type: "indica",
+      genetic_lineage: "Afghani x Skunk #1",
+      flowering_time_days: 50,
+      thc_min: 19,
+      thc_max: 22,
+      cbd_min: 5,
+      cbd_max: 8,
+      notes: "Alto CBD, ideal para uso medicinal. Rendimiento muy alto: 600-750g/m².",
+    },
   ],
   suppliers: [
     {
