@@ -352,10 +352,10 @@ export default function FacilityDetailPage() {
                           title="Mapa de ubicación de la instalación"
                           width="100%"
                           height="100%"
-                          frameBorder="0"
                           style={{ border: 0 }}
-                          referrerPolicy="no-referrer-when-downgrade"
-                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${facility.longitude - 0.01},${facility.latitude - 0.01},${facility.longitude + 0.01},${facility.latitude + 0.01}&layer=mapnik&marker=${facility.latitude},${facility.longitude}`}
+                          referrerPolicy="no-referrer"
+                          sandbox="allow-scripts allow-same-origin"
+                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(String(facility.longitude! - 0.01))},${encodeURIComponent(String(facility.latitude! - 0.01))},${encodeURIComponent(String(facility.longitude! + 0.01))},${encodeURIComponent(String(facility.latitude! + 0.01))}&layer=mapnik&marker=${encodeURIComponent(String(facility.latitude!))},${encodeURIComponent(String(facility.longitude!))}`}
                           allowFullScreen
                         />
                       </div>
@@ -525,7 +525,7 @@ export default function FacilityDetailPage() {
                   </div>
 
                   {/* Cultivation Area Bar */}
-                  {facility.cultivation_area_m2 && (
+                  {facility.cultivation_area_m2 && facility.total_area_m2 > 0 && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Área de Cultivo</span>
@@ -538,7 +538,7 @@ export default function FacilityDetailPage() {
                         <div
                           className="h-3 bg-green-500 rounded-full transition-all"
                           style={{
-                            width: `${(facility.cultivation_area_m2 / facility.total_area_m2) * 100}%`,
+                            width: `${Math.min((facility.cultivation_area_m2 / facility.total_area_m2) * 100, 100)}%`,
                           }}
                         />
                       </div>
@@ -546,7 +546,7 @@ export default function FacilityDetailPage() {
                   )}
 
                   {/* Canopy Area Bar */}
-                  {facility.canopy_area_m2 && facility.cultivation_area_m2 && (
+                  {facility.canopy_area_m2 && facility.cultivation_area_m2 && facility.cultivation_area_m2 > 0 && (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">Área de Dosel</span>
@@ -559,7 +559,7 @@ export default function FacilityDetailPage() {
                         <div
                           className="h-3 bg-amber-500 rounded-full transition-all"
                           style={{
-                            width: `${(facility.canopy_area_m2 / facility.cultivation_area_m2) * 100}%`,
+                            width: `${Math.min((facility.canopy_area_m2 / facility.cultivation_area_m2) * 100, 100)}%`,
                           }}
                         />
                       </div>

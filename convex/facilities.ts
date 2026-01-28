@@ -296,13 +296,20 @@ export const remove = mutation({
     const activeBatches = await ctx.db
       .query("batches")
       .withIndex("by_facility", (q) => q.eq("facility_id", args.id))
-      .filter((q) => q.neq(q.field("status"), "completed"))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "active"),
+          q.eq(q.field("status"), "harvested"),
+          q.eq(q.field("status"), "split"),
+          q.eq(q.field("status"), "merged")
+        )
+      )
       .first();
 
     if (activeBatches) {
       throw new Error(
-        "No puedes desactivar una instalación con lotes activos. " +
-        "Completa o cancela todos los lotes antes de desactivar la instalación."
+        "No puedes desactivar una instalación con lotes activos o en proceso. " +
+        "Archiva todos los lotes antes de desactivar la instalación."
       );
     }
 
