@@ -152,7 +152,9 @@ export function SupplierList({ companyId }: SupplierListProps) {
       setSupplierToAction(null);
     } catch (error) {
       console.error('Error toggling supplier status:', error);
-      toast.error('Error al actualizar el estado del proveedor');
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error al actualizar el estado del proveedor';
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -181,7 +183,9 @@ export function SupplierList({ companyId }: SupplierListProps) {
       setSupplierToAction(null);
     } catch (error) {
       console.error('Error deleting supplier:', error);
-      toast.error('Error al eliminar el proveedor');
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error al eliminar el proveedor';
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }

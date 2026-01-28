@@ -5,6 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { validateEmail, formatColombianPhone } from "./validation";
 
 /**
@@ -19,6 +20,15 @@ export const getByCompany = query({
     productCategory: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated and has access to the company
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const user = await ctx.db.get(userId);
+      if (user && user.company_id !== args.companyId) {
+        throw new Error("No tienes acceso a los proveedores de esta empresa");
+      }
+    }
+
     let suppliersQuery = ctx.db
       .query("suppliers")
       .withIndex("by_company", (q) => q.eq("company_id", args.companyId));
@@ -55,6 +65,15 @@ export const list = query({
     productCategory: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated and has access to the company
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const user = await ctx.db.get(userId);
+      if (user && user.company_id !== args.companyId) {
+        throw new Error("No tienes acceso a los proveedores de esta empresa");
+      }
+    }
+
     let suppliersQuery = ctx.db
       .query("suppliers")
       .withIndex("by_company", (q) => q.eq("company_id", args.companyId));
@@ -84,7 +103,19 @@ export const get = query({
     id: v.id("suppliers"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const supplier = await ctx.db.get(args.id);
+    if (!supplier) return null;
+
+    // Auth: Verify user is authenticated and has access to supplier's company
+    const userId = await getAuthUserId(ctx);
+    if (userId) {
+      const user = await ctx.db.get(userId);
+      if (user && user.company_id !== supplier.company_id) {
+        throw new Error("No tienes acceso a este proveedor");
+      }
+    }
+
+    return supplier;
   },
 });
 
@@ -133,9 +164,38 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
 
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
+    // Auth: Verify user belongs to company
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== args.companyId) {
+      throw new Error("No tienes permiso para crear proveedores en esta empresa");
+    }
+
     // Validate product categories
     if (!args.productCategories || args.productCategories.length === 0) {
       throw new Error("Debe seleccionar al menos una categoría de producto");
+    }
+
+    // Sanitize and validate name
+    const sanitizedName = args.name.trim();
+    if (sanitizedName.length === 0) {
+      throw new Error("El nombre no puede estar vacío");
+    }
+
+    // Validation: Check unique name per company
+    const existingSupplier = await ctx.db
+      .query("suppliers")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .filter((q) => q.eq(q.field("name"), sanitizedName))
+      .first();
+
+    if (existingSupplier && existingSupplier.is_active) {
+      throw new Error("Ya existe un proveedor activo con ese nombre en tu empresa");
     }
 
     // Validate email format if provided
@@ -153,22 +213,22 @@ export const create = mutation({
       company_id: args.companyId,
 
       // Basic information
-      name: args.name,
-      legal_name: args.legalName,
-      tax_id: args.taxId,
-      business_type: args.businessType,
-      registration_number: args.registrationNumber,
+      name: sanitizedName,
+      legal_name: args.legalName?.trim(),
+      tax_id: args.taxId?.trim(),
+      business_type: args.businessType?.trim(),
+      registration_number: args.registrationNumber?.trim(),
 
       // Contact
-      primary_contact_name: args.primaryContactName,
-      primary_contact_email: args.primaryContactEmail,
+      primary_contact_name: args.primaryContactName?.trim(),
+      primary_contact_email: args.primaryContactEmail?.trim(),
       primary_contact_phone: formattedPhone,
 
       // Location
-      address: args.address,
-      city: args.city,
-      administrative_division_1: args.administrativeDivision1,
-      country: args.country || "CO",
+      address: args.address?.trim(),
+      city: args.city?.trim(),
+      administrative_division_1: args.administrativeDivision1?.trim(),
+      country: args.country?.trim() || "CO",
 
       // Product & Specialization
       product_categories: args.productCategories,
@@ -184,13 +244,13 @@ export const create = mutation({
       licenses: args.licenses,
 
       // Financial
-      payment_terms: args.paymentTerms,
-      currency: args.currency || "COP",
+      payment_terms: args.paymentTerms?.trim(),
+      currency: args.currency?.trim() || "COP",
 
       // Metadata
       is_approved: false, // Requires manual approval
       is_active: true,
-      notes: args.notes,
+      notes: args.notes?.trim(),
       created_at: now,
       updated_at: now,
     });
@@ -250,10 +310,41 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { id, companyId, ...updates } = args;
 
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
+    // Auth: Verify user belongs to company
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== companyId) {
+      throw new Error("No tienes permiso para modificar proveedores en esta empresa");
+    }
+
     // Verify company ownership
     const supplier = await ctx.db.get(id);
     if (!supplier || supplier.company_id !== companyId) {
       throw new Error("Proveedor no encontrado o acceso denegado");
+    }
+
+    // Validate and check unique name if being updated
+    if (updates.name !== undefined) {
+      const sanitizedName = updates.name.trim();
+      if (sanitizedName.length === 0) {
+        throw new Error("El nombre no puede estar vacío");
+      }
+
+      // Check unique name per company (excluding current supplier)
+      const existingSupplier = await ctx.db
+        .query("suppliers")
+        .withIndex("by_company", (q) => q.eq("company_id", companyId))
+        .filter((q) => q.eq(q.field("name"), sanitizedName))
+        .first();
+
+      if (existingSupplier && existingSupplier._id !== id && existingSupplier.is_active) {
+        throw new Error("Ya existe un proveedor activo con ese nombre en tu empresa");
+      }
     }
 
     // Validate email format if being updated
@@ -272,32 +363,32 @@ export const update = mutation({
     };
 
     // Basic information
-    if (updates.name !== undefined) updateData.name = updates.name;
-    if (updates.legalName !== undefined) updateData.legal_name = updates.legalName;
-    if (updates.taxId !== undefined) updateData.tax_id = updates.taxId;
-    if (updates.businessType !== undefined) updateData.business_type = updates.businessType;
+    if (updates.name !== undefined) updateData.name = updates.name.trim();
+    if (updates.legalName !== undefined) updateData.legal_name = updates.legalName.trim();
+    if (updates.taxId !== undefined) updateData.tax_id = updates.taxId.trim();
+    if (updates.businessType !== undefined) updateData.business_type = updates.businessType.trim();
     if (updates.registrationNumber !== undefined) {
-      updateData.registration_number = updates.registrationNumber;
+      updateData.registration_number = updates.registrationNumber.trim();
     }
 
     // Contact
     if (updates.primaryContactName !== undefined) {
-      updateData.primary_contact_name = updates.primaryContactName;
+      updateData.primary_contact_name = updates.primaryContactName.trim();
     }
     if (updates.primaryContactEmail !== undefined) {
-      updateData.primary_contact_email = updates.primaryContactEmail;
+      updateData.primary_contact_email = updates.primaryContactEmail.trim();
     }
     if (updates.primaryContactPhone !== undefined) {
       updateData.primary_contact_phone = formatColombianPhone(updates.primaryContactPhone);
     }
 
     // Location
-    if (updates.address !== undefined) updateData.address = updates.address;
-    if (updates.city !== undefined) updateData.city = updates.city;
+    if (updates.address !== undefined) updateData.address = updates.address.trim();
+    if (updates.city !== undefined) updateData.city = updates.city.trim();
     if (updates.administrativeDivision1 !== undefined) {
-      updateData.administrative_division_1 = updates.administrativeDivision1;
+      updateData.administrative_division_1 = updates.administrativeDivision1.trim();
     }
-    if (updates.country !== undefined) updateData.country = updates.country;
+    if (updates.country !== undefined) updateData.country = updates.country.trim();
 
     // Product & Specialization
     if (updates.productCategories !== undefined) {
@@ -319,13 +410,13 @@ export const update = mutation({
     if (updates.licenses !== undefined) updateData.licenses = updates.licenses;
 
     // Financial
-    if (updates.paymentTerms !== undefined) updateData.payment_terms = updates.paymentTerms;
-    if (updates.currency !== undefined) updateData.currency = updates.currency;
+    if (updates.paymentTerms !== undefined) updateData.payment_terms = updates.paymentTerms.trim();
+    if (updates.currency !== undefined) updateData.currency = updates.currency.trim();
 
     // Metadata
     if (updates.isApproved !== undefined) updateData.is_approved = updates.isApproved;
     if (updates.isActive !== undefined) updateData.is_active = updates.isActive;
-    if (updates.notes !== undefined) updateData.notes = updates.notes;
+    if (updates.notes !== undefined) updateData.notes = updates.notes.trim();
 
     await ctx.db.patch(id, updateData);
 
@@ -343,6 +434,18 @@ export const toggleStatus = mutation({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
+    // Auth: Verify user belongs to company
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== args.companyId) {
+      throw new Error("No tienes permiso para modificar proveedores en esta empresa");
+    }
+
     // Verify company ownership
     const supplier = await ctx.db.get(args.supplierId);
     if (!supplier || supplier.company_id !== args.companyId) {
@@ -377,6 +480,18 @@ export const remove = mutation({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
+    // Auth: Verify user is authenticated
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado");
+    }
+
+    // Auth: Verify user belongs to company
+    const user = await ctx.db.get(userId);
+    if (!user || user.company_id !== args.companyId) {
+      throw new Error("No tienes permiso para eliminar proveedores en esta empresa");
+    }
+
     // Verify company ownership
     const supplier = await ctx.db.get(args.id);
     if (!supplier || supplier.company_id !== args.companyId) {
