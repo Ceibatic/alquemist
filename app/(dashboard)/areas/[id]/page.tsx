@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +30,7 @@ import {
   Box,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useFacility } from '@/components/providers/facility-provider';
 
 const areaTypeLabels: Record<string, string> = {
   propagation: 'Propagacion',
@@ -63,25 +63,8 @@ interface CapacityConfig {
 export default function AreaDetailPage() {
   const params = useParams();
   const areaId = params.id as Id<'areas'>;
-  const [companyId, setCompanyId] = useState<string>('');
-
-  useEffect(() => {
-    // Get user data from cookies
-    const userDataCookie = document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('user_data='));
-
-    if (userDataCookie) {
-      try {
-        const userData = JSON.parse(
-          decodeURIComponent(userDataCookie.split('=')[1])
-        );
-        setCompanyId(userData.companyId || '');
-      } catch (err) {
-        console.error('Error loading user data:', err);
-      }
-    }
-  }, []);
+  const { currentCompanyId } = useFacility();
+  const companyId = currentCompanyId ?? '';
 
   const area = useQuery(api.areas.getById, { areaId });
   const cropTypes = useQuery(api.crops.getCropTypes, { includeInactive: false });
