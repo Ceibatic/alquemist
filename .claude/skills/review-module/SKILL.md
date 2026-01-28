@@ -148,6 +148,8 @@ Ordenado por prioridad (critico > importante > menor):
 - Incluir `Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>` en cada commit
 - Crear branch ANTES de cualquier implementación
 - NO hacer merge sin confirmación explícita del usuario
+- Verificar build (`npm run build`) antes de crear PR
+- Seguir convenciones de commits: `feat(module):`, `fix(module):`, `docs(module):`
 
 ## Fase 6: Implementación con Subagents
 
@@ -161,11 +163,24 @@ PRIMER PASO obligatorio antes de cualquier implementación:
 git checkout -b fix/[modulo]-audit-[YYYY-MM-DD] main
 ```
 
+**Convenciones de nombres de branch:**
+- Audit fixes: `fix/{modulo}-audit-{YYYY-MM-DD}`
+- Module completion: `feat/{modulo}-completion`
+- New module: `feat/{modulo}-implementation`
+- Hotfixes: `hotfix/{issue-description}`
+
 **Ejemplos de branches exitosos previos:**
 - `fix/registration-audit-2026-01-27`
 - `fix/area-management-audit-2026-01-27`
-- `fix/user-invitation-audit-2026-01-27`
-- `fix/facility-creation-audit-2026-01-27`
+- `feat/batches-completion`
+- `feat/quality-checks-implementation`
+
+**IMPORTANTE:** Verificar que estás en main y actualizado antes de crear branch:
+```bash
+git checkout main
+git pull
+git checkout -b fix/[modulo]-audit-[YYYY-MM-DD]
+```
 
 ### Paso 2: Implementar TODAS las Tareas del Plan
 
@@ -198,6 +213,16 @@ Para cada tarea del plan:
 3. **Esperar a que el task complete** antes de lanzar el siguiente
 
 4. **NO omitir tareas menores** a menos que el usuario explícitamente diga "solo implementa crítico e importante"
+
+**Commits de calidad:**
+- Un cambio lógico por commit (no acumular múltiples features)
+- Mensajes descriptivos en formato convencional:
+  - `feat(module): add feature description`
+  - `fix(module): fix bug description`
+  - `refactor(module): refactor description`
+  - `docs(module): update documentation`
+- Siempre incluir Co-Authored-By en cada commit
+- Commits frecuentes = mejor trazabilidad
 
 **Ejemplo de uso de Task:**
 
@@ -238,41 +263,180 @@ git commit -m "docs: add implementation log for [modulo] audit"
 - **Commit:** `a170d75`, `9b2afc6`, `5774067`, `57a510f`
 ```
 
-### Paso 4: Push y PR
+### Paso 4: Verificar Build y Push
 
-1. **Push de la branch:**
+**ANTES de push, verificar build:**
+```bash
+npm run build
+```
+
+Si el build falla:
+- Corregir errores TypeScript inmediatamente
+- Hacer commit del fix
+- Re-verificar build
+
+**Después de build exitoso, push:**
 ```bash
 git push -u origin fix/[modulo]-audit-[fecha]
 ```
 
-2. **Preguntar al usuario** si desea crear un PR
+### Paso 5: Crear Pull Request
 
-3. **Si acepta, crear PR:**
+1. **Preguntar al usuario** si desea crear un PR
+
+2. **Si acepta, crear PR:**
 ```bash
 gh pr create --title "fix([modulo]): audit implementation - [resumen]" --body "$(cat <<'EOF'
 ## Summary
 [Resumen ejecutivo del audit report]
 
 ## Changes Implemented
+
 ### Critical
-- [lista de fixes críticos]
+- [lista de fixes críticos con archivos modificados]
 
 ### Important
-- [lista de fixes importantes]
+- [lista de fixes importantes con archivos modificados]
 
 ### Minor
-- [lista de fixes menores]
+- [lista de fixes menores con archivos modificados]
+
+## Module Status
+- **Before:** {percentage}% complete
+- **After:** {percentage}% complete
+- **Coverage:** Backend {%}, Frontend {%}, Security {%}
+
+## Build Verification
+- ✅ TypeScript compilation successful
+- ✅ Build passes (`npm run build`)
+- ✅ No linting errors
 
 ## Test Plan
 - [Cómo verificar que funciona]
+- [User flows probados]
+- [Edge cases verificados]
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
 ```
 
-4. **Preguntar al usuario** si desea hacer merge
+3. **Preguntar al usuario** si desea hacer merge
 
-5. **Si acepta:** `gh pr merge [numero] --merge`
+4. **Si acepta, verificar antes de merge:**
+   - Build pasó en local
+   - No hay conflictos con main
+   - Commits están limpios y bien formateados
+   - Dev log está actualizado
+
+5. **Merge:**
+```bash
+# Merge normal (mantiene historial de commits)
+gh pr merge [numero] --merge
+
+# O squash merge (condensa múltiples commits en uno)
+gh pr merge [numero] --squash
+```
+
+**Uso de squash merge:**
+- Si hay muchos commits pequeños/incrementales: usar `--squash`
+- Si commits son lógicos y bien organizados: usar `--merge`
+- En duda, preguntar al usuario
+
+6. **Post-merge cleanup:**
+```bash
+git checkout main
+git pull
+git branch -d fix/[modulo]-audit-[fecha]
+```
 
 ⚠️ **NUNCA hacer merge sin confirmación explícita del usuario**
+
+### Paso 6: Documentación Post-Merge
+
+Después del merge exitoso:
+1. Verificar que el módulo actualice su estado en `docs/modules/` si cambió el porcentaje
+2. Cerrar issues relacionados si los hay
+3. Si el módulo alcanzó 100%, considerar mencionarlo en changelog o release notes
+
+---
+
+## Best Practices del Workflow
+
+### Branch Hygiene
+- **Una branch = un módulo o feature**: No mezclar múltiples módulos en una branch
+- **Branches cortas**: Intentar merge en < 1 semana para evitar conflictos
+- **Rebase antes de PR**: Si main avanzó, hacer `git rebase main` antes de crear PR
+- **Limpieza post-merge**: Siempre eliminar branches locales después de merge
+
+### Calidad de Commits
+**Buenos commits:**
+```
+feat(batches): add split wizard with quantity validation
+fix(batches): correct area_id field name in filter logic
+docs(batches): update M25 status to 100% complete
+```
+
+**Malos commits (EVITAR):**
+```
+updates
+fix bug
+wip
+changes
+quick fix
+```
+
+### Code Review Checklist
+Al revisar cambios antes de PR:
+- ✅ TypeScript types correctos (no `any` innecesarios)
+- ✅ Auth guards presentes en todas las mutations
+- ✅ Validación dual (frontend Zod + backend Convex)
+- ✅ Estados de loading/error en UI
+- ✅ Responsive design (mobile + desktop)
+- ✅ Sin over-engineering (mantener simplicidad)
+- ✅ Sigue patrones existentes del proyecto
+
+### Manejo de Errores Durante Implementación
+
+**Si el build falla:**
+1. Leer el error completo en consola
+2. Identificar archivo y línea exacta
+3. Corregir el problema
+4. Commit del fix con mensaje descriptivo
+5. Re-verificar build
+
+**Si una task falla:**
+1. Revisar output del agent
+2. Determinar si es un problema de prompt o de código
+3. Corregir y re-lanzar task
+4. No continuar con siguiente task hasta resolver
+
+**Si hay conflictos con main:**
+1. `git fetch origin main`
+2. `git rebase origin/main`
+3. Resolver conflictos manualmente
+4. `git rebase --continue`
+5. Force push si es necesario: `git push --force-with-lease`
+
+### Emergency Hotfixes
+
+Para bugs críticos en producción:
+1. Crear branch desde main: `git checkout -b hotfix/[descripcion-bug]`
+2. Fix mínimo y específico (no agregar features)
+3. Build verification obligatoria
+4. PR con prefijo "hotfix:" en título
+5. Review inmediato
+6. Merge prioritario
+
+### Tips de Productividad
+- **Draft PRs**: Crear PR en modo draft para feedback temprano
+- **Commits atómicos**: Cada commit debe ser compilable por sí solo
+- **Build local siempre**: Nunca confiar en que "debería funcionar" sin verificar
+- **PRs pequeños**: Ideal < 500 líneas cambiadas (más fácil de revisar)
+- **Comunicación**: Si hay dudas arquitecturales, preguntar antes de implementar
+
+### Referencias Rápidas
+- Convenciones de proyecto: `CLAUDE.md`
+- Documentación de módulos: `docs/modules/phase-{1,2,3,4}/`
+- Patrones de código: `docs/patterns/`
+- Logs de desarrollo: `docs/dev/logs/`
