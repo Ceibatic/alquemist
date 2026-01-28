@@ -924,6 +924,19 @@ export const updateProfile = mutation({
     }
 
     // ============================================================================
+    // SECURITY CHECK - Email immutability
+    // ============================================================================
+
+    // Prevent email modification - email is immutable after account creation
+    if ('email' in args) {
+      throw new ConvexError({
+        message: "El email no puede ser modificado. Contacta soporte si necesitas cambiar tu email.",
+        type: "validation",
+        field: "email",
+      });
+    }
+
+    // ============================================================================
     // VALIDATIONS - Execute before any updates
     // ============================================================================
 
