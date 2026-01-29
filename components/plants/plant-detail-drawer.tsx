@@ -168,16 +168,15 @@ export function PlantDetailDrawer({
                       Mover
                     </Button>
 
-                    {plant.batch_type === 'mother' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setCloningModalOpen(true)}
-                      >
-                        <Scissors className="h-4 w-4 mr-2" />
-                        Clonar
-                      </Button>
-                    )}
+                    {/* TODO: Add batch_type check when field is available */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setCloningModalOpen(true)}
+                    >
+                      <Scissors className="h-4 w-4 mr-2" />
+                      Clonar
+                    </Button>
 
                     <Button
                       size="sm"
