@@ -72,9 +72,10 @@ interface PlantMoveModalProps {
     plant_code: string;
     batch_id: Id<'batches'>;
     area_id: Id<'areas'>;
-    position?: string;
+    position?: string | {};
     cultivar_id: Id<'cultivars'>;
     facility_id: Id<'facilities'>;
+    [key: string]: any; // Allow additional enriched fields
   };
   open: boolean;
   onOpenChange: (open: boolean) => void;

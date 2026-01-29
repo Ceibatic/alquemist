@@ -51,6 +51,7 @@ interface PlantCloningModalProps {
     status: string;
     company_id: Id<'companies'>;
     facility_id: Id<'facilities'>;
+    [key: string]: any; // Allow additional enriched fields
   };
   open: boolean;
   onOpenChange: (open: boolean) => void;

@@ -34,6 +34,7 @@ interface PlantHarvestModalProps {
     batch_id: Id<'batches'>;
     current_height_cm?: number;
     status: string;
+    [key: string]: any; // Allow additional enriched fields
   };
   batchPhase?: string;
   userId: Id<'users'>;
