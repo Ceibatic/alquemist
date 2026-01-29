@@ -28,9 +28,13 @@ import {
   FileText,
   Heart,
   Clock,
+  ArrowRight,
 } from 'lucide-react';
 import { PlantMeasurementModal } from './plant-measurement-modal';
 import { PlantLossModal } from './plant-loss-modal';
+import { PlantMoveModal } from './plant-move-modal';
+import { PlantCloningModal } from './plant-cloning-modal';
+import { PlantHarvestModal } from './plant-harvest-modal';
 
 interface PlantDetailDrawerProps {
   plantId: Id<'plants'> | null;
@@ -46,6 +50,9 @@ export function PlantDetailDrawer({
   const { toast } = useToast();
   const [showMeasurementModal, setShowMeasurementModal] = useState(false);
   const [showLossModal, setShowLossModal] = useState(false);
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [cloningModalOpen, setCloningModalOpen] = useState(false);
+  const [harvestModalOpen, setHarvestModalOpen] = useState(false);
 
   const plant = useQuery(
     api.plants.getById,
@@ -152,6 +159,34 @@ export function PlantDetailDrawer({
                       <Camera className="h-4 w-4 mr-2" />
                       Foto
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setMoveModalOpen(true)}
+                    >
+                      <ArrowRight className="h-4 w-4 mr-2" />
+                      Mover
+                    </Button>
+
+                    {plant.batch_type === 'mother' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCloningModalOpen(true)}
+                      >
+                        <Scissors className="h-4 w-4 mr-2" />
+                        Clonar
+                      </Button>
+                    )}
+
+                    <Button
+                      size="sm"
+                      onClick={() => setHarvestModalOpen(true)}
+                    >
+                      <Leaf className="h-4 w-4 mr-2" />
+                      Cosechar
+                    </Button>
+
                     <Button
                       size="sm"
                       variant="outline"
@@ -436,6 +471,22 @@ export function PlantDetailDrawer({
             onClose={() => setShowLossModal(false)}
             plantId={plant._id}
             plantCode={plant.plant_code}
+          />
+          <PlantMoveModal
+            plant={plant}
+            open={moveModalOpen}
+            onOpenChange={setMoveModalOpen}
+          />
+          <PlantCloningModal
+            plant={plant}
+            open={cloningModalOpen}
+            onOpenChange={setCloningModalOpen}
+          />
+          <PlantHarvestModal
+            plant={plant}
+            batchPhase={plant.current_phase}
+            open={harvestModalOpen}
+            onOpenChange={setHarvestModalOpen}
           />
         </>
       )}
