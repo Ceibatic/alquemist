@@ -46,7 +46,7 @@ interface PlantCloningModalProps {
     _id: Id<'plants'>;
     plant_code: string;
     batch_id: Id<'batches'>;
-    cultivar_id: Id<'cultivars'> | undefined;
+    cultivar_id?: Id<'cultivars'>;
     clones_taken_count: number;
     status: string;
     company_id: Id<'companies'>;

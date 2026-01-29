@@ -73,7 +73,7 @@ interface PlantMoveModalProps {
     batch_id: Id<'batches'>;
     area_id: Id<'areas'>;
     position?: string | {};
-    cultivar_id: Id<'cultivars'>;
+    cultivar_id?: Id<'cultivars'>;
     facility_id: Id<'facilities'>;
     [key: string]: any; // Allow additional enriched fields
   };
@@ -130,7 +130,7 @@ export function PlantMoveModal({ plant, open, onOpenChange }: PlantMoveModalProp
       moveType: 'same_area',
       targetAreaId: '',
       targetBatchId: '',
-      position: plant.position || '',
+      position: (typeof plant.position === 'string' ? plant.position : '') || '',
       reason: '',
       notes: '',
     },
@@ -145,7 +145,7 @@ export function PlantMoveModal({ plant, open, onOpenChange }: PlantMoveModalProp
         moveType: 'same_area',
         targetAreaId: '',
         targetBatchId: '',
-        position: plant.position || '',
+        position: (typeof plant.position === 'string' ? plant.position : '') || '',
         reason: '',
         notes: '',
       });

@@ -483,7 +483,8 @@ export function PlantDetailDrawer({
           />
           <PlantHarvestModal
             plant={plant}
-            batchPhase={plant.current_phase}
+            batchPhase={(plant as any).current_phase}
+            userId={userId}
             open={harvestModalOpen}
             onOpenChange={setHarvestModalOpen}
           />
