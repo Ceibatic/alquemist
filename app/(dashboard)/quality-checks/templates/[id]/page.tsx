@@ -121,10 +121,12 @@ export default function QCTemplateDetailPage({ params }: { params: Promise<{ id:
     currentCompanyId ? { companyId: currentCompanyId } : 'skip'
   );
 
-  const plants = useQuery(
-    api.plants.list,
-    currentCompanyId ? { companyId: currentCompanyId } : 'skip'
-  );
+  // TODO: Implement plants list query for quality checks
+  // const plants = useQuery(
+  //   api.plants.list,
+  //   currentCompanyId ? { companyId: currentCompanyId } : 'skip'
+  // );
+  const plants = undefined; // Placeholder until plants.list query is implemented
 
   // Mutations
   const duplicateTemplate = useMutation(api.qualityCheckTemplates.duplicate);
