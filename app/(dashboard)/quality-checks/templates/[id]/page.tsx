@@ -126,7 +126,7 @@ export default function QCTemplateDetailPage({ params }: { params: Promise<{ id:
   //   api.plants.list,
   //   currentCompanyId ? { companyId: currentCompanyId } : 'skip'
   // );
-  const plants = undefined; // Placeholder until plants.list query is implemented
+  const plants: Array<{ _id: Id<'plants'>; plant_code: string }> | undefined = undefined; // Placeholder until plants.list query is implemented
 
   // Mutations
   const duplicateTemplate = useMutation(api.qualityCheckTemplates.duplicate);
@@ -250,7 +250,7 @@ export default function QCTemplateDetailPage({ params }: { params: Promise<{ id:
   const entityOptions =
     selectedEntityType === 'batch'
       ? batches?.map((b) => ({ value: b._id, label: b.batch_code })) || []
-      : plants?.map((p) => ({ value: p._id, label: p.plant_code })) || [];
+      : []; // TODO: Add plants options when plants.list query is implemented
 
   return (
     <div className="space-y-6">
