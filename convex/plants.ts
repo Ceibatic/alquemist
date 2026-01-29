@@ -6,6 +6,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
  * List plants for a batch
@@ -155,6 +156,11 @@ export const createBulk = mutation({
     createdBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const batch = await ctx.db.get(args.batchId);
@@ -245,6 +251,11 @@ export const recordMeasurement = mutation({
     recordedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const plant = await ctx.db.get(args.plantId);
@@ -303,6 +314,11 @@ export const recordActivity = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const plant = await ctx.db.get(args.plantId);
@@ -348,6 +364,11 @@ export const markAsLost = mutation({
     photoUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const plant = await ctx.db.get(args.plantId);
@@ -416,6 +437,11 @@ export const move = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const plant = await ctx.db.get(args.plantId);
@@ -536,6 +562,11 @@ export const takeClones = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const motherPlant = await ctx.db.get(args.motherPlantId);
@@ -728,6 +759,11 @@ export const harvest = mutation({
     harvestedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const plant = await ctx.db.get(args.plantId);
@@ -781,6 +817,11 @@ export const bulkHarvest = mutation({
     harvestedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
     let harvestedCount = 0;
     let totalWeight = 0;
@@ -835,6 +876,11 @@ export const updateStage = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const now = Date.now();
 
     const plant = await ctx.db.get(args.plantId);
