@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -27,7 +28,11 @@ import {
   Heart,
   AlertTriangle,
   Frown,
+  Ruler,
+  ArrowRight,
+  X,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface PlantsTabProps {
   batchId: Id<'batches'>;
@@ -40,10 +45,15 @@ export function PlantsTab({ batchId, userId }: PlantsTabProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [healthFilter, setHealthFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedPlantIds, setSelectedPlantIds] = useState<Id<'plants'>[]>([]);
+  const [isBulkOperating, setIsBulkOperating] = useState(false);
 
   // Fetch plants
   const plants = useQuery(api.plants.listByBatch, { batchId });
   const stats = useQuery(api.plants.getStatsByBatch, { batchId });
+
+  // Mutations
+  const bulkHarvest = useMutation(api.plants.bulkHarvest);
 
   // Filter plants
   const filteredPlants = plants?.filter((plant) => {
@@ -61,6 +71,74 @@ export function PlantsTab({ batchId, userId }: PlantsTabProps) {
     }
     return true;
   });
+
+  // Only allow selection of active plants
+  const selectablePlants = filteredPlants?.filter(p => p.status === 'active') || [];
+
+  // Select all logic
+  const selectAll = selectedPlantIds.length > 0 &&
+    selectedPlantIds.length === selectablePlants.length;
+
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedPlantIds([]);
+    } else {
+      setSelectedPlantIds(selectablePlants.map(p => p._id));
+    }
+  };
+
+  // Toggle individual plant selection
+  const togglePlantSelection = (plantId: Id<'plants'>) => {
+    setSelectedPlantIds(prev =>
+      prev.includes(plantId)
+        ? prev.filter(id => id !== plantId)
+        : [...prev, plantId]
+    );
+  };
+
+  // Bulk action handlers
+  const handleBulkHarvest = async () => {
+    if (selectedPlantIds.length === 0) return;
+
+    // Simple confirmation
+    if (!confirm(`¿Deseas cosechar ${selectedPlantIds.length} planta(s)?`)) {
+      return;
+    }
+
+    try {
+      setIsBulkOperating(true);
+
+      // For now, use default values - in a full implementation,
+      // this would open a modal to collect these values
+      await bulkHarvest({
+        plantIds: selectedPlantIds,
+        weightPerPlant: 0, // Would be collected from a modal
+        quality: 'good',
+        harvestedBy: userId,
+      });
+
+      toast.success(`${selectedPlantIds.length} planta(s) cosechadas exitosamente`);
+      setSelectedPlantIds([]);
+    } catch (error) {
+      console.error('Error al cosechar plantas:', error);
+      toast.error('Error al cosechar plantas');
+    } finally {
+      setIsBulkOperating(false);
+    }
+  };
+
+  const handleBulkMove = () => {
+    toast.info('Mover plantas - Próximamente');
+  };
+
+  const handleBulkMeasurement = () => {
+    toast.info('Medición masiva - Próximamente');
+  };
+
+  // Clear selection when filters change
+  useEffect(() => {
+    setSelectedPlantIds([]);
+  }, [statusFilter, healthFilter, searchQuery]);
 
   if (plants === undefined || stats === undefined) {
     return (
@@ -178,11 +256,84 @@ export function PlantsTab({ batchId, userId }: PlantsTabProps) {
         </CardContent>
       </Card>
 
+      {/* Selection Toolbar */}
+      {selectedPlantIds.length > 0 && (
+        <Card className="bg-amber-50 border-amber-200">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  checked={selectAll}
+                  onCheckedChange={toggleSelectAll}
+                  disabled={selectablePlants.length === 0}
+                />
+                <span className="font-medium text-gray-900">
+                  {selectedPlantIds.length} planta(s) seleccionada(s)
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedPlantIds([])}
+                  className="bg-white"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancelar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkMeasurement}
+                  disabled={isBulkOperating}
+                  className="bg-white"
+                >
+                  <Ruler className="h-4 w-4 mr-2" />
+                  Medir
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkMove}
+                  disabled={isBulkOperating}
+                  className="bg-white"
+                >
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  Mover
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleBulkHarvest}
+                  disabled={isBulkOperating}
+                  className="bg-amber-500 hover:bg-amber-600"
+                >
+                  <Leaf className="h-4 w-4 mr-2" />
+                  {isBulkOperating ? 'Cosechando...' : 'Cosechar'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Results count */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">
-          Mostrando {filteredPlants?.length || 0} de {plants?.length || 0} plantas
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-gray-500">
+            Mostrando {filteredPlants?.length || 0} de {plants?.length || 0} plantas
+          </p>
+          {selectablePlants.length > 0 && selectedPlantIds.length === 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleSelectAll}
+              className="text-xs"
+            >
+              Seleccionar todas ({selectablePlants.length})
+            </Button>
+          )}
+        </div>
         {(statusFilter !== 'all' || healthFilter !== 'all' || searchQuery) && (
           <Button
             variant="ghost"
@@ -207,23 +358,40 @@ export function PlantsTab({ batchId, userId }: PlantsTabProps) {
               : 'space-y-2'
           }
         >
-          {filteredPlants.map((plant) =>
-            viewMode === 'grid' ? (
+          {filteredPlants.map((plant) => {
+            const isSelectable = plant.status === 'active';
+            const isSelected = selectedPlantIds.includes(plant._id);
+
+            return viewMode === 'grid' ? (
               <PlantCard
                 key={plant._id}
                 plant={plant}
                 onClick={() => setSelectedPlantId(plant._id)}
+                selected={isSelected}
+                selectable={isSelectable}
+                onSelectChange={isSelectable ? () => togglePlantSelection(plant._id) : undefined}
               />
             ) : (
               <Card
                 key={plant._id}
                 className="cursor-pointer hover:bg-gray-50"
-                onClick={() => setSelectedPlantId(plant._id)}
               >
                 <CardContent className="p-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
+                    {isSelectable && (
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => togglePlantSelection(plant._id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    )}
                     <Leaf className="h-5 w-5 text-green-600" />
-                    <span className="font-mono font-medium">{plant.plant_code}</span>
+                    <span
+                      className="font-mono font-medium"
+                      onClick={() => setSelectedPlantId(plant._id)}
+                    >
+                      {plant.plant_code}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     {plant.current_height_cm && (
@@ -250,8 +418,8 @@ export function PlantsTab({ batchId, userId }: PlantsTabProps) {
                   </div>
                 </CardContent>
               </Card>
-            )
-          )}
+            );
+          })}
         </div>
       ) : (
         <Card>

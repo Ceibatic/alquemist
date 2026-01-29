@@ -2,6 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Leaf, Ruler, Activity, QrCode } from 'lucide-react';
 
@@ -18,9 +19,11 @@ interface PlantCardProps {
   };
   onClick?: () => void;
   selected?: boolean;
+  selectable?: boolean;
+  onSelectChange?: () => void;
 }
 
-export function PlantCard({ plant, onClick, selected }: PlantCardProps) {
+export function PlantCard({ plant, onClick, selected, selectable, onSelectChange }: PlantCardProps) {
   const healthStyles = {
     healthy: {
       bg: 'bg-green-50 border-green-200',
@@ -54,15 +57,24 @@ export function PlantCard({ plant, onClick, selected }: PlantCardProps) {
       className={cn(
         'cursor-pointer transition-all hover:shadow-md',
         healthStyle.bg,
-        selected && 'ring-2 ring-green-500'
+        selected && 'ring-2 ring-amber-500'
       )}
-      onClick={onClick}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
+            {selectable && onSelectChange && (
+              <Checkbox
+                checked={selected}
+                onCheckedChange={onSelectChange}
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
             <QrCode className={cn('h-4 w-4', healthStyle.icon)} />
-            <span className="font-mono text-sm font-semibold">
+            <span
+              className="font-mono text-sm font-semibold"
+              onClick={onClick}
+            >
               {plant.plant_code.split('-').pop()}
             </span>
           </div>
