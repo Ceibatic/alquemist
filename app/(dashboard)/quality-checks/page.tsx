@@ -154,19 +154,11 @@ export default function QualityChecksPage() {
 
   // Handlers
   const handleViewTemplate = (template: any) => {
-    toast({
-      title: 'Vista detalle',
-      description: `Ver template: ${template.name}`,
-    });
-    // TODO: router.push(`/quality-checks/templates/${template._id}`);
+    router.push(`/quality-checks/templates/${template._id}`);
   };
 
   const handleEditTemplate = (template: any) => {
-    toast({
-      title: 'Editar template',
-      description: `Editar: ${template.name}`,
-    });
-    // TODO: router.push(`/quality-checks/templates/${template._id}/edit`);
+    router.push(`/quality-checks/templates/${template._id}/edit`);
   };
 
   const handleDuplicateTemplate = async (template: any) => {
