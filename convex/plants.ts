@@ -6,6 +6,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
  * List plants for a batch
@@ -17,6 +18,32 @@ export const listByBatch = query({
     healthStatus: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
+    // Get batch to verify company
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch) {
+      throw new Error("Batch not found");
+    }
+
+    // Get user to verify company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Verify company matches
+    if (batch.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para acceder a estas plantas");
+    }
+
     let plants = await ctx.db
       .query("plants")
       .withIndex("by_batch", (q) => q.eq("batch_id", args.batchId))
@@ -44,9 +71,29 @@ export const getById = query({
     plantId: v.id("plants"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
     const plant = await ctx.db.get(args.plantId);
     if (!plant) {
       return null;
+    }
+
+    // Get user to verify company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Verify company matches
+    if (plant.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para acceder a estas plantas");
     }
 
     // Get related entities
@@ -113,6 +160,32 @@ export const getStatsByBatch = query({
     batchId: v.id("batches"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
+    // Get batch to verify company
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch) {
+      throw new Error("Batch not found");
+    }
+
+    // Get user to verify company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
+    // Verify company matches
+    if (batch.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para acceder a estas plantas");
+    }
+
     const plants = await ctx.db
       .query("plants")
       .withIndex("by_batch", (q) => q.eq("batch_id", args.batchId))
@@ -155,11 +228,31 @@ export const createBulk = mutation({
     createdBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
+    // Get user to verify company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
     const now = Date.now();
 
     const batch = await ctx.db.get(args.batchId);
     if (!batch) {
       throw new Error("Batch not found");
+    }
+
+    // Verify company matches
+    if (batch.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar esta planta");
     }
 
     // Verify tracking is enabled
@@ -245,11 +338,31 @@ export const recordMeasurement = mutation({
     recordedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
+    // Get user to verify company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
     const now = Date.now();
 
     const plant = await ctx.db.get(args.plantId);
     if (!plant) {
       throw new Error("Plant not found");
+    }
+
+    // Verify company matches
+    if (plant.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar esta planta");
     }
 
     if (plant.status !== "active") {
@@ -303,11 +416,31 @@ export const recordActivity = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
+    // Get user to verify company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
     const now = Date.now();
 
     const plant = await ctx.db.get(args.plantId);
     if (!plant) {
       throw new Error("Plant not found");
+    }
+
+    // Verify company matches
+    if (plant.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar esta planta");
     }
 
     if (plant.status !== "active") {
@@ -348,11 +481,31 @@ export const markAsLost = mutation({
     photoUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
+    // Get user to verify company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
     const now = Date.now();
 
     const plant = await ctx.db.get(args.plantId);
     if (!plant) {
       throw new Error("Plant not found");
+    }
+
+    // Verify company matches
+    if (plant.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar esta planta");
     }
 
     if (plant.status !== "active") {
@@ -416,11 +569,31 @@ export const move = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
+    // Get user to verify company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
     const now = Date.now();
 
     const plant = await ctx.db.get(args.plantId);
     if (!plant) {
       throw new Error("Plant not found");
+    }
+
+    // Verify company matches
+    if (plant.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar esta planta");
     }
 
     if (plant.status !== "active") {
@@ -536,11 +709,31 @@ export const takeClones = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
+    // Get user to verify company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
     const now = Date.now();
 
     const motherPlant = await ctx.db.get(args.motherPlantId);
     if (!motherPlant) {
       throw new Error("Mother plant not found");
+    }
+
+    // Verify company matches
+    if (motherPlant.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar esta planta");
     }
 
     if (motherPlant.status !== "active") {
@@ -728,11 +921,31 @@ export const harvest = mutation({
     harvestedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
+    // Get user to verify company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
     const now = Date.now();
 
     const plant = await ctx.db.get(args.plantId);
     if (!plant) {
       throw new Error("Plant not found");
+    }
+
+    // Verify company matches
+    if (plant.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar esta planta");
     }
 
     if (plant.status !== "active") {
@@ -781,6 +994,21 @@ export const bulkHarvest = mutation({
     harvestedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
+    // Get user to verify company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
     const now = Date.now();
     let harvestedCount = 0;
     let totalWeight = 0;
@@ -788,6 +1016,11 @@ export const bulkHarvest = mutation({
     for (const plantId of args.plantIds) {
       const plant = await ctx.db.get(plantId);
       if (!plant || plant.status !== "active") {
+        continue;
+      }
+
+      // Verify company matches
+      if (plant.company_id !== user.company_id) {
         continue;
       }
 
@@ -835,11 +1068,31 @@ export const updateStage = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("No autorizado");
+    }
+
+    // Get user to verify company
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("Usuario no encontrado");
+    }
+
     const now = Date.now();
 
     const plant = await ctx.db.get(args.plantId);
     if (!plant) {
       throw new Error("Plant not found");
+    }
+
+    // Verify company matches
+    if (plant.company_id !== user.company_id) {
+      throw new Error("No tienes permisos para operar esta planta");
     }
 
     if (plant.status !== "active") {
