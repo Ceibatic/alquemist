@@ -30,10 +30,7 @@ export const listByBatch = query({
     }
 
     // Get user to verify company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -82,10 +79,7 @@ export const getById = query({
     }
 
     // Get user to verify company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -172,10 +166,7 @@ export const getStatsByBatch = query({
     }
 
     // Get user to verify company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -234,10 +225,7 @@ export const createBulk = mutation({
     }
 
     // Get user to verify company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -344,10 +332,7 @@ export const recordMeasurement = mutation({
     }
 
     // Get user to verify company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -422,10 +407,7 @@ export const recordActivity = mutation({
     }
 
     // Get user to verify company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -487,10 +469,7 @@ export const markAsLost = mutation({
     }
 
     // Get user to verify company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -544,7 +523,6 @@ export const markAsLost = mutation({
       await ctx.db.insert("batch_losses", {
         batch_id: batch._id,
         quantity: 1, // One plant lost
-        loss_type: args.reason as "disease" | "pest" | "environmental" | "handling" | "other",
         reason: args.reason,
         description: args.description || `Planta individual ${plant.plant_code} marcada como perdida`,
         detection_date: args.detectionDate || now,
@@ -589,10 +567,7 @@ export const move = mutation({
     }
 
     // Get user to verify company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -729,10 +704,7 @@ export const takeClones = mutation({
     }
 
     // Get user to verify company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -941,10 +913,7 @@ export const harvest = mutation({
     }
 
     // Get user to verify company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -1014,10 +983,7 @@ export const bulkHarvest = mutation({
     }
 
     // Get user to verify company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -1088,10 +1054,7 @@ export const updateStage = mutation({
     }
 
     // Get user to verify company
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .first();
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
