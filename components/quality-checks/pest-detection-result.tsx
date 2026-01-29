@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Bug,
-  Virus,
+  Activity,
   Droplet,
   CloudRain,
   AlertTriangle,
@@ -47,7 +47,7 @@ const categoryConfig = {
     color: 'bg-orange-100 text-orange-800 border-orange-200',
   },
   disease: {
-    icon: Virus,
+    icon: Activity,
     label: 'Enfermedad',
     color: 'bg-red-100 text-red-800 border-red-200',
   },
