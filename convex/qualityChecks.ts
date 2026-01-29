@@ -245,7 +245,51 @@ export const complete = mutation({
       throw new Error("Template not found");
     }
 
-    // TODO: Validate required fields in form_data against template_structure
+    // Validate required fields in form_data against template_structure
+    const missingFields: string[] = [];
+    const templateStructure = template.template_structure as {
+      sections: Array<{
+        title: string;
+        fields: Array<{
+          id: string;
+          label: string;
+          type: string;
+          required?: boolean;
+        }>;
+      }>;
+    };
+
+    if (templateStructure?.sections) {
+      for (const section of templateStructure.sections) {
+        for (const field of section.fields) {
+          // Skip validation for display-only fields
+          if (field.type === 'heading' || field.type === 'paragraph') {
+            continue;
+          }
+
+          // Check if field is required
+          if (field.required === true) {
+            const value = args.formData[field.id];
+
+            // Check if value is empty (undefined, null, empty string, empty array)
+            const isEmpty =
+              value === undefined ||
+              value === null ||
+              value === '' ||
+              (Array.isArray(value) && value.length === 0);
+
+            if (isEmpty) {
+              missingFields.push(field.label);
+            }
+          }
+        }
+      }
+    }
+
+    // If there are missing required fields, throw error
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    }
 
     await ctx.db.patch(args.checkId, {
       form_data: args.formData,
