@@ -379,8 +379,7 @@ export function PlantCloningModal({
                         <SelectContent>
                           {areas?.map((area) => (
                             <SelectItem key={area._id} value={area._id}>
-                              {area.name} - {area.current_occupancy}/{area.max_capacity}{' '}
-                              plantas
+                              {area.name} - {area.current_occupancy} plantas
                             </SelectItem>
                           ))}
                         </SelectContent>
