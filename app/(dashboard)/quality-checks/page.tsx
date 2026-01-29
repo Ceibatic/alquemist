@@ -7,9 +7,16 @@ import { Id } from '@/convex/_generated/dataModel';
 import { PageHeader } from '@/components/layout/page-header';
 import { CompactStats, CompactStat } from '@/components/ui/compact-stats';
 import { QCTemplateCard } from '@/components/quality-checks/qc-template-card';
+import { QCHistoryList } from '@/components/quality-checks/qc-history-list';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,13 +47,18 @@ import {
   Brain,
   BarChart3,
   Clock,
+  History,
+  FileText,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function QualityChecksPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { currentCompanyId, isLoading: facilityLoading } = useFacility();
+  const { currentCompanyId, currentFacilityId, isLoading: facilityLoading } = useFacility();
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<string>('templates');
 
   // Filter states
   const [selectedCropType, setSelectedCropType] = useState<string | null>(null);
@@ -288,92 +300,119 @@ export default function QualityChecksPage() {
       {/* Compact Stats */}
       <CompactStats stats={compactStats} />
 
-      {/* Filter Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        {/* Crop Type Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-2 min-w-[160px] justify-between">
-              <span className="flex items-center gap-2">
-                <SelectedIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">{selectedCropTypeOption.label}</span>
-                <span className="sm:hidden">Tipo</span>
-              </span>
-              <ChevronDown className="h-4 w-4 opacity-50" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[200px]">
-            {cropTypeOptions.map((option) => {
-              const Icon = option.icon;
-              return (
-                <DropdownMenuItem
-                  key={option.value || 'all'}
-                  onClick={() => setSelectedCropType(option.value)}
-                  className={selectedCropType === option.value ? 'bg-gray-100' : ''}
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="templates" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Templates
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Historial
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Templates Tab */}
+        <TabsContent value="templates" className="space-y-4">
+          {/* Filter Bar */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            {/* Crop Type Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2 min-w-[160px] justify-between">
+                  <span className="flex items-center gap-2">
+                    <SelectedIcon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{selectedCropTypeOption.label}</span>
+                    <span className="sm:hidden">Tipo</span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[200px]">
+                {cropTypeOptions.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={option.value || 'all'}
+                      onClick={() => setSelectedCropType(option.value)}
+                      className={selectedCropType === option.value ? 'bg-gray-100' : ''}
+                    >
+                      <Icon className="mr-2 h-4 w-4" />
+                      {option.label}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Buscar templates..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-9"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <Icon className="mr-2 h-4 w-4" />
-                  {option.label}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
 
-        {/* Search Input */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="Buscar templates..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-9"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            {/* Create Button */}
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white shrink-0">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Crear Template</span>
+            </Button>
+          </div>
+
+          {/* Templates Grid */}
+          {filteredTemplates.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <ClipboardCheck className="h-12 w-12 text-gray-400 mb-3" />
+                <p className="text-sm text-gray-600">
+                  No se encontraron templates que coincidan con tu busqueda
+                </p>
+                {(searchQuery || selectedCropType) && (
+                  <Button variant="link" className="mt-2 text-blue-700" onClick={clearFilters}>
+                    Limpiar filtros
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredTemplates.map((template: any) => (
+                <QCTemplateCard
+                  key={template._id}
+                  template={template}
+                  onView={() => handleViewTemplate(template)}
+                  onEdit={() => handleEditTemplate(template)}
+                  onDuplicate={() => handleDuplicateTemplate(template)}
+                  onArchive={() => handleArchiveTemplate(template)}
+                />
+              ))}
+            </div>
           )}
-        </div>
+        </TabsContent>
 
-        {/* Create Button */}
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white shrink-0">
-          <Plus className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Crear Template</span>
-        </Button>
-      </div>
-
-      {/* Templates Grid */}
-      {filteredTemplates.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <ClipboardCheck className="h-12 w-12 text-gray-400 mb-3" />
-            <p className="text-sm text-gray-600">
-              No se encontraron templates que coincidan con tu busqueda
-            </p>
-            {(searchQuery || selectedCropType) && (
-              <Button variant="link" className="mt-2 text-blue-700" onClick={clearFilters}>
-                Limpiar filtros
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredTemplates.map((template: any) => (
-            <QCTemplateCard
-              key={template._id}
-              template={template}
-              onView={() => handleViewTemplate(template)}
-              onEdit={() => handleEditTemplate(template)}
-              onDuplicate={() => handleDuplicateTemplate(template)}
-              onArchive={() => handleArchiveTemplate(template)}
+        {/* History Tab */}
+        <TabsContent value="history" className="space-y-4">
+          {currentCompanyId && (
+            <QCHistoryList
+              companyId={currentCompanyId}
+              facilityId={currentFacilityId}
             />
-          ))}
-        </div>
-      )}
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Archive Confirmation Dialog */}
       <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
