@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import {
   ChevronDown,
@@ -31,7 +32,14 @@ import {
   Star,
   Info,
   AlertCircle,
+  X,
+  Loader2,
+  Image as ImageIcon,
 } from 'lucide-react';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import { toast } from 'sonner';
 
 // ============================================================================
 // TYPES
@@ -376,39 +384,200 @@ function ScaleField({ field, value, onChange, readOnly }: FieldProps) {
 }
 
 function PhotoField({ field, value, onChange, readOnly }: FieldProps) {
-  // Simplified photo field - in production, integrate with file upload
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
+
+  // Support for multiple photos if field.max is set
+  const isMultiple = field.max !== undefined && field.max > 1;
+  const photos = Array.isArray(value) ? value : value ? [value] : [];
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    // Check if we're at max capacity for multiple photos
+    if (isMultiple && field.max && photos.length >= field.max) {
+      toast.error(`Maximo ${field.max} fotos permitidas`);
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const uploadedPhotos: Array<{ storageId: string; url: string }> = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} es muy grande. Maximo 10MB`);
+          continue;
+        }
+
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+          toast.error(`${file.name} no es una imagen valida`);
+          continue;
+        }
+
+        // Get upload URL
+        const uploadUrl = await generateUploadUrl();
+
+        // Upload file
+        const result = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        });
+
+        if (!result.ok) {
+          throw new Error(`Error al subir ${file.name}`);
+        }
+
+        const { storageId } = await result.json();
+
+        // Get public URL - construct it from storage ID
+        // Convex storage URLs are available directly after upload
+        const url = uploadUrl.split('/upload')[0] + '/api/storage/' + storageId;
+
+        uploadedPhotos.push({ storageId, url });
+
+        // Update progress
+        setUploadProgress(((i + 1) / files.length) * 100);
+      }
+
+      if (uploadedPhotos.length > 0) {
+        if (isMultiple) {
+          // Add to existing photos array
+          const newPhotos = [...photos, ...uploadedPhotos];
+          // Limit to max if set
+          const limitedPhotos = field.max ? newPhotos.slice(0, field.max) : newPhotos;
+          onChange(limitedPhotos);
+        } else {
+          // Single photo mode - replace
+          onChange(uploadedPhotos[0]);
+        }
+
+        toast.success(
+          uploadedPhotos.length === 1
+            ? 'Foto subida exitosamente'
+            : `${uploadedPhotos.length} fotos subidas`
+        );
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(error.message || 'Error al subir foto');
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(null);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    if (isMultiple) {
+      const newPhotos = photos.filter((_: any, i: number) => i !== index);
+      onChange(newPhotos.length > 0 ? newPhotos : undefined);
+    } else {
+      onChange(undefined);
+    }
+  };
+
   return (
-    <div className="space-y-2">
-      <div
-        className={cn(
-          'border-2 border-dashed rounded-lg p-6 text-center',
-          readOnly ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/50'
-        )}
-      >
-        <Camera className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-        <p className="text-sm text-muted-foreground">
-          {value ? 'Foto capturada' : 'Tomar o subir foto'}
-        </p>
-        {!readOnly && (
-          <Button variant="outline" size="sm" className="mt-2" type="button">
-            <Camera className="h-4 w-4 mr-2" />
-            Capturar
-          </Button>
-        )}
-      </div>
-      {value && (
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">Foto adjunta</Badge>
-          {!readOnly && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onChange(undefined)}
-              type="button"
-            >
-              Eliminar
-            </Button>
+    <div className="space-y-3">
+      {/* Upload Area */}
+      <div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple={isMultiple}
+          onChange={handleFileSelect}
+          disabled={readOnly || isUploading}
+          className="hidden"
+          id={`photo-input-${field.id}`}
+        />
+        <label
+          htmlFor={`photo-input-${field.id}`}
+          className={cn(
+            'block border-2 border-dashed rounded-lg p-6 text-center transition-colors',
+            readOnly || isUploading
+              ? 'opacity-50 cursor-not-allowed'
+              : 'cursor-pointer hover:bg-muted/50 hover:border-primary/50'
           )}
+        >
+          {isUploading ? (
+            <>
+              <Loader2 className="h-8 w-8 mx-auto text-muted-foreground mb-2 animate-spin" />
+              <p className="text-sm text-muted-foreground mb-2">Subiendo foto...</p>
+              {uploadProgress !== null && (
+                <Progress value={uploadProgress} className="w-full max-w-xs mx-auto" />
+              )}
+            </>
+          ) : (
+            <>
+              <Camera className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground mb-1">
+                {photos.length > 0
+                  ? isMultiple
+                    ? 'Agregar otra foto'
+                    : 'Cambiar foto'
+                  : 'Tomar o subir foto'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isMultiple && field.max
+                  ? `Maximo ${field.max} fotos (${photos.length}/${field.max})`
+                  : 'Maximo 10MB por foto'}
+              </p>
+            </>
+          )}
+        </label>
+      </div>
+
+      {/* Photo Thumbnails */}
+      {photos.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          {photos.map((photo: any, index: number) => (
+            <div
+              key={index}
+              className="relative group rounded-lg overflow-hidden border bg-muted aspect-square"
+            >
+              <img
+                src={photo.url}
+                alt={`Foto ${index + 1}`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback if image fails to load
+                  (e.target as HTMLImageElement).src =
+                    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3EImagen%3C/text%3E%3C/svg%3E';
+                }}
+              />
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => handleRemovePhoto(index)}
+                  className="absolute top-1 right-1 p-1 bg-black/50 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Eliminar foto"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-2">
+                <p className="text-xs text-white flex items-center gap-1">
+                  <ImageIcon className="h-3 w-3" />
+                  Foto {index + 1}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

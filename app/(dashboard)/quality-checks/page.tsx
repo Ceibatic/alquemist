@@ -408,7 +408,7 @@ export default function QualityChecksPage() {
           {currentCompanyId && (
             <QCHistoryList
               companyId={currentCompanyId}
-              facilityId={currentFacilityId}
+              facilityId={currentFacilityId || undefined}
             />
           )}
         </TabsContent>
