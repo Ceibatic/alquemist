@@ -25,6 +25,15 @@ A diferencia de `review-module` (que audita código estático), `live-test` es *
 
 `$ARGUMENTS` = ruta al archivo de documentación del módulo (ej: `docs/modules/phase-2/M08-area-management.md`)
 
+## Entorno de Testing
+
+**IMPORTANTE**: Las pruebas se realizan en el **entorno de producción**:
+- **URL base**: `https://app.alquemist.co`
+- **Backend**: Convex production deployment
+- **Datos**: Datos reales de producción
+
+Todas las instrucciones de rutas deben usar el dominio completo: `https://app.alquemist.co/ruta`
+
 ---
 
 ## Fase 1: Parsear Documentación del Módulo
@@ -130,7 +139,7 @@ Esta es la fase principal. Para cada user story, seguir el ciclo:
 2. [ ] [Criterio 2]
 ...
 
-**Ruta a probar**: `/ruta` (si aplica)
+**Ruta a probar**: `https://app.alquemist.co/ruta` (si aplica)
 
 **Componentes involucrados**:
 - [archivo1.tsx]
@@ -141,7 +150,7 @@ Esta es la fase principal. Para cada user story, seguir el ciclo:
 - Mutation: [nombre]({ params })
 ---
 
-👉 **Acción**: [Instrucción específica de qué probar en la app]
+👉 **Acción**: [Instrucción específica de qué probar en la app usando https://app.alquemist.co]
 
 ¿Cómo fue la prueba?
 ```
@@ -543,11 +552,11 @@ Vamos a probar todas las user stories en orden. ¿Listo para empezar?
 7. [ ] Stats arriba: total, activas, en mantenimiento
 8. [ ] Estado vacío: mensaje + CTA "Crear Primera Area"
 
-**Ruta a probar**: `/areas`
+**Ruta a probar**: `https://app.alquemist.co/areas`
 
 ---
 
-👉 **Acción**: Ve a `/areas` en tu app y verifica cada criterio de la lista.
+👉 **Acción**: Ve a https://app.alquemist.co/areas en tu navegador y verifica cada criterio de la lista.
 
 ¿Cómo fue la prueba?
 

@@ -10,6 +10,15 @@
 - **Notificaciones:** Sonner toasts
 - **Email:** Resend (OTP emails + invitaciones)
 
+## Entornos
+
+| Entorno | URL | Uso |
+|---------|-----|-----|
+| **Producción** | `https://app.alquemist.co` | App en vivo con datos reales |
+| **Desarrollo** | `http://localhost:3000` | Testing local durante desarrollo |
+
+**Importante**: Las pruebas manuales (live-test skill) se realizan en **producción** (`https://app.alquemist.co`).
+
 ## Autenticacion (Convex Auth)
 
 El proyecto usa **Convex Auth** con Password provider. No hay auth custom — todo pasa por `@convex-dev/auth`.
@@ -90,5 +99,5 @@ Despues de cada commit, agregar una entrada al archivo `docs/dev/logs/YYYY-MM-DD
 ## Agents y Skills
 
 - Agent profiles: `.claude/agents/` (backend-dev, code-reviewer, frontend-dev, test-engineer, typescript-expert)
-- Skills: `.claude/skills/` (review-module)
+- Skills: `.claude/skills/` (review-module, live-test)
 - recuerda que deberiamos hacer commits al final de cada implementacion o modificacion relevante
