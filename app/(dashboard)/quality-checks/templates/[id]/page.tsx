@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { use, useState } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -100,7 +100,8 @@ const aiAnalysisLabels: Record<string, string> = {
 // MAIN COMPONENT
 // ============================================================================
 
-export default function QCTemplateDetailPage({ params }: { params: { id: string } }) {
+export default function QCTemplateDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params as Promise<{ id: string }>);
   const router = useRouter();
   const { toast } = useToast();
   const { currentCompanyId } = useFacility();
@@ -112,7 +113,7 @@ export default function QCTemplateDetailPage({ params }: { params: { id: string 
   // Fetch data
   const template = useQuery(
     api.qualityCheckTemplates.getById,
-    { templateId: params.id as Id<'quality_check_templates'> }
+    { templateId: id as Id<'quality_check_templates'> }
   );
 
   const batches = useQuery(
@@ -131,13 +132,13 @@ export default function QCTemplateDetailPage({ params }: { params: { id: string 
 
   // Handlers
   const handleEdit = () => {
-    router.push(`/quality-checks/templates/${params.id}/edit`);
+    router.push(`/quality-checks/templates/${id}/edit`);
   };
 
   const handleDuplicate = async () => {
     try {
       const newTemplateId = await duplicateTemplate({
-        templateId: params.id as Id<'quality_check_templates'>,
+        templateId: id as Id<'quality_check_templates'>,
       });
       toast({
         title: 'Template duplicado',
@@ -157,7 +158,7 @@ export default function QCTemplateDetailPage({ params }: { params: { id: string 
   const handleArchive = async () => {
     try {
       await archiveTemplate({
-        templateId: params.id as Id<'quality_check_templates'>,
+        templateId: id as Id<'quality_check_templates'>,
       });
       toast({
         title: 'Template archivado',
@@ -190,7 +191,7 @@ export default function QCTemplateDetailPage({ params }: { params: { id: string 
 
     // Navigate to execution page
     router.push(
-      `/quality-checks/execute?templateId=${params.id}&entityType=${selectedEntityType}&entityId=${selectedEntityId}`
+      `/quality-checks/execute?templateId=${id}&entityType=${selectedEntityType}&entityId=${selectedEntityId}`
     );
     setStartInspectionDialogOpen(false);
   };
