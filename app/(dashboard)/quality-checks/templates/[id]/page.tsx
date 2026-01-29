@@ -249,8 +249,8 @@ export default function QCTemplateDetailPage({ params }: { params: Promise<{ id:
   // Entity options for inspection
   const entityOptions =
     selectedEntityType === 'batch'
-      ? batches?.map((b) => ({ value: b._id, label: b.code })) || []
-      : plants?.map((p) => ({ value: p._id, label: p.name })) || [];
+      ? batches?.map((b) => ({ value: b._id, label: b.batch_code })) || []
+      : plants?.map((p) => ({ value: p._id, label: p.plant_code })) || [];
 
   return (
     <div className="space-y-6">
