@@ -540,6 +540,20 @@ export const markAsLost = mutation({
         updated_at: now,
       });
 
+      // Create batch_losses record for tracking
+      await ctx.db.insert("batch_losses", {
+        batch_id: batch._id,
+        quantity: 1, // One plant lost
+        loss_type: args.reason as "disease" | "pest" | "environmental" | "handling" | "other",
+        reason: args.reason,
+        description: args.description || `Planta individual ${plant.plant_code} marcada como perdida`,
+        detection_date: args.detectionDate || now,
+        photos: [], // No photos in this version
+        incident_id: undefined,
+        recorded_by: user._id,
+        created_at: now,
+      });
+
       // Also update area occupancy
       if (batch.area_id) {
         const area = await ctx.db.get(batch.area_id);
