@@ -4,7 +4,7 @@ import { alphabet, generateRandomString } from "./otpUtils";
 
 export const ResendOTPPasswordReset = Resend({
   id: "resend-otp-password-reset",
-  apiKey: process.env.AUTH_RESEND_KEY,
+  apiKey: process.env.RESEND_API_KEY,
   async generateVerificationToken() {
     return generateRandomString(6, alphabet("0-9"));
   },
@@ -18,7 +18,10 @@ export const ResendOTPPasswordReset = Resend({
       text: `Tu código para restablecer contraseña en Alquemist es: ${token}\n\nEste código es válido por 60 minutos.\nSi no solicitaste este cambio, ignora este correo.`,
     });
     if (error) {
-      throw new Error("No se pudo enviar el correo de restablecimiento");
+      console.error('[ResendOTPPasswordReset] Email send failed:', error);
+      console.error('[ResendOTPPasswordReset] Email was:', email);
+      console.error('[ResendOTPPasswordReset] API Key configured:', provider.apiKey ? 'Yes' : 'No');
+      throw new Error(`No se pudo enviar el correo de restablecimiento: ${error.message || 'Error desconocido'}`);
     }
   },
 });

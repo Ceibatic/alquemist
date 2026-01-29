@@ -100,7 +100,29 @@ export default function SignupPage() {
       // Convex Auth sends OTP automatically via ResendOTP provider
       router.push('/verify-email');
     } catch (err: any) {
-      const message = err?.message || 'Error inesperado. Por favor intenta de nuevo.';
+      console.error('[Signup Error]', err);
+
+      // Provide specific error messages based on error type
+      let message = 'Error inesperado. Por favor intenta de nuevo.';
+
+      if (err?.message) {
+        const errorMsg = err.message.toLowerCase();
+
+        if (errorMsg.includes('email') && errorMsg.includes('exists')) {
+          message = 'Este email ya está registrado. Por favor inicia sesión.';
+        } else if (errorMsg.includes('email') || errorMsg.includes('verification')) {
+          message = 'No se pudo enviar el correo de verificación. Verifica tu conexión e intenta nuevamente.';
+        } else if (errorMsg.includes('password')) {
+          message = 'La contraseña no cumple con los requisitos de seguridad.';
+        } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+          message = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
+        } else if (errorMsg.includes('api key') || errorMsg.includes('resend')) {
+          message = 'Error de configuración del servidor. Contacta a soporte.';
+        } else {
+          message = err.message;
+        }
+      }
+
       setError(message);
     } finally {
       setIsSubmitting(false);

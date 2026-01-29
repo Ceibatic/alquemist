@@ -4,7 +4,7 @@ import { alphabet, generateRandomString } from "./otpUtils";
 
 export const ResendOTP = Resend({
   id: "resend-otp",
-  apiKey: process.env.AUTH_RESEND_KEY,
+  apiKey: process.env.RESEND_API_KEY,
   async generateVerificationToken() {
     return generateRandomString(6, alphabet("0-9"));
   },
@@ -18,7 +18,10 @@ export const ResendOTP = Resend({
       text: `Tu código de verificación de Alquemist es: ${token}\n\nEste código es válido por 24 horas.\nSi no solicitaste esta verificación, ignora este correo.`,
     });
     if (error) {
-      throw new Error("No se pudo enviar el correo de verificación");
+      console.error('[ResendOTP] Email send failed:', error);
+      console.error('[ResendOTP] Email was:', email);
+      console.error('[ResendOTP] API Key configured:', provider.apiKey ? 'Yes' : 'No');
+      throw new Error(`No se pudo enviar el correo de verificación: ${error.message || 'Error desconocido'}`);
     }
   },
 });
