@@ -6,9 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useAuthActions } from '@convex-dev/auth/react';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { useSignUp } from '@clerk/nextjs';
 
 import { signupSchema, type SignupFormValues, allPasswordRequirementsMet } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
@@ -29,7 +27,7 @@ import { checkEmailAvailability } from './actions';
 
 export default function SignupPage() {
   const router = useRouter();
-  const { signIn } = useAuthActions();
+  const { signUp, isLoaded } = useSignUp();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [emailAvailable, setEmailAvailable] = React.useState<boolean | null>(null);
   const [checkingEmail, setCheckingEmail] = React.useState(false);
@@ -77,6 +75,8 @@ export default function SignupPage() {
   }, [watchEmail, form]);
 
   const onSubmit = async (data: SignupFormValues) => {
+    if (!isLoaded) return;
+
     setIsSubmitting(true);
     setError(null);
 
@@ -87,17 +87,18 @@ export default function SignupPage() {
       sessionStorage.setItem('signupLastName', data.lastName);
       if (data.phone) sessionStorage.setItem('signupPhone', data.phone);
 
-      // Use Convex Auth to sign up with password + email verification
-      await signIn('password', {
-        email: data.email,
+      // Use Clerk to sign up with email verification
+      await signUp.create({
+        emailAddress: data.email,
         password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
-        phone: data.phone || '',
-        flow: 'signUp',
       });
 
-      // Convex Auth sends OTP automatically via ResendOTP provider
+      // Prepare email verification
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+
+      // Clerk sends OTP automatically
       router.push('/verify-email');
     } catch (err: any) {
       console.error('[Signup Error]', err);
@@ -132,6 +133,8 @@ export default function SignupPage() {
   const allRequirementsMet = allPasswordRequirementsMet(watchPassword);
   const isFormValid =
     form.formState.isValid && emailAvailable === true && allRequirementsMet;
+
+  if (!isLoaded) return null;
 
   return (
     <div className="space-y-6">

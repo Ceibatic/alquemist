@@ -6,7 +6,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthenticatedUserId } from "./authHelpers";
 
 /**
  * Generate batch code in format {CULTIVAR}-{YYMMDD}-{XXX}
@@ -308,7 +308,7 @@ export const create = mutation({
     createdBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -475,7 +475,7 @@ export const move = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -601,7 +601,7 @@ export const recordLoss = mutation({
     recordedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -717,7 +717,7 @@ export const split = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -884,7 +884,7 @@ export const merge = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -1072,7 +1072,7 @@ export const harvest = mutation({
     harvestedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -1186,7 +1186,7 @@ export const archive = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -1237,7 +1237,7 @@ export const updatePhase = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }

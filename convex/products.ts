@@ -5,7 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthenticatedUserId } from "./authHelpers";
 
 /**
  * List products with optional filters
@@ -138,7 +138,7 @@ export const create = mutation({
     price_unit: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const now = Date.now();
@@ -262,7 +262,7 @@ export const update = mutation({
     priceChangeNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const now = Date.now();
@@ -367,7 +367,7 @@ export const remove = mutation({
     productId: v.id("products"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const now = Date.now();
@@ -591,7 +591,7 @@ export const recordPriceChange = mutation({
     effectiveDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const now = Date.now();

@@ -68,6 +68,10 @@ function AcceptInvitationContent() {
   }, [token, router]);
 
   const handleAccept = () => {
+    // Store invitation email for set-password page (Clerk signup)
+    if (invitation) {
+      sessionStorage.setItem('invitationEmail', invitation.email);
+    }
     router.push('/set-password');
   };
 

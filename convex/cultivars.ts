@@ -6,7 +6,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthenticatedUserId } from "./authHelpers";
 
 /**
  * List cultivars by company with optional filters
@@ -21,7 +21,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     // Auth: Verify user is authenticated and has access to company
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (userId) {
       const user = await ctx.db.get(userId);
       if (user && user.company_id !== args.companyId) {
@@ -77,7 +77,7 @@ export const getByCrop = query({
   },
   handler: async (ctx, args) => {
     // Auth: Verify user is authenticated and has access to company
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (userId) {
       const user = await ctx.db.get(userId);
       if (user && user.company_id !== args.companyId) {
@@ -110,7 +110,7 @@ export const get = query({
     if (!cultivar) return null;
 
     // Auth: Verify user is authenticated and has access to cultivar's company
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (userId) {
       const user = await ctx.db.get(userId);
       if (user && user.company_id !== cultivar.company_id) {
@@ -132,7 +132,7 @@ export const getByFacility = query({
   },
   handler: async (ctx, args) => {
     // Auth: Verify user is authenticated and has access to facility
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (userId) {
       const facility = await ctx.db.get(args.facilityId);
       if (facility) {
@@ -190,7 +190,7 @@ export const create = mutation({
     const now = Date.now();
 
     // Auth: Verify user is authenticated
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autenticado");
     }
@@ -296,7 +296,7 @@ export const createCustom = mutation({
     const now = Date.now();
 
     // Auth: Verify user is authenticated
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autenticado");
     }
@@ -381,7 +381,7 @@ export const update = mutation({
     const { id, ...updates } = args;
 
     // Auth: Verify user is authenticated
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autenticado");
     }
@@ -477,7 +477,7 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     // Auth: Verify user is authenticated
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autenticado");
     }
@@ -513,7 +513,7 @@ export const hardDelete = mutation({
   },
   handler: async (ctx, args) => {
     // Auth: Verify user is authenticated
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autenticado");
     }
@@ -543,7 +543,7 @@ export const deleteDemoCultivars = mutation({
   },
   handler: async (ctx, args) => {
     // Auth: Verify user is authenticated
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autenticado");
     }

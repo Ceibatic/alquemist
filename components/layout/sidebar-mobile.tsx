@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { useClerk } from '@clerk/nextjs';
 import {
   LayoutDashboard,
   Map,
@@ -111,19 +112,11 @@ export function SidebarMobile({
 }: SidebarMobileProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { signOut } = useClerk();
 
   const handleLogout = async () => {
-    // Clear session cookies
-    document.cookie =
-      'session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
-    document.cookie =
-      'user_data=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
-
-    // Close drawer
     onOpenChange(false);
-
-    // Redirect to login
-    router.push('/login');
+    await signOut({ redirectUrl: '/login' });
   };
 
   const handleNavClick = (href: string) => {

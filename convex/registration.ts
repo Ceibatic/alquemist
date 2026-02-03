@@ -6,7 +6,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthenticatedUserId } from "./authHelpers";
 
 // ============================================================================
 // STEP 2: COMPANY CREATION (After Email Verification via Convex Auth)
@@ -32,7 +32,7 @@ export const registerCompanyStep2 = mutation({
     const now = Date.now();
 
     // 1. Get authenticated user and verify email is verified
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autenticado. Por favor inicia sesión.");
     }

@@ -5,7 +5,7 @@
 
 import { v } from "convex/values";
 import { query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthenticatedUserId } from "./authHelpers";
 
 /**
  * Get all system roles
@@ -62,7 +62,7 @@ export const getById = query({
 export const getAssignableRoles = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) return [];
 
     const user = await ctx.db.get(userId);

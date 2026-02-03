@@ -6,10 +6,8 @@
 
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
-  ...authTables,
   // ============================================================================
   // CORE SYSTEM TABLES (6)
   // ============================================================================
@@ -215,17 +213,14 @@ export default defineSchema({
   users: defineTable({
     // Company & Authentication
     company_id: v.optional(v.id("companies")), // Optional during step 1
+    clerkId: v.optional(v.string()), // Clerk user ID
     email: v.optional(v.string()),
     email_verified: v.optional(v.boolean()), // Default: false
     email_verified_at: v.optional(v.number()), // Timestamp when verified
 
-    // Convex Auth fields
+    // Profile
     name: v.optional(v.string()),
-    image: v.optional(v.string()),
-    emailVerificationTime: v.optional(v.number()),
     phone: v.optional(v.string()),
-    phoneVerificationTime: v.optional(v.number()),
-    isAnonymous: v.optional(v.boolean()),
 
     // Onboarding
     onboarding_completed: v.optional(v.boolean()), // Default: false
@@ -273,6 +268,7 @@ export default defineSchema({
     updated_at: v.optional(v.number()),
   })
     .index("email", ["email"])
+    .index("by_clerk_id", ["clerkId"])
     .index("by_company", ["company_id"])
     .index("by_role", ["role_id"])
     .index("by_status", ["status"])

@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, Mail, CheckCircle } from 'lucide-react';
-import { useAuthActions } from '@convex-dev/auth/react';
+import { useSignIn } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,7 +19,7 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
-  const { signIn } = useAuthActions();
+  const { signIn, isLoaded } = useSignIn();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -32,6 +32,8 @@ export default function ForgotPasswordPage() {
     },
   });
 
+  if (!isLoaded) return null;
+
   const onSubmit = async (data: ForgotPasswordValues) => {
     setIsSubmitting(true);
     setGlobalError(null);
@@ -40,10 +42,10 @@ export default function ForgotPasswordPage() {
       // Store email for reset-password page
       sessionStorage.setItem('resetEmail', data.email);
 
-      // Use Convex Auth to request password reset OTP
-      await signIn('password', {
-        email: data.email,
-        flow: 'reset',
+      // Use Clerk to request password reset OTP
+      await signIn.create({
+        strategy: 'reset_password_email_code',
+        identifier: data.email,
       });
 
       setIsSuccess(true);

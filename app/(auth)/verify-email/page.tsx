@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Mail, CheckCircle2 } from 'lucide-react';
-import { useAuthActions } from '@convex-dev/auth/react';
+import { useSignUp } from '@clerk/nextjs';
 
 import { Button } from '@/components/ui/button';
 import { CodeInput } from '@/components/shared/code-input';
@@ -13,7 +13,7 @@ import { CountdownTimer } from '@/components/shared/countdown-timer';
 function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn } = useAuthActions();
+  const { signUp, setActive, isLoaded } = useSignUp();
   const [email, setEmail] = React.useState<string>('');
   const [code, setCode] = React.useState('');
   const [isVerifying, setIsVerifying] = React.useState(false);
@@ -38,6 +38,8 @@ function VerifyEmailContent() {
     }
   }, [router, searchParams]);
 
+  if (!isLoaded) return null;
+
   const handleVerify = async () => {
     if (code.length !== 6) {
       setError('Por favor ingresa el código completo de 6 dígitos');
@@ -48,22 +50,21 @@ function VerifyEmailContent() {
     setError(null);
 
     try {
-      // Use Convex Auth to verify the email OTP code
-      await signIn('password', {
-        email,
-        code,
-        flow: 'email-verification',
-      });
+      // Use Clerk to verify the email code
+      const result = await signUp.attemptEmailAddressVerification({ code });
 
-      setIsVerified(true);
+      if (result.status === 'complete') {
+        await setActive({ session: result.createdSessionId });
+        setIsVerified(true);
 
-      // Full page redirect to company setup after verification
-      // Using window.location to force middleware to re-evaluate auth cookies
-      setTimeout(() => {
-        window.location.href = '/company-setup';
-      }, 2000);
+        // Full page redirect to company setup after verification
+        // Using window.location to force middleware to re-evaluate auth cookies
+        setTimeout(() => {
+          window.location.href = '/company-setup';
+        }, 2000);
+      }
     } catch (err: any) {
-      setError(err?.message || 'Código inválido. Por favor intenta de nuevo.');
+      setError(err?.errors?.[0]?.message || 'Código inválido. Por favor intenta de nuevo.');
     } finally {
       setIsVerifying(false);
     }
@@ -77,15 +78,12 @@ function VerifyEmailContent() {
     setSuccess(null);
 
     try {
-      // Resend OTP by calling email-verification without a code
-      await signIn('password', {
-        email,
-        flow: 'email-verification',
-      });
+      // Resend OTP by preparing email verification again
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
 
       setSuccess('Email de verificación reenviado. Revisa tu bandeja de entrada.');
     } catch (err: any) {
-      setError(err?.message || 'Error al reenviar email');
+      setError(err?.errors?.[0]?.message || 'Error al reenviar email');
     } finally {
       setIsResending(false);
     }

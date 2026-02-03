@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, KeyRound, CheckCircle } from 'lucide-react';
-import { useAuthActions } from '@convex-dev/auth/react';
+import { useSignIn } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/shared/password-input';
@@ -32,7 +32,7 @@ type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn } = useAuthActions();
+  const { signIn, setActive, isLoaded } = useSignIn();
 
   const [code, setCode] = useState(searchParams.get('token') || '');
   const [email] = useState(() => {
@@ -53,6 +53,8 @@ function ResetPasswordContent() {
     },
   });
 
+  if (!isLoaded) return null;
+
   const onSubmit = async (data: ResetPasswordValues) => {
     if (code.length !== 6) {
       setGlobalError('Por favor ingresa el código de 6 dígitos');
@@ -68,17 +70,24 @@ function ResetPasswordContent() {
     setGlobalError(null);
 
     try {
-      // Use Convex Auth to verify code and set new password
-      await signIn('password', {
-        email,
-        code,
-        newPassword: data.password,
-        flow: 'reset-verification',
+      // Use Clerk to verify code and set new password
+      const result = await signIn.attemptFirstFactor({
+        strategy: 'reset_password_email_code',
+        code: code,
       });
 
-      setIsSuccess(true);
+      if (result.status === 'needs_new_password') {
+        const resetResult = await signIn.resetPassword({
+          password: data.password,
+        });
+
+        if (resetResult.status === 'complete') {
+          await setActive({ session: resetResult.createdSessionId });
+          setIsSuccess(true);
+        }
+      }
     } catch (err: any) {
-      setGlobalError(err?.message || 'Error al restablecer la contraseña. Código inválido o expirado.');
+      setGlobalError(err?.errors?.[0]?.message || 'Error al restablecer la contraseña. Código inválido o expirado.');
     } finally {
       setIsSubmitting(false);
     }

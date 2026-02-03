@@ -3,8 +3,7 @@
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useAction } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { useUser } from '@clerk/nextjs';
 import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -13,9 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Loader2, Shield, ShieldCheck, ShieldAlert, Info } from 'lucide-react';
+import { Loader2, ShieldCheck, ShieldAlert, Info } from 'lucide-react';
 import { changePasswordSchema, type ChangePasswordInput } from '@/lib/validations/settings';
-import { parseConvexError } from '@/lib/utils/error-handler';
 
 interface SecurityFormProps {
   userId: Id<'users'>;
@@ -24,7 +22,7 @@ interface SecurityFormProps {
 }
 
 export function SecurityForm({ userId, user, onDirtyChange }: SecurityFormProps) {
-  const changePassword = useAction(api.users.changePassword);
+  const { user: clerkUser } = useUser();
 
   const {
     register,
@@ -74,50 +72,41 @@ export function SecurityForm({ userId, user, onDirtyChange }: SecurityFormProps)
   const passwordStrength = getPasswordStrength(newPassword || '');
 
   const onSubmit = async (data: ChangePasswordInput) => {
+    if (!clerkUser) {
+      toast.error('No se pudo obtener la sesión del usuario');
+      return;
+    }
+
     try {
-      await changePassword({
-        userId,
+      await clerkUser.updatePassword({
         currentPassword: data.current_password,
         newPassword: data.new_password,
       });
 
       toast.success('Contraseña actualizada exitosamente');
       reset();
-    } catch (error) {
-      const parsedError = parseConvexError(error);
-
-      // Show specific toast based on error type
-      switch (parsedError.type) {
-        case 'network':
-          toast.error(parsedError.message);
-          break;
-        case 'validation':
-          toast.error(parsedError.message);
-          // Set field-specific error if available
-          if (parsedError.field) {
-            setError(parsedError.field as any, {
-              type: 'manual',
-              message: parsedError.message,
-            });
-          }
-          break;
-        case 'server':
-          // For password errors, provide more context
-          const errorMessage = (error as any)?.message || '';
-          if (errorMessage.includes('password') || errorMessage.includes('incorrect')) {
-            toast.error('Contraseña actual incorrecta. Verifica e intenta de nuevo.');
-            setError('current_password', {
-              type: 'manual',
-              message: 'Contraseña incorrecta',
-            });
-          } else {
-            toast.error(parsedError.message);
-          }
-          break;
-        default:
-          toast.error('Error al cambiar contraseña');
+    } catch (error: any) {
+      const clerkErrors = error?.errors;
+      if (clerkErrors && clerkErrors.length > 0) {
+        const firstError = clerkErrors[0];
+        if (firstError.code === 'form_password_incorrect') {
+          toast.error('Contraseña actual incorrecta. Verifica e intenta de nuevo.');
+          setError('current_password', {
+            type: 'manual',
+            message: 'Contraseña incorrecta',
+          });
+        } else if (firstError.code === 'form_password_pwned') {
+          toast.error('Esta contraseña ha sido comprometida. Usa una diferente.');
+          setError('new_password', {
+            type: 'manual',
+            message: 'Contraseña comprometida',
+          });
+        } else {
+          toast.error(firstError.longMessage || 'Error al cambiar contraseña');
+        }
+      } else {
+        toast.error('Error al cambiar contraseña');
       }
-
       console.error('Error changing password:', error);
     }
   };

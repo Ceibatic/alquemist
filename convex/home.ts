@@ -12,7 +12,7 @@
 import { v } from "convex/values";
 import { query, QueryCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthenticatedUserId } from "./authHelpers";
 
 // ============================================================================
 // TYPES
@@ -129,7 +129,7 @@ export const getDashboard = query({
     facilityId: v.optional(v.id("facilities")),
   },
   handler: async (ctx, args) => {
-    const authUserId = await getAuthUserId(ctx);
+    const authUserId = await getAuthenticatedUserId(ctx);
     if (!authUserId) throw new Error("No autenticado");
 
     // Get user with role information
@@ -578,7 +578,7 @@ export const getAlertCount = query({
     facilityId: v.id("facilities"),
   },
   handler: async (ctx, args) => {
-    const authUserId = await getAuthUserId(ctx);
+    const authUserId = await getAuthenticatedUserId(ctx);
     if (!authUserId) return { total: 0, critical: 0 };
 
     const facility = await ctx.db.get(args.facilityId);
@@ -630,7 +630,7 @@ export const getAlertCount = query({
 export const getUserRoleType = query({
   args: {},
   handler: async (ctx) => {
-    const authUserId = await getAuthUserId(ctx);
+    const authUserId = await getAuthenticatedUserId(ctx);
     if (!authUserId) return null;
 
     const user = await ctx.db.get(authUserId);
@@ -677,7 +677,7 @@ export const getDashboardTrends = query({
     days: v.optional(v.number()), // Default 30 days
   },
   handler: async (ctx, args): Promise<DashboardTrends> => {
-    const authUserId = await getAuthUserId(ctx);
+    const authUserId = await getAuthenticatedUserId(ctx);
     if (!authUserId) {
       return { productionTrend: [], batchTrend: [], activityTrend: [], plantHealthTrend: [] };
     }

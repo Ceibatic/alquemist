@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LogIn } from 'lucide-react';
-import { useAuthActions } from '@convex-dev/auth/react';
+import { useSignIn } from '@clerk/nextjs';
 import { loginSchema, type LoginFormValues } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,7 @@ import { PasswordInput } from '@/components/shared/password-input';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn } = useAuthActions();
+  const { signIn, setActive, isLoaded } = useSignIn();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
@@ -30,19 +30,23 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormValues) => {
+    if (!isLoaded) return;
+
     setIsSubmitting(true);
     setGlobalError(null);
 
     try {
-      await signIn('password', {
-        email: data.email,
+      const result = await signIn.create({
+        identifier: data.email,
         password: data.password,
-        flow: 'signIn',
       });
 
-      // Full page redirect to force middleware re-evaluation of auth cookies
-      // Dashboard layout will redirect to onboarding if not completed
-      window.location.href = '/dashboard';
+      if (result.status === 'complete') {
+        await setActive({ session: result.createdSessionId });
+        // Full page redirect to force middleware re-evaluation of auth cookies
+        // Dashboard layout will redirect to onboarding if not completed
+        window.location.href = '/dashboard';
+      }
     } catch (err: any) {
       const message = err?.message || 'Correo electrónico o contraseña incorrectos';
       setGlobalError(message);
@@ -50,6 +54,8 @@ export default function LoginPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (!isLoaded) return null;
 
   return (
     <div className="space-y-6">
