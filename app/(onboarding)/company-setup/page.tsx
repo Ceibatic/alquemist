@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -130,37 +130,27 @@ export default function CompanySetupPage() {
     }
   };
 
-  // Loading: waiting for auth query
-  if (onboardingStatus === undefined) {
-    return (
-      <div className="text-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-      </div>
-    );
-  }
-
-  // Not authenticated — redirect to login
-  if (onboardingStatus === null) {
-    router.push('/login');
-    return (
-      <div className="text-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-        <p className="text-sm text-muted-foreground mt-2">Redirigiendo...</p>
-      </div>
-    );
-  }
-
-  // Already has company — redirect forward
-  if (onboardingStatus.hasCompany) {
-    if (onboardingStatus.onboardingCompleted) {
-      router.push('/dashboard');
-    } else {
-      router.push('/facility-basic');
+  // Redirect based on onboarding status (must be in useEffect, not during render)
+  useEffect(() => {
+    if (onboardingStatus === null) {
+      router.push('/login');
+    } else if (onboardingStatus?.hasCompany) {
+      if (onboardingStatus.onboardingCompleted) {
+        router.push('/dashboard');
+      } else {
+        router.push('/facility-basic');
+      }
     }
+  }, [onboardingStatus, router]);
+
+  // Show loading while waiting for auth or redirecting
+  if (onboardingStatus === undefined || onboardingStatus === null || onboardingStatus.hasCompany) {
     return (
       <div className="text-center p-8">
         <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-        <p className="text-sm text-muted-foreground mt-2">Redirigiendo...</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          {onboardingStatus === undefined ? '' : 'Redirigiendo...'}
+        </p>
       </div>
     );
   }
