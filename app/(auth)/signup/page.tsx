@@ -281,6 +281,9 @@ export default function SignupPage() {
             )}
           />
 
+          {/* Clerk CAPTCHA widget mount point (required for bot protection with custom flows) */}
+          <div id="clerk-captcha" />
+
           {/* Submit Button */}
           <Button
             type="submit"

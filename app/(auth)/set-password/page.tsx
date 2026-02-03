@@ -233,6 +233,9 @@ export default function SetPasswordPage() {
             )}
           />
 
+          {/* Clerk CAPTCHA widget mount point (required for bot protection with custom flows) */}
+          <div id="clerk-captcha" />
+
           {/* Action Buttons */}
           <div className="space-y-3 pt-2">
             <Button
