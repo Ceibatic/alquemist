@@ -215,9 +215,17 @@ export default defineSchema({
   users: defineTable({
     // Company & Authentication
     company_id: v.optional(v.id("companies")), // Optional during step 1
-    email: v.string(),
-    email_verified: v.boolean(), // Default: false
+    email: v.optional(v.string()),
+    email_verified: v.optional(v.boolean()), // Default: false
     email_verified_at: v.optional(v.number()), // Timestamp when verified
+
+    // Convex Auth fields
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
 
     // Onboarding
     onboarding_completed: v.optional(v.boolean()), // Default: false
@@ -225,20 +233,19 @@ export default defineSchema({
     // Personal Information
     first_name: v.optional(v.string()),
     last_name: v.optional(v.string()),
-    phone: v.optional(v.string()),
     identification_type: v.optional(v.string()), // CC/CE/NIT/Passport
     identification_number: v.optional(v.string()),
 
     // Roles & Access
-    role_id: v.id("roles"),
-    additional_role_ids: v.array(v.id("roles")),
+    role_id: v.optional(v.id("roles")),
+    additional_role_ids: v.optional(v.array(v.id("roles"))),
     primary_facility_id: v.optional(v.id("facilities")),
-    accessible_facility_ids: v.array(v.id("facilities")),
-    accessible_area_ids: v.array(v.id("areas")),
+    accessible_facility_ids: v.optional(v.array(v.id("facilities"))),
+    accessible_area_ids: v.optional(v.array(v.id("areas"))),
 
     // Preferences
-    locale: v.string(), // Default: "es"
-    timezone: v.string(), // Default: "America/Bogota"
+    locale: v.optional(v.string()), // Default: "es"
+    timezone: v.optional(v.string()), // Default: "America/Bogota"
     date_format: v.optional(v.string()), // Default: "DD/MM/YYYY"
     time_format: v.optional(v.string()), // Default: "24h"
     theme: v.optional(v.string()), // Default: "light"
@@ -254,18 +261,18 @@ export default defineSchema({
     quiet_hours_end: v.optional(v.string()), // Default: "08:00"
 
     // Security
-    mfa_enabled: v.boolean(), // Default: false
+    mfa_enabled: v.optional(v.boolean()), // Default: false
     mfa_secret: v.optional(v.string()),
     last_login: v.optional(v.number()),
-    failed_login_attempts: v.number(), // Default: 0
+    failed_login_attempts: v.optional(v.number()), // Default: 0
     account_locked_until: v.optional(v.number()),
 
     // Metadata
-    status: v.string(), // active/inactive/suspended
-    created_at: v.number(),
-    updated_at: v.number(),
+    status: v.optional(v.string()), // active/inactive/suspended
+    created_at: v.optional(v.number()),
+    updated_at: v.optional(v.number()),
   })
-    .index("by_email", ["email"])
+    .index("email", ["email"])
     .index("by_company", ["company_id"])
     .index("by_role", ["role_id"])
     .index("by_status", ["status"])

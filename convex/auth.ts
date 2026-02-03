@@ -16,6 +16,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       verify: ResendOTP,
       reset: ResendOTPPasswordReset,
       validatePasswordRequirements: (password: string) => {
+        if (!password) return;
         if (password.length < 8) {
           throw new ConvexError("La contraseña debe tener al menos 8 caracteres");
         }
@@ -34,4 +35,15 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       },
     }),
   ],
+  callbacks: {
+    async afterUserCreatedOrUpdated(ctx, { userId, type }) {
+      if (type === "verification") {
+        // Sync email_verified when Convex Auth verifies the email
+        await ctx.db.patch(userId, {
+          email_verified: true,
+          email_verified_at: Date.now(),
+        });
+      }
+    },
+  },
 });

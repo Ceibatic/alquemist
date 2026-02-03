@@ -33,12 +33,12 @@ import { useToast } from '@/hooks/use-toast';
 interface UserRowData {
   id: Id<'users'>;
   type?: 'user';
-  email: string;
+  email?: string;
   firstName?: string;
   lastName?: string;
   roleName: string;
   roleId?: Id<'roles'>;
-  status: string;
+  status?: string;
   lastLogin?: number;
   createdAt?: number;
   accessibleFacilityIds?: string[];
@@ -62,7 +62,7 @@ export function UserRow({ user, companyId, onEditRole }: UserRowProps) {
   // Generate initials
   const initials = user.firstName && user.lastName
     ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
-    : user.email[0].toUpperCase();
+    : (user.email ?? "?")[0].toUpperCase();
 
   // Get role badge color
   const getRoleBadgeColor = (roleName: string) => {

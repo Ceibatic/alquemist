@@ -40,8 +40,9 @@ export default function LoginPage() {
         flow: 'signIn',
       });
 
-      // Convex Auth handles session automatically
-      router.push('/dashboard');
+      // Full page redirect to force middleware re-evaluation of auth cookies
+      // Dashboard layout will redirect to onboarding if not completed
+      window.location.href = '/dashboard';
     } catch (err: any) {
       const message = err?.message || 'Correo electrónico o contraseña incorrectos';
       setGlobalError(message);

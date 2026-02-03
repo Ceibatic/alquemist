@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import {
   companySetupSchema,
   type CompanySetupFormValues,
@@ -22,7 +24,6 @@ import {
 } from '@/components/ui/select';
 import { CascadingSelect } from '@/components/shared/cascading-select';
 import { ProgressIndicator } from '@/components/shared/progress-indicator';
-import { createCompany } from './actions';
 
 const BUSINESS_TYPES = [
   { value: 'SAS', label: 'SAS - Sociedad por Acciones Simplificada' },
@@ -40,22 +41,30 @@ const INDUSTRIES = [
   { value: 'Mixto', label: 'Mixto' },
 ];
 
+const BUSINESS_ENTITY_TYPE_MAP: Record<string, string> = {
+  SAS: 'S.A.S',
+  SA: 'S.A.',
+  LTDA: 'Ltda',
+  EU: 'E.U.',
+  PersonaNatural: 'Persona Natural',
+};
+
+const COMPANY_TYPE_MAP: Record<string, string> = {
+  Cannabis: 'cannabis',
+  Cafe: 'coffee',
+  Cacao: 'cocoa',
+  Flores: 'flowers',
+  Mixto: 'mixed',
+};
+
 export default function CompanySetupPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
 
-  // Get userId from sessionStorage
-  useEffect(() => {
-    const storedUserId = sessionStorage.getItem('signupUserId');
-    if (!storedUserId) {
-      // User hasn't completed email verification
-      router.push('/signup');
-      return;
-    }
-    setUserId(storedUserId);
-  }, [router]);
+  // Use Convex Auth to get the authenticated user's onboarding status
+  const onboardingStatus = useQuery(api.users.getOnboardingStatus);
+  const registerCompany = useMutation(api.registration.registerCompanyStep2);
 
   const form = useForm<CompanySetupFormValues>({
     resolver: zodResolver(companySetupSchema),
@@ -84,44 +93,74 @@ export default function CompanySetupPage() {
   );
 
   const onSubmit = async (data: CompanySetupFormValues) => {
-    if (!userId) {
-      setGlobalError('Sesión expirada. Por favor vuelve a registrarte.');
-      router.push('/signup');
-      return;
-    }
-
     setIsSubmitting(true);
     setGlobalError(null);
 
     try {
-      const result = await createCompany(data, userId);
+      const mappedBusinessEntityType =
+        BUSINESS_ENTITY_TYPE_MAP[data.businessType] || data.businessType;
+      const mappedCompanyType =
+        COMPANY_TYPE_MAP[data.industry] || data.industry.toLowerCase();
+
+      const result = await registerCompany({
+        companyName: data.name,
+        businessEntityType: mappedBusinessEntityType,
+        companyType: mappedCompanyType,
+        country: 'CO',
+        departmentCode: data.departmentCode,
+        municipalityCode: data.municipalityCode,
+      });
 
       if (!result.success) {
-        setGlobalError(result.error || 'Error al crear la empresa');
+        setGlobalError('Error al crear la empresa');
         return;
       }
 
-      // Store company ID in sessionStorage for next steps
+      // Store company ID in sessionStorage for facility setup
       if (result.companyId) {
         sessionStorage.setItem('companyId', result.companyId);
       }
 
       toast.success('Empresa creada correctamente');
-
-      // Navigate to facility setup
       router.push('/facility-basic');
-    } catch {
-      setGlobalError('Error inesperado. Por favor intenta de nuevo.');
+    } catch (err: any) {
+      setGlobalError(err?.message || 'Error inesperado. Por favor intenta de nuevo.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Show loading while checking userId
-  if (!userId) {
+  // Loading: waiting for auth query
+  if (onboardingStatus === undefined) {
     return (
       <div className="text-center p-8">
         <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+      </div>
+    );
+  }
+
+  // Not authenticated — redirect to login
+  if (onboardingStatus === null) {
+    router.push('/login');
+    return (
+      <div className="text-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+        <p className="text-sm text-muted-foreground mt-2">Redirigiendo...</p>
+      </div>
+    );
+  }
+
+  // Already has company — redirect forward
+  if (onboardingStatus.hasCompany) {
+    if (onboardingStatus.onboardingCompleted) {
+      router.push('/dashboard');
+    } else {
+      router.push('/facility-basic');
+    }
+    return (
+      <div className="text-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+        <p className="text-sm text-muted-foreground mt-2">Redirigiendo...</p>
       </div>
     );
   }

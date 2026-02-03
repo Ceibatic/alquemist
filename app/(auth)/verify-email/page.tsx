@@ -57,9 +57,10 @@ function VerifyEmailContent() {
 
       setIsVerified(true);
 
-      // Redirect to company setup after verification
+      // Full page redirect to company setup after verification
+      // Using window.location to force middleware to re-evaluate auth cookies
       setTimeout(() => {
-        router.push('/company-setup');
+        window.location.href = '/company-setup';
       }, 2000);
     } catch (err: any) {
       setError(err?.message || 'Código inválido. Por favor intenta de nuevo.');
@@ -76,11 +77,10 @@ function VerifyEmailContent() {
     setSuccess(null);
 
     try {
-      // Resend by calling signUp again — Convex Auth will resend the OTP
+      // Resend OTP by calling email-verification without a code
       await signIn('password', {
         email,
-        flow: 'signUp',
-        // Password is not needed for resend — Convex Auth handles it
+        flow: 'email-verification',
       });
 
       setSuccess('Email de verificación reenviado. Revisa tu bandeja de entrada.');

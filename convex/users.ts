@@ -1171,7 +1171,7 @@ export const changePassword = action({
       const { sendEmailViaResend, generatePasswordChangedEmailHTML } = await import("./email");
       const emailContent = generatePasswordChangedEmailHTML({
         firstName: user.firstName || "Usuario",
-        email: user.email,
+        email: user.email ?? "",
         changeDate: now.toLocaleString('es-CO', {
           timeZone: 'America/Bogota',
           dateStyle: 'full',
@@ -1180,7 +1180,7 @@ export const changePassword = action({
       });
 
       const emailResult = await sendEmailViaResend({
-        to: user.email,
+        to: user.email ?? "",
         subject: "Contraseña actualizada - Alquemist",
         html: emailContent.html,
         text: emailContent.text,

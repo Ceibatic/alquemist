@@ -36,6 +36,28 @@ El proyecto usa **Convex Auth** con Password provider. No hay auth custom — to
 | `reset` | Solicitar codigo de reset password |
 | `reset-verification` | Verificar codigo y cambiar password |
 
+### Variables de entorno Convex (backend)
+
+Convex Auth requiere estas env vars configuradas en el dashboard/CLI de Convex (NO en `.env.local`, que es solo Next.js):
+
+| Variable | Descripcion |
+|----------|-------------|
+| `SITE_URL` | URL de la app (ej: `http://localhost:3000`). Requerida para construir URLs de verificacion |
+| `JWT_PRIVATE_KEY` | Clave RSA privada para firmar tokens JWT de sesion. Generar con: `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \| openssl pkcs8 -topk8 -nocrypt` |
+| `RESEND_API_KEY` | API key de Resend para envio de emails OTP |
+| `AUTH_RESEND_KEY` | API key alternativa de Resend (legacy) |
+
+Para configurar: `npx convex env set VARIABLE -- "valor"`
+
+### Schema users y Convex Auth
+
+La tabla `users` en `convex/schema.ts` extiende `authTables` de `@convex-dev/auth`. Reglas criticas:
+
+1. **Campos de authTables obligatorios:** `name`, `image`, `email`, `emailVerificationTime`, `phone`, `phoneVerificationTime`, `isAnonymous` — todos `v.optional()`
+2. **Index `email`:** DEBE llamarse `"email"` (no `"by_email"`). Convex Auth busca `.withIndex("email", ...)`
+3. **Campos custom deben ser `v.optional()`:** Al hacer signup, Convex Auth solo inserta `{email, name}`. Todos los campos adicionales (role_id, status, locale, etc.) deben ser optional para que la insercion no falle
+4. **Queries que usan campos del user:** Usar null checks o fallbacks (`user.email ?? ""`, `user.role_id ? await ctx.db.get(user.role_id) : null`, `user.locale || "es"`)
+
 ### Rutas publicas (no requieren auth)
 
 `/login`, `/signup`, `/verify-email`, `/forgot-password`, `/set-password`, `/reset-password`, `/accept-invitation(.*)`, `/invitation-invalid`, `/welcome-invited`

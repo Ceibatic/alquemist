@@ -24,6 +24,9 @@ async function requirePlatformAdmin(
     throw new Error("User not found");
   }
 
+  if (!user.role_id) {
+    throw new Error("Unauthorized: User has no role assigned");
+  }
   const role = await ctx.db.get(user.role_id);
   if (!role || role.name !== "PLATFORM_ADMIN") {
     throw new Error("Unauthorized: Platform admin access required");
@@ -72,7 +75,7 @@ export const isPlatformAdmin = query({
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
-    if (!user) return false;
+    if (!user || !user.role_id) return false;
 
     const role = await ctx.db.get(user.role_id);
     return role?.name === "PLATFORM_ADMIN";
@@ -596,7 +599,7 @@ export const createPlatformAdmin = mutation({
     // Check if user already exists
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
+      .withIndex("email", (q) => q.eq("email", args.email.toLowerCase()))
       .first();
 
     if (existingUser) {
