@@ -11,6 +11,7 @@ import {
   type InvitationAcceptFormValues,
   allPasswordRequirementsMet,
 } from '@/lib/validations';
+import { getClerkErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -108,14 +109,9 @@ export default function SetPasswordPage() {
       sessionStorage.setItem('signupEmail', invitationEmail);
       sessionStorage.setItem('isInvitedUser', 'true');
       router.push('/verify-email');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error accepting invitation:', err);
-      const clerkErrors = err?.errors;
-      if (clerkErrors && clerkErrors.length > 0) {
-        setError(clerkErrors[0].longMessage || 'Error al crear la cuenta');
-      } else {
-        setError('Error inesperado. Por favor intenta de nuevo.');
-      }
+      setError(getClerkErrorMessage(err, 'Error inesperado. Por favor intenta de nuevo.'));
     } finally {
       setIsSubmitting(false);
     }

@@ -222,6 +222,12 @@ export default defineSchema({
     name: v.optional(v.string()),
     phone: v.optional(v.string()),
 
+    // Legacy fields from @convex-dev/auth (kept for existing data compatibility)
+    emailVerificationTime: v.optional(v.float64()),
+    phoneVerificationTime: v.optional(v.float64()),
+    isAnonymous: v.optional(v.boolean()),
+    image: v.optional(v.string()),
+
     // Onboarding
     onboarding_completed: v.optional(v.boolean()), // Default: false
 

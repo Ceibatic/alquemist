@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
       });
 
       setIsSuccess(true);
-    } catch (err: any) {
+    } catch {
       // Always show success to prevent email enumeration
       setIsSuccess(true);
     } finally {

@@ -8,10 +8,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { LogIn } from 'lucide-react';
 import { useSignIn } from '@clerk/nextjs';
 import { loginSchema, type LoginFormValues } from '@/lib/validations';
+import { getClerkErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { PasswordInput } from '@/components/shared/password-input';
 
 export default function LoginPage() {
@@ -19,7 +19,6 @@ export default function LoginPage() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const [rememberMe, setRememberMe] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -47,9 +46,8 @@ export default function LoginPage() {
         // Dashboard layout will redirect to onboarding if not completed
         window.location.href = '/dashboard';
       }
-    } catch (err: any) {
-      const message = err?.message || 'Correo electrónico o contraseña incorrectos';
-      setGlobalError(message);
+    } catch (err: unknown) {
+      setGlobalError(getClerkErrorMessage(err, 'Correo electrónico o contraseña incorrectos'));
     } finally {
       setIsSubmitting(false);
     }
@@ -119,22 +117,6 @@ export default function LoginPage() {
               {form.formState.errors.password.message}
             </p>
           )}
-        </div>
-
-        {/* Remember Me */}
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="remember"
-            checked={rememberMe}
-            onCheckedChange={(checked) => setRememberMe(checked === true)}
-            disabled={isSubmitting}
-          />
-          <Label
-            htmlFor="remember"
-            className="text-sm font-normal cursor-pointer"
-          >
-            Mantener sesión iniciada
-          </Label>
         </div>
 
         {/* Submit Button */}

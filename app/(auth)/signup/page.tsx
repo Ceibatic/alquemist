@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useSignUp } from '@clerk/nextjs';
 
 import { signupSchema, type SignupFormValues, allPasswordRequirementsMet } from '@/lib/validations';
+import { getClerkErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -100,31 +101,9 @@ export default function SignupPage() {
 
       // Clerk sends OTP automatically
       router.push('/verify-email');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Signup Error]', err);
-
-      // Provide specific error messages based on error type
-      let message = 'Error inesperado. Por favor intenta de nuevo.';
-
-      if (err?.message) {
-        const errorMsg = err.message.toLowerCase();
-
-        if (errorMsg.includes('email') && errorMsg.includes('exists')) {
-          message = 'Este email ya está registrado. Por favor inicia sesión.';
-        } else if (errorMsg.includes('email') || errorMsg.includes('verification')) {
-          message = 'No se pudo enviar el correo de verificación. Verifica tu conexión e intenta nuevamente.';
-        } else if (errorMsg.includes('password')) {
-          message = 'La contraseña no cumple con los requisitos de seguridad.';
-        } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
-          message = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
-        } else if (errorMsg.includes('api key') || errorMsg.includes('resend')) {
-          message = 'Error de configuración del servidor. Contacta a soporte.';
-        } else {
-          message = err.message;
-        }
-      }
-
-      setError(message);
+      setError(getClerkErrorMessage(err, 'Error inesperado. Por favor intenta de nuevo.'));
     } finally {
       setIsSubmitting(false);
     }

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Mail, CheckCircle2 } from 'lucide-react';
 import { useSignUp } from '@clerk/nextjs';
 
+import { getClerkErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { CodeInput } from '@/components/shared/code-input';
 import { CountdownTimer } from '@/components/shared/countdown-timer';
@@ -38,6 +39,18 @@ function VerifyEmailContent() {
     }
   }, [router, searchParams]);
 
+  // Handle already-verified state (e.g. user verified via email link while page is open)
+  React.useEffect(() => {
+    if (isLoaded && signUp?.status === 'complete') {
+      setIsVerified(true);
+      if (signUp.createdSessionId) {
+        setActive({ session: signUp.createdSessionId }).then(() => {
+          window.location.href = '/company-setup';
+        });
+      }
+    }
+  }, [isLoaded, signUp, setActive]);
+
   if (!isLoaded) return null;
 
   const handleVerify = async () => {
@@ -63,8 +76,8 @@ function VerifyEmailContent() {
           window.location.href = '/company-setup';
         }, 2000);
       }
-    } catch (err: any) {
-      setError(err?.errors?.[0]?.message || 'Código inválido. Por favor intenta de nuevo.');
+    } catch (err: unknown) {
+      setError(getClerkErrorMessage(err, 'Código inválido. Por favor intenta de nuevo.'));
     } finally {
       setIsVerifying(false);
     }
@@ -82,8 +95,8 @@ function VerifyEmailContent() {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
 
       setSuccess('Email de verificación reenviado. Revisa tu bandeja de entrada.');
-    } catch (err: any) {
-      setError(err?.errors?.[0]?.message || 'Error al reenviar email');
+    } catch (err: unknown) {
+      setError(getClerkErrorMessage(err, 'Error al reenviar email'));
     } finally {
       setIsResending(false);
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, KeyRound, CheckCircle } from 'lucide-react';
 import { useSignIn } from '@clerk/nextjs';
+import { getClerkErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/shared/password-input';
@@ -53,7 +54,15 @@ function ResetPasswordContent() {
     },
   });
 
+  // Redirect if no email context (user navigated directly)
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('resetEmail')) {
+      router.push('/forgot-password');
+    }
+  }, [router]);
+
   if (!isLoaded) return null;
+  if (!email) return null;
 
   const onSubmit = async (data: ResetPasswordValues) => {
     if (code.length !== 6) {
@@ -86,8 +95,8 @@ function ResetPasswordContent() {
           setIsSuccess(true);
         }
       }
-    } catch (err: any) {
-      setGlobalError(err?.errors?.[0]?.message || 'Error al restablecer la contraseña. Código inválido o expirado.');
+    } catch (err: unknown) {
+      setGlobalError(getClerkErrorMessage(err, 'Error al restablecer la contraseña. Código inválido o expirado.'));
     } finally {
       setIsSubmitting(false);
     }
