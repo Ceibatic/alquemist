@@ -110,7 +110,6 @@ export default function SetPasswordPage() {
       sessionStorage.setItem('isInvitedUser', 'true');
       router.push('/verify-email');
     } catch (err: unknown) {
-      console.error('Error accepting invitation:', err);
       setError(getClerkErrorMessage(err, 'Error inesperado. Por favor intenta de nuevo.'));
     } finally {
       setIsSubmitting(false);

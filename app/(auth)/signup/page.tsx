@@ -102,7 +102,6 @@ export default function SignupPage() {
       // Clerk sends OTP automatically
       router.push('/verify-email');
     } catch (err: unknown) {
-      console.error('[Signup Error]', err);
       setError(getClerkErrorMessage(err, 'Error inesperado. Por favor intenta de nuevo.'));
     } finally {
       setIsSubmitting(false);
