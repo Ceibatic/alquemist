@@ -8,6 +8,7 @@ import { Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { useAuth } from '@clerk/nextjs';
 import {
   companySetupSchema,
   type CompanySetupFormValues,
@@ -61,6 +62,17 @@ export default function CompanySetupPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+
+  const { isSignedIn } = useAuth();
+  // Ensure user exists in Convex (handles webhook race condition)
+  const ensureUserExists = useMutation(api.clerkSync.ensureUserExists);
+  const [userEnsured, setUserEnsured] = useState(false);
+
+  useEffect(() => {
+    if (isSignedIn && !userEnsured) {
+      ensureUserExists().then(() => setUserEnsured(true));
+    }
+  }, [isSignedIn, userEnsured, ensureUserExists]);
 
   // Use Convex Auth to get the authenticated user's onboarding status
   const onboardingStatus = useQuery(api.users.getOnboardingStatus);
@@ -116,9 +128,12 @@ export default function CompanySetupPage() {
         return;
       }
 
-      // Store company ID in sessionStorage for facility setup
+      // Store company ID and user ID in sessionStorage for facility setup
       if (result.companyId) {
         sessionStorage.setItem('companyId', result.companyId);
+      }
+      if (result.userId) {
+        sessionStorage.setItem('signupUserId', result.userId);
       }
 
       toast.success('Empresa creada correctamente');

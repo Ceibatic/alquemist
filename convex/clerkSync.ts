@@ -5,7 +5,7 @@
  * Called from Clerk webhooks to keep user data in sync.
  */
 
-import { internalMutation } from "./_generated/server";
+import { internalMutation, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
@@ -175,5 +175,75 @@ export const deleteUserFromClerk = internalMutation({
     });
 
     return user._id;
+  },
+});
+
+/**
+ * Ensure the authenticated Clerk user exists in Convex.
+ *
+ * Called from the frontend after Clerk sign-up verification completes.
+ * Handles the race condition where the browser navigates to the next page
+ * before the Clerk webhook has fired to create the Convex user.
+ *
+ * Uses ctx.auth.getUserIdentity() to get the Clerk subject/email from the JWT.
+ */
+export const ensureUserExists = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const clerkId = identity.subject;
+
+    // Check if user already exists by Clerk ID
+    const existingByClerk = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
+      .first();
+
+    if (existingByClerk) {
+      return existingByClerk._id;
+    }
+
+    // Check by email (user may have been created before migration)
+    const email = identity.email;
+    if (email) {
+      const existingByEmail = await ctx.db
+        .query("users")
+        .withIndex("email", (q) => q.eq("email", email))
+        .first();
+
+      if (existingByEmail) {
+        // Link existing user to Clerk ID
+        await ctx.db.patch(existingByEmail._id, {
+          clerkId,
+          email_verified: true,
+          email_verified_at: Date.now(),
+          updated_at: Date.now(),
+        });
+        return existingByEmail._id;
+      }
+    }
+
+    // Create new user from JWT identity
+    const firstName = identity.givenName || undefined;
+    const lastName = identity.familyName || undefined;
+
+    const userId = await ctx.db.insert("users", {
+      clerkId,
+      email: email || "",
+      first_name: firstName,
+      last_name: lastName,
+      name: firstName && lastName
+        ? `${firstName} ${lastName}`
+        : firstName || lastName,
+      email_verified: true,
+      email_verified_at: Date.now(),
+      status: "active",
+      created_at: Date.now(),
+      updated_at: Date.now(),
+    });
+
+    return userId;
   },
 });

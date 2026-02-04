@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Mail, CheckCircle2 } from 'lucide-react';
 import { useSignUp } from '@clerk/nextjs';
 
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { getClerkErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { CodeInput } from '@/components/shared/code-input';
@@ -22,6 +24,7 @@ function VerifyEmailContent() {
   const [isVerified, setIsVerified] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
+  const ensureUserExists = useMutation(api.clerkSync.ensureUserExists);
 
   // Get email from sessionStorage
   React.useEffect(() => {
@@ -44,12 +47,16 @@ function VerifyEmailContent() {
     if (isLoaded && signUp?.status === 'complete') {
       setIsVerified(true);
       if (signUp.createdSessionId) {
-        setActive({ session: signUp.createdSessionId }).then(() => {
-          window.location.href = '/company-setup';
+        setActive({ session: signUp.createdSessionId }).then(async () => {
+          // Ensure user exists in Convex before navigating
+          // Handles race condition where webhook hasn't fired yet
+          await ensureUserExists();
+          const isInvited = sessionStorage.getItem('isInvitedUser') === 'true';
+          window.location.href = isInvited ? '/welcome-invited' : '/company-setup';
         });
       }
     }
-  }, [isLoaded, signUp, setActive]);
+  }, [isLoaded, signUp, setActive, ensureUserExists]);
 
   if (!isLoaded) return null;
 
@@ -70,10 +77,15 @@ function VerifyEmailContent() {
         await setActive({ session: result.createdSessionId });
         setIsVerified(true);
 
-        // Full page redirect to company setup after verification
+        // Ensure user exists in Convex before navigating
+        // Handles race condition where webhook hasn't fired yet
+        await ensureUserExists();
+
+        // Full page redirect after verification
         // Using window.location to force middleware to re-evaluate auth cookies
+        const isInvited = sessionStorage.getItem('isInvitedUser') === 'true';
         setTimeout(() => {
-          window.location.href = '/company-setup';
+          window.location.href = isInvited ? '/welcome-invited' : '/company-setup';
         }, 2000);
       }
     } catch (err: unknown) {
