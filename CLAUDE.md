@@ -227,8 +227,66 @@ Despues de cada commit, agregar una entrada al archivo `docs/dev/logs/YYYY-MM-DD
 - Multiples commits en una sesion = multiples secciones `## [HH:MM]` en el mismo archivo
 - Solo listar los archivos mas relevantes del cambio, no todo el diff
 
-## Agents y Skills
+## Skills Disponibles
 
-- Agent profiles: `.claude/agents/` (backend-dev, code-reviewer, frontend-dev, test-engineer, typescript-expert)
-- Skills: `.claude/skills/` (review-module, migrate-auth)
-- recuerda que deberiamos hacer commits al final de cada implementacion o modificacion relevante
+| Skill | Proposito | Invocacion |
+|-------|-----------|------------|
+| `/plan-feature` | Planificar nueva feature con User Stories detalladas | Cuando quieras documentar una nueva funcionalidad |
+| `/implement-feature` | Implementar feature del backlog sistematicamente | Cuando quieras implementar un FEAT-*.md |
+| `/review-module` | Auditar modulo existente vs documentacion | Cuando quieras revisar un modulo de docs/modules/ |
+| `/migrate-auth` | Continuar migracion Clerk | Para fases pendientes de migracion auth |
+
+## Metodologia de Desarrollo
+
+El proyecto sigue una metodologia de dos fases para implementar nuevas funcionalidades:
+
+### Flujo de Trabajo
+
+```
+1. PLANIFICACION (/plan-feature)
+   Usuario describe idea → Explorar codebase → Clarificar dudas
+   → Generar docs/backlog/pending/FEAT-YYYY-MM-nombre.md
+
+2. IMPLEMENTACION (/implement-feature)
+   Leer documento → Mover a in-progress/ → Crear branch
+   → Para cada US: explorar, implementar, build, commit, actualizar doc
+   → Mover a completed/ → Push y resumen para PR
+```
+
+### Estructura del Backlog
+
+```
+docs/backlog/
+├── pending/           # Features planificadas, listas para implementar
+├── in-progress/       # Features en desarrollo activo
+└── completed/         # Features terminadas (historial)
+```
+
+### Nomenclatura
+
+- **Archivos:** `FEAT-YYYY-MM-nombre-kebab.md` (ej: `FEAT-2026-02-dark-mode.md`)
+- **Branches:** `feat/FEAT-YYYY-MM-nombre`
+- **Commits:** Un commit por US: `feat(modulo): US-XXX.N descripcion`
+
+### Template de Feature
+
+Ver `docs/backlog/TEMPLATE.md` para el formato completo de documentos de feature.
+
+### Convenciones de Commits
+
+- `feat(modulo):` — Nueva funcionalidad
+- `fix(modulo):` — Correccion de bug
+- `refactor(modulo):` — Refactorizacion sin cambio de comportamiento
+- `docs(modulo):` — Solo documentacion
+
+Siempre incluir: `Co-Authored-By: Claude <noreply@anthropic.com>`
+
+### Reglas Criticas
+
+1. **Explorar antes de implementar** — Leer codigo existente primero
+2. **Build despues de cada US** — No continuar si falla
+3. **Un commit por US** — No acumular cambios
+4. **Actualizar documento** — Marcar criterios [x] al completar
+5. **Daily log obligatorio** — Registrar en docs/dev/logs/
+
+Recuerda hacer commits al final de cada implementacion o modificacion relevante.
