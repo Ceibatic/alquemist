@@ -37,9 +37,15 @@ export const productFormSchema = z.object({
     .or(z.literal('')),
   category: z.enum(
     [
-      'nutrient', 'pesticide', 'equipment', 'seed', 'substrate', 'container', 'tool', 'other',
-      // Plant lifecycle categories
-      'clone', 'seedling', 'mother_plant', 'plant_material'
+      // Insumos
+      'seed', 'nutrient', 'pesticide', 'substrate', 'biocontrol',
+      // Material vegetal
+      'clone', 'seedling', 'mother_plant', 'plant_material',
+      'plant_vegetative', 'plant_flowering', 'harvest_wet', 'harvest_dry', 'processed_plant',
+      // Preparados
+      'stock_solution', 'substrate_mix',
+      // Infraestructura
+      'equipment', 'container', 'tool', 'other',
     ],
     { errorMap: () => ({ message: 'Debes seleccionar una categoría' }) }
   ),
@@ -138,35 +144,57 @@ export type ProductFilterInput = z.infer<typeof productFilterSchema>;
 // ============================================================================
 
 export const productCategoryLabels: Record<string, string> = {
+  // Insumos
   seed: 'Semillas',
   nutrient: 'Nutrientes',
   pesticide: 'Pesticidas',
-  equipment: 'Equipos',
   substrate: 'Sustratos',
-  container: 'Contenedores',
-  tool: 'Herramientas',
-  other: 'Otros',
-  // Plant lifecycle categories
+  biocontrol: 'Biocontrol',
+  // Material vegetal
   clone: 'Esquejes',
   seedling: 'Plántulas',
   mother_plant: 'Plantas Madre',
   plant_material: 'Material Vegetal',
+  plant_vegetative: 'Planta Vegetativa',
+  plant_flowering: 'Planta en Floración',
+  harvest_wet: 'Cosecha Húmeda',
+  harvest_dry: 'Cosecha Seca',
+  processed_plant: 'Producto Procesado',
+  // Preparados
+  stock_solution: 'Solución Madre',
+  substrate_mix: 'Mezcla de Sustrato',
+  // Infraestructura
+  equipment: 'Equipos',
+  container: 'Contenedores',
+  tool: 'Herramientas',
+  other: 'Otros',
 };
 
 export const productCategoryIcons: Record<string, string> = {
+  // Insumos
   seed: '🌱',
   nutrient: '🧪',
   pesticide: '🛡️',
-  equipment: '⚙️',
   substrate: '🌾',
-  container: '🪣',
-  tool: '🔧',
-  other: '📋',
-  // Plant lifecycle categories
+  biocontrol: '🐛',
+  // Material vegetal
   clone: '🪴',
   seedling: '🌿',
   mother_plant: '🌳',
   plant_material: '🍃',
+  plant_vegetative: '🌱',
+  plant_flowering: '🌸',
+  harvest_wet: '🌿',
+  harvest_dry: '🍂',
+  processed_plant: '📦',
+  // Preparados
+  stock_solution: '🧫',
+  substrate_mix: '🌾',
+  // Infraestructura
+  equipment: '⚙️',
+  container: '🪣',
+  tool: '🔧',
+  other: '📋',
 };
 
 export const productStatusLabels: Record<string, string> = {

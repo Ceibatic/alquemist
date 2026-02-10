@@ -22,7 +22,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -48,19 +50,23 @@ interface ProductFormProps {
   isSubmitting?: boolean;
 }
 
-const categories = [
-  'seed',
-  'nutrient',
-  'pesticide',
-  'equipment',
-  'substrate',
-  'container',
-  'tool',
-  'clone',
-  'seedling',
-  'mother_plant',
-  'plant_material',
-  'other',
+const categoryGroups = [
+  {
+    label: 'Insumos',
+    items: ['seed', 'nutrient', 'pesticide', 'substrate', 'biocontrol'] as const,
+  },
+  {
+    label: 'Material Vegetal',
+    items: ['clone', 'seedling', 'mother_plant', 'plant_material', 'plant_vegetative', 'plant_flowering', 'harvest_wet', 'harvest_dry', 'processed_plant'] as const,
+  },
+  {
+    label: 'Preparados',
+    items: ['stock_solution', 'substrate_mix'] as const,
+  },
+  {
+    label: 'Infraestructura',
+    items: ['equipment', 'container', 'tool', 'other'] as const,
+  },
 ] as const;
 
 const weightUnits = ['kg', 'g', 'lb', 'oz'] as const;
@@ -190,14 +196,22 @@ export function ProductForm({
       seed: 'SEM',
       nutrient: 'NUT',
       pesticide: 'PES',
-      equipment: 'EQP',
       substrate: 'SUS',
-      container: 'CON',
-      tool: 'HER',
+      biocontrol: 'BIO',
       clone: 'CLO',
-      seedling: 'PLA',
+      seedling: 'PLT',
       mother_plant: 'MAD',
       plant_material: 'MAT',
+      plant_vegetative: 'VEG',
+      plant_flowering: 'FLO',
+      harvest_wet: 'CHU',
+      harvest_dry: 'CSE',
+      processed_plant: 'PRO',
+      stock_solution: 'SOL',
+      substrate_mix: 'MIX',
+      equipment: 'EQP',
+      container: 'CON',
+      tool: 'HER',
       other: 'OTR',
     };
     const prefix = categoryPrefixes[category] || 'PRD';
@@ -297,10 +311,15 @@ export function ProductForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {productCategoryLabels[cat]}
-                        </SelectItem>
+                      {categoryGroups.map((group) => (
+                        <SelectGroup key={group.label}>
+                          <SelectLabel>{group.label}</SelectLabel>
+                          {group.items.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {productCategoryLabels[cat]}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       ))}
                     </SelectContent>
                   </Select>
