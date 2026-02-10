@@ -2051,7 +2051,6 @@ export default defineSchema({
   })
     .index("by_company", ["company_id"])
     .index("by_type_id", ["type_id"])
-    .index("by_company_phase", ["company_id"]) // filter applicable_phases in code
     .index("by_active", ["is_active"]),
 
   // Resources pre-defined in a template — pre-loaded when executing
