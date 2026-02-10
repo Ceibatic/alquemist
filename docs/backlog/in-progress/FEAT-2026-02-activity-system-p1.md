@@ -117,10 +117,10 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
 **para** reemplazar los arrays embebidos materials_consumed/materials_produced y habilitar queries directas por producto, lote y tipo de movimiento
 
 #### Criterios de Aceptacion
-- [ ] Tabla `activity_resources` creada en `convex/schema.ts` con campos: activity_id, direction (consumed/produced/applied/wasted), product_id, inventory_item_id (opcional), quantity, unit_id (opcional), quantity_unit, cost_per_unit (opcional), cost_total (opcional), transaction_id (opcional link a inventory_transactions), application_rate (opcional), application_method (opcional), batch_number (opcional), notes (opcional), created_at
-- [ ] Indexes: by_activity, by_product, by_inventory_item, by_direction
-- [ ] Archivo `convex/activityResources.ts` con queries: `listByActivity(activityId)`, `listByProduct(productId, limit?)`
-- [ ] `npx next build` pasa sin errores
+- [x] Tabla `activity_resources` creada en `convex/schema.ts` con campos: activity_id, direction (consumed/produced/applied/wasted), product_id, inventory_item_id (opcional), quantity, unit_id (opcional), quantity_unit, cost_per_unit (opcional), cost_total (opcional), transaction_id (opcional link a inventory_transactions), application_rate (opcional), application_method (opcional), batch_number (opcional), notes (opcional), created_at
+- [x] Indexes: by_activity, by_product, by_inventory_item, by_direction
+- [x] Archivo `convex/activityResources.ts` con queries: `listByActivity(activityId)`, `listByProduct(productId, limit?)`
+- [x] `npx next build` pasa sin errores
 
 #### Backend
 - Schema: `activity_resources` (nueva tabla)

@@ -1575,6 +1575,28 @@ export default defineSchema({
     .index("by_company_code", ["company_id", "code"])
     .index("by_status", ["status"]),
 
+  activity_resources: defineTable({
+    activity_id: v.id("activities"),
+    direction: v.string(), // consumed / produced / applied / wasted
+    product_id: v.id("products"),
+    inventory_item_id: v.optional(v.id("inventory_items")), // Specific lot (null if FIFO)
+    quantity: v.number(),
+    unit_id: v.optional(v.id("units_of_measure")),
+    quantity_unit: v.string(), // Denormalized unit label
+    cost_per_unit: v.optional(v.number()),
+    cost_total: v.optional(v.number()), // qty * cost_per_unit
+    transaction_id: v.optional(v.id("inventory_transactions")), // Link to generated transaction
+    application_rate: v.optional(v.string()), // e.g. "2mL/L"
+    application_method: v.optional(v.string()), // foliar, drench, etc.
+    batch_number: v.optional(v.string()), // From inventory_item
+    notes: v.optional(v.string()),
+    created_at: v.number(),
+  })
+    .index("by_activity", ["activity_id"])
+    .index("by_product", ["product_id"])
+    .index("by_inventory_item", ["inventory_item_id"])
+    .index("by_direction", ["direction"]),
+
   pest_disease_records: defineTable({
     facility_id: v.id("facilities"),
     area_id: v.id("areas"),
