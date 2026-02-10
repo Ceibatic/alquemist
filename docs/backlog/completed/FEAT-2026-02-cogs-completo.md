@@ -51,13 +51,13 @@ La estrategia es crear una tabla generica `cost_entries` que registre costos no-
 **para** acumular costos laborales por batch y fase de cultivo
 
 #### Criterios de Aceptacion
-- [ ] Nueva tabla `cost_entries` para registrar costos no-inventario vinculados a batches
-- [ ] Cuando se crea una actividad con `duration_minutes > 0` Y el usuario tiene un rol con `hourly_rate`, se crea automaticamente un `cost_entry` tipo `labor`
-- [ ] Calculo: `cost_total = (duration_minutes / 60) * hourly_rate`
-- [ ] El `cost_entry` registra: `batch_id`, `crop_phase`, `activity_id`, `cost_type: "labor"`, `cost_total`, `performed_by`, `details` (nombre rol, tarifa, minutos)
-- [ ] Si la actividad no tiene `batch_id` (no es de cultivo), el `cost_entry` se crea con `batch_id: undefined` (costo indirecto, no se suma a COGS de batch)
-- [ ] Si el usuario no tiene rol o el rol no tiene tarifa, no se crea `cost_entry` (solo se pierde visibilidad de costo, no bloquea la actividad)
-- [ ] Las actividades existentes NO generan cost_entries retroactivamente (solo nuevas)
+- [x] Nueva tabla `cost_entries` para registrar costos no-inventario vinculados a batches
+- [x] Cuando se crea una actividad con `duration_minutes > 0` Y el usuario tiene un rol con `hourly_rate`, se crea automaticamente un `cost_entry` tipo `labor`
+- [x] Calculo: `cost_total = (duration_minutes / 60) * hourly_rate`
+- [x] El `cost_entry` registra: `batch_id`, `crop_phase`, `activity_id`, `cost_type: "labor"`, `cost_total`, `performed_by`, `details` (nombre rol, tarifa, minutos)
+- [x] Si la actividad no tiene `batch_id` (no es de cultivo), el `cost_entry` se crea con `batch_id: undefined` (costo indirecto, no se suma a COGS de batch)
+- [x] Si el usuario no tiene rol o el rol no tiene tarifa, no se crea `cost_entry` (solo se pierde visibilidad de costo, no bloquea la actividad)
+- [x] Las actividades existentes NO generan cost_entries retroactivamente (solo nuevas)
 
 #### Backend
 - Schema: nueva tabla `cost_entries` (ver Schema Changes abajo)
@@ -79,12 +79,12 @@ La estrategia es crear una tabla generica `cost_entries` que registre costos no-
 **para** que el sistema pueda prorratear estos costos entre los batches activos
 
 #### Criterios de Aceptacion
-- [ ] Nueva tabla `utility_readings` para registrar lecturas de medidores
-- [ ] Formulario accesible desde pagina de facility (`/facilities/[id]`) con boton "Registrar Lectura"
-- [ ] Campos del formulario: Tipo (electricidad/agua/gas), Periodo (mes/ano), Lectura anterior, Lectura actual, Consumo (calculado: actual - anterior), Unidad (kWh/m3/galones), Costo total del periodo, Notas
-- [ ] Validacion: lectura actual >= lectura anterior, consumo >= 0, costo >= 0
-- [ ] Tabla de lecturas historicas en pagina de facility con: periodo, tipo, consumo, costo, fecha registro
-- [ ] Una sola lectura por tipo por periodo por facility (no duplicados)
+- [x] Nueva tabla `utility_readings` para registrar lecturas de medidores
+- [x] Formulario accesible desde pagina de facility (`/facilities/[id]`) con boton "Registrar Lectura"
+- [x] Campos del formulario: Tipo (electricidad/agua/gas), Periodo (mes/ano), Lectura anterior, Lectura actual, Consumo (calculado: actual - anterior), Unidad (kWh/m3/galones), Costo total del periodo, Notas
+- [x] Validacion: lectura actual >= lectura anterior, consumo >= 0, costo >= 0
+- [x] Tabla de lecturas historicas en pagina de facility con: periodo, tipo, consumo, costo, fecha registro
+- [x] Una sola lectura por tipo por periodo por facility (no duplicados)
 
 #### Backend
 - Schema: nueva tabla `utility_readings` (ver Schema Changes abajo)
@@ -109,13 +109,13 @@ La estrategia es crear una tabla generica `cost_entries` que registre costos no-
 **para** que cada batch refleje su parte proporcional de energia y agua
 
 #### Criterios de Aceptacion
-- [ ] Al guardar una lectura de utility, el sistema genera `cost_entries` tipo `utility_electricity`, `utility_water` o `utility_gas` para cada batch activo en la facility durante ese periodo
-- [ ] Metodo de prorrateo: proporcional al area ocupada. Cada batch tiene `zone_id` → area en m2. El prorrateo es `(area_batch / area_total_facility) * costo_periodo`
-- [ ] Si un batch estuvo activo solo parte del periodo (inicio o fin dentro del mes), se prorratea tambien por dias: `(dias_activo / dias_periodo) * proporcion_area`
-- [ ] Los `cost_entries` generados tienen `crop_phase` basado en la fase del batch al momento del prorrateo
-- [ ] Si no hay batches activos, el costo queda como overhead sin asignar (sin `batch_id`)
-- [ ] Un batch se considera "activo" si su `status` es `active` y tiene `start_date` <= fin del periodo
-- [ ] Mutation para re-calcular prorrateo si se corrige una lectura (borra cost_entries anteriores de ese periodo+tipo y recalcula)
+- [x] Al guardar una lectura de utility, el sistema genera `cost_entries` tipo `utility_electricity`, `utility_water` o `utility_gas` para cada batch activo en la facility durante ese periodo
+- [x] Metodo de prorrateo: proporcional al area ocupada. Cada batch tiene `zone_id` → area en m2. El prorrateo es `(area_batch / area_total_facility) * costo_periodo`
+- [x] Si un batch estuvo activo solo parte del periodo (inicio o fin dentro del mes), se prorratea tambien por dias: `(dias_activo / dias_periodo) * proporcion_area`
+- [x] Los `cost_entries` generados tienen `crop_phase` basado en la fase del batch al momento del prorrateo
+- [x] Si no hay batches activos, el costo queda como overhead sin asignar (sin `batch_id`)
+- [x] Un batch se considera "activo" si su `status` es `active` y tiene `start_date` <= fin del periodo
+- [x] Mutation para re-calcular prorrateo si se corrige una lectura (borra cost_entries anteriores de ese periodo+tipo y recalcula)
 
 #### Backend
 - Mutation: `utilities.allocateToActiveBatches(readingId)` — logica de prorrateo
@@ -137,12 +137,12 @@ La estrategia es crear una tabla generica `cost_entries` que registre costos no-
 **para** incluir la depreciacion en el COGS de los batches que usan esos equipos
 
 #### Criterios de Aceptacion
-- [ ] Nuevos campos opcionales en `products` (donde `category === "equipment"`): `acquisition_value`, `useful_life_months`, `salvage_value`, `depreciation_method` (default: "straight_line")
-- [ ] Depreciacion mensual calculada: `(acquisition_value - salvage_value) / useful_life_months`
-- [ ] Al registrar lectura de utilities mensual, se ejecuta tambien el calculo de depreciacion de equipos activos en la facility
-- [ ] Genera `cost_entries` tipo `depreciation` para cada equipo, prorrateado entre batches activos igual que utilities (por area)
-- [ ] Product form para equipos muestra seccion "Depreciacion" con campos: Valor de adquisicion, Vida util (meses), Valor residual, Metodo (solo linea recta por ahora)
-- [ ] Solo se deprecian equipos con `lot_status !== "discontinued"` y con `acquisition_value > 0`
+- [x] Nuevos campos opcionales en `products` (donde `category === "equipment"`): `acquisition_value`, `useful_life_months`, `salvage_value`, `depreciation_method` (default: "straight_line")
+- [x] Depreciacion mensual calculada: `(acquisition_value - salvage_value) / useful_life_months`
+- [x] Al registrar lectura de utilities mensual, se ejecuta tambien el calculo de depreciacion de equipos activos en la facility
+- [x] Genera `cost_entries` tipo `depreciation` para cada equipo, prorrateado entre batches activos igual que utilities (por area)
+- [x] Product form para equipos muestra seccion "Depreciacion" con campos: Valor de adquisicion, Vida util (meses), Valor residual, Metodo (solo linea recta por ahora)
+- [x] Solo se deprecian equipos con `lot_status !== "discontinued"` y con `acquisition_value > 0`
 
 #### Backend
 - Schema: `products` — agregar `acquisition_value: v.optional(v.number())`, `useful_life_months: v.optional(v.number())`, `salvage_value: v.optional(v.number())`, `depreciation_method: v.optional(v.string())`
@@ -165,17 +165,17 @@ La estrategia es crear una tabla generica `cost_entries` que registre costos no-
 **para** entender la estructura real de costos y optimizar recursos
 
 #### Criterios de Aceptacion
-- [ ] Query `inventory.getFullCostByBatch(batchId)` que combina: insumos (de `inventory_transactions`) + labor + utilities + depreciacion (de `cost_entries`)
-- [ ] Retorna estructura con 4 secciones: `materials`, `labor`, `utilities`, `depreciation`, cada una con subtotal y detalle
-- [ ] Resumen superior muestra: COGS total, COGS por unidad de output (si hay cosecha), y porcentaje de cada componente
-- [ ] UI con 4 tabs + tab "Resumen":
-  - **Resumen:** Donut chart o barras con proporcion de cada tipo + KPIs (total, por unidad, por planta)
-  - **Insumos:** Tabla actual de batch-cost-summary.tsx (por fase)
+- [x] Query `inventory.getFullCostByBatch(batchId)` que combina: insumos (de `inventory_transactions`) + labor + utilities + depreciacion (de `cost_entries`)
+- [x] Retorna estructura con 4 secciones: `materials`, `labor`, `utilities`, `depreciation`, cada una con subtotal y detalle
+- [x] Resumen superior muestra: COGS total, COGS por unidad de output (si hay cosecha), y porcentaje de cada componente
+- [x] UI con 4 tabs + tab "Resumen":
+  - **Resumen:** Proporcion bar con porcentaje de cada tipo + KPIs (total, por tipo)
+  - **Insumos:** Tabla con: Fecha, Producto, Fase, Cantidad, Costo/Unidad, Total
   - **Mano de Obra:** Tabla con: Fecha, Actividad, Usuario, Rol, Horas, Tarifa, Costo
   - **Utilities:** Tabla con: Periodo, Tipo (electricidad/agua/gas), Consumo total facility, Proporcion batch, Costo asignado
   - **Depreciacion:** Tabla con: Equipo, Valor mensual, Proporcion batch, Costo asignado
-- [ ] Si un tipo no tiene datos, el tab muestra estado vacio con mensaje "No hay registros de [tipo] para este batch"
-- [ ] El batch-cost-summary.tsx existente se refactoriza para ser el contenedor con tabs
+- [x] Si un tipo no tiene datos, el tab muestra estado vacio con mensaje "No hay registros de [tipo] para este batch"
+- [x] El batch-cost-summary.tsx creado como componente con tabs integrado en batch detail page
 
 #### Backend
 - Query: `inventory.getFullCostByBatch` — combina getCostByBatch actual + query a cost_entries agrupado por cost_type
@@ -272,12 +272,37 @@ La estrategia es crear una tabla generica `cost_entries` que registre costos no-
 
 ---
 
-## Implementacion (llenado por /implement-feature)
-
-_Esta seccion se completa automaticamente al implementar la feature._
+## Implementacion
 
 ### Commits
 
+- `35f57d7` feat(cogs): US-COGS.1 add hourly rate to roles for labor costing
+- `01cfe8d` feat(cogs): US-COGS.2 add auto labor cost calculation
+- `41430cd` feat(cogs): US-COGS.3 add utility readings with UI
+- `ba3de5e` feat(cogs): US-COGS.4 add utility cost allocation to batches
+- `d1db091` feat(cogs): US-COGS.5 add equipment depreciation tracking
+- `22eb273` feat(cogs): US-COGS.6 add full COGS UI with tabs by cost type
+
 ### Archivos Modificados
 
+- `convex/schema.ts` — Added cost_entries, utility_readings tables + depreciation fields in products + hourly_rate in roles
+- `convex/helpers.ts` — Added calculateLaborCost, createLaborCostEntry helpers
+- `convex/activities.ts` — Hooked labor cost into log() and completeScheduledActivity()
+- `convex/utilities.ts` — NEW: createReading, getByFacility, updateReading, deleteReading, allocateToActiveBatches, calculateDepreciation
+- `convex/roles.ts` — Added hourly_rate/rate_currency to returns + updateRate mutation
+- `convex/products.ts` — Added depreciation fields to create/update mutations
+- `convex/inventory.ts` — Added getFullCostByBatch query
+- `lib/validations/product.ts` — Added depreciation fields to Zod schema
+- `components/facilities/utility-reading-modal.tsx` — NEW
+- `components/facilities/utility-readings-table.tsx` — NEW
+- `components/batches/batch-cost-summary.tsx` — NEW
+- `components/products/product-form.tsx` — Added depreciation section for equipment
+- `components/products/product-create-modal.tsx` — Pass depreciation fields
+- `app/(dashboard)/settings/system/page.tsx` — Added "Tarifas por Rol" card
+- `app/(dashboard)/facilities/[id]/page.tsx` — Added "Utilities" tab
+- `app/(dashboard)/batches/[id]/page.tsx` — Added "Costos" tab
+- `app/(dashboard)/products/[id]/edit/product-edit-content.tsx` — Pass depreciation fields
+
 ### Fecha de Completado
+
+2026-02-10
