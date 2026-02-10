@@ -1541,6 +1541,40 @@ export default defineSchema({
     .index("by_activity_type", ["activity_type"])
     .index("by_timestamp", ["timestamp"]),
 
+  activity_types: defineTable({
+    company_id: v.id("companies"),
+    category: v.string(), // cultivation/monitoring/transformation/application/movement/maintenance/quality/harvest/post_harvest/administrative
+    code: v.string(), // Unique per company (e.g. "irrigation", "foliar_spray")
+    name: v.string(), // Display name
+    description: v.optional(v.string()),
+    icon: v.optional(v.string()), // Lucide icon name
+    color: v.optional(v.string()), // Tailwind color class
+
+    // Behavior flags
+    requires_zone: v.boolean(),
+    requires_batch: v.boolean(),
+    requires_resources: v.boolean(),
+    requires_photos: v.boolean(),
+    requires_verification: v.boolean(),
+    triggers_transformation: v.boolean(),
+    triggers_phase_change: v.boolean(),
+
+    // Dynamic data
+    metadata_schema: v.optional(v.any()), // JSON Schema for activity metadata validation
+    default_resources: v.optional(v.array(v.any())), // Suggested resources [{product_id, qty, unit}]
+
+    // Status
+    is_system: v.boolean(), // System types cannot be archived
+    status: v.string(), // active / archived
+    sort_order: v.number(),
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_company", ["company_id"])
+    .index("by_company_category", ["company_id", "category"])
+    .index("by_company_code", ["company_id", "code"])
+    .index("by_status", ["status"]),
+
   pest_disease_records: defineTable({
     facility_id: v.id("facilities"),
     area_id: v.id("areas"),
