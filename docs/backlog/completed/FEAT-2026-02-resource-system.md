@@ -165,14 +165,14 @@ Este plan resulta de analizar el diagnostico en `docs/data-model-references/reso
 **para** responder auditorias y rastrear problemas de calidad hasta la fuente
 
 #### Criterios de Aceptacion
-- [ ] Nueva query `inventory.getFullTrace(inventoryItemId)` que recorre:
+- [x] Nueva query `inventory.getFullTrace(inventoryItemId)` que recorre:
   - `source_batch_id` -> batch de origen
   - `created_by_activity_id` -> actividad que lo creo
   - `transformed_to_item_id` -> cadena forward
   - Recursivamente hacia atras hasta el `receipt` original
-- [ ] Retorna array ordenado cronologicamente con: item, producto, transaccion, activity, fecha
-- [ ] Disponible desde pagina de detalle de inventory item
-- [ ] Visualizacion como timeline vertical con cada paso de la cadena
+- [x] Retorna array ordenado cronologicamente con: item, producto, transaccion, activity, fecha
+- [x] Disponible desde pagina de detalle de inventory item
+- [x] Visualizacion como timeline vertical con cada paso de la cadena
 
 #### Backend
 - Query: `inventory.getFullTrace` — recorrido recursivo bidireccional con limite de 20 pasos
@@ -232,7 +232,21 @@ Este plan resulta de analizar el diagnostico en `docs/data-model-references/reso
 _Esta seccion se completa automaticamente al implementar la feature._
 
 ### Commits
+- `e1e6fc4` — US-RES.1: Expand product categories
+- `b814e8c` — US-RES.2: Procurement type, lot tracking, shelf life
+- `840667b` — US-RES.3: Transformation chain
+- `09e059d` — US-RES.4: Cultivation context in transactions
+- `3eda13a` — US-RES.5: COGS query by batch
+- (pending) — US-RES.6: Full lot traceability
 
 ### Archivos Modificados
+- `convex/schema.ts`, `convex/products.ts`, `convex/activities.ts`, `convex/inventory.ts`, `convex/helpers.ts`
+- `lib/validations/inventory.ts`, `lib/validations/product.ts`
+- `components/products/product-form.tsx`, `components/products/transformation-chain.tsx`
+- `components/inventory/category-tabs.tsx`, `components/inventory/inventory-movement-modal.tsx`, `components/inventory/inventory-transaction-history.tsx`, `components/inventory/item-traceability.tsx`
+- `components/batches/batch-cost-summary.tsx`, `components/batches/index.ts`
+- `app/(dashboard)/products/[id]/product-detail-content.tsx`, `app/(dashboard)/products/[id]/edit/product-edit-content.tsx`
+- `app/(dashboard)/batches/[id]/page.tsx`, `app/(dashboard)/inventory/[id]/inventory-detail-content.tsx`
 
 ### Fecha de Completado
+2026-02-10

@@ -5,6 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 /**
  * List inventory items
@@ -786,6 +787,158 @@ export const getCostByBatch = query({
       yieldUnit,
       cogsPerUnit,
       transactionCount: enriched.length,
+    };
+  },
+});
+
+/**
+ * Get full traceability chain for an inventory item
+ * Traverses backward to origin (receipt) and forward to final product
+ */
+export const getFullTrace = query({
+  args: {
+    inventoryItemId: v.id("inventory_items"),
+  },
+  handler: async (ctx, args) => {
+    type TraceStep = {
+      _id: string;
+      direction: "backward" | "current" | "forward";
+      item_id: string;
+      product_name: string;
+      product_sku: string;
+      product_category: string;
+      quantity: number;
+      quantity_unit: string;
+      batch_number?: string;
+      transformation_status?: string;
+      activity_type?: string;
+      timestamp: number;
+    };
+
+    const steps: TraceStep[] = [];
+    const visited = new Set<string>();
+
+    // Helper to enrich an inventory item into a trace step
+    async function itemToStep(
+      itemId: Id<"inventory_items">,
+      direction: "backward" | "current" | "forward"
+    ): Promise<TraceStep | null> {
+      if (visited.has(itemId)) return null;
+      visited.add(itemId);
+
+      const item = await ctx.db.get(itemId);
+      if (!item) return null;
+
+      const product = await ctx.db.get(item.product_id);
+
+      // Get activity info if available
+      let activityType: string | undefined;
+      const activityId = direction === "forward"
+        ? item.created_by_activity_id
+        : item.transformed_by_activity_id;
+      if (activityId) {
+        const activity = await ctx.db.get(activityId);
+        if (activity) {
+          activityType = activity.activity_type;
+        }
+      }
+
+      return {
+        _id: item._id,
+        direction,
+        item_id: item._id,
+        product_name: product?.name || "Producto desconocido",
+        product_sku: product?.sku || "",
+        product_category: product?.category || "",
+        quantity: item.quantity_available,
+        quantity_unit: item.quantity_unit,
+        batch_number: item.batch_number,
+        transformation_status: item.transformation_status,
+        activity_type: activityType,
+        timestamp: item.received_date || item.created_at,
+      };
+    }
+
+    // 1. Traverse backward: find items that were transformed into this one
+    // Look for items where transformed_to_item_id === our item
+    let currentBackId: Id<"inventory_items"> | undefined = args.inventoryItemId;
+    const backwardSteps: TraceStep[] = [];
+    let safetyBack = 0;
+
+    while (currentBackId && safetyBack < 20) {
+      safetyBack++;
+      // Find items that transformed into currentBackId
+      const sourceItems = await ctx.db
+        .query("inventory_items")
+        .filter((q) => q.eq(q.field("transformed_to_item_id"), currentBackId))
+        .take(1);
+
+      if (sourceItems.length === 0) break;
+
+      const sourceItem = sourceItems[0];
+      const step = await itemToStep(sourceItem._id, "backward");
+      if (!step) break;
+      backwardSteps.unshift(step);
+      currentBackId = sourceItem._id;
+    }
+
+    steps.push(...backwardSteps);
+
+    // 2. Add current item
+    const currentStep = await itemToStep(args.inventoryItemId, "current");
+    if (currentStep) {
+      steps.push(currentStep);
+    }
+
+    // 3. Traverse forward: follow transformed_to_item_id chain
+    let currentFwdId: Id<"inventory_items"> | undefined;
+    const currentItem = await ctx.db.get(args.inventoryItemId);
+    if (currentItem?.transformed_to_item_id) {
+      currentFwdId = currentItem.transformed_to_item_id;
+    }
+
+    let safetyFwd = 0;
+    while (currentFwdId && safetyFwd < 20) {
+      safetyFwd++;
+      const step = await itemToStep(currentFwdId, "forward");
+      if (!step) break;
+      steps.push(step);
+
+      const fwdItem = await ctx.db.get(currentFwdId);
+      currentFwdId = fwdItem?.transformed_to_item_id;
+    }
+
+    // 4. Get the receipt transaction for the earliest item (origin)
+    let originReceipt = null;
+    if (steps.length > 0) {
+      const earliestId = steps[0].item_id as Id<"inventory_items">;
+      const receipts = await ctx.db
+        .query("inventory_transactions")
+        .withIndex("by_inventory_item", (q) =>
+          q.eq("inventory_item_id", earliestId)
+        )
+        .filter((q) => q.eq(q.field("transaction_type"), "receipt"))
+        .take(1);
+
+      if (receipts.length > 0) {
+        const receipt = receipts[0];
+        const user = await ctx.db.get(receipt.performed_by);
+        originReceipt = {
+          date: receipt.performed_at,
+          reason: receipt.reason,
+          performed_by: user
+            ? user.first_name && user.last_name
+              ? `${user.first_name} ${user.last_name}`
+              : user.first_name || user.email
+            : "Desconocido",
+        };
+      }
+    }
+
+    return {
+      steps,
+      originReceipt,
+      totalSteps: steps.length,
     };
   },
 });
