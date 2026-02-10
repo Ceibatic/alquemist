@@ -1315,12 +1315,26 @@ export default defineSchema({
     execution_results: v.optional(v.object({})),
     execution_variance: v.optional(v.object({})),
 
+    // P2 fields — Template + Schedule integration
+    schedule_id: v.optional(v.id("cultivation_schedules")),
+    type_id: v.optional(v.id("activity_types")),
+    template_id: v.optional(v.id("activity_templates")),
+    phase_day: v.optional(v.number()), // day of phase when activity is scheduled
+    due_date: v.optional(v.number()), // deadline if flexible
+    recurrence_index: v.optional(v.number()), // position in series (1 of 14)
+    recurrence_total: v.optional(v.number()), // total repetitions
+    company_id: v.optional(v.id("companies")),
+    crop_phase: v.optional(v.string()),
+    checklist_responses: v.optional(v.any()), // responses from checklist on completion
+    skipped_reason: v.optional(v.string()),
+
     created_at: v.number(),
     updated_at: v.number(),
   })
     .index("by_entity", ["entity_type", "entity_id"])
     .index("by_status", ["status"])
-    .index("by_scheduled_date", ["scheduled_date"]),
+    .index("by_scheduled_date", ["scheduled_date"])
+    .index("by_schedule", ["schedule_id"]),
 
   mother_plants: defineTable({
     qr_code: v.string(), // Unique
@@ -2095,4 +2109,37 @@ export default defineSchema({
     created_at: v.number(),
   })
     .index("by_template", ["template_id"]),
+
+  // Master cultivation plan per batch — generates scheduled_activities from templates
+  cultivation_schedules: defineTable({
+    company_id: v.id("companies"),
+    batch_id: v.id("batches"),
+    crop_type_id: v.id("crop_types"),
+    production_order_id: v.optional(v.id("production_orders")),
+    name: v.string(),
+    zone_id: v.optional(v.id("areas")),
+
+    // Dates
+    planned_start_date: v.number(),
+    planned_end_date: v.number(), // calculated: start + sum(phase durations)
+
+    // Planned phases: [{phase: string, duration_days: number, start_day: number, end_day: number}]
+    planned_phases: v.array(v.any()),
+
+    // Progress tracking
+    total_activities: v.number(),
+    completed_activities: v.number(),
+    skipped_activities: v.number(),
+
+    // Current state
+    current_phase: v.optional(v.string()),
+    current_phase_day: v.optional(v.number()),
+    status: v.string(), // draft/active/completed/cancelled
+
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_company", ["company_id"])
+    .index("by_batch_id", ["batch_id"])
+    .index("by_status", ["status"]),
 });
