@@ -84,18 +84,18 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
 **para** configurar que tipos estan disponibles, personalizar sus nombres/iconos, y crear tipos custom
 
 #### Criterios de Aceptacion
-- [ ] Pagina accesible en `/settings/activity-types` (dentro del layout de dashboard)
-- [ ] Layout con tabs horizontales, una por cada categoria (10 tabs) mostrando icono + nombre de la categoria
-- [ ] Cada tab muestra la lista de tipos de esa categoria con: icono, nombre, code (en gris), color badge, chips de requerimientos activos (zona, lote, recursos, fotos, verificacion)
-- [ ] Tipos system muestran un icono de candado junto al nombre
-- [ ] Boton "Agregar tipo" por tab que abre un dialog/modal con formulario: nombre, code (auto-generado desde nombre pero editable), descripcion, icono (selector), color (selector), toggles de requerimientos
-- [ ] Al guardar un tipo nuevo, aparece en la lista y se muestra toast "Tipo de actividad creado"
-- [ ] Click en un tipo existente abre dialog de edicion con los mismos campos
-- [ ] Toggle de archivar/restaurar visible en cada tipo (excepto system types que muestran tooltip "Los tipos de sistema no se pueden archivar")
-- [ ] Tipos archivados se muestran al final de la lista con opacidad reducida y badge "Archivado"
-- [ ] Estados: loading skeleton mientras carga, empty state si no hay tipos en una categoria
-- [ ] Si el seed no se ha ejecutado (0 tipos), mostrar boton "Cargar tipos predeterminados" que ejecuta seedDefaults
-- [ ] `npx next build` pasa sin errores
+- [x] Pagina accesible en `/settings/activity-types` (dentro del layout de dashboard)
+- [x] Layout con tabs horizontales, una por cada categoria (10 tabs) mostrando icono + nombre de la categoria
+- [x] Cada tab muestra la lista de tipos de esa categoria con: icono, nombre, code (en gris), color badge, chips de requerimientos activos (zona, lote, recursos, fotos, verificacion)
+- [x] Tipos system muestran un icono de candado junto al nombre
+- [x] Boton "Agregar tipo" por tab que abre un dialog/modal con formulario: nombre, code (auto-generado desde nombre pero editable), descripcion, icono (selector), color (selector), toggles de requerimientos
+- [x] Al guardar un tipo nuevo, aparece en la lista y se muestra toast "Tipo de actividad creado"
+- [x] Click en un tipo existente abre dialog de edicion con los mismos campos
+- [x] Toggle de archivar/restaurar visible en cada tipo (excepto system types que muestran tooltip "Los tipos de sistema no se pueden archivar")
+- [x] Tipos archivados se muestran al final de la lista con opacidad reducida y badge "Archivado"
+- [x] Estados: loading skeleton mientras carga, empty state si no hay tipos en una categoria
+- [x] Si el seed no se ha ejecutado (0 tipos), mostrar boton "Cargar tipos predeterminados" que ejecuta seedDefaults
+- [x] `npx next build` pasa sin errores
 
 #### Backend
 - Usa queries/mutations de US-ACT.2
