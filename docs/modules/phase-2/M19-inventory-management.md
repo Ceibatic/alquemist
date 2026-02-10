@@ -277,18 +277,53 @@ El modulo de Inventario permite gestionar el stock de productos, insumos y mater
 | `notes` | `string?` | Notas |
 | `created_at` | `number` | Timestamp creacion |
 | `updated_at` | `number` | Timestamp actualizacion |
+| `created_by_activity_id` | `id("activities")?` | Actividad que creo el item |
+| `transformation_status` | `string?` | active/transformed/consumed/harvested/expired/waste |
+| `transformed_to_item_id` | `id("inventory_items")?` | Item destino de transformacion |
+| `transformed_by_activity_id` | `id("activities")?` | Actividad de transformacion |
+
+**Indices:** `by_product`, `by_area`, `by_lot_status`, `by_expiration_date`, `by_created_activity`, `by_transformation_status`
 
 ---
 
 ## Categorias de Producto
+
+**Insumos**
 
 | Valor | Label | Icono |
 |-------|-------|-------|
 | `seed` | Semillas | Sprout |
 | `nutrient` | Nutrientes | FlaskConical |
 | `pesticide` | Pesticidas | Shield |
-| `equipment` | Equipos | Cog |
 | `substrate` | Sustratos | Layers |
+| `biocontrol` | Agentes de Biocontrol | Bug |
+
+**Material Vegetal**
+
+| Valor | Label | Icono |
+|-------|-------|-------|
+| `clone` | Esquejes | Scissors |
+| `seedling` | Plantulas | Leaf |
+| `mother_plant` | Plantas Madre | TreeDeciduous |
+| `plant_material` | Material Vegetal | Package |
+| `plant_vegetative` | Plantas (Vegetativa) | Leaf |
+| `plant_flowering` | Plantas (Floracion) | Flower2 |
+| `harvest_wet` | Cosecha Humeda | Droplets |
+| `harvest_dry` | Cosecha Seca | Sun |
+| `processed_plant` | Producto Procesado | Factory |
+
+**Preparados**
+
+| Valor | Label | Icono |
+|-------|-------|-------|
+| `stock_solution` | Solucion Madre | Beaker |
+| `substrate_mix` | Mezcla de Sustrato | Layers |
+
+**Infraestructura**
+
+| Valor | Label | Icono |
+|-------|-------|-------|
+| `equipment` | Equipos | Cog |
 | `container` | Contenedores | Container |
 | `tool` | Herramientas | Wrench |
 | `other` | Otros | FileText |
@@ -313,9 +348,12 @@ El modulo de Inventario permite gestionar el stock de productos, insumos y mater
 |-------|-------|--------|
 | `addition` | Adicion | + cantidad |
 | `consumption` | Consumo | - cantidad |
+| `application` | Aplicacion | - cantidad (requiere batch_id o zone_id) |
 | `waste` | Desperdicio | - cantidad |
 | `transfer` | Transferencia | - cantidad |
 | `correction` | Correccion | = cantidad |
+| `receipt` | Recepcion | + cantidad (nueva entrada via actividad) |
+| `return` | Devolucion | - cantidad (devolucion a proveedor) |
 
 ---
 
@@ -337,17 +375,20 @@ El modulo de Inventario permite gestionar el stock de productos, insumos y mater
 | Funcion | Parametros | Retorna |
 |---------|------------|---------|
 | `list` | `companyId, area_id?, product_id?, lot_status?, limit?, offset?` | `{ items, total }` |
-| `getByFacility` | `facilityId, category?, status?` | Item[] con stockStatus calculado |
+| `getByFacility` | `facilityId, category?, status?, productId?` | Item[] con stockStatus calculado |
 | `getById` | `inventoryId` | Item con producto, area, proveedor |
 | `getByCategory` | `facilityId, category` | Item[] |
 | `getLowStock` | `facilityId` | Items ordenados por urgencia |
+| `countByProduct` | `productId` | `{ totalItems, activeItems, totalQuantity }` |
+| `getCostByBatch` | `batchId` | COGS desglosado por crop_phase + grandTotal + cogsPerUnit |
+| `getFullTrace` | `inventoryItemId` | Cadena de trazabilidad bidireccional con steps[] + originReceipt |
 
 ### Mutations
 | Funcion | Parametros | Validaciones |
 |---------|------------|--------------|
 | `create` | `product_id, area_id, quantity_available, quantity_unit, ...` | product, area, supplier existen |
 | `update` | `inventoryId, supplier_id?, reorder_point?, ...` | item existe |
-| `adjustStock` | `inventoryId, adjustmentType, quantity, reason, notes?, userId, referenceType?, referenceId?, destinationAreaId?` | stock suficiente, tipo valido, userId requerido |
+| `adjustStock` (**deprecated**) | `inventoryId, adjustmentType, quantity, reason, notes?, userId, referenceType?, referenceId?, destinationAreaId?, batchId?, zoneId?, cropPhase?, activityId?, costPerUnit?` | stock suficiente, tipo valido, userId requerido |
 | `remove` | `inventoryId` | soft/hard delete segun stock |
 
 ---
@@ -395,7 +436,7 @@ El modulo de Inventario permite gestionar el stock de productos, insumos y mater
 |-------|------|-------------|
 | `inventory_item_id` | `id("inventory_items")` | Item de inventario |
 | `product_id` | `id("products")` | Producto (denormalizado) |
-| `transaction_type` | `string` | addition/consumption/waste/transfer/correction/receipt |
+| `transaction_type` | `string` | addition/consumption/application/waste/transfer/correction/receipt/return |
 | `quantity_change` | `number` | Cambio (+/-) |
 | `quantity_before` | `number` | Cantidad antes |
 | `quantity_after` | `number` | Cantidad despues |
@@ -405,6 +446,12 @@ El modulo de Inventario permite gestionar el stock de productos, insumos y mater
 | `reference_id` | `string?` | ID de entidad relacionada |
 | `source_area_id` | `id("areas")?` | Area origen (transferencias) |
 | `destination_area_id` | `id("areas")?` | Area destino (transferencias) |
+| `batch_id` | `id("batches")?` | Batch de cultivo asociado (US-RES.4) |
+| `zone_id` | `id("areas")?` | Zona de cultivo asociada (US-RES.4) |
+| `crop_phase` | `string?` | propagation/vegetative/flowering/harvest/post_harvest/processing |
+| `activity_id` | `id("activities")?` | Actividad que genero la transaccion |
+| `cost_per_unit` | `number?` | Costo unitario al momento del movimiento |
+| `cost_total` | `number?` | Costo total (quantity * cost_per_unit) |
 | `performed_by` | `id("users")` | Usuario que realizo el ajuste |
 | `performed_at` | `number` | Timestamp del ajuste |
 | `notes` | `string?` | Notas adicionales |
@@ -416,6 +463,7 @@ El modulo de Inventario permite gestionar el stock de productos, insumos y mater
 - `by_transaction_type` - transaction_type
 - `by_performed_at` - performed_at
 - `by_performed_by` - performed_by
+- `by_batch_id` - batch_id
 
 ---
 
@@ -425,10 +473,12 @@ El modulo de Inventario permite gestionar el stock de productos, insumos y mater
 |------|-------|-------|-------|
 | `addition` | Entrada | ArrowUpCircle | Verde |
 | `consumption` | Consumo | ArrowDownCircle | Azul |
+| `application` | Aplicacion | Sprout | Cyan |
 | `waste` | Desperdicio | Trash2 | Rojo |
 | `transfer` | Transferencia | ArrowRightLeft | Morado |
 | `correction` | Correccion | RefreshCw | Ambar |
 | `receipt` | Recepcion | Package | Verde |
+| `return` | Devolucion | Undo2 | Gris |
 
 ---
 
@@ -1070,15 +1120,23 @@ Donde:
 | seed | SEM | Semillas |
 | nutrient | NUT | Nutrientes |
 | pesticide | PES | Pesticidas |
-| equipment | EQP | Equipos |
 | substrate | SUS | Sustratos |
-| container | CON | Contenedores |
-| tool | HER | Herramientas |
-| other | OTR | Otros |
+| biocontrol | BIO | Agentes de Biocontrol |
 | clone | CLO | Esquejes |
 | seedling | PLT | Plántulas |
 | mother_plant | MAD | Plantas Madre |
 | plant_material | MAT | Material Vegetal |
+| plant_vegetative | VEG | Plantas (Vegetativa) |
+| plant_flowering | FLO | Plantas (Floracion) |
+| harvest_wet | CHU | Cosecha Humeda |
+| harvest_dry | CSE | Cosecha Seca |
+| processed_plant | PRO | Producto Procesado |
+| stock_solution | SOL | Solucion Madre |
+| substrate_mix | MIX | Mezcla de Sustrato |
+| equipment | EQP | Equipos |
+| container | CON | Contenedores |
+| tool | HER | Herramientas |
+| other | OTR | Otros |
 
 ### Generación Automática
 
@@ -1190,9 +1248,14 @@ const lotNumber = await generateInternalLotNumber(ctx, "clone");
 | Query | Módulo | Propósito |
 |-------|--------|-----------|
 | `inventory.list` | inventory.ts | Listar items con filtros |
-| `inventory.getByFacility` | inventory.ts | Items por instalación (con productId filter) |
+| `inventory.getByFacility` | inventory.ts | Items por instalacion (con productId filter) |
 | `inventory.getById` | inventory.ts | Detalle de item con relaciones |
 | `inventory.getLowStock` | inventory.ts | Items con stock bajo |
+| `inventory.countByProduct` | inventory.ts | Estadisticas de inventario por producto |
+| `inventory.getProductTransactionHistory` | inventory.ts | Historial de transacciones de un producto |
+| `inventory.getCostByBatch` | inventory.ts | COGS desglosado por fase de cultivo |
+| `inventory.getFullTrace` | inventory.ts | Trazabilidad completa bidireccional |
+| `products.getTransformationChain` | products.ts | Cadena de transformacion de un producto |
 | `activities.getInventoryMovements` | activities.ts | Historial de movimientos de un item |
 | `activities.getByEntity` | activities.ts | Actividades de un batch/planta |
 
@@ -1206,6 +1269,94 @@ const lotNumber = await generateInternalLotNumber(ctx, "clone");
 | M16-Suppliers | Origen | `supplier_id` indica proveedor |
 | M18-Facility | Padre | Items filtrados por facility (via areas) |
 | Products | Referencia | `product_id` indica el producto |
-| M25-Batches | **NUEVO** | Sincronización de fases con inventario |
-| M26-Plants | **NUEVO** | Tracking individual vinculado a inventario |
+| M25-Batches | Sincronizacion | Fases de batch sincronizadas con inventario |
+| M26-Plants | Tracking | Tracking individual vinculado a inventario |
 | Activities | Centro | **TODO movimiento pasa por activities** |
+| COGS | Costos | `getCostByBatch` calcula costos por batch via `batch_id` en transactions |
+| Trazabilidad | Cadena | `getFullTrace` recorre cadena completa de un lote (origen → destino) |
+
+---
+
+## Phase H: Resource System (FEAT-2026-02)
+
+### Contexto
+
+El Resource System enriquece el inventario existente con 11 campos opcionales en 2 tablas (0 tablas nuevas), habilitando: categorias granulares, cadena de transformacion en catalogo, enforcement de lote, COGS por batch, y trazabilidad completa.
+
+**Commits:** `e1e6fc4`, `b814e8c`, `840667b`, `09e059d`, `3eda13a`, `5c8ed49`
+**Feature doc:** `docs/backlog/completed/FEAT-2026-02-resource-system.md`
+
+### Campos de Producto (products)
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| `procurement_type` | `string?` | `"purchased"` / `"produced"` / `"both"` — indica como se obtiene el producto |
+| `lot_tracking` | `string?` | `"required"` / `"optional"` / `"none"` — si requiere lote al crear inventory |
+| `shelf_life_days` | `number?` | Dias de vida util; auto-calcula `expiration_date` en receipts |
+| `transformation_produces_id` | `id("products")?` | Producto destino en cadena de transformacion |
+| `default_yield_pct` | `number?` | Rendimiento esperado 0-100; genera alerta si difiere >10% |
+
+### Categorias Expandidas (US-RES.1)
+
+8 categorias nuevas para material vegetal y preparados: `plant_vegetative`, `plant_flowering`, `harvest_wet`, `harvest_dry`, `processed_plant`, `stock_solution`, `biocontrol`, `substrate_mix`. Ver tabla completa en la seccion "Categorias de Producto" arriba.
+
+### Cadena de Transformacion (US-RES.3)
+
+Un producto puede definir que producto resulta de su transformacion via `transformation_produces_id`. Esto permite definir cadenas como:
+
+```
+semilla → plantula → vegetativa → floracion → cosecha humeda → cosecha seca → procesado
+```
+
+Query para recorrer la cadena: `products.getTransformationChain(productId)` — recorrido recursivo con limite de 15 pasos.
+
+En transformaciones via `logInventoryMovement`, si no se especifica `target_product_id`, se usa `transformation_produces_id` del producto fuente como fallback.
+
+### Contexto de Cultivo en Transacciones (US-RES.4)
+
+6 campos opcionales en `inventory_transactions` vinculan cada movimiento a un batch de produccion:
+
+- `batch_id`, `zone_id`, `crop_phase` — contexto del cultivo
+- `activity_id` — actividad que genero la transaccion
+- `cost_per_unit`, `cost_total` — costo al momento del movimiento
+
+Nuevo tipo `application` — igual que `consumption` pero **requiere** `batch_id` o `zone_id`.
+
+### COGS por Batch (US-RES.5)
+
+Query `inventory.getCostByBatch(batchId)` que:
+1. Filtra transactions por `batch_id`
+2. Agrupa costos por `crop_phase` (propagation → vegetative → flowering → ...)
+3. Calcula `grandTotal` y `cogsPerUnit` (costo total / rendimiento cosechado)
+
+### Trazabilidad Completa (US-RES.6)
+
+Query `inventory.getFullTrace(inventoryItemId)` que:
+1. Recorre hacia atras via items con `transformed_to_item_id` apuntando al item actual
+2. Incluye el item actual
+3. Recorre hacia adelante via `transformed_to_item_id`
+4. Busca el receipt original del item mas antiguo en la cadena
+5. Retorna `{ steps[], originReceipt, totalSteps }`
+
+### Archivos Modificados (Phase H)
+
+| Archivo | Cambio |
+|---------|--------|
+| `convex/schema.ts` | +5 campos en products, +6 campos en inventory_transactions, +indexes |
+| `convex/products.ts` | +create/update con nuevos campos, +getTransformationChain |
+| `convex/activities.ts` | +auto-batch, +auto-expiration, +cultivation context, +application type |
+| `convex/inventory.ts` | +countByProduct, +getCostByBatch, +getFullTrace |
+| `convex/helpers.ts` | +prefijos para nuevas categorias (VEG, FLO, CHU, CSE, PRO, SOL, MIX, BIO) |
+| `lib/validations/product.ts` | +categorias expandidas, +campos procurement/tracking |
+| `lib/validations/inventory.ts` | +tipo `application`, +campos cultivation context |
+| `components/products/product-form.tsx` | Categorias agrupadas, seccion procurement |
+| `components/products/transformation-chain.tsx` | NUEVO — visualizacion de cadena |
+| `components/inventory/category-tabs.tsx` | Tabs para nuevas categorias |
+| `components/inventory/inventory-movement-modal.tsx` | Selector batch/zona para application |
+| `components/inventory/inventory-transaction-history.tsx` | Muestra contexto de cultivo |
+| `components/inventory/item-traceability.tsx` | NUEVO — timeline de trazabilidad |
+| `components/batches/batch-cost-summary.tsx` | NUEVO — resumen de costos por batch |
+
+### Guia de Uso
+
+Para una guia completa con ejemplos de codigo, ver: `docs/dev/inventory-developer-guide.md`
