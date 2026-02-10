@@ -50,6 +50,11 @@ export function ProductEditContent({ productId }: ProductEditContentProps) {
         organic_cert_number: data.organic_cert_number || undefined,
         default_price: typeof data.default_price === 'number' ? data.default_price : undefined,
         price_unit: data.price_unit || undefined,
+        // Transformation Chain
+        transformation_produces_id: data.transformation_produces_id
+          ? (data.transformation_produces_id as Id<'products'>)
+          : undefined,
+        default_yield_pct: typeof data.default_yield_pct === 'number' ? data.default_yield_pct : undefined,
         // Procurement & Tracking
         procurement_type: data.procurement_type || undefined,
         lot_tracking: data.lot_tracking || undefined,

@@ -51,6 +51,8 @@ export function ProductCreateModal({ open, onOpenChange }: ProductCreateModalPro
         default_price: typeof data.default_price === 'number' ? data.default_price : undefined,
         price_currency: data.price_currency || 'COP',
         price_unit: data.price_unit || undefined,
+        transformation_produces_id: data.transformation_produces_id || undefined,
+        default_yield_pct: typeof data.default_yield_pct === 'number' ? data.default_yield_pct : undefined,
         procurement_type: data.procurement_type || undefined,
         lot_tracking: data.lot_tracking || undefined,
         shelf_life_days: typeof data.shelf_life_days === 'number' ? data.shelf_life_days : undefined,

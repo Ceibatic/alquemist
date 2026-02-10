@@ -107,6 +107,15 @@ export const productFormSchema = z.object({
     .optional()
     .or(z.literal('')),
 
+  // Transformation Chain
+  transformation_produces_id: z.string().optional().or(z.literal('')),
+  default_yield_pct: z.coerce
+    .number()
+    .min(0, 'Rendimiento debe ser mayor o igual a 0')
+    .max(100, 'Rendimiento no puede exceder 100%')
+    .optional()
+    .or(z.literal('')),
+
   // Procurement & Tracking
   procurement_type: z.enum(['purchased', 'produced', 'both']).optional().or(z.literal('')),
   lot_tracking: z.enum(['required', 'optional', 'none']).optional().or(z.literal('')),

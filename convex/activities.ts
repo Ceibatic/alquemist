@@ -1041,7 +1041,10 @@ export const logInventoryMovement = mutation({
         if (!inventoryItem) {
           throw new Error("Item de inventario no encontrado para transformación");
         }
-        if (!args.target_product_id) {
+        // Fall back to product's transformation_produces_id if no explicit target
+        const effectiveTargetProductId: Id<"products"> | undefined =
+          args.target_product_id || (product as Record<string, any>).transformation_produces_id as Id<"products"> | undefined;
+        if (!effectiveTargetProductId) {
           throw new Error("Producto destino requerido para transformación");
         }
         if (args.target_quantity === undefined || args.target_quantity === null) {
@@ -1052,9 +1055,22 @@ export const logInventoryMovement = mutation({
         }
 
         // Get target product info
-        const targetProduct = await ctx.db.get(args.target_product_id);
+        const targetProduct = await ctx.db.get(effectiveTargetProductId);
         if (!targetProduct) {
           throw new Error("Producto destino no encontrado");
+        }
+
+        // Yield deviation alert
+        let yieldAlert: string | undefined;
+        if (
+          args.target_quantity !== undefined &&
+          (product as any).default_yield_pct !== undefined
+        ) {
+          const expectedYield = args.quantity * ((product as any).default_yield_pct / 100);
+          const deviation = Math.abs(args.target_quantity - expectedYield) / expectedYield * 100;
+          if (deviation > 10) {
+            yieldAlert = `Yield real (${args.target_quantity}) difiere ${deviation.toFixed(1)}% del esperado (${expectedYield.toFixed(1)})`;
+          }
         }
 
         // Check source has enough quantity
@@ -1101,7 +1117,7 @@ export const logInventoryMovement = mutation({
             transformation_type: args.transformation_type,
             source_product_id: args.product_id,
             source_product_name: product.name,
-            target_product_id: args.target_product_id,
+            target_product_id: effectiveTargetProductId,
             target_product_name: targetProduct.name,
             source_quantity: args.quantity,
             source_quantity_unit: args.quantity_unit,
@@ -1110,6 +1126,7 @@ export const logInventoryMovement = mutation({
             loss_quantity: args.loss_quantity,
             loss_reason: args.loss_reason,
             reason: args.reason,
+            yield_alert: yieldAlert,
           },
           notes: args.notes,
           created_at: now,
@@ -1122,7 +1139,7 @@ export const logInventoryMovement = mutation({
         // Create new inventory item for the transformed product
         // Note: supplier_id and supplier_lot_number are NOT copied - this is an internal product
         const transformedItemId = await ctx.db.insert("inventory_items", {
-          product_id: args.target_product_id,
+          product_id: effectiveTargetProductId,
           area_id: args.area_id,
           // supplier_id: undefined - internal products have no external supplier
           // supplier_lot_number: undefined - no supplier lot for internal products
@@ -1166,7 +1183,7 @@ export const logInventoryMovement = mutation({
         await ctx.db.patch(activityId, {
           materials_produced: [
             {
-              product_id: args.target_product_id,
+              product_id: effectiveTargetProductId,
               inventory_item_id: transformedItemId,
               quantity: args.target_quantity,
               quantity_unit: args.target_quantity_unit,
@@ -1183,6 +1200,7 @@ export const logInventoryMovement = mutation({
           source_quantity_consumed: args.quantity,
           target_quantity_produced: args.target_quantity,
           loss_quantity: args.loss_quantity,
+          yield_alert: yieldAlert,
         };
       }
 

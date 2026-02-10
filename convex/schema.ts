@@ -697,6 +697,10 @@ export default defineSchema({
     lot_tracking: v.optional(v.string()), // required/optional/none
     shelf_life_days: v.optional(v.number()),
 
+    // Transformation Chain (US-RES.3)
+    transformation_produces_id: v.optional(v.id("products")),
+    default_yield_pct: v.optional(v.number()), // 0-100
+
     // Metadata
     status: v.string(), // active/discontinued
     created_at: v.number(),

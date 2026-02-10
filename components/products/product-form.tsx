@@ -100,6 +100,13 @@ export function ProductForm({
   );
   const suppliers = suppliersData || [];
 
+  // Fetch products for transformation target selector
+  const productsData = useQuery(
+    api.products.list,
+    currentCompanyId ? { companyId: currentCompanyId, status: 'active' } : 'skip'
+  );
+  const allProducts = productsData?.products || [];
+
   // Fetch product if editing
   const existingProduct = useQuery(
     api.products.getById,
@@ -133,6 +140,8 @@ export function ProductForm({
       default_price: undefined,
       price_currency: 'COP',
       price_unit: '',
+      transformation_produces_id: '',
+      default_yield_pct: undefined,
       procurement_type: '',
       lot_tracking: '',
       shelf_life_days: undefined,
@@ -179,6 +188,8 @@ export function ProductForm({
         default_price: existingProduct.default_price || undefined,
         price_currency: existingProduct.price_currency || 'COP',
         price_unit: existingProduct.price_unit || '',
+        transformation_produces_id: (existingProduct as any).transformation_produces_id || '',
+        default_yield_pct: (existingProduct as any).default_yield_pct || undefined,
         procurement_type: (existingProduct as any).procurement_type || '',
         lot_tracking: (existingProduct as any).lot_tracking || '',
         shelf_life_days: (existingProduct as any).shelf_life_days || undefined,
@@ -515,6 +526,79 @@ export function ProductForm({
                   </FormControl>
                   <FormDescription>
                     Auto-calcula fecha de vencimiento al recibir
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Transformation Chain */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Cadena de Transformación</h3>
+          <Separator />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Transformation Target */}
+            <FormField
+              control={form.control}
+              name="transformation_produces_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Produce</FormLabel>
+                  <Select
+                    onValueChange={(value) => field.onChange(value === 'none' ? '' : value)}
+                    value={field.value || 'none'}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar producto destino" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Ninguno</SelectItem>
+                      {allProducts
+                        .filter((p) => p._id !== productId)
+                        .map((p) => (
+                          <SelectItem key={p._id} value={p._id}>
+                            {p.name} ({p.sku})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Producto que resulta de transformar este
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Default Yield */}
+            <FormField
+              control={form.control}
+              name="default_yield_pct"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Rendimiento Esperado (%)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      placeholder="Ej: 85"
+                      {...field}
+                      value={field.value || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value === '' ? undefined : parseFloat(value));
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Alerta si el rendimiento real difiere más de 10%
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
