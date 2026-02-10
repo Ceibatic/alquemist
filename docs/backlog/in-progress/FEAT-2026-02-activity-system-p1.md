@@ -249,22 +249,22 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
 **para** que todas las operaciones de inventario generen datos en el nuevo modelo
 
 #### Criterios de Aceptacion
-- [ ] `logInventoryMovement()` (~700 lineas): despues de crear la actividad e inventory_transaction, crear fila(s) en activity_resources con:
+- [x] `logInventoryMovement()` (~700 lineas): despues de crear la actividad e inventory_transaction, crear fila(s) en activity_resources con:
   - direction: "consumed" para consumption/waste/return, "produced" para receipt, "applied" para application
   - transaction_id: link a la inventory_transaction creada
   - cost_per_unit y cost_total: del inventory_item al momento del consumo
   - batch_number: del inventory_item si existe
   - Poblar type_id, category, company_id, facility_id en la activity (lookup por movement_type → code mapping)
-- [ ] `logPhaseTransitionWithInventory()` (~250 lineas): crear 2 activity_resources:
+- [x] `logPhaseTransitionWithInventory()` (~250 lineas): crear 2 activity_resources:
   - direction: "consumed" para el source item (plantas/material fuente)
   - direction: "produced" para el target item (nuevo producto transformado)
   - Ambos con transaction_id, cost, batch_number
-- [ ] `logHarvest()` (~300 lineas): crear 2 activity_resources:
+- [x] `logHarvest()` (~300 lineas): crear 2 activity_resources:
   - direction: "consumed" para plantas cosechadas
   - direction: "produced" para material vegetal cosechado (yield)
   - Poblar type_id (harvest), category, company_id, facility_id, crop_phase
-- [ ] FIFO en logInventoryMovement() usa el helper `consumeFromInventoryFIFO()` de US-ACT.6 (consolidar duplicacion)
-- [ ] Mapping de movement_type a activity_type code:
+- [x] FIFO en logInventoryMovement() usa el helper `consumeFromInventoryFIFO()` de US-ACT.6 (consolidar duplicacion)
+- [x] Mapping de movement_type a activity_type code:
   - receipt → INVENTORY_RECEIPT
   - consumption → INVENTORY_CONSUMPTION
   - correction → INVENTORY_CORRECTION
@@ -272,8 +272,8 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
   - transfer → INVENTORY_TRANSFER
   - return → INVENTORY_RETURN
   - transformation → INVENTORY_TRANSFORMATION
-- [ ] Returns de las 3 mutations NO cambian (backward compat de API)
-- [ ] `npx next build` pasa sin errores
+- [x] Returns de las 3 mutations NO cambian (backward compat de API)
+- [x] `npx next build` pasa sin errores
 
 #### Backend
 - Archivo modificado: `convex/activities.ts` (3 mutations grandes)

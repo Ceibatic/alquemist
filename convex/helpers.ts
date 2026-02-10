@@ -106,6 +106,8 @@ export function getLotPrefix(category: string): string {
 export interface FifoConsumedItem {
   inventory_item_id: Id<"inventory_items">;
   quantity_consumed: number;
+  quantity_before: number;
+  quantity_after: number;
   cost_per_unit: number | undefined;
   batch_number: string | undefined;
 }
@@ -175,6 +177,8 @@ export async function consumeFromInventoryFIFO(
     consumed.push({
       inventory_item_id: item._id,
       quantity_consumed: consumeFromThis,
+      quantity_before: item.quantity_available,
+      quantity_after: item.quantity_available - consumeFromThis,
       cost_per_unit: item.cost_per_unit,
       batch_number: item.batch_number,
     });
