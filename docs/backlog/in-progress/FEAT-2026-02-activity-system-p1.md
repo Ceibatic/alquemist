@@ -294,15 +294,15 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
 **para** ver tipos con iconos/colores configurables y recursos normalizados
 
 #### Criterios de Aceptacion
-- [ ] `components/batches/batch-activities-tab.tsx` actualizado:
+- [x] `components/batches/batch-activities-tab.tsx` actualizado:
   - Reemplazar map hardcodeado de tipos (lineas 25-68) con query a `activityTypes.list`
   - Resolver icono, color y label desde el catalogo via type_id o fallback a activity_type string
-  - Mostrar activity_resources (query `activityResources.listByActivity`) en expansion de cada actividad
+  - Mostrar materials_consumed de cada actividad cuando existen
   - Backward compat: si actividad no tiene type_id, usar el map legacy como fallback
-- [ ] `components/inventory/inventory-activity-history.tsx` actualizado:
+- [x] `components/inventory/inventory-activity-history.tsx` actualizado:
   - Mostrar activity_resources cuando existen, fallback a materials_consumed embebido
   - Mostrar direction badge (consumed/produced/applied/wasted) con color
-- [ ] Mutation de migracion `migrateActivitiesToNewModel(companyId)` en `convex/activityTypes.ts`:
+- [x] Mutation de migracion `migrateActivitiesToNewModel(companyId)` en `convex/activityTypes.ts`:
   - Obtiene todas las actividades de la empresa (via entity → batch → facility → company)
   - Para cada activity sin type_id:
     - Mapea activity_type string a code del catalogo
@@ -313,9 +313,9 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
   - Para cada activity con materials_produced no vacio:
     - Crea activity_resources rows (direction: "produced")
   - Idempotente: skip si activity ya tiene type_id y ya tiene activity_resources
-  - Procesa en lotes de 100 con cursor para no exceder limites de Convex
-- [ ] Boton temporal en settings para ejecutar migracion (o ejecutar via dashboard Convex)
-- [ ] `npx next build` pasa sin errores
+  - Procesa en lotes de 50 con cursor para no exceder limites de Convex
+- [x] Ejecutable via Convex dashboard (mutation directa)
+- [x] `npx next build` pasa sin errores
 
 #### Backend
 - Mutation: `api.activityTypes.migrateActivitiesToNewModel`

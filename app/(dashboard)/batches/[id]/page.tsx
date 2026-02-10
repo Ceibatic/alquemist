@@ -457,7 +457,7 @@ export default function BatchDetailPage({ params }: PageProps) {
 
         {/* Activities Tab */}
         <TabsContent value="activities" className="mt-6">
-          <BatchActivitiesTab batchId={batchId} />
+          <BatchActivitiesTab batchId={batchId} companyId={batch.company_id} />
         </TabsContent>
 
         {/* Quality Checks Tab */}

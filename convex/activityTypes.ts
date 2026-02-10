@@ -9,6 +9,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { getActivityTypeByCode } from "./helpers";
 
 // Inline seed data to avoid importing from lib/ (Convex server-side restriction)
 const DEFAULT_SEED_TYPES = [
@@ -343,5 +344,212 @@ export const restore = mutation({
       updated_at: Date.now(),
     });
     return typeId;
+  },
+});
+
+// ============================================================================
+// DATA MIGRATION
+// ============================================================================
+
+/**
+ * Mapping from legacy activity_type strings to catalog codes.
+ */
+const LEGACY_TYPE_TO_CODE: Record<string, string> = {
+  movement: "relocation",
+  loss_record: "incident_report",
+  harvest: "harvest_cut",
+  phase_transition: "phase_transition",
+  watering: "irrigation",
+  feeding: "fertigation",
+  pruning: "pruning",
+  inspection: "scouting",
+  treatment: "foliar_spray",
+  recipe_execution: "extraction",
+  batch_split: "note",
+  batch_merge: "note",
+  inventory_receipt: "inventory_receipt",
+  inventory_consumption: "inventory_consumption",
+  inventory_correction: "inventory_correction",
+  inventory_waste: "inventory_waste",
+  inventory_transfer: "inventory_transfer",
+  inventory_return: "inventory_return",
+  inventory_transformation: "inventory_transformation",
+};
+
+/**
+ * Migrate existing activities to the new v2 model.
+ * - Adds type_id, category, company_id, status to activities without type_id
+ * - Creates activity_resources from materials_consumed / materials_produced
+ * - Idempotent: skips activities that already have type_id + resources
+ * - Processes in batches of 50 to stay within Convex mutation limits
+ *
+ * Returns { processed, skipped, resourcesCreated }
+ */
+export const migrateActivitiesToNewModel = mutation({
+  args: {
+    companyId: v.id("companies"),
+    cursor: v.optional(v.string()), // Optional cursor for pagination
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const BATCH_SIZE = 50;
+    let processed = 0;
+    let skipped = 0;
+    let resourcesCreated = 0;
+
+    // Get company facilities for facility_id resolution
+    const facilities = await ctx.db
+      .query("facilities")
+      .filter((q) => q.eq(q.field("company_id"), args.companyId))
+      .collect();
+    const facilityIds = new Set(facilities.map((f) => f._id));
+
+    // Get all areas for facility lookup
+    const areas = await ctx.db.query("areas").collect();
+    const areaToFacility = new Map<string, string>();
+    for (const area of areas) {
+      if (facilityIds.has(area.facility_id)) {
+        areaToFacility.set(area._id, area.facility_id);
+      }
+    }
+
+    // Get all batches for batch → facility resolution
+    const batches = await ctx.db.query("batches").collect();
+    const batchMap = new Map<string, typeof batches[0]>();
+    for (const b of batches) {
+      if (b.company_id === args.companyId) {
+        batchMap.set(b._id, b);
+      }
+    }
+
+    // Fetch activities that might belong to this company
+    // We check by entity_type = "batch" and cross-reference,
+    // or by activities that already have company_id set
+    const allActivities = await ctx.db.query("activities").collect();
+
+    // Filter to activities that belong to this company
+    const companyActivities = allActivities.filter((a) => {
+      // Already tagged with company
+      if (a.company_id === args.companyId) return true;
+      // Check batch ownership
+      if (a.entity_type === "batch" && a.entity_id) {
+        const batch = batchMap.get(a.entity_id);
+        return batch?.company_id === args.companyId;
+      }
+      // Check via area → facility → company
+      if (a.area_from) {
+        const facilityId = areaToFacility.get(a.area_from);
+        if (facilityId) return true;
+      }
+      return false;
+    });
+
+    // Sort for deterministic processing and apply cursor-based pagination
+    const sorted = companyActivities.sort((a, b) => a._creationTime - b._creationTime);
+    let startIndex = 0;
+    if (args.cursor) {
+      startIndex = sorted.findIndex((a) => a._id === args.cursor);
+      if (startIndex === -1) startIndex = 0;
+      else startIndex += 1; // Start after cursor
+    }
+
+    const batch = sorted.slice(startIndex, startIndex + BATCH_SIZE);
+
+    for (const activity of batch) {
+      // Check if already migrated (has type_id)
+      if (activity.type_id) {
+        // Check if activity_resources already exist
+        const existingResources = await ctx.db
+          .query("activity_resources")
+          .withIndex("by_activity", (q) => q.eq("activity_id", activity._id))
+          .first();
+
+        if (existingResources) {
+          skipped++;
+          continue;
+        }
+      }
+
+      // Resolve type_id from legacy activity_type
+      if (!activity.type_id) {
+        const code = LEGACY_TYPE_TO_CODE[activity.activity_type];
+        if (code) {
+          const actType = await getActivityTypeByCode(ctx, args.companyId, code);
+          if (actType) {
+            const patchData: any = {
+              type_id: actType._id,
+              category: actType.category,
+              company_id: args.companyId,
+              status: activity.status || "completed",
+            };
+
+            // Resolve facility_id and batch_id
+            if (activity.entity_type === "batch" && activity.entity_id) {
+              patchData.batch_id = activity.entity_id;
+              const batchDoc = batchMap.get(activity.entity_id);
+              if (batchDoc) {
+                patchData.facility_id = batchDoc.facility_id;
+                patchData.crop_phase = batchDoc.current_phase;
+              }
+            }
+
+            await ctx.db.patch(activity._id, patchData);
+          }
+        }
+      }
+
+      // Create activity_resources from materials_consumed
+      const consumed = activity.materials_consumed as any[] | undefined;
+      if (consumed && Array.isArray(consumed) && consumed.length > 0) {
+        for (const m of consumed) {
+          if (m.product_id && m.quantity) {
+            await ctx.db.insert("activity_resources", {
+              activity_id: activity._id,
+              product_id: m.product_id,
+              inventory_item_id: m.inventory_item_id,
+              direction: "consumed",
+              quantity: m.quantity,
+              quantity_unit: m.quantity_unit || "und",
+              cost_per_unit: m.cost_per_unit,
+              batch_number: m.batch_number,
+              created_at: now,
+            });
+            resourcesCreated++;
+          }
+        }
+      }
+
+      // Create activity_resources from materials_produced
+      const produced = activity.materials_produced as any[] | undefined;
+      if (produced && Array.isArray(produced) && produced.length > 0) {
+        for (const m of produced) {
+          if (m.product_id && m.quantity) {
+            await ctx.db.insert("activity_resources", {
+              activity_id: activity._id,
+              product_id: m.product_id,
+              inventory_item_id: m.inventory_item_id,
+              direction: "produced",
+              quantity: m.quantity,
+              quantity_unit: m.quantity_unit || "und",
+              created_at: now,
+            });
+            resourcesCreated++;
+          }
+        }
+      }
+
+      processed++;
+    }
+
+    const lastId = batch.length > 0 ? batch[batch.length - 1]._id : undefined;
+    const hasMore = startIndex + BATCH_SIZE < sorted.length;
+
+    return {
+      processed,
+      skipped,
+      resourcesCreated,
+      nextCursor: hasMore ? lastId : undefined,
+      totalRemaining: hasMore ? sorted.length - (startIndex + BATCH_SIZE) : 0,
+    };
   },
 });
