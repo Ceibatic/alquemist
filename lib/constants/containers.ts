@@ -79,3 +79,77 @@ export function getContainerTypeDescription(value: string): string {
   const containerType = CONTAINER_TYPES.find((c) => c.value === value);
   return containerType?.description || '';
 }
+
+// ============================================================================
+// CONTAINER TYPES BY ENVIRONMENT (for structure-based capacity model)
+// ============================================================================
+
+export interface ContainerTypeByEnvOption {
+  value: string;
+  label: string;
+  defaultPositions: number;
+}
+
+export const CONTAINER_TYPES_BY_ENV: Record<string, ContainerTypeByEnvOption[]> = {
+  indoor: [
+    { value: 'bandeja', label: 'Bandeja', defaultPositions: 20 },
+    { value: 'canal_nft', label: 'Canal NFT', defaultPositions: 12 },
+    { value: 'canaleta', label: 'Canaleta', defaultPositions: 8 },
+    { value: 'maceta_sustrato', label: 'Maceta Sustrato', defaultPositions: 1 },
+    { value: 'panel_aeroponia', label: 'Panel Aeroponia', defaultPositions: 36 },
+    { value: 'charola_propagacion', label: 'Charola de Propagacion', defaultPositions: 72 },
+    { value: 'maceta', label: 'Maceta', defaultPositions: 1 },
+    { value: 'bolsa_cultivo', label: 'Bolsa de Cultivo', defaultPositions: 1 },
+  ],
+  outdoor: [
+    { value: 'posicion_suelo', label: 'Posicion en Suelo', defaultPositions: 1 },
+    { value: 'cama_elevada', label: 'Cama Elevada', defaultPositions: 50 },
+    { value: 'hilera_suelo', label: 'Hilera en Suelo', defaultPositions: 20 },
+    { value: 'maceta_exterior', label: 'Maceta Exterior', defaultPositions: 1 },
+    { value: 'cama_cultivo', label: 'Cama de Cultivo', defaultPositions: 50 },
+  ],
+};
+
+// Greenhouse can use both indoor and outdoor container types
+CONTAINER_TYPES_BY_ENV.greenhouse = [
+  ...CONTAINER_TYPES_BY_ENV.indoor,
+  ...CONTAINER_TYPES_BY_ENV.outdoor,
+];
+
+// Flat list of all container type values (for validation)
+export const ALL_CONTAINER_TYPE_VALUES = [
+  ...CONTAINER_TYPES_BY_ENV.indoor.map((c) => c.value),
+  ...CONTAINER_TYPES_BY_ENV.outdoor.map((c) => c.value),
+];
+
+// ============================================================================
+// ENVIRONMENT-AWARE HELPERS
+// ============================================================================
+
+export function getContainerTypesForEnvironment(
+  environment: string
+): ContainerTypeByEnvOption[] {
+  if (environment === 'mixed') {
+    return [...CONTAINER_TYPES_BY_ENV.indoor, ...CONTAINER_TYPES_BY_ENV.outdoor];
+  }
+  return CONTAINER_TYPES_BY_ENV[environment] || [
+    ...CONTAINER_TYPES_BY_ENV.indoor,
+    ...CONTAINER_TYPES_BY_ENV.outdoor,
+  ];
+}
+
+export function getDefaultPositionsPerContainer(value: string): number {
+  const allTypes = [
+    ...CONTAINER_TYPES_BY_ENV.indoor,
+    ...CONTAINER_TYPES_BY_ENV.outdoor,
+  ];
+  return allTypes.find((c) => c.value === value)?.defaultPositions || 1;
+}
+
+export function getContainerTypeLabelByEnv(value: string): string {
+  const allTypes = [
+    ...CONTAINER_TYPES_BY_ENV.indoor,
+    ...CONTAINER_TYPES_BY_ENV.outdoor,
+  ];
+  return allTypes.find((c) => c.value === value)?.label || value;
+}

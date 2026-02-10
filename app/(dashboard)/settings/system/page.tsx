@@ -31,8 +31,10 @@ import {
   Loader2,
   Settings2,
   Sparkles,
+  DollarSign,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { Id } from '@/convex/_generated/dataModel';
 
 export default function SystemSettingsPage() {
   const { toast } = useToast();
@@ -50,11 +52,37 @@ export default function SystemSettingsPage() {
     api.config.getCompanySettings,
     companyId ? { companyId } : 'skip'
   );
+  const roles = useQuery(api.roles.list);
 
   // Mutations
   const updateSettings = useMutation(api.config.updateCompanySettings);
   const refreshStatus = useMutation(api.config.refreshIntegrationStatus);
   const initSettings = useMutation(api.config.initializeCompanySettings);
+  const updateRolRate = useMutation(api.roles.updateRate);
+
+  // Role rate editing
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [editRate, setEditRate] = useState<string>('');
+  const [editCurrency, setEditCurrency] = useState<string>('COP');
+  const [savingRate, setSavingRate] = useState(false);
+
+  const handleSaveRate = useCallback(async (roleId: string) => {
+    const rate = parseFloat(editRate);
+    if (isNaN(rate) || rate < 0) {
+      toast({ title: 'Error', description: 'La tarifa debe ser un numero positivo', variant: 'destructive' });
+      return;
+    }
+    setSavingRate(true);
+    try {
+      await updateRolRate({ roleId: roleId as Id<'roles'>, hourly_rate: rate, rate_currency: editCurrency });
+      toast({ title: 'Tarifa actualizada', description: 'La tarifa horaria ha sido guardada' });
+      setEditingRoleId(null);
+    } catch {
+      toast({ title: 'Error', description: 'No se pudo guardar la tarifa', variant: 'destructive' });
+    } finally {
+      setSavingRate(false);
+    }
+  }, [editRate, editCurrency, updateRolRate, toast]);
 
   // Local state for form
   const [settings, setSettings] = useState<Record<string, any>>({});
@@ -563,6 +591,115 @@ export default function SystemSettingsPage() {
                 onCheckedChange={(checked) => updateSetting('log_all_activities', checked)}
               />
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Role Hourly Rates */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <DollarSign className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <CardTitle>Tarifas por Rol</CardTitle>
+              <CardDescription>
+                Define la tarifa horaria de cada rol para calcular el costo de mano de obra (COGS)
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {/* Header */}
+            <div className="grid grid-cols-[1fr_120px_80px_100px] gap-3 px-3 pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <span>Rol</span>
+              <span>Tarifa/hora</span>
+              <span>Moneda</span>
+              <span></span>
+            </div>
+            {roles?.map((role) => (
+              <div
+                key={role._id}
+                className="grid grid-cols-[1fr_120px_80px_100px] gap-3 items-center p-3 border rounded-lg"
+              >
+                <div>
+                  <div className="font-medium text-sm">{role.display_name_es}</div>
+                  <div className="text-xs text-muted-foreground">{role.name}</div>
+                </div>
+                {editingRoleId === role._id ? (
+                  <>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={100}
+                      value={editRate}
+                      onChange={(e) => setEditRate(e.target.value)}
+                      className="h-8 text-sm"
+                      autoFocus
+                    />
+                    <Select value={editCurrency} onValueChange={setEditCurrency}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="COP">COP</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="MXN">MXN</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="h-8 text-xs bg-amber-500 hover:bg-amber-600"
+                        onClick={() => handleSaveRate(role._id)}
+                        disabled={savingRate}
+                      >
+                        {savingRate ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Guardar'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 text-xs"
+                        onClick={() => setEditingRoleId(null)}
+                      >
+                        X
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-sm font-mono">
+                      {role.hourly_rate != null ? role.hourly_rate.toLocaleString() : '—'}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {role.rate_currency || 'COP'}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        setEditingRoleId(role._id);
+                        setEditRate(String(role.hourly_rate ?? 0));
+                        setEditCurrency(role.rate_currency || 'COP');
+                      }}
+                    >
+                      Editar
+                    </Button>
+                  </>
+                )}
+              </div>
+            ))}
+            {!roles && (
+              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Cargando roles...
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

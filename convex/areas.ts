@@ -70,16 +70,23 @@ export const list = query({
       areas = areas.filter((area) => area.status === args.status);
     }
 
-    // Enrich with batch counts
+    // Enrich with batch counts and structure counts
     const areasWithCounts = await Promise.all(
       areas.map(async (area) => {
-        const batches = await ctx.db
-          .query("batches")
-          .withIndex("by_area", (q) => q.eq("area_id", area._id))
-          .collect();
+        const [batches, structures] = await Promise.all([
+          ctx.db
+            .query("batches")
+            .withIndex("by_area", (q) => q.eq("area_id", area._id))
+            .collect(),
+          ctx.db
+            .query("structures")
+            .withIndex("by_area", (q) => q.eq("area_id", area._id))
+            .collect(),
+        ]);
         return {
           ...area,
           batchCount: batches.length,
+          structureCount: structures.filter((s) => s.status === "active").length,
         };
       })
     );
@@ -114,9 +121,36 @@ export const getById = query({
       }
     }
 
+    // Include structure summary if area uses structure-based capacity
+    let structureSummary = null;
+    if (area.capacity_mode === "structures") {
+      const structures = await ctx.db
+        .query("structures")
+        .withIndex("by_area", (q) => q.eq("area_id", args.areaId))
+        .collect();
+
+      const activeStructures = structures
+        .filter((s) => s.status === "active")
+        .sort((a, b) => a.sort_order - b.sort_order);
+
+      structureSummary = {
+        count: activeStructures.length,
+        totalCapacity: activeStructures.reduce(
+          (sum, s) => sum + s.total_capacity,
+          0
+        ),
+        totalGrowingAreaM2: activeStructures.reduce(
+          (sum, s) => sum + (s.growing_area_m2 || 0),
+          0
+        ),
+        structures: activeStructures,
+      };
+    }
+
     return {
       ...area,
       occupancyPercentage,
+      structureSummary,
     };
   },
 });
@@ -152,6 +186,20 @@ export const getStats = query({
       0
     );
 
+    // Calculate total growing area from structures
+    const allStructures = await Promise.all(
+      areas.map((a) =>
+        ctx.db
+          .query("structures")
+          .withIndex("by_area", (q) => q.eq("area_id", a._id))
+          .collect()
+      )
+    );
+    const totalGrowingAreaM2 = allStructures
+      .flat()
+      .filter((s) => s.status === "active")
+      .reduce((sum, s) => sum + (s.growing_area_m2 || 0), 0);
+
     return {
       total,
       active,
@@ -159,6 +207,7 @@ export const getStats = query({
       inactive,
       byType,
       totalAreaM2,
+      totalGrowingAreaM2,
     };
   },
 });
@@ -181,6 +230,7 @@ export const create = mutation({
     usableAreaM2: v.optional(v.number()),
 
     // Optional capacity
+    capacityMode: v.optional(v.string()), // "manual" | "structures"
     capacityConfigurations: v.optional(v.any()),
 
     // Optional technical features
@@ -240,6 +290,7 @@ export const create = mutation({
       usable_area_m2: args.usableAreaM2,
 
       // Capacity
+      capacity_mode: args.capacityMode,
       capacity_configurations: args.capacityConfigurations,
       current_occupancy: 0,
       reserved_capacity: 0,
@@ -316,6 +367,7 @@ export const update = mutation({
     usableAreaM2: v.optional(v.number()),
 
     // Optional capacity
+    capacityMode: v.optional(v.string()), // "manual" | "structures"
     capacityConfigurations: v.optional(v.any()),
 
     // Optional technical features
@@ -371,6 +423,9 @@ export const update = mutation({
     if (updates.usableAreaM2 !== undefined) updateData.usable_area_m2 = updates.usableAreaM2;
 
     // Capacity
+    if (updates.capacityMode !== undefined) {
+      updateData.capacity_mode = updates.capacityMode;
+    }
     if (updates.capacityConfigurations !== undefined) {
       updateData.capacity_configurations = updates.capacityConfigurations;
     }

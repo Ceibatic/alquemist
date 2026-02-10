@@ -100,6 +100,98 @@ export function getLotPrefix(category: string): string {
 }
 
 // ============================================================================
+// LABOR COST CALCULATION (COGS)
+// ============================================================================
+
+/**
+ * Calculate labor cost for a user based on their role's hourly rate.
+ * Returns null if user has no role or role has no hourly_rate.
+ *
+ * @param ctx - Convex mutation context
+ * @param userId - User who performed the activity
+ * @param durationMinutes - Duration in minutes
+ * @returns Labor cost info or null if no rate configured
+ */
+export async function calculateLaborCost(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+  durationMinutes: number
+): Promise<{
+  costTotal: number;
+  currency: string;
+  hourlyRate: number;
+  roleName: string;
+  roleDisplayName: string;
+} | null> {
+  if (durationMinutes <= 0) return null;
+
+  const user = await ctx.db.get(userId);
+  if (!user || !user.role_id) return null;
+
+  const role = await ctx.db.get(user.role_id as Id<"roles">);
+  if (!role || !role.hourly_rate || role.hourly_rate <= 0) return null;
+
+  const costTotal = (durationMinutes / 60) * role.hourly_rate;
+
+  return {
+    costTotal: Math.round(costTotal * 100) / 100, // Round to 2 decimals
+    currency: role.rate_currency || "COP",
+    hourlyRate: role.hourly_rate,
+    roleName: role.name,
+    roleDisplayName: role.display_name_es,
+  };
+}
+
+/**
+ * Create a labor cost_entry for an activity if the user has a configured rate.
+ * This is the main hook called at the end of activity mutations.
+ *
+ * @param ctx - Convex mutation context
+ * @param params - Activity details
+ * @returns cost_entry ID or null if no cost created
+ */
+export async function createLaborCostEntry(
+  ctx: MutationCtx,
+  params: {
+    userId: Id<"users">;
+    durationMinutes: number | undefined;
+    activityId: Id<"activities">;
+    facilityId: Id<"facilities">;
+    batchId?: Id<"batches">;
+    cropPhase?: string;
+  }
+): Promise<Id<"cost_entries"> | null> {
+  if (!params.durationMinutes || params.durationMinutes <= 0) return null;
+
+  const laborCost = await calculateLaborCost(
+    ctx,
+    params.userId,
+    params.durationMinutes
+  );
+  if (!laborCost) return null;
+
+  const costEntryId = await ctx.db.insert("cost_entries", {
+    facility_id: params.facilityId,
+    batch_id: params.batchId,
+    cost_type: "labor",
+    crop_phase: params.cropPhase,
+    activity_id: params.activityId,
+    cost_total: laborCost.costTotal,
+    cost_currency: laborCost.currency,
+    details: {
+      role_name: laborCost.roleName,
+      role_display_name: laborCost.roleDisplayName,
+      hourly_rate: laborCost.hourlyRate,
+      duration_minutes: params.durationMinutes,
+    },
+    performed_by: params.userId,
+    created_at: Date.now(),
+  });
+
+  return costEntryId;
+}
+
+// ============================================================================
 // DEPRECATED FUNCTIONS
 // ============================================================================
 
