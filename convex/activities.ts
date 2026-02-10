@@ -6,7 +6,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { generateInternalLotNumber, consumeFromInventoryFIFO, getActivityTypeByCode } from "./helpers";
+import { generateInternalLotNumber, consumeFromInventoryFIFO, getActivityTypeByCode, createLaborCostEntry } from "./helpers";
 
 /**
  * List activities
@@ -261,6 +261,34 @@ export const log = mutation({
       notes: args.notes,
       created_at: now,
     });
+
+    // Auto-create labor cost_entry if duration_minutes > 0 and user has hourly rate
+    if (args.duration_minutes && args.duration_minutes > 0) {
+      let facilityId = args.facility_id;
+      let batchId: Id<"batches"> | undefined;
+      let cropPhase: string | undefined;
+
+      // Resolve facility and batch context from entity
+      if (args.entity_type === "batch") {
+        const batch = await ctx.db.get(args.entity_id as Id<"batches">);
+        if (batch) {
+          facilityId = facilityId || batch.facility_id;
+          batchId = batch._id;
+          cropPhase = batch.current_phase;
+        }
+      }
+
+      if (facilityId) {
+        await createLaborCostEntry(ctx, {
+          userId: args.performed_by,
+          durationMinutes: args.duration_minutes,
+          activityId,
+          facilityId,
+          batchId,
+          cropPhase,
+        });
+      }
+    }
 
     return activityId;
   },
@@ -2345,6 +2373,33 @@ export const completeScheduledActivity = mutation({
       notes: args.notes,
       created_at: now,
     });
+
+    // Auto-create labor cost_entry if duration_minutes > 0 and user has hourly rate
+    if (args.duration_minutes && args.duration_minutes > 0) {
+      let facilityId: Id<"facilities"> | undefined;
+      let batchId: Id<"batches"> | undefined;
+      let cropPhase: string | undefined;
+
+      if (scheduledActivity.entity_type === "batch") {
+        const batch = await ctx.db.get(scheduledActivity.entity_id as Id<"batches">);
+        if (batch) {
+          facilityId = batch.facility_id;
+          batchId = batch._id;
+          cropPhase = batch.current_phase;
+        }
+      }
+
+      if (facilityId) {
+        await createLaborCostEntry(ctx, {
+          userId: args.completedBy,
+          durationMinutes: args.duration_minutes,
+          activityId,
+          facilityId,
+          batchId,
+          cropPhase,
+        });
+      }
+    }
 
     return {
       activityId,

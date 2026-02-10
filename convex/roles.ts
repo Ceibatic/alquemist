@@ -1,10 +1,10 @@
 /**
- * Roles Query Functions
+ * Roles Query Functions & Mutations
  * Module 07: Reference Data / Module 17: Users & Invitations
  */
 
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import { getAuthenticatedUserId } from "./authHelpers";
 
 /**
@@ -28,6 +28,8 @@ export const list = query({
       description: role.description,
       level: role.level,
       scope_level: role.scope_level,
+      hourly_rate: role.hourly_rate,
+      rate_currency: role.rate_currency,
     }));
   },
 });
@@ -51,6 +53,8 @@ export const getById = query({
       level: role.level,
       scope_level: role.scope_level,
       permissions: role.permissions,
+      hourly_rate: role.hourly_rate,
+      rate_currency: role.rate_currency,
     };
   },
 });
@@ -94,6 +98,32 @@ export const getAssignableRoles = query({
         description: role.description,
         level: role.level,
         scope_level: role.scope_level,
+        hourly_rate: role.hourly_rate,
+        rate_currency: role.rate_currency,
       }));
+  },
+});
+
+/**
+ * Update hourly rate for a role (labor costing)
+ */
+export const updateRate = mutation({
+  args: {
+    roleId: v.id("roles"),
+    hourly_rate: v.number(),
+    rate_currency: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const role = await ctx.db.get(args.roleId);
+    if (!role) {
+      throw new Error("Rol no encontrado");
+    }
+
+    await ctx.db.patch(args.roleId, {
+      hourly_rate: args.hourly_rate,
+      rate_currency: args.rate_currency || "COP",
+    });
+
+    return { success: true };
   },
 });

@@ -26,6 +26,7 @@ import {
   BatchQualityChecksTab,
   BatchGenealogyTab,
   BatchNotesTab,
+  BatchCostSummary,
 } from '@/components/batches';
 import {
   Layers,
@@ -44,6 +45,7 @@ import {
   ClipboardCheck,
   GitBranch,
   FileText,
+  DollarSign,
 } from 'lucide-react';
 
 interface PageProps {
@@ -288,6 +290,13 @@ export default function BatchDetailPage({ params }: PageProps) {
               Notas
             </TabsTrigger>
             <TabsTrigger
+              value="costs"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <DollarSign className="h-4 w-4" />
+              Costos
+            </TabsTrigger>
+            <TabsTrigger
               value="movements"
               className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
             >
@@ -487,6 +496,11 @@ export default function BatchDetailPage({ params }: PageProps) {
               batch_code: batch.batch_code,
             }}
           />
+        </TabsContent>
+
+        {/* Costs Tab */}
+        <TabsContent value="costs" className="mt-6">
+          <BatchCostSummary batchId={batchId} />
         </TabsContent>
 
         {/* Movements Tab */}

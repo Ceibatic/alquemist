@@ -205,6 +205,10 @@ export default defineSchema({
     is_system_role: v.boolean(), // Default: true
     is_active: v.boolean(), // Default: true
     created_at: v.number(),
+
+    // Labor costing (COGS)
+    hourly_rate: v.optional(v.number()), // Tarifa por hora para calculo de costo de mano de obra
+    rate_currency: v.optional(v.string()), // ISO 4217 (COP, USD, EUR). Default: "COP"
   })
     .index("by_name", ["name"])
     .index("by_level", ["level"])
@@ -691,6 +695,12 @@ export default defineSchema({
     default_price: v.optional(v.number()),
     price_currency: v.string(), // Default: "COP"
     price_unit: v.optional(v.string()), // per_kg/per_unit
+
+    // Depreciation (equipment only)
+    acquisition_value: v.optional(v.number()), // Valor de adquisicion
+    useful_life_months: v.optional(v.number()), // Vida util en meses
+    salvage_value: v.optional(v.number()), // Valor residual
+    depreciation_method: v.optional(v.string()), // straight_line (default)
 
     // Metadata
     status: v.string(), // active/discontinued
@@ -1927,4 +1937,48 @@ export default defineSchema({
     .index("by_certificate_type", ["certificate_type"])
     .index("by_expiry_date", ["expiry_date"])
     .index("by_status", ["status"]),
+
+  // ============================================================================
+  // COST TRACKING (COGS)
+  // ============================================================================
+
+  // Periodic meter readings for utility costs (electricity, water, gas)
+  utility_readings: defineTable({
+    facility_id: v.id("facilities"),
+    utility_type: v.string(), // electricity | water | gas
+    period: v.string(), // YYYY-MM
+    reading_previous: v.number(),
+    reading_current: v.number(),
+    consumption: v.number(), // reading_current - reading_previous
+    consumption_unit: v.string(), // kWh | m3 | galones
+    cost_total: v.number(),
+    cost_currency: v.string(), // ISO 4217
+    allocation_status: v.string(), // pending | allocated | no_batches
+    notes: v.optional(v.string()),
+    recorded_by: v.id("users"),
+    created_at: v.number(),
+  })
+    .index("by_facility", ["facility_id"])
+    .index("by_period", ["period"])
+    .index("by_type_period", ["utility_type", "period"]),
+
+  // Non-inventory costs linked to batches (labor, utilities, depreciation)
+  cost_entries: defineTable({
+    facility_id: v.id("facilities"),
+    batch_id: v.optional(v.id("batches")), // null = overhead sin asignar
+    cost_type: v.string(), // labor | utility_electricity | utility_water | utility_gas | depreciation
+    crop_phase: v.optional(v.string()), // Fase del cultivo cuando se genero
+    activity_id: v.optional(v.id("activities")), // Actividad que genero el costo (labor)
+    source_id: v.optional(v.string()), // ID de referencia (utility_reading_id o product_id para equipo)
+    cost_total: v.number(), // Costo en moneda local
+    cost_currency: v.string(), // ISO 4217 (COP, USD)
+    period: v.optional(v.string()), // YYYY-MM para utilities y depreciacion
+    details: v.optional(v.any()), // Metadata especifica del tipo
+    performed_by: v.optional(v.id("users")), // Usuario (para labor)
+    created_at: v.number(),
+  })
+    .index("by_batch_id", ["batch_id"])
+    .index("by_facility", ["facility_id"])
+    .index("by_cost_type", ["cost_type"])
+    .index("by_period", ["period"]),
 });

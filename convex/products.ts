@@ -136,6 +136,11 @@ export const create = mutation({
       v.union(v.literal("COP"), v.literal("USD"), v.literal("EUR"))
     ),
     price_unit: v.optional(v.string()),
+
+    // Depreciation (equipment only)
+    acquisition_value: v.optional(v.number()),
+    useful_life_months: v.optional(v.number()),
+    salvage_value: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUserId(ctx);
@@ -208,6 +213,12 @@ export const create = mutation({
       price_currency: args.price_currency || "COP",
       price_unit: args.price_unit,
 
+      // Depreciation (equipment)
+      acquisition_value: args.acquisition_value,
+      useful_life_months: args.useful_life_months,
+      salvage_value: args.salvage_value,
+      depreciation_method: args.acquisition_value ? "straight_line" : undefined,
+
       status: "active",
       created_at: now,
       updated_at: now,
@@ -256,6 +267,10 @@ export const update = mutation({
     organic_certified: v.optional(v.boolean()),
     organic_cert_number: v.optional(v.string()),
     status: v.optional(v.union(v.literal("active"), v.literal("discontinued"))),
+    // Depreciation (equipment only)
+    acquisition_value: v.optional(v.number()),
+    useful_life_months: v.optional(v.number()),
+    salvage_value: v.optional(v.number()),
     // Price history tracking (optional)
     priceChangeReason: v.optional(v.string()),
     priceChangeCategory: v.optional(v.string()),
@@ -348,6 +363,14 @@ export const update = mutation({
     if (sanitizedData.organic_cert_number !== undefined)
       updates.organic_cert_number = sanitizedData.organic_cert_number;
     if (args.status !== undefined) updates.status = args.status;
+    if (args.acquisition_value !== undefined)
+      updates.acquisition_value = args.acquisition_value;
+    if (args.useful_life_months !== undefined)
+      updates.useful_life_months = args.useful_life_months;
+    if (args.salvage_value !== undefined)
+      updates.salvage_value = args.salvage_value;
+    if (args.acquisition_value !== undefined)
+      updates.depreciation_method = args.acquisition_value > 0 ? "straight_line" : undefined;
 
     await ctx.db.patch(args.productId, updates);
 

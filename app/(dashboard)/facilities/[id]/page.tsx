@@ -23,9 +23,13 @@ import {
   Star,
   RefreshCw,
   AlertCircle,
+  Zap,
+  Plus,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { FACILITY_TYPES, LICENSE_TYPES } from '@/lib/validations/facilities';
+import { UtilityReadingModal } from '@/components/facilities/utility-reading-modal';
+import { UtilityReadingsTable } from '@/components/facilities/utility-readings-table';
 
 export default function FacilityDetailPage() {
   const params = useParams();
@@ -33,6 +37,7 @@ export default function FacilityDetailPage() {
   const { toast } = useToast();
   const [userId, setUserId] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [showUtilityModal, setShowUtilityModal] = useState(false);
 
   const facilityId = params.id as string;
 
@@ -190,6 +195,7 @@ export default function FacilityDetailPage() {
           <TabsTrigger value="location">Ubicación</TabsTrigger>
           <TabsTrigger value="license">Licencia</TabsTrigger>
           <TabsTrigger value="areas">Áreas</TabsTrigger>
+          <TabsTrigger value="utilities">Utilities</TabsTrigger>
         </TabsList>
 
         {/* General Tab */}
@@ -570,7 +576,42 @@ export default function FacilityDetailPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Utilities Tab */}
+        <TabsContent value="utilities" className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                Lecturas de Utilities
+              </CardTitle>
+              <Button
+                onClick={() => setShowUtilityModal(true)}
+                className="bg-amber-500 hover:bg-amber-600"
+                size="sm"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Registrar Lectura
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <UtilityReadingsTable
+                facilityId={facilityId as Id<'facilities'>}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* Utility Reading Modal */}
+      {userId && (
+        <UtilityReadingModal
+          open={showUtilityModal}
+          onOpenChange={setShowUtilityModal}
+          facilityId={facilityId as Id<'facilities'>}
+          userId={userId as Id<'users'>}
+        />
+      )}
     </div>
   );
 }

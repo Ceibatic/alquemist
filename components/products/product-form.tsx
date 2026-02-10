@@ -168,6 +168,9 @@ export function ProductForm({
         default_price: existingProduct.default_price || undefined,
         price_currency: existingProduct.price_currency || 'COP',
         price_unit: existingProduct.price_unit || '',
+        acquisition_value: existingProduct.acquisition_value || undefined,
+        useful_life_months: existingProduct.useful_life_months || undefined,
+        salvage_value: existingProduct.salvage_value || undefined,
       });
     }
   }, [existingProduct, form]);
@@ -639,6 +642,115 @@ export function ProductForm({
             </div>
           )}
         </div>
+
+        {/* Depreciation (equipment only) */}
+        {watchCategory === 'equipment' && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Depreciación</h3>
+            <Separator />
+            <p className="text-sm text-gray-500">
+              Configura la depreciación para incluir este equipo en el COGS de los batches.
+              Depreciación mensual = (Valor adquisición - Valor residual) / Vida útil.
+            </p>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {/* Acquisition Value */}
+              <FormField
+                control={form.control}
+                name="acquisition_value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor de Adquisición</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0"
+                        {...field}
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === '' ? undefined : parseFloat(value));
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>Costo de compra del equipo</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Useful Life */}
+              <FormField
+                control={form.control}
+                name="useful_life_months"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vida Útil (meses)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="1"
+                        min="1"
+                        placeholder="60"
+                        {...field}
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === '' ? undefined : parseInt(value));
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Salvage Value */}
+              <FormField
+                control={form.control}
+                name="salvage_value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor Residual</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0"
+                        {...field}
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === '' ? undefined : parseFloat(value));
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>Valor al fin de la vida útil</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Calculated monthly depreciation */}
+            {form.watch('acquisition_value') && form.watch('useful_life_months') && (
+              <div className="rounded-md bg-gray-50 p-3 text-sm">
+                <span className="text-gray-500">Depreciación mensual:</span>{' '}
+                <span className="font-medium">
+                  $
+                  {(
+                    ((Number(form.watch('acquisition_value')) || 0) -
+                      (Number(form.watch('salvage_value')) || 0)) /
+                    (Number(form.watch('useful_life_months')) || 1)
+                  ).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Physical Properties */}
         <div className="space-y-4">
