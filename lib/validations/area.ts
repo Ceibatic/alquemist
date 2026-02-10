@@ -113,22 +113,13 @@ export const environmentalSpecsSchema = z
 // CONTAINER TYPE SCHEMA
 // ============================================================================
 
-export const containerTypeSchema = z.enum(
-  [
-    'bandeja',
-    'maceta',
-    'charola_propagacion',
-    'bolsa_cultivo',
-    'cubo_contenedor',
-    'cama_cultivo',
-    'otro',
-  ],
-  {
-    errorMap: () => ({
-      message: 'Debes seleccionar un tipo de contenedor válido',
-    }),
-  }
-);
+export const containerTypeSchema = z
+  .string()
+  .min(1, 'Debes seleccionar un tipo de contenedor valido');
+
+export const capacityModeSchema = z.enum(['manual', 'structures'], {
+  errorMap: () => ({ message: 'Debes seleccionar un modo de capacidad' }),
+});
 
 // ============================================================================
 // CAPACITY CONFIGURATION SCHEMA
@@ -217,6 +208,7 @@ export const createAreaSchema = z.object({
     .optional(),
 
   // Capacity
+  capacity_mode: capacityModeSchema.optional(),
   capacity_configurations: capacityConfigurationSchema.optional(),
 
   // Technical Features
@@ -266,4 +258,5 @@ export type AreaType = z.infer<typeof areaTypeSchema>;
 export type AreaStatus = z.infer<typeof areaStatusSchema>;
 export type EnvironmentalSpecs = z.infer<typeof environmentalSpecsSchema>;
 export type ContainerType = z.infer<typeof containerTypeSchema>;
+export type CapacityMode = z.infer<typeof capacityModeSchema>;
 export type CapacityConfiguration = z.infer<typeof capacityConfigurationSchema>;

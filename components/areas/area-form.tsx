@@ -67,14 +67,21 @@ export function AreaForm({
   onCancel,
   isSubmitting = false,
 }: AreaFormProps) {
-  // Detectar si el área existente usa contenedores
+  // Detectar modo de capacidad del area existente
   const hasContainerConfig = !!(
     defaultValues?.capacity_configurations &&
     typeof defaultValues.capacity_configurations === 'object' &&
     'container_type' in defaultValues.capacity_configurations
   );
 
-  const [useContainerMode, setUseContainerMode] = useState(hasContainerConfig);
+  const initialCapacityMode = defaultValues?.capacity_mode === 'structures'
+    ? 'structures'
+    : hasContainerConfig
+      ? 'containers'
+      : 'manual';
+
+  const [capacityMode, setCapacityMode] = useState<'manual' | 'containers' | 'structures'>(initialCapacityMode);
+  const useContainerMode = capacityMode === 'containers';
 
   const form = useForm<CreateAreaInput>({
     resolver: zodResolver(createAreaSchema),
@@ -424,45 +431,75 @@ export function AreaForm({
 
             {/* Capacity Section - Unified Box */}
             <div className="rounded-lg border p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-green-700" />
-                  <div>
-                    <h4 className="font-semibold">Capacidad</h4>
-                    <p className="text-xs text-muted-foreground">
-                      {useContainerMode
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-green-700" />
+                <div>
+                  <h4 className="font-semibold">Capacidad</h4>
+                  <p className="text-xs text-muted-foreground">
+                    {capacityMode === 'structures'
+                      ? 'Gestionada via estructuras'
+                      : capacityMode === 'containers'
                         ? 'Calculada por contenedores'
                         : 'Ingreso manual de plantas'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="container-mode" className="text-sm">
-                    Usar contenedores
-                  </Label>
-                  <Switch
-                    id="container-mode"
-                    checked={useContainerMode}
-                    onCheckedChange={(checked) => {
-                      setUseContainerMode(checked);
-                      if (!checked) {
-                        const currentConfig = form.getValues('capacity_configurations');
-                        const maxCapacity =
-                          currentConfig &&
-                          typeof currentConfig === 'object' &&
-                          'max_capacity' in currentConfig
-                            ? (currentConfig as Record<string, unknown>).max_capacity
-                            : undefined;
-                        form.setValue('capacity_configurations', {
-                          max_capacity: maxCapacity as number,
-                        } as CreateAreaInput['capacity_configurations']);
-                      }
-                    }}
-                  />
+                  </p>
                 </div>
               </div>
 
-              {useContainerMode ? (
+              {/* Capacity Mode Selector */}
+              <RadioGroup
+                value={capacityMode}
+                onValueChange={(value) => {
+                  const mode = value as 'manual' | 'containers' | 'structures';
+                  setCapacityMode(mode);
+                  if (mode === 'structures') {
+                    form.setValue('capacity_mode', 'structures');
+                    form.setValue('capacity_configurations', {
+                      max_capacity: 0,
+                      source: 'structures',
+                    } as CreateAreaInput['capacity_configurations']);
+                  } else if (mode === 'manual') {
+                    form.setValue('capacity_mode', undefined);
+                    const currentConfig = form.getValues('capacity_configurations');
+                    const maxCap =
+                      currentConfig &&
+                      typeof currentConfig === 'object' &&
+                      'max_capacity' in currentConfig
+                        ? (currentConfig as Record<string, unknown>).max_capacity
+                        : undefined;
+                    form.setValue('capacity_configurations', {
+                      max_capacity: maxCap as number,
+                    } as CreateAreaInput['capacity_configurations']);
+                  } else {
+                    form.setValue('capacity_mode', undefined);
+                  }
+                }}
+                className="grid grid-cols-3 gap-2"
+              >
+                <Label
+                  htmlFor="cap-manual"
+                  className={`flex items-center gap-2 rounded-md border p-3 cursor-pointer text-sm ${capacityMode === 'manual' ? 'border-amber-500 bg-amber-50' : 'border-gray-200'}`}
+                >
+                  <RadioGroupItem value="manual" id="cap-manual" />
+                  Manual
+                </Label>
+                <Label
+                  htmlFor="cap-containers"
+                  className={`flex items-center gap-2 rounded-md border p-3 cursor-pointer text-sm ${capacityMode === 'containers' ? 'border-amber-500 bg-amber-50' : 'border-gray-200'}`}
+                >
+                  <RadioGroupItem value="containers" id="cap-containers" />
+                  Contenedores
+                </Label>
+                <Label
+                  htmlFor="cap-structures"
+                  className={`flex items-center gap-2 rounded-md border p-3 cursor-pointer text-sm ${capacityMode === 'structures' ? 'border-amber-500 bg-amber-50' : 'border-gray-200'}`}
+                >
+                  <RadioGroupItem value="structures" id="cap-structures" />
+                  Estructuras
+                </Label>
+              </RadioGroup>
+
+              {/* Container Mode Fields */}
+              {capacityMode === 'containers' && (
                 <div className="space-y-3 pt-2 border-t">
                   <FormField
                     control={form.control}
@@ -590,7 +627,10 @@ export function AreaForm({
                       </div>
                     )}
                 </div>
-              ) : (
+              )}
+
+              {/* Manual Mode Fields */}
+              {capacityMode === 'manual' && (
                 <FormField
                   control={form.control}
                   name="capacity_configurations"
@@ -602,7 +642,7 @@ export function AreaForm({
                     const maxCapacityValue = config.max_capacity;
                     return (
                       <FormItem className="pt-2 border-t">
-                        <FormLabel className="text-sm">Capacidad máxima (plantas) *</FormLabel>
+                        <FormLabel className="text-sm">Capacidad maxima (plantas) *</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -623,6 +663,17 @@ export function AreaForm({
                     );
                   }}
                 />
+              )}
+
+              {/* Structures Mode Info */}
+              {capacityMode === 'structures' && (
+                <div className="p-3 rounded-md bg-blue-50 border border-blue-200">
+                  <p className="text-sm text-blue-800">
+                    La capacidad se calcula automaticamente a partir de las estructuras
+                    (racks, hileras, camas) que configures en el tab <strong>Estructuras</strong> del
+                    detalle del area.
+                  </p>
+                </div>
               )}
             </div>
 

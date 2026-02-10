@@ -541,6 +541,7 @@ export default defineSchema({
     usable_area_m2: v.optional(v.number()),
 
     // Capacity
+    capacity_mode: v.optional(v.string()), // "manual" | "structures" (undefined = manual)
     capacity_configurations: v.optional(v.any()), // { max_capacity: number, ... }
     current_occupancy: v.number(), // Default: 0
     reserved_capacity: v.number(), // Default: 0
@@ -561,6 +562,39 @@ export default defineSchema({
     .index("by_facility", ["facility_id"])
     .index("by_current_crop_type", ["current_crop_type_id"])
     .index("by_status", ["status"]),
+
+  // ============================================================================
+  // STRUCTURE TABLE (Area sub-hierarchy for capacity model)
+  // ============================================================================
+
+  structures: defineTable({
+    area_id: v.id("areas"),
+    name: v.string(), // "Rack A-1", "Hilera Norte 3"
+    structure_type: v.string(), // rack_movil, hilera, cama, etc.
+    environment_type: v.string(), // indoor | outdoor | greenhouse
+
+    // Hierarchy configuration (levels and containers as config, not tables)
+    num_levels: v.number(), // >= 1 (outdoor ground = 1)
+    containers_per_level: v.number(), // >= 1
+    container_type: v.string(), // bandeja, canal_nft, posicion_suelo, etc.
+    positions_per_container: v.number(), // >= 1
+
+    // Computed capacity (denormalized for fast queries)
+    total_capacity: v.number(), // num_levels * containers_per_level * positions_per_container
+
+    // Physical dimensions
+    footprint_m2: v.optional(v.number()), // floor footprint
+    growing_area_m2: v.optional(v.number()), // footprint * num_levels
+
+    // Metadata
+    sort_order: v.number(),
+    status: v.string(), // active | inactive
+    notes: v.optional(v.string()),
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_area", ["area_id"])
+    .index("by_area_status", ["area_id", "status"]),
 
   // ============================================================================
   // SUPPLY CHAIN TABLES (3)
