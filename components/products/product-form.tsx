@@ -22,7 +22,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -33,6 +35,8 @@ import {
   productCategoryLabels,
   weightUnitLabels,
   priceChangeCategoryLabels,
+  procurementTypeLabels,
+  lotTrackingLabels,
   INVENTORY_UNITS,
   type ProductFormInput,
 } from '@/lib/validations/product';
@@ -48,19 +52,23 @@ interface ProductFormProps {
   isSubmitting?: boolean;
 }
 
-const categories = [
-  'seed',
-  'nutrient',
-  'pesticide',
-  'equipment',
-  'substrate',
-  'container',
-  'tool',
-  'clone',
-  'seedling',
-  'mother_plant',
-  'plant_material',
-  'other',
+const categoryGroups = [
+  {
+    label: 'Insumos',
+    items: ['seed', 'nutrient', 'pesticide', 'substrate', 'biocontrol'] as const,
+  },
+  {
+    label: 'Material Vegetal',
+    items: ['clone', 'seedling', 'mother_plant', 'plant_material', 'plant_vegetative', 'plant_flowering', 'harvest_wet', 'harvest_dry', 'processed_plant'] as const,
+  },
+  {
+    label: 'Preparados',
+    items: ['stock_solution', 'substrate_mix'] as const,
+  },
+  {
+    label: 'Infraestructura',
+    items: ['equipment', 'container', 'tool', 'other'] as const,
+  },
 ] as const;
 
 const weightUnits = ['kg', 'g', 'lb', 'oz'] as const;
@@ -91,6 +99,13 @@ export function ProductForm({
     currentCompanyId ? { companyId: currentCompanyId } : 'skip'
   );
   const suppliers = suppliersData || [];
+
+  // Fetch products for transformation target selector
+  const productsData = useQuery(
+    api.products.list,
+    currentCompanyId ? { companyId: currentCompanyId, status: 'active' } : 'skip'
+  );
+  const allProducts = productsData?.products || [];
 
   // Fetch product if editing
   const existingProduct = useQuery(
@@ -125,6 +140,11 @@ export function ProductForm({
       default_price: undefined,
       price_currency: 'COP',
       price_unit: '',
+      transformation_produces_id: '',
+      default_yield_pct: undefined,
+      procurement_type: '',
+      lot_tracking: '',
+      shelf_life_days: undefined,
       priceChangeCategory: '',
       priceChangeReason: '',
       priceChangeNotes: '',
@@ -168,6 +188,13 @@ export function ProductForm({
         default_price: existingProduct.default_price || undefined,
         price_currency: existingProduct.price_currency || 'COP',
         price_unit: existingProduct.price_unit || '',
+        // Resource system fields
+        transformation_produces_id: (existingProduct as any).transformation_produces_id || '',
+        default_yield_pct: (existingProduct as any).default_yield_pct || undefined,
+        procurement_type: (existingProduct as any).procurement_type || '',
+        lot_tracking: (existingProduct as any).lot_tracking || '',
+        shelf_life_days: (existingProduct as any).shelf_life_days || undefined,
+        // COGS depreciation fields
         acquisition_value: existingProduct.acquisition_value || undefined,
         useful_life_months: existingProduct.useful_life_months || undefined,
         salvage_value: existingProduct.salvage_value || undefined,
@@ -193,14 +220,22 @@ export function ProductForm({
       seed: 'SEM',
       nutrient: 'NUT',
       pesticide: 'PES',
-      equipment: 'EQP',
       substrate: 'SUS',
-      container: 'CON',
-      tool: 'HER',
+      biocontrol: 'BIO',
       clone: 'CLO',
-      seedling: 'PLA',
+      seedling: 'PLT',
       mother_plant: 'MAD',
       plant_material: 'MAT',
+      plant_vegetative: 'VEG',
+      plant_flowering: 'FLO',
+      harvest_wet: 'CHU',
+      harvest_dry: 'CSE',
+      processed_plant: 'PRO',
+      stock_solution: 'SOL',
+      substrate_mix: 'MIX',
+      equipment: 'EQP',
+      container: 'CON',
+      tool: 'HER',
       other: 'OTR',
     };
     const prefix = categoryPrefixes[category] || 'PRD';
@@ -300,10 +335,15 @@ export function ProductForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {productCategoryLabels[cat]}
-                        </SelectItem>
+                      {categoryGroups.map((group) => (
+                        <SelectGroup key={group.label}>
+                          <SelectLabel>{group.label}</SelectLabel>
+                          {group.items.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {productCategoryLabels[cat]}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       ))}
                     </SelectContent>
                   </Select>
@@ -395,6 +435,181 @@ export function ProductForm({
               </FormItem>
             )}
           />
+        </div>
+
+        {/* Inventory Configuration */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Configuración de Inventario</h3>
+          <Separator />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {/* Procurement Type */}
+            <FormField
+              control={form.control}
+              name="procurement_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Adquisición</FormLabel>
+                  <Select
+                    onValueChange={(value) => field.onChange(value === 'none' ? '' : value)}
+                    value={field.value || 'none'}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar tipo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Sin definir</SelectItem>
+                      {(['purchased', 'produced', 'both'] as const).map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {procurementTypeLabels[type]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Se compra, se produce internamente, o ambos
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Lot Tracking */}
+            <FormField
+              control={form.control}
+              name="lot_tracking"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Seguimiento de Lote</FormLabel>
+                  <Select
+                    onValueChange={(value) => field.onChange(value === 'none_value' ? 'none' : value === 'no_value' ? '' : value)}
+                    value={field.value === 'none' ? 'none_value' : field.value || 'no_value'}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar modo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="no_value">Sin definir</SelectItem>
+                      {(['required', 'optional', 'none'] as const).map((mode) => (
+                        <SelectItem key={mode} value={mode === 'none' ? 'none_value' : mode}>
+                          {lotTrackingLabels[mode]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Si se requiere número de lote al recibir inventario
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Shelf Life Days */}
+            <FormField
+              control={form.control}
+              name="shelf_life_days"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Vida Útil (días)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="Ej: 365"
+                      {...field}
+                      value={field.value || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value === '' ? undefined : parseInt(value, 10));
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Auto-calcula fecha de vencimiento al recibir
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* Transformation Chain */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Cadena de Transformación</h3>
+          <Separator />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Transformation Target */}
+            <FormField
+              control={form.control}
+              name="transformation_produces_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Produce</FormLabel>
+                  <Select
+                    onValueChange={(value) => field.onChange(value === 'none' ? '' : value)}
+                    value={field.value || 'none'}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar producto destino" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Ninguno</SelectItem>
+                      {allProducts
+                        .filter((p) => p._id !== productId)
+                        .map((p) => (
+                          <SelectItem key={p._id} value={p._id}>
+                            {p.name} ({p.sku})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Producto que resulta de transformar este
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Default Yield */}
+            <FormField
+              control={form.control}
+              name="default_yield_pct"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Rendimiento Esperado (%)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      placeholder="Ej: 85"
+                      {...field}
+                      value={field.value || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value === '' ? undefined : parseFloat(value));
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Alerta si el rendimiento real difiere más de 10%
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
         {/* Supplier & Manufacturer */}

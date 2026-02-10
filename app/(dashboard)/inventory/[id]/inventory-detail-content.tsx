@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { StockStatus, StockLevelBar } from '@/components/inventory/stock-status';
 import { InventoryMovementModal } from '@/components/inventory/inventory-movement-modal';
 import { InventoryActivityHistory } from '@/components/inventory/inventory-activity-history';
+import { ItemTraceability } from '@/components/inventory/item-traceability';
 import {
   Edit,
   Package,
@@ -338,6 +339,9 @@ export function InventoryDetailContent({
 
           {/* Activity History */}
           <InventoryActivityHistory inventoryItemId={inventoryId} limit={20} />
+
+          {/* Traceability */}
+          <ItemTraceability inventoryItemId={inventoryId} />
         </div>
 
         {/* Sidebar */}

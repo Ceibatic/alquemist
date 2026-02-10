@@ -22,6 +22,7 @@ import {
   Trash2,
   ArrowRightLeft,
   Package,
+  Sprout,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -39,6 +40,7 @@ const transactionTypeLabels: Record<string, string> = {
   transfer: 'Transferencia',
   correction: 'Corrección',
   receipt: 'Recepción',
+  application: 'Aplicación',
 };
 
 // Transaction type icons
@@ -49,6 +51,7 @@ const transactionTypeIcons: Record<string, React.ComponentType<{ className?: str
   transfer: ArrowRightLeft,
   correction: RefreshCw,
   receipt: Package,
+  application: Sprout,
 };
 
 // Badge colors for transaction types
@@ -59,6 +62,16 @@ const transactionTypeBadgeColors: Record<string, string> = {
   transfer: 'bg-purple-100 text-purple-800',
   correction: 'bg-amber-100 text-amber-800',
   receipt: 'bg-green-100 text-green-800',
+  application: 'bg-emerald-100 text-emerald-800',
+};
+
+const cropPhaseLabels: Record<string, string> = {
+  propagation: 'Propagación',
+  vegetative: 'Vegetativa',
+  flowering: 'Floración',
+  harvest: 'Cosecha',
+  post_harvest: 'Post-cosecha',
+  processing: 'Procesamiento',
 };
 
 export function InventoryTransactionHistory({
@@ -202,6 +215,24 @@ export function InventoryTransactionHistory({
                             {tx.sourceAreaName} → {tx.destinationAreaName}
                           </div>
                         )}
+                      {(tx.batchName || tx.zoneName || tx.crop_phase) && (
+                        <div className="text-xs text-emerald-600 mt-0.5">
+                          {tx.batchName && <span>Lote: {tx.batchName}</span>}
+                          {tx.batchName && tx.zoneName && <span> · </span>}
+                          {tx.zoneName && <span>Zona: {tx.zoneName}</span>}
+                          {tx.crop_phase && (
+                            <span>
+                              {(tx.batchName || tx.zoneName) ? ' · ' : ''}
+                              {cropPhaseLabels[tx.crop_phase] || tx.crop_phase}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {tx.cost_total != null && tx.cost_total > 0 && (
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          Costo: ${tx.cost_total.toLocaleString('es-CO')}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">{tx.performedByName}</span>

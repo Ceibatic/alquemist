@@ -696,7 +696,16 @@ export default defineSchema({
     price_currency: v.string(), // Default: "COP"
     price_unit: v.optional(v.string()), // per_kg/per_unit
 
-    // Depreciation (equipment only)
+    // Procurement & Tracking (Resource System - US-RES.2)
+    procurement_type: v.optional(v.string()), // purchased/produced/both
+    lot_tracking: v.optional(v.string()), // required/optional/none
+    shelf_life_days: v.optional(v.number()),
+
+    // Transformation Chain (Resource System - US-RES.3)
+    transformation_produces_id: v.optional(v.id("products")),
+    default_yield_pct: v.optional(v.number()), // 0-100
+
+    // Depreciation (equipment only - COGS System)
     acquisition_value: v.optional(v.number()), // Valor de adquisicion
     useful_life_months: v.optional(v.number()), // Vida util en meses
     salvage_value: v.optional(v.number()), // Valor residual
@@ -838,6 +847,14 @@ export default defineSchema({
     source_area_id: v.optional(v.id("areas")),
     destination_area_id: v.optional(v.id("areas")),
 
+    // Cultivation Context (US-RES.4)
+    batch_id: v.optional(v.id("batches")),
+    zone_id: v.optional(v.id("areas")),
+    crop_phase: v.optional(v.string()), // propagation/vegetative/flowering/harvest/post_harvest/processing
+    activity_id: v.optional(v.id("activities")),
+    cost_per_unit: v.optional(v.number()),
+    cost_total: v.optional(v.number()),
+
     // Audit
     performed_by: v.id("users"),
     performed_at: v.number(),
@@ -850,7 +867,8 @@ export default defineSchema({
     .index("by_product", ["product_id"])
     .index("by_transaction_type", ["transaction_type"])
     .index("by_performed_at", ["performed_at"])
-    .index("by_performed_by", ["performed_by"]),
+    .index("by_performed_by", ["performed_by"])
+    .index("by_batch_id", ["batch_id"]),
 
   // ============================================================================
   // PRODUCTION & TEMPLATES TABLES (5)

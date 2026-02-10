@@ -773,6 +773,7 @@ export const logInventoryMovement = mutation({
     movement_type: v.union(
       v.literal("receipt"),
       v.literal("consumption"),
+      v.literal("application"),
       v.literal("correction"),
       v.literal("waste"),
       v.literal("transfer"),
@@ -843,6 +844,11 @@ export const logInventoryMovement = mutation({
     loss_reason: v.optional(v.string()),
     // For linking to batch (if plant-related transformation)
     source_batch_id: v.optional(v.id("batches")),
+
+    // Cultivation context (US-RES.4)
+    cultivation_batch_id: v.optional(v.id("batches")),
+    cultivation_zone_id: v.optional(v.id("areas")),
+    crop_phase: v.optional(v.string()), // propagation/vegetative/flowering/harvest/post_harvest/processing
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -887,9 +893,18 @@ export const logInventoryMovement = mutation({
         // Create new inventory item
         activityType = "inventory_receipt";
 
-        // Auto-generate internal batch number if not provided
-        const internalBatchNumber = args.batch_number ||
-          await generateInternalLotNumber(ctx, product.category);
+        // Auto-generate batch number if not provided (or if lot_tracking === "required")
+        let internalBatchNumber = args.batch_number;
+        if (!internalBatchNumber) {
+          internalBatchNumber = await generateInternalLotNumber(ctx, product.category);
+        }
+
+        // Auto-calculate expiration date from shelf_life_days if not provided
+        let expirationDate = args.expiration_date;
+        if (!expirationDate && product.shelf_life_days) {
+          const receivedDate = args.received_date || now;
+          expirationDate = receivedDate + (product.shelf_life_days * 24 * 60 * 60 * 1000);
+        }
 
         // First create the activity (without inventory link)
         const activityId = await ctx.db.insert("activities", {
@@ -939,7 +954,7 @@ export const logInventoryMovement = mutation({
           serial_numbers: [],
           received_date: args.received_date || now,
           manufacturing_date: args.manufacturing_date,
-          expiration_date: args.expiration_date,
+          expiration_date: expirationDate,
           purchase_price: args.purchase_price,
           cost_per_unit: args.cost_per_unit,
           certificates: [],
@@ -983,6 +998,14 @@ export const logInventoryMovement = mutation({
         };
       }
 
+      case "application": {
+        // Application is like consumption but requires zone_id or batch_id
+        if (!args.cultivation_zone_id && !args.cultivation_batch_id) {
+          throw new Error("Aplicación requiere zona o batch de destino");
+        }
+        // Fall through to consumption logic
+      }
+      // eslint-disable-next-line no-fallthrough
       case "consumption":
       case "waste":
       case "return": {
@@ -1397,7 +1420,10 @@ export const logInventoryMovement = mutation({
         if (!inventoryItem) {
           throw new Error("Item de inventario no encontrado para transformación");
         }
-        if (!args.target_product_id) {
+        // Fall back to product's transformation_produces_id if no explicit target
+        const effectiveTargetProductId: Id<"products"> | undefined =
+          args.target_product_id || (product as Record<string, any>).transformation_produces_id as Id<"products"> | undefined;
+        if (!effectiveTargetProductId) {
           throw new Error("Producto destino requerido para transformación");
         }
         if (args.target_quantity === undefined || args.target_quantity === null) {
@@ -1408,9 +1434,22 @@ export const logInventoryMovement = mutation({
         }
 
         // Get target product info
-        const targetProduct = await ctx.db.get(args.target_product_id);
+        const targetProduct = await ctx.db.get(effectiveTargetProductId);
         if (!targetProduct) {
           throw new Error("Producto destino no encontrado");
+        }
+
+        // Yield deviation alert
+        let yieldAlert: string | undefined;
+        if (
+          args.target_quantity !== undefined &&
+          (product as any).default_yield_pct !== undefined
+        ) {
+          const expectedYield = args.quantity * ((product as any).default_yield_pct / 100);
+          const deviation = Math.abs(args.target_quantity - expectedYield) / expectedYield * 100;
+          if (deviation > 10) {
+            yieldAlert = `Yield real (${args.target_quantity}) difiere ${deviation.toFixed(1)}% del esperado (${expectedYield.toFixed(1)})`;
+          }
         }
 
         // Check source has enough quantity
@@ -1457,7 +1496,7 @@ export const logInventoryMovement = mutation({
             transformation_type: args.transformation_type,
             source_product_id: args.product_id,
             source_product_name: product.name,
-            target_product_id: args.target_product_id,
+            target_product_id: effectiveTargetProductId,
             target_product_name: targetProduct.name,
             source_quantity: args.quantity,
             source_quantity_unit: args.quantity_unit,
@@ -1466,6 +1505,7 @@ export const logInventoryMovement = mutation({
             loss_quantity: args.loss_quantity,
             loss_reason: args.loss_reason,
             reason: args.reason,
+            yield_alert: yieldAlert,
           },
           notes: args.notes,
           // ── v2 fields ──
@@ -1484,7 +1524,7 @@ export const logInventoryMovement = mutation({
         // Create new inventory item for the transformed product
         // Note: supplier_id and supplier_lot_number are NOT copied - this is an internal product
         const transformedItemId = await ctx.db.insert("inventory_items", {
-          product_id: args.target_product_id,
+          product_id: effectiveTargetProductId,
           area_id: args.area_id,
           // supplier_id: undefined - internal products have no external supplier
           // supplier_lot_number: undefined - no supplier lot for internal products
@@ -1528,7 +1568,7 @@ export const logInventoryMovement = mutation({
         await ctx.db.patch(activityId, {
           materials_produced: [
             {
-              product_id: args.target_product_id,
+              product_id: effectiveTargetProductId,
               inventory_item_id: transformedItemId,
               quantity: args.target_quantity,
               quantity_unit: args.target_quantity_unit,
@@ -1551,7 +1591,7 @@ export const logInventoryMovement = mutation({
         });
         await ctx.db.insert("activity_resources", {
           activity_id: activityId,
-          product_id: args.target_product_id,
+          product_id: args.target_product_id!,
           inventory_item_id: transformedItemId,
           direction: "produced",
           quantity: args.target_quantity,
@@ -1570,6 +1610,7 @@ export const logInventoryMovement = mutation({
           source_quantity_consumed: args.quantity,
           target_quantity_produced: args.target_quantity,
           loss_quantity: args.loss_quantity,
+          yield_alert: yieldAlert,
         };
       }
 
