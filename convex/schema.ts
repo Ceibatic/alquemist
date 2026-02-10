@@ -205,6 +205,10 @@ export default defineSchema({
     is_system_role: v.boolean(), // Default: true
     is_active: v.boolean(), // Default: true
     created_at: v.number(),
+
+    // Labor costing (COGS)
+    hourly_rate: v.optional(v.number()), // Tarifa por hora para calculo de costo de mano de obra
+    rate_currency: v.optional(v.string()), // ISO 4217 (COP, USD, EUR). Default: "COP"
   })
     .index("by_name", ["name"])
     .index("by_level", ["level"])
