@@ -1836,4 +1836,28 @@ export default defineSchema({
     .index("by_certificate_type", ["certificate_type"])
     .index("by_expiry_date", ["expiry_date"])
     .index("by_status", ["status"]),
+
+  // ============================================================================
+  // COST TRACKING (COGS)
+  // ============================================================================
+
+  // Non-inventory costs linked to batches (labor, utilities, depreciation)
+  cost_entries: defineTable({
+    facility_id: v.id("facilities"),
+    batch_id: v.optional(v.id("batches")), // null = overhead sin asignar
+    cost_type: v.string(), // labor | utility_electricity | utility_water | utility_gas | depreciation
+    crop_phase: v.optional(v.string()), // Fase del cultivo cuando se genero
+    activity_id: v.optional(v.id("activities")), // Actividad que genero el costo (labor)
+    source_id: v.optional(v.string()), // ID de referencia (utility_reading_id o product_id para equipo)
+    cost_total: v.number(), // Costo en moneda local
+    cost_currency: v.string(), // ISO 4217 (COP, USD)
+    period: v.optional(v.string()), // YYYY-MM para utilities y depreciacion
+    details: v.optional(v.any()), // Metadata especifica del tipo
+    performed_by: v.optional(v.id("users")), // Usuario (para labor)
+    created_at: v.number(),
+  })
+    .index("by_batch_id", ["batch_id"])
+    .index("by_facility", ["facility_id"])
+    .index("by_cost_type", ["cost_type"])
+    .index("by_period", ["period"]),
 });
