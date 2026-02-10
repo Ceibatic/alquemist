@@ -1,9 +1,11 @@
 'use client';
 
-import { useQuery } from 'convex/react';
+import { useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -13,6 +15,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowRightLeft } from 'lucide-react';
+import { toast } from 'sonner';
 
 const UTILITY_TYPE_LABELS: Record<string, string> = {
   electricity: 'Electricidad',
@@ -40,6 +44,26 @@ export function UtilityReadingsTable({
     facility_id: facilityId,
     limit: 24,
   });
+  const allocate = useMutation(api.utilities.allocateToActiveBatches);
+  const [allocatingId, setAllocatingId] = useState<string | null>(null);
+
+  const handleAllocate = async (readingId: Id<'utility_readings'>) => {
+    setAllocatingId(readingId);
+    try {
+      const result = await allocate({ readingId });
+      if (result.allocated === 0) {
+        toast.info('No hay batches activos. Costo registrado como overhead.');
+      } else {
+        toast.success(
+          `Costo prorrateado a ${result.allocated} batch${result.allocated > 1 ? 'es' : ''}`
+        );
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Error al prorratear');
+    } finally {
+      setAllocatingId(null);
+    }
+  };
 
   if (readings === undefined) {
     return (
@@ -74,13 +98,18 @@ export function UtilityReadingsTable({
             <TableHead className="text-right">Costo</TableHead>
             <TableHead>Estado</TableHead>
             <TableHead>Fecha Registro</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {readings.map((reading) => {
             const statusInfo = ALLOCATION_STATUS_LABELS[
               reading.allocation_status
-            ] || { label: reading.allocation_status, variant: 'outline' as const };
+            ] || {
+              label: reading.allocation_status,
+              variant: 'outline' as const,
+            };
+            const isAllocating = allocatingId === reading._id;
 
             return (
               <TableRow key={reading._id}>
@@ -101,6 +130,28 @@ export function UtilityReadingsTable({
                 </TableCell>
                 <TableCell className="text-gray-500">
                   {new Date(reading.created_at).toLocaleDateString('es-CO')}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      handleAllocate(reading._id as Id<'utility_readings'>)
+                    }
+                    disabled={isAllocating}
+                    title={
+                      reading.allocation_status === 'allocated'
+                        ? 'Re-prorratear'
+                        : 'Prorratear a batches'
+                    }
+                  >
+                    <ArrowRightLeft className="h-4 w-4 mr-1" />
+                    {isAllocating
+                      ? 'Prorrateando...'
+                      : reading.allocation_status === 'allocated'
+                        ? 'Re-prorratear'
+                        : 'Prorratear'}
+                  </Button>
                 </TableCell>
               </TableRow>
             );

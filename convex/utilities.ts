@@ -4,7 +4,8 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, MutationCtx } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 /**
  * Create a new utility reading for a facility
@@ -187,5 +188,174 @@ export const deleteReading = mutation({
 
     await ctx.db.delete(args.readingId);
     return { success: true };
+  },
+});
+
+// ============================================================================
+// UTILITY COST ALLOCATION (PRORRATEO)
+// ============================================================================
+
+/**
+ * Helper: Get active batches in a facility during a given period
+ * Returns batches with their area (m2) and active days in the period
+ */
+async function getActiveBatchesForPeriod(
+  ctx: MutationCtx,
+  facilityId: Id<"facilities">,
+  period: string // YYYY-MM
+) {
+  // Parse period to get start/end dates
+  const [yearStr, monthStr] = period.split("-");
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const periodStart = new Date(year, month - 1, 1).getTime();
+  const periodEnd = new Date(year, month, 0, 23, 59, 59, 999).getTime();
+  const daysInPeriod = new Date(year, month, 0).getDate();
+
+  // Get active batches in the facility
+  const batches = await ctx.db
+    .query("batches")
+    .withIndex("by_facility", (q) => q.eq("facility_id", facilityId))
+    .collect();
+
+  // Filter to batches that were active during the period
+  const activeBatches = batches.filter((b) => {
+    if (b.status !== "active" && b.status !== "harvested") return false;
+    // Batch must have started before or during the period
+    if (b.created_date > periodEnd) return false;
+    // If harvested, must have been harvested during or after the period start
+    if (b.status === "harvested" && b.harvest_date && b.harvest_date < periodStart) return false;
+    return true;
+  });
+
+  // Enrich with area info and calculate active days
+  const enriched = await Promise.all(
+    activeBatches.map(async (batch) => {
+      const area = await ctx.db.get(batch.area_id);
+      const areaM2 = area?.total_area_m2 || 0;
+
+      // Calculate days active in the period
+      const batchStart = Math.max(batch.created_date, periodStart);
+      const batchEnd = batch.harvest_date && batch.harvest_date < periodEnd
+        ? batch.harvest_date
+        : periodEnd;
+      const daysActive = Math.max(
+        1,
+        Math.ceil((batchEnd - batchStart) / (1000 * 60 * 60 * 24))
+      );
+
+      return {
+        batchId: batch._id,
+        areaM2,
+        daysActive,
+        daysInPeriod,
+        cropPhase: batch.current_phase,
+      };
+    })
+  );
+
+  return enriched.filter((b) => b.areaM2 > 0);
+}
+
+/**
+ * Allocate utility cost to active batches proportional to area occupied × days active
+ * Creates cost_entries for each batch
+ */
+export const allocateToActiveBatches = mutation({
+  args: {
+    readingId: v.id("utility_readings"),
+  },
+  handler: async (ctx, args) => {
+    const reading = await ctx.db.get(args.readingId);
+    if (!reading) {
+      throw new Error("Lectura no encontrada");
+    }
+
+    // Delete any existing cost_entries for this reading (re-allocation)
+    const existingEntries = await ctx.db
+      .query("cost_entries")
+      .withIndex("by_facility", (q) => q.eq("facility_id", reading.facility_id))
+      .collect();
+
+    const relatedEntries = existingEntries.filter(
+      (e) => e.source_id === args.readingId && e.cost_type.startsWith("utility_")
+    );
+
+    for (const entry of relatedEntries) {
+      await ctx.db.delete(entry._id);
+    }
+
+    // Get active batches for the period
+    const activeBatches = await getActiveBatchesForPeriod(
+      ctx,
+      reading.facility_id,
+      reading.period
+    );
+
+    if (activeBatches.length === 0) {
+      // No batches to allocate — mark as no_batches, create single overhead entry
+      await ctx.db.patch(args.readingId, { allocation_status: "no_batches" });
+
+      await ctx.db.insert("cost_entries", {
+        facility_id: reading.facility_id,
+        cost_type: `utility_${reading.utility_type}`,
+        source_id: args.readingId,
+        cost_total: reading.cost_total,
+        cost_currency: reading.cost_currency,
+        period: reading.period,
+        details: {
+          utility_type: reading.utility_type,
+          consumption: reading.consumption,
+          consumption_unit: reading.consumption_unit,
+          allocation: "overhead",
+        },
+        created_at: Date.now(),
+      });
+
+      return { allocated: 0, overhead: reading.cost_total };
+    }
+
+    // Calculate weighted allocation: (area × days_active / days_in_period) for each batch
+    const totalWeight = activeBatches.reduce(
+      (sum, b) => sum + b.areaM2 * (b.daysActive / b.daysInPeriod),
+      0
+    );
+
+    let allocatedTotal = 0;
+    const costType = `utility_${reading.utility_type}`;
+
+    for (const batch of activeBatches) {
+      const weight = batch.areaM2 * (batch.daysActive / batch.daysInPeriod);
+      const proportion = weight / totalWeight;
+      const batchCost = Math.round(reading.cost_total * proportion * 100) / 100;
+
+      await ctx.db.insert("cost_entries", {
+        facility_id: reading.facility_id,
+        batch_id: batch.batchId,
+        cost_type: costType,
+        crop_phase: batch.cropPhase,
+        source_id: args.readingId,
+        cost_total: batchCost,
+        cost_currency: reading.cost_currency,
+        period: reading.period,
+        details: {
+          utility_type: reading.utility_type,
+          consumption: reading.consumption,
+          consumption_unit: reading.consumption_unit,
+          area_m2: batch.areaM2,
+          days_active: batch.daysActive,
+          days_in_period: batch.daysInPeriod,
+          proportion: Math.round(proportion * 10000) / 100, // percentage with 2 decimals
+        },
+        created_at: Date.now(),
+      });
+
+      allocatedTotal += batchCost;
+    }
+
+    // Mark reading as allocated
+    await ctx.db.patch(args.readingId, { allocation_status: "allocated" });
+
+    return { allocated: activeBatches.length, totalCost: allocatedTotal };
   },
 });
