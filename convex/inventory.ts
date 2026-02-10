@@ -372,6 +372,12 @@ export const adjustStock = mutation({
     referenceId: v.optional(v.string()),
     // For transfers
     destinationAreaId: v.optional(v.id("areas")),
+    // Cultivation context (US-RES.4)
+    batchId: v.optional(v.id("batches")),
+    zoneId: v.optional(v.id("areas")),
+    cropPhase: v.optional(v.string()),
+    activityId: v.optional(v.id("activities")),
+    costPerUnit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -426,6 +432,12 @@ export const adjustStock = mutation({
       reference_id: args.referenceId,
       source_area_id: args.adjustmentType === "transfer" ? item.area_id : undefined,
       destination_area_id: args.destinationAreaId,
+      batch_id: args.batchId,
+      zone_id: args.zoneId,
+      crop_phase: args.cropPhase,
+      activity_id: args.activityId,
+      cost_per_unit: args.costPerUnit,
+      cost_total: args.costPerUnit ? args.quantity * args.costPerUnit : undefined,
       performed_by: args.userId,
       performed_at: now,
       notes: args.notes,
@@ -561,11 +573,27 @@ export const getTransactionHistory = query({
           destinationAreaName = destArea?.name || null;
         }
 
+        // Get cultivation context names if applicable
+        let batchName = null;
+        let zoneName = null;
+
+        if (tx.batch_id) {
+          const batch = await ctx.db.get(tx.batch_id);
+          batchName = batch?.batch_code || null;
+        }
+
+        if (tx.zone_id) {
+          const zone = await ctx.db.get(tx.zone_id);
+          zoneName = zone?.name || null;
+        }
+
         return {
           ...tx,
           performedByName: userName,
           sourceAreaName,
           destinationAreaName,
+          batchName,
+          zoneName,
         };
       })
     );

@@ -43,7 +43,8 @@ import {
   Trash2,
   ArrowRightLeft,
   Undo2,
-  AlertTriangle
+  AlertTriangle,
+  Sprout,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -64,12 +65,14 @@ interface InventoryMovementModalProps {
 }
 
 const movementSchema = z.object({
-  movement_type: z.enum(['consumption', 'correction', 'waste', 'transfer', 'return'], {
+  movement_type: z.enum(['consumption', 'application', 'correction', 'waste', 'transfer', 'return'], {
     required_error: 'Debes seleccionar un tipo de movimiento',
   }),
   quantity: z.number().min(0.01, 'La cantidad debe ser mayor a 0'),
   new_quantity: z.number().min(0).optional(),
   destination_area_id: z.string().optional(),
+  cultivation_batch_id: z.string().optional(),
+  cultivation_zone_id: z.string().optional(),
   reason: z.string().min(10, 'La razón debe tener al menos 10 caracteres'),
   notes: z.string().max(1000).optional(),
 });
@@ -84,6 +87,14 @@ const MOVEMENT_TYPES = [
     description: 'Uso en producción',
     color: 'text-blue-600',
     bgColor: 'peer-data-[state=checked]:border-blue-600 peer-data-[state=checked]:bg-blue-50'
+  },
+  {
+    value: 'application',
+    label: 'Aplicación',
+    icon: Sprout,
+    description: 'Aplicar a cultivo/zona',
+    color: 'text-green-600',
+    bgColor: 'peer-data-[state=checked]:border-green-600 peer-data-[state=checked]:bg-green-50'
   },
   {
     value: 'waste',
@@ -125,6 +136,14 @@ const REASONS = {
     { value: 'Aplicación a cultivo', label: 'Aplicación a cultivo' },
     { value: 'Preparación de mezcla', label: 'Preparación de mezcla' },
     { value: 'Muestra', label: 'Muestra' },
+    { value: 'Otro', label: 'Otro' },
+  ],
+  application: [
+    { value: 'Fertilización', label: 'Fertilización' },
+    { value: 'Fumigación', label: 'Fumigación' },
+    { value: 'Riego con solución', label: 'Riego con solución' },
+    { value: 'Tratamiento fitosanitario', label: 'Tratamiento fitosanitario' },
+    { value: 'Control biológico', label: 'Control biológico' },
     { value: 'Otro', label: 'Otro' },
   ],
   waste: [
@@ -274,7 +293,7 @@ export function InventoryMovementModal({
     }
 
     // Validate sufficient stock for deduction movements
-    if (['consumption', 'waste', 'transfer', 'return'].includes(data.movement_type)) {
+    if (['consumption', 'application', 'waste', 'transfer', 'return'].includes(data.movement_type)) {
       if (data.quantity > item.quantity_available) {
         form.setError('quantity', {
           type: 'manual',
@@ -297,6 +316,12 @@ export function InventoryMovementModal({
     // Validate destination for transfer
     if (data.movement_type === 'transfer' && !data.destination_area_id) {
       toast.error('Debes seleccionar un área de destino');
+      return;
+    }
+
+    // Validate application requires zone or batch
+    if (data.movement_type === 'application' && !data.cultivation_zone_id && !data.cultivation_batch_id) {
+      toast.error('Aplicación requiere seleccionar una zona o batch de destino');
       return;
     }
 
@@ -332,10 +357,17 @@ export function InventoryMovementModal({
         notes: data.notes,
         performed_by: userId,
         lot_selection_mode: 'specific',
+        cultivation_batch_id: data.cultivation_batch_id
+          ? (data.cultivation_batch_id as any)
+          : undefined,
+        cultivation_zone_id: data.cultivation_zone_id
+          ? (data.cultivation_zone_id as any)
+          : undefined,
       });
 
       const typeLabels: Record<string, string> = {
         consumption: 'Consumo',
+        application: 'Aplicación',
         waste: 'Desperdicio',
         correction: 'Corrección',
         transfer: 'Transferencia',

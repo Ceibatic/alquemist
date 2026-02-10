@@ -837,6 +837,14 @@ export default defineSchema({
     source_area_id: v.optional(v.id("areas")),
     destination_area_id: v.optional(v.id("areas")),
 
+    // Cultivation Context (US-RES.4)
+    batch_id: v.optional(v.id("batches")),
+    zone_id: v.optional(v.id("areas")),
+    crop_phase: v.optional(v.string()), // propagation/vegetative/flowering/harvest/post_harvest/processing
+    activity_id: v.optional(v.id("activities")),
+    cost_per_unit: v.optional(v.number()),
+    cost_total: v.optional(v.number()),
+
     // Audit
     performed_by: v.id("users"),
     performed_at: v.number(),
@@ -849,7 +857,8 @@ export default defineSchema({
     .index("by_product", ["product_id"])
     .index("by_transaction_type", ["transaction_type"])
     .index("by_performed_at", ["performed_at"])
-    .index("by_performed_by", ["performed_by"]),
+    .index("by_performed_by", ["performed_by"])
+    .index("by_batch_id", ["batch_id"]),
 
   // ============================================================================
   // PRODUCTION & TEMPLATES TABLES (5)

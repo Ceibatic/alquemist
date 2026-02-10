@@ -466,7 +466,7 @@ export const transferInventorySchema = z.object({
 // ============================================================================
 
 export const movementTypeSchema = z.enum(
-  ['receipt', 'consumption', 'correction', 'waste', 'transfer', 'return'],
+  ['receipt', 'consumption', 'application', 'correction', 'waste', 'transfer', 'return'],
   {
     errorMap: () => ({ message: 'Debes seleccionar un tipo de movimiento' }),
   }

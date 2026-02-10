@@ -488,6 +488,7 @@ export const logInventoryMovement = mutation({
     movement_type: v.union(
       v.literal("receipt"),
       v.literal("consumption"),
+      v.literal("application"),
       v.literal("correction"),
       v.literal("waste"),
       v.literal("transfer"),
@@ -558,6 +559,11 @@ export const logInventoryMovement = mutation({
     loss_reason: v.optional(v.string()),
     // For linking to batch (if plant-related transformation)
     source_batch_id: v.optional(v.id("batches")),
+
+    // Cultivation context (US-RES.4)
+    cultivation_batch_id: v.optional(v.id("batches")),
+    cultivation_zone_id: v.optional(v.id("areas")),
+    crop_phase: v.optional(v.string()), // propagation/vegetative/flowering/harvest/post_harvest/processing
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -670,6 +676,14 @@ export const logInventoryMovement = mutation({
         };
       }
 
+      case "application": {
+        // Application is like consumption but requires zone_id or batch_id
+        if (!args.cultivation_zone_id && !args.cultivation_batch_id) {
+          throw new Error("Aplicación requiere zona o batch de destino");
+        }
+        // Fall through to consumption logic
+      }
+      // eslint-disable-next-line no-fallthrough
       case "consumption":
       case "waste":
       case "return": {
