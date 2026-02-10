@@ -359,3 +359,140 @@ export const allocateToActiveBatches = mutation({
     return { allocated: activeBatches.length, totalCost: allocatedTotal };
   },
 });
+
+// ============================================================================
+// EQUIPMENT DEPRECIATION
+// ============================================================================
+
+/**
+ * Calculate monthly depreciation for all active equipment in a facility
+ * and allocate to active batches (same prorrateo as utilities)
+ */
+export const calculateDepreciation = mutation({
+  args: {
+    facilityId: v.id("facilities"),
+    period: v.string(), // YYYY-MM
+  },
+  handler: async (ctx, args) => {
+    // Validate period format
+    if (!/^\d{4}-\d{2}$/.test(args.period)) {
+      throw new Error("Periodo debe tener formato YYYY-MM");
+    }
+
+    // Delete existing depreciation cost_entries for this facility+period
+    const existingEntries = await ctx.db
+      .query("cost_entries")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    const oldDepreciation = existingEntries.filter(
+      (e) => e.cost_type === "depreciation" && e.period === args.period
+    );
+
+    for (const entry of oldDepreciation) {
+      await ctx.db.delete(entry._id);
+    }
+
+    // Get facility to find its company
+    const facility = await ctx.db.get(args.facilityId);
+    if (!facility) throw new Error("Instalación no encontrada");
+
+    // Get all equipment products for this company with depreciation configured
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_company_status", (q) =>
+        q.eq("company_id", facility.company_id).eq("status", "active")
+      )
+      .collect();
+
+    const equipment = products.filter(
+      (p) =>
+        p.category === "equipment" &&
+        p.acquisition_value &&
+        p.acquisition_value > 0 &&
+        p.useful_life_months &&
+        p.useful_life_months > 0
+    );
+
+    if (equipment.length === 0) {
+      return { equipmentCount: 0, allocated: 0, totalDepreciation: 0 };
+    }
+
+    // Get active batches for prorrateo
+    const activeBatches = await getActiveBatchesForPeriod(
+      ctx,
+      args.facilityId,
+      args.period
+    );
+
+    let totalDepreciation = 0;
+
+    for (const equip of equipment) {
+      const monthly =
+        ((equip.acquisition_value || 0) - (equip.salvage_value || 0)) /
+        (equip.useful_life_months || 1);
+      const monthlyRounded = Math.round(monthly * 100) / 100;
+
+      if (monthlyRounded <= 0) continue;
+      totalDepreciation += monthlyRounded;
+
+      if (activeBatches.length === 0) {
+        // No batches — register as overhead
+        await ctx.db.insert("cost_entries", {
+          facility_id: args.facilityId,
+          cost_type: "depreciation",
+          source_id: equip._id,
+          cost_total: monthlyRounded,
+          cost_currency: equip.price_currency || "COP",
+          period: args.period,
+          details: {
+            equipment_name: equip.name,
+            equipment_sku: equip.sku,
+            acquisition_value: equip.acquisition_value,
+            useful_life_months: equip.useful_life_months,
+            salvage_value: equip.salvage_value,
+            monthly_depreciation: monthlyRounded,
+            allocation: "overhead",
+          },
+          created_at: Date.now(),
+        });
+      } else {
+        // Allocate proportionally to batches
+        const totalWeight = activeBatches.reduce(
+          (sum, b) => sum + b.areaM2 * (b.daysActive / b.daysInPeriod),
+          0
+        );
+
+        for (const batch of activeBatches) {
+          const weight = batch.areaM2 * (batch.daysActive / batch.daysInPeriod);
+          const proportion = weight / totalWeight;
+          const batchCost = Math.round(monthlyRounded * proportion * 100) / 100;
+
+          await ctx.db.insert("cost_entries", {
+            facility_id: args.facilityId,
+            batch_id: batch.batchId,
+            cost_type: "depreciation",
+            crop_phase: batch.cropPhase,
+            source_id: equip._id,
+            cost_total: batchCost,
+            cost_currency: equip.price_currency || "COP",
+            period: args.period,
+            details: {
+              equipment_name: equip.name,
+              equipment_sku: equip.sku,
+              monthly_depreciation: monthlyRounded,
+              proportion: Math.round(proportion * 10000) / 100,
+            },
+            created_at: Date.now(),
+          });
+        }
+      }
+    }
+
+    return {
+      equipmentCount: equipment.length,
+      allocated: activeBatches.length,
+      totalDepreciation,
+    };
+  },
+});

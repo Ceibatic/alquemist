@@ -696,6 +696,12 @@ export default defineSchema({
     price_currency: v.string(), // Default: "COP"
     price_unit: v.optional(v.string()), // per_kg/per_unit
 
+    // Depreciation (equipment only)
+    acquisition_value: v.optional(v.number()), // Valor de adquisicion
+    useful_life_months: v.optional(v.number()), // Vida util en meses
+    salvage_value: v.optional(v.number()), // Valor residual
+    depreciation_method: v.optional(v.string()), // straight_line (default)
+
     // Metadata
     status: v.string(), // active/discontinued
     created_at: v.number(),

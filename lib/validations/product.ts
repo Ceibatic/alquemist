@@ -101,6 +101,24 @@ export const productFormSchema = z.object({
     .optional()
     .or(z.literal('')),
 
+  // Depreciation (equipment only)
+  acquisition_value: z.coerce
+    .number()
+    .min(0, 'Valor de adquisición debe ser mayor o igual a 0')
+    .optional()
+    .or(z.literal('')),
+  useful_life_months: z.coerce
+    .number()
+    .int('Vida útil debe ser un número entero')
+    .min(1, 'Vida útil debe ser al menos 1 mes')
+    .optional()
+    .or(z.literal('')),
+  salvage_value: z.coerce
+    .number()
+    .min(0, 'Valor residual debe ser mayor o igual a 0')
+    .optional()
+    .or(z.literal('')),
+
   // Price change tracking (for edits)
   priceChangeCategory: z.string().optional().or(z.literal('')),
   priceChangeReason: z
