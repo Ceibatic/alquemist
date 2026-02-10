@@ -205,6 +205,10 @@ export default defineSchema({
     is_system_role: v.boolean(), // Default: true
     is_active: v.boolean(), // Default: true
     created_at: v.number(),
+
+    // Labor costing (COGS)
+    hourly_rate: v.optional(v.number()), // Tarifa por hora para calculo de costo de mano de obra
+    rate_currency: v.optional(v.string()), // ISO 4217 (COP, USD, EUR). Default: "COP"
   })
     .index("by_name", ["name"])
     .index("by_level", ["level"])
@@ -692,14 +696,20 @@ export default defineSchema({
     price_currency: v.string(), // Default: "COP"
     price_unit: v.optional(v.string()), // per_kg/per_unit
 
-    // Procurement & Tracking (US-RES.2)
+    // Procurement & Tracking (Resource System - US-RES.2)
     procurement_type: v.optional(v.string()), // purchased/produced/both
     lot_tracking: v.optional(v.string()), // required/optional/none
     shelf_life_days: v.optional(v.number()),
 
-    // Transformation Chain (US-RES.3)
+    // Transformation Chain (Resource System - US-RES.3)
     transformation_produces_id: v.optional(v.id("products")),
     default_yield_pct: v.optional(v.number()), // 0-100
+
+    // Depreciation (equipment only - COGS System)
+    acquisition_value: v.optional(v.number()), // Valor de adquisicion
+    useful_life_months: v.optional(v.number()), // Vida util en meses
+    salvage_value: v.optional(v.number()), // Valor residual
+    depreciation_method: v.optional(v.string()), // straight_line (default)
 
     // Metadata
     status: v.string(), // active/discontinued
@@ -1554,10 +1564,105 @@ export default defineSchema({
     activity_metadata: v.optional(v.any()),
     notes: v.optional(v.string()),
     created_at: v.number(),
+
+    // ── New fields (v2 model — all optional for backward compat) ──
+    // Type classification
+    type_id: v.optional(v.id("activity_types")),
+    category: v.optional(v.string()), // Denormalized from activity_types
+
+    // Context
+    company_id: v.optional(v.id("companies")),
+    facility_id: v.optional(v.id("facilities")),
+    batch_id: v.optional(v.id("batches")),
+    crop_phase: v.optional(v.string()),
+    zone_id: v.optional(v.id("areas")),
+    structure_id: v.optional(v.id("structures")),
+
+    // Workflow
+    status: v.optional(v.string()), // planned/in_progress/completed/verified/cancelled
+    priority: v.optional(v.string()), // routine/urgent/critical
+
+    // Time
+    started_at: v.optional(v.number()),
+    completed_at: v.optional(v.number()),
+
+    // Assignment
+    assigned_to: v.optional(v.id("users")),
+    verified_by: v.optional(v.id("users")),
+    verified_at: v.optional(v.number()),
+
+    // Descriptive
+    title: v.optional(v.string()),
+    observations: v.optional(v.string()),
+
+    // Links
+    parent_activity_id: v.optional(v.id("activities")),
+    work_order_id: v.optional(v.id("production_orders")),
   })
     .index("by_entity", ["entity_type", "entity_id"])
     .index("by_activity_type", ["activity_type"])
-    .index("by_timestamp", ["timestamp"]),
+    .index("by_timestamp", ["timestamp"])
+    .index("by_company", ["company_id"])
+    .index("by_type_id", ["type_id"])
+    .index("by_batch_id", ["batch_id"])
+    .index("by_facility", ["facility_id"])
+    .index("by_status", ["status"]),
+
+  activity_types: defineTable({
+    company_id: v.id("companies"),
+    category: v.string(), // cultivation/monitoring/transformation/application/movement/maintenance/quality/harvest/post_harvest/administrative
+    code: v.string(), // Unique per company (e.g. "irrigation", "foliar_spray")
+    name: v.string(), // Display name
+    description: v.optional(v.string()),
+    icon: v.optional(v.string()), // Lucide icon name
+    color: v.optional(v.string()), // Tailwind color class
+
+    // Behavior flags
+    requires_zone: v.boolean(),
+    requires_batch: v.boolean(),
+    requires_resources: v.boolean(),
+    requires_photos: v.boolean(),
+    requires_verification: v.boolean(),
+    triggers_transformation: v.boolean(),
+    triggers_phase_change: v.boolean(),
+
+    // Dynamic data
+    metadata_schema: v.optional(v.any()), // JSON Schema for activity metadata validation
+    default_resources: v.optional(v.array(v.any())), // Suggested resources [{product_id, qty, unit}]
+
+    // Status
+    is_system: v.boolean(), // System types cannot be archived
+    status: v.string(), // active / archived
+    sort_order: v.number(),
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_company", ["company_id"])
+    .index("by_company_category", ["company_id", "category"])
+    .index("by_company_code", ["company_id", "code"])
+    .index("by_status", ["status"]),
+
+  activity_resources: defineTable({
+    activity_id: v.id("activities"),
+    direction: v.string(), // consumed / produced / applied / wasted
+    product_id: v.id("products"),
+    inventory_item_id: v.optional(v.id("inventory_items")), // Specific lot (null if FIFO)
+    quantity: v.number(),
+    unit_id: v.optional(v.id("units_of_measure")),
+    quantity_unit: v.string(), // Denormalized unit label
+    cost_per_unit: v.optional(v.number()),
+    cost_total: v.optional(v.number()), // qty * cost_per_unit
+    transaction_id: v.optional(v.id("inventory_transactions")), // Link to generated transaction
+    application_rate: v.optional(v.string()), // e.g. "2mL/L"
+    application_method: v.optional(v.string()), // foliar, drench, etc.
+    batch_number: v.optional(v.string()), // From inventory_item
+    notes: v.optional(v.string()),
+    created_at: v.number(),
+  })
+    .index("by_activity", ["activity_id"])
+    .index("by_product", ["product_id"])
+    .index("by_inventory_item", ["inventory_item_id"])
+    .index("by_direction", ["direction"]),
 
   pest_disease_records: defineTable({
     facility_id: v.id("facilities"),
@@ -1850,4 +1955,48 @@ export default defineSchema({
     .index("by_certificate_type", ["certificate_type"])
     .index("by_expiry_date", ["expiry_date"])
     .index("by_status", ["status"]),
+
+  // ============================================================================
+  // COST TRACKING (COGS)
+  // ============================================================================
+
+  // Periodic meter readings for utility costs (electricity, water, gas)
+  utility_readings: defineTable({
+    facility_id: v.id("facilities"),
+    utility_type: v.string(), // electricity | water | gas
+    period: v.string(), // YYYY-MM
+    reading_previous: v.number(),
+    reading_current: v.number(),
+    consumption: v.number(), // reading_current - reading_previous
+    consumption_unit: v.string(), // kWh | m3 | galones
+    cost_total: v.number(),
+    cost_currency: v.string(), // ISO 4217
+    allocation_status: v.string(), // pending | allocated | no_batches
+    notes: v.optional(v.string()),
+    recorded_by: v.id("users"),
+    created_at: v.number(),
+  })
+    .index("by_facility", ["facility_id"])
+    .index("by_period", ["period"])
+    .index("by_type_period", ["utility_type", "period"]),
+
+  // Non-inventory costs linked to batches (labor, utilities, depreciation)
+  cost_entries: defineTable({
+    facility_id: v.id("facilities"),
+    batch_id: v.optional(v.id("batches")), // null = overhead sin asignar
+    cost_type: v.string(), // labor | utility_electricity | utility_water | utility_gas | depreciation
+    crop_phase: v.optional(v.string()), // Fase del cultivo cuando se genero
+    activity_id: v.optional(v.id("activities")), // Actividad que genero el costo (labor)
+    source_id: v.optional(v.string()), // ID de referencia (utility_reading_id o product_id para equipo)
+    cost_total: v.number(), // Costo en moneda local
+    cost_currency: v.string(), // ISO 4217 (COP, USD)
+    period: v.optional(v.string()), // YYYY-MM para utilities y depreciacion
+    details: v.optional(v.any()), // Metadata especifica del tipo
+    performed_by: v.optional(v.id("users")), // Usuario (para labor)
+    created_at: v.number(),
+  })
+    .index("by_batch_id", ["batch_id"])
+    .index("by_facility", ["facility_id"])
+    .index("by_cost_type", ["cost_type"])
+    .index("by_period", ["period"]),
 });

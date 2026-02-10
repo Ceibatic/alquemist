@@ -20,6 +20,14 @@ products (catalogo)
 activities (operaciones centralizadas)
     ├── materials_consumed[]
     └── materials_produced[]
+
+cost_entries (costos no-materiales por batch)
+    ├── labor (auto via createLaborCostEntry)
+    ├── utility_electricity / utility_water / utility_gas (via allocateToActiveBatches)
+    └── depreciation (via calculateDepreciation)
+
+utility_readings (lecturas de medidores por facility)
+    └── allocation_status: pending → allocated
 ```
 
 ### Dos Rutas de Mutacion
@@ -341,7 +349,9 @@ const history = await convex.query(api.inventory.getProductTransactionHistory, {
 // Retorna: transactions[] con performedByName, areaName, batchNumber
 ```
 
-### 4.4 COGS por Batch
+### 4.4 COGS de Materiales por Batch
+
+> **Nota:** Esta query calcula solo el costo de materiales. Para COGS completo (materiales + mano de obra + utilities + depreciacion) ver [Seccion 8: Sistema de Costos](#8-sistema-de-costos-cogs-completo).
 
 ```typescript
 const costs = await convex.query(api.inventory.getCostByBatch, {
@@ -350,7 +360,7 @@ const costs = await convex.query(api.inventory.getCostByBatch, {
 // Retorna:
 // {
 //   phases: [{ phase, transactions[], total }],  // Agrupado por crop_phase
-//   grandTotal: number,                           // Costo total
+//   grandTotal: number,                           // Costo total de materiales
 //   totalYield: number,                           // Rendimiento cosechado
 //   yieldUnit: string,                            // Unidad de rendimiento
 //   cogsPerUnit: number | null,                   // COGS por unidad (si hay cosecha)
@@ -504,10 +514,18 @@ Estos campos se propagan a `inventory_transactions` como `batch_id`, `zone_id`, 
 
 ### 6.4 Calculo de Costos
 
-- `cost_per_unit`: Se toma del `inventory_item.cost_per_unit` al momento del consumo
-- `cost_total`: Se calcula como `quantity * cost_per_unit`
-- Ambos se registran en cada `inventory_transaction`
-- La query `getCostByBatch` agrupa estos costos por `crop_phase`
+El sistema maneja 4 tipos de costo, almacenados en 2 fuentes distintas:
+
+| Tipo | Fuente | Registro |
+|------|--------|----------|
+| **Materiales** | `inventory_transactions` | Automatico al consumir (`cost_per_unit × quantity`) |
+| **Mano de obra** | `cost_entries` (labor) | Automatico via `createLaborCostEntry()` en `activities.log()` |
+| **Utilities** | `cost_entries` (utility_*) | Manual via `utilities.allocateToActiveBatches()` |
+| **Depreciacion** | `cost_entries` (depreciation) | Manual via `utilities.calculateDepreciation()` |
+
+- **Materiales:** `cost_per_unit` se toma del `inventory_item.cost_per_unit` al momento del consumo. Se registra en cada `inventory_transaction`.
+- **COGS parcial:** `getCostByBatch` agrupa solo costos de materiales por `crop_phase`
+- **COGS completo:** `getFullCostByBatch` combina las 4 fuentes (ver [Seccion 8](#8-sistema-de-costos-cogs-completo))
 
 ---
 
@@ -526,7 +544,8 @@ Estos campos se propagan a `inventory_transactions` como `batch_id`, `zone_id`, 
 | `inventory.getProductTransactionHistory` | `productId, limit?` | Transactions de todos los lotes |
 | `inventory.getTransactionTypeLabels` | — | Labels en espanol |
 | `inventory.countByProduct` | `productId` | `{ totalItems, activeItems, totalQuantity }` |
-| `inventory.getCostByBatch` | `batchId` | COGS desglosado por fase |
+| `inventory.getCostByBatch` | `batchId` | COGS de materiales desglosado por fase |
+| `inventory.getFullCostByBatch` | `batchId` | COGS completo (materials + labor + utilities + depreciation) |
 | `inventory.getFullTrace` | `inventoryItemId` | Cadena de trazabilidad completa |
 
 ### Queries (products.ts)
@@ -534,6 +553,12 @@ Estos campos se propagan a `inventory_transactions` como `batch_id`, `zone_id`, 
 | Query | Args | Retorna |
 |-------|------|---------|
 | `products.getTransformationChain` | `productId` | Array de productos en cadena |
+
+### Queries (utilities.ts)
+
+| Query | Args | Retorna |
+|-------|------|---------|
+| `utilities.getByFacility` | `facility_id, utility_type?, limit?` | Lecturas de utilities ordenadas por periodo desc |
 
 ### Queries (activities.ts)
 
@@ -554,6 +579,12 @@ Estos campos se propagan a `inventory_transactions` como `batch_id`, `zone_id`, 
 | `inventory.update` | inventory.ts | Actualizar metadata |
 | `inventory.adjustStock` | inventory.ts | **DEPRECATED** — No usar |
 | `inventory.remove` | inventory.ts | Eliminar item |
+| `roles.updateRate` | roles.ts | Configurar tarifa horaria de un rol |
+| `utilities.createReading` | utilities.ts | Registrar lectura de medidor |
+| `utilities.updateReading` | utilities.ts | Actualizar lectura existente |
+| `utilities.deleteReading` | utilities.ts | Eliminar lectura y cost_entries asociados |
+| `utilities.allocateToActiveBatches` | utilities.ts | Prorratear costo de utility a batches activos |
+| `utilities.calculateDepreciation` | utilities.ts | Calcular y asignar depreciacion mensual |
 
 ### Archivos Clave
 
@@ -564,6 +595,298 @@ Estos campos se propagan a `inventory_transactions` como `batch_id`, `zone_id`, 
 | `convex/helpers.ts` | `generateInternalLotNumber`, `LOT_PREFIXES` |
 | `convex/products.ts` | `getTransformationChain`, campos de procurement |
 | `convex/schema.ts` | `inventory_items` (linea 742), `inventory_transactions` (linea 820) |
+| `convex/utilities.ts` | createReading, allocateToActiveBatches, calculateDepreciation |
+| `convex/helpers.ts` | calculateLaborCost, createLaborCostEntry |
+| `convex/roles.ts` | updateRate mutation (tarifa horaria) |
 | `lib/validations/inventory.ts` | Schemas Zod para validacion frontend |
 | `lib/validations/product.ts` | Schemas Zod incluyendo categorias expandidas |
 | `components/inventory/` | Componentes UI reutilizables |
+| `components/batches/batch-cost-summary.tsx` | Resumen visual de COGS por batch |
+| `components/facilities/utility-reading-modal.tsx` | Modal para lecturas de utilities |
+| `components/facilities/utility-readings-table.tsx` | Tabla de lecturas por facility |
+
+---
+
+## 8. Sistema de Costos (COGS Completo)
+
+### 8.1 Arquitectura de Costos
+
+El COGS de un batch se compone de 4 tipos de costo, almacenados en 2 fuentes:
+
+```
+                        COGS por Batch
+                ┌───────────┴───────────┐
+           Materiales              No-Materiales
+          (inventory_                (cost_entries)
+          transactions)         ┌────────┼────────┐
+               │               Labor  Utilities  Depreciacion
+               │                │        │           │
+         Automatico         Automatico  Manual     Manual
+        (al consumir)     (al registrar (allocate  (calculate
+                           actividad)  ToActive   Depreciation)
+                                       Batches)
+```
+
+- **Materiales:** Se registran automaticamente en `inventory_transactions` al consumir/aplicar insumos. Fuente: `cost_per_unit × quantity` del inventory_item.
+- **Mano de obra:** Se registran automaticamente en `cost_entries` (tipo `labor`) cuando una actividad tiene `duration_minutes > 0` y el usuario tiene un rol con `hourly_rate` configurado.
+- **Utilities:** Se registran manualmente: primero se crea una lectura de medidor (`utility_readings`), luego se ejecuta `allocateToActiveBatches` que crea `cost_entries` (tipo `utility_*`).
+- **Depreciacion:** Se registra manualmente: se ejecuta `calculateDepreciation` que busca productos de categoria `equipment` con `acquisition_value` y crea `cost_entries` (tipo `depreciation`).
+
+---
+
+### 8.2 Configurar Tarifas de Mano de Obra
+
+Cada rol puede tener una tarifa horaria. Al registrar una actividad con `duration_minutes`, el sistema calcula automaticamente el costo laboral.
+
+```typescript
+// 1. Configurar tarifa del rol
+await convex.mutation(api.roles.updateRate, {
+  roleId: roleId,         // Id<"roles">
+  hourly_rate: 25000,     // COP/hora
+  rate_currency: "COP",   // Opcional, default "COP"
+});
+
+// 2. Al registrar una actividad, el costo se calcula automaticamente
+await convex.mutation(api.activities.log, {
+  activity_type: "fertilization",
+  entity_type: "batch",
+  entity_id: batchId,
+  performed_by: userId,     // Usuario con rol que tiene hourly_rate
+  duration_minutes: 45,     // 45 min × (25000/60) = 18,750 COP
+  // ...otros campos
+});
+// → Crea cost_entry tipo "labor" con cost_total: 18750
+```
+
+**Hook automatico:** `createLaborCostEntry()` se llama al final de:
+- `activities.log()` (linea 282)
+- `activities.completeScheduledActivity()` (linea 1913)
+
+**Formula:** `cost_total = (duration_minutes / 60) × hourly_rate`
+
+---
+
+### 8.3 Registrar Lecturas de Utilities
+
+Las lecturas de medidores se registran por facility y periodo (YYYY-MM).
+
+```typescript
+await convex.mutation(api.utilities.createReading, {
+  facility_id: facilityId,        // Id<"facilities">
+  utility_type: "electricity",    // "electricity" | "water" | "gas"
+  period: "2026-02",              // YYYY-MM
+  reading_previous: 1200,         // Lectura anterior del medidor
+  reading_current: 1450,          // Lectura actual
+  consumption_unit: "kWh",        // kWh | m3 | galones
+  cost_total: 375000,             // Costo total del periodo
+  cost_currency: "COP",           // Opcional, default "COP"
+  notes: "Factura #1234",         // Opcional
+  recorded_by: userId,            // Id<"users">
+});
+// → Crea utility_reading con consumption: 250, allocation_status: "pending"
+```
+
+**Validaciones:**
+- Periodo formato YYYY-MM
+- `reading_current >= reading_previous`
+- `cost_total >= 0`
+- Duplicados: no permite 2 lecturas del mismo tipo+periodo+facility
+
+**Otras mutations:**
+- `utilities.updateReading({ readingId, reading_current?, cost_total?, notes? })` — Resetea `allocation_status` a `"pending"` si cambian lecturas/costo
+- `utilities.deleteReading({ readingId })` — Elimina lectura y sus `cost_entries` asociados
+
+---
+
+### 8.4 Prorratear Utilities a Batches
+
+Una vez creada la lectura, se ejecuta el prorrateo para distribuir el costo entre los batches activos de la facility durante ese periodo.
+
+```typescript
+const result = await convex.mutation(api.utilities.allocateToActiveBatches, {
+  readingId: readingId,   // Id<"utility_readings">
+});
+// → { allocated: 3, totalCost: 375000 }
+// → Crea N cost_entries (uno por batch activo)
+// → Marca reading.allocation_status = "allocated"
+```
+
+**Algoritmo de prorrateo:**
+
+1. Obtener batches activos en la facility durante el periodo
+2. Para cada batch, calcular peso: `weight = area_m2 × (days_active / days_in_period)`
+3. Calcular proporcion: `proportion = weight / total_weight`
+4. Asignar costo: `batch_cost = cost_total × proportion`
+
+```
+Ejemplo con 3 batches en periodo de 30 dias:
+┌────────────────────────────────────────────────────────┐
+│ Batch A: 50 m2 × (30/30 dias) = peso 50    → 50/90 = 55.6%  │
+│ Batch B: 30 m2 × (20/30 dias) = peso 20    → 20/90 = 22.2%  │
+│ Batch C: 30 m2 × (20/30 dias) = peso 20    → 20/90 = 22.2%  │
+│                                  total: 90                     │
+└────────────────────────────────────────────────────────┘
+```
+
+**Caso sin batches:** Si no hay batches activos, se crea un solo `cost_entry` sin `batch_id` (overhead), y `allocation_status = "no_batches"`.
+
+**Re-prorrateo:** Ejecutar `allocateToActiveBatches` de nuevo elimina los `cost_entries` anteriores de esa lectura y recalcula.
+
+---
+
+### 8.5 Depreciacion de Equipos
+
+Los productos de categoria `equipment` pueden tener campos de depreciacion. El calculo se ejecuta mensualmente por facility.
+
+**Configurar equipo (en producto):**
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| `acquisition_value` | `number` | Valor de adquisicion |
+| `useful_life_months` | `number` | Vida util en meses |
+| `salvage_value` | `number?` | Valor de rescate (default 0) |
+| `depreciation_method` | `string?` | Solo `"straight_line"` por ahora |
+
+**Formula:** `depreciacion_mensual = (acquisition_value - salvage_value) / useful_life_months`
+
+```typescript
+const result = await convex.mutation(api.utilities.calculateDepreciation, {
+  facilityId: facilityId,    // Id<"facilities">
+  period: "2026-02",         // YYYY-MM
+});
+// → { equipmentCount: 5, allocated: 3, totalDepreciation: 125000 }
+// → Crea cost_entries tipo "depreciation" para cada equipo × cada batch activo
+```
+
+**Comportamiento:**
+1. Busca productos `equipment` activos de la empresa con `acquisition_value > 0` y `useful_life_months > 0`
+2. Para cada equipo, calcula depreciacion mensual
+3. Si hay batches activos: prorrateo igual que utilities (por area × dias)
+4. Si no hay batches: registra como overhead (sin `batch_id`)
+5. Re-ejecutar elimina entries anteriores del mismo periodo y recalcula
+
+---
+
+### 8.6 Consultar COGS Completo
+
+```typescript
+const cogs = await convex.query(api.inventory.getFullCostByBatch, {
+  batchId: batchId,
+});
+```
+
+**Forma del retorno:**
+
+```typescript
+{
+  materials: {
+    entries: [{
+      _id: string,
+      date: number,
+      type: string,              // activity_type
+      productId: Id<"products">,
+      productName: string,
+      quantity: number,
+      quantityUnit: string,
+      costPerUnit: number | undefined,
+      costTotal: number,
+      cropPhase: string | undefined,
+    }],
+    total: number,               // Redondeado a 2 decimales
+  },
+  labor: {
+    entries: [{
+      _id: Id<"cost_entries">,
+      date: number,
+      userName: string,
+      activityType: string,
+      roleName: string,
+      hourlyRate: number,
+      durationMinutes: number,
+      costTotal: number,
+      cropPhase: string | undefined,
+    }],
+    total: number,
+  },
+  utilities: {
+    entries: [{
+      _id: Id<"cost_entries">,
+      costType: string,          // "utility_electricity" | "utility_water" | "utility_gas"
+      period: string | undefined,
+      costTotal: number,
+      cropPhase: string | undefined,
+      details: {
+        utility_type?: string,
+        consumption?: number,
+        consumption_unit?: string,
+        proportion?: number,     // Porcentaje con 2 decimales
+      } | undefined,
+    }],
+    total: number,
+  },
+  depreciation: {
+    entries: [{
+      _id: Id<"cost_entries">,
+      period: string | undefined,
+      costTotal: number,
+      details: {
+        equipment_name?: string,
+        equipment_sku?: string,
+        monthly_depreciation?: number,
+        proportion?: number,
+      } | undefined,
+    }],
+    total: number,
+  },
+  grandTotal: number,            // Suma de los 4 totales
+  breakdown: {
+    materials: number,           // Porcentaje (0-100)
+    labor: number,
+    utilities: number,
+    depreciation: number,
+  },
+}
+```
+
+---
+
+### 8.7 La tabla `cost_entries`
+
+Almacena todos los costos no-materiales vinculados a batches.
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| `facility_id` | `id("facilities")` | Facility donde se genero |
+| `batch_id` | `id("batches")?` | Batch asignado (null = overhead) |
+| `cost_type` | `string` | `"labor"` / `"utility_electricity"` / `"utility_water"` / `"utility_gas"` / `"depreciation"` |
+| `crop_phase` | `string?` | Fase del cultivo cuando se genero |
+| `activity_id` | `id("activities")?` | Actividad asociada (solo labor) |
+| `source_id` | `string?` | ID de referencia: `utility_reading_id` o `product_id` (equipo) |
+| `cost_total` | `number` | Costo en moneda local |
+| `cost_currency` | `string` | ISO 4217 (COP, USD) |
+| `period` | `string?` | YYYY-MM (utilities y depreciacion) |
+| `details` | `any?` | Metadata especifica del tipo (ver abajo) |
+| `performed_by` | `id("users")?` | Usuario (solo labor) |
+| `created_at` | `number` | Timestamp |
+
+**Indices:** `by_batch_id`, `by_facility`, `by_cost_type`, `by_period`
+
+**Metadata en `details` por tipo:**
+
+| cost_type | Campos en details |
+|-----------|-------------------|
+| `labor` | `role_name`, `role_display_name`, `hourly_rate`, `duration_minutes` |
+| `utility_*` | `utility_type`, `consumption`, `consumption_unit`, `area_m2`, `days_active`, `days_in_period`, `proportion` |
+| `depreciation` | `equipment_name`, `equipment_sku`, `monthly_depreciation`, `proportion`, `acquisition_value?`, `useful_life_months?`, `salvage_value?` |
+
+---
+
+### 8.8 `getCostByBatch` vs `getFullCostByBatch`
+
+| Aspecto | `getCostByBatch` | `getFullCostByBatch` |
+|---------|-----------------|---------------------|
+| **Fuente** | `inventory_transactions` | `inventory_transactions` + `cost_entries` |
+| **Tipos de costo** | Solo materiales | Materiales + labor + utilities + depreciacion |
+| **Agrupacion** | Por `crop_phase` | Por tipo de costo |
+| **COGS/unidad** | Si (con yield) | No (retorna breakdown %) |
+| **Uso recomendado** | Analisis de costos de insumos por fase | Dashboard de costos totales del batch |

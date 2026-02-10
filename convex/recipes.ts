@@ -6,6 +6,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { getActivityTypeByCode } from "./helpers";
 
 /**
  * List recipes for a company
@@ -324,6 +325,7 @@ export const execute = mutation({
       inventoryItemId: Id<"inventory_items">;
       quantity: number;
       productName: string;
+      unit: string;
     }> = [];
 
     for (const ingredient of recipe.ingredients as Array<{
@@ -364,6 +366,7 @@ export const execute = mutation({
             inventoryItemId: selection.inventory_item_id,
             quantity: selection.quantity,
             productName,
+            unit: ingredient.unit,
           });
           selectedQuantity += selection.quantity;
         }
@@ -399,6 +402,7 @@ export const execute = mutation({
             inventoryItemId: item._id,
             quantity: consumeFromThis,
             productName,
+            unit: ingredient.unit,
           });
           remainingToConsume -= consumeFromThis;
         }
@@ -417,6 +421,7 @@ export const execute = mutation({
       inventory_item_id: Id<"inventory_items">;
       quantity_consumed: number;
       productName: string;
+      unit: string;
     }> = [];
 
     for (const consumption of consumptionPlan) {
@@ -436,6 +441,7 @@ export const execute = mutation({
         inventory_item_id: consumption.inventoryItemId,
         quantity_consumed: consumption.quantity,
         productName: consumption.productName,
+        unit: consumption.unit,
       });
     }
 
@@ -466,7 +472,8 @@ export const execute = mutation({
     });
 
     // Create activity log entry
-    await ctx.db.insert("activities", {
+    const actType = await getActivityTypeByCode(ctx, recipe.company_id, "extraction");
+    const activityId = await ctx.db.insert("activities", {
       entity_type: "recipe",
       entity_id: args.recipeId as unknown as string,
       activity_type: "recipe_execution",
@@ -482,8 +489,31 @@ export const execute = mutation({
       // Metadata stored in materials_consumed instead (activity_metadata is v.object({}) in schema)
       activity_metadata: {},
 
+      // ── v2 fields ──
+      ...(actType && {
+        type_id: actType._id,
+        category: actType.category,
+      }),
+      company_id: recipe.company_id,
+      facility_id: args.facilityId,
+      status: "completed",
+      title: `Ejecucion de receta — ${recipe.name}`,
+
       created_at: now,
     });
+
+    // Create activity_resources for each consumed ingredient
+    for (const item of consumedItems) {
+      await ctx.db.insert("activity_resources", {
+        activity_id: activityId,
+        product_id: item.product_id,
+        inventory_item_id: item.inventory_item_id,
+        direction: "consumed",
+        quantity: item.quantity_consumed,
+        quantity_unit: item.unit,
+        created_at: now,
+      });
+    }
 
     return {
       success: true,

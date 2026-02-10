@@ -63,6 +63,10 @@ export function ProductEditContent({ productId }: ProductEditContentProps) {
         priceChangeCategory: data.priceChangeCategory || undefined,
         priceChangeReason: data.priceChangeReason || undefined,
         priceChangeNotes: data.priceChangeNotes || undefined,
+        // Depreciation (equipment)
+        acquisition_value: typeof data.acquisition_value === 'number' ? data.acquisition_value : undefined,
+        useful_life_months: typeof data.useful_life_months === 'number' ? data.useful_life_months : undefined,
+        salvage_value: typeof data.salvage_value === 'number' ? data.salvage_value : undefined,
       };
 
       await updateProduct(cleanedData);

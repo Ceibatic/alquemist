@@ -4,7 +4,7 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -14,175 +14,389 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, Package, Users, Zap, Wrench } from 'lucide-react';
 
 interface BatchCostSummaryProps {
   batchId: Id<'batches'>;
 }
 
-const phaseLabels: Record<string, string> = {
-  propagation: 'Propagacion',
-  vegetative: 'Vegetativa',
-  flowering: 'Floracion',
-  harvest: 'Cosecha',
-  post_harvest: 'Post-cosecha',
-  processing: 'Procesamiento',
-  sin_fase: 'Sin fase',
-};
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
-const phaseBadgeColors: Record<string, string> = {
-  propagation: 'bg-cyan-100 text-cyan-800',
-  vegetative: 'bg-green-100 text-green-800',
-  flowering: 'bg-purple-100 text-purple-800',
-  harvest: 'bg-amber-100 text-amber-800',
-  post_harvest: 'bg-orange-100 text-orange-800',
-  processing: 'bg-blue-100 text-blue-800',
-  sin_fase: 'bg-gray-100 text-gray-800',
-};
-
-const formatCurrency = (value: number) =>
-  `$${value.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="text-center py-8 text-gray-500">
+      <p>{message}</p>
+    </div>
+  );
+}
 
 export function BatchCostSummary({ batchId }: BatchCostSummaryProps) {
-  const costData = useQuery(api.inventory.getCostByBatch, { batchId });
+  const costData = useQuery(api.inventory.getFullCostByBatch, { batchId });
 
   if (costData === undefined) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Costos de Produccion (COGS)
-          </CardTitle>
+          <Skeleton className="h-6 w-48" />
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
+          <Skeleton className="h-40 w-full" />
         </CardContent>
       </Card>
     );
   }
 
-  if (costData.transactionCount === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Costos de Produccion (COGS)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-6 text-gray-500">
-            <DollarSign className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No hay transacciones con costo registradas para este lote</p>
-            <p className="text-xs mt-1">Los costos se registran al aplicar insumos con tipo &quot;Aplicacion&quot;</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const hasAnyData =
+    costData.grandTotal > 0 ||
+    costData.materials.entries.length > 0 ||
+    costData.labor.entries.length > 0;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <DollarSign className="h-5 w-5" />
-          Costos de Produccion (COGS)
-          <Badge variant="secondary" className="ml-2">
-            {costData.transactionCount} {costData.transactionCount === 1 ? 'transaccion' : 'transacciones'}
-          </Badge>
+          COGS — Costo de Producción
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <p className="text-2xl font-bold text-gray-900">
-              {formatCurrency(costData.grandTotal)}
-            </p>
-            <p className="text-sm text-gray-500">Costo Total</p>
-          </div>
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <p className="text-2xl font-bold text-gray-900">
-              {costData.phases.length}
-            </p>
-            <p className="text-sm text-gray-500">Fases</p>
-          </div>
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <p className="text-2xl font-bold text-gray-900">
-              {costData.totalYield > 0
-                ? `${costData.totalYield.toLocaleString('es-CO')} ${costData.yieldUnit}`
-                : '-'}
-            </p>
-            <p className="text-sm text-gray-500">Rendimiento</p>
-          </div>
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <p className="text-2xl font-bold text-amber-600">
-              {costData.cogsPerUnit != null
-                ? `${formatCurrency(costData.cogsPerUnit)}/${costData.yieldUnit}`
-                : '-'}
-            </p>
-            <p className="text-sm text-gray-500">COGS por unidad</p>
-          </div>
-        </div>
+      <CardContent>
+        {!hasAnyData ? (
+          <EmptyState message="No hay costos registrados para este batch." />
+        ) : (
+          <Tabs defaultValue="summary">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="summary">Resumen</TabsTrigger>
+              <TabsTrigger value="materials">Insumos</TabsTrigger>
+              <TabsTrigger value="labor">Mano de Obra</TabsTrigger>
+              <TabsTrigger value="utilities">Utilities</TabsTrigger>
+              <TabsTrigger value="depreciation">Depreciación</TabsTrigger>
+            </TabsList>
 
-        {/* Phase Breakdown */}
-        {costData.phases.map((phase) => (
-          <div key={phase.phase}>
-            <div className="flex items-center justify-between mb-2">
-              <Badge
-                variant="secondary"
-                className={phaseBadgeColors[phase.phase] || 'bg-gray-100'}
-              >
-                {phaseLabels[phase.phase] || phase.phase}
-              </Badge>
-              <span className="font-semibold">{formatCurrency(phase.total)}</span>
-            </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Insumo</TableHead>
-                    <TableHead className="text-right">Cantidad</TableHead>
-                    <TableHead className="text-right">Costo Unit.</TableHead>
-                    <TableHead className="text-right">Costo Total</TableHead>
-                    <TableHead>Fecha</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {phase.transactions.map((tx) => (
-                    <TableRow key={tx._id}>
-                      <TableCell>
-                        <div className="font-medium">{tx.product_name}</div>
-                        <div className="text-xs text-gray-400">{tx.product_sku}</div>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {tx.quantity_change.toLocaleString('es-CO')} {tx.quantity_unit}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(tx.cost_per_unit)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-medium">
-                        {formatCurrency(tx.cost_total)}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-sm text-gray-500">
-                        {new Date(tx.performed_at).toLocaleDateString('es-CO', {
-                          day: '2-digit',
-                          month: 'short',
-                        })}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        ))}
+            {/* Summary Tab */}
+            <TabsContent value="summary" className="space-y-4 pt-4">
+              <div className="text-center mb-4">
+                <p className="text-sm text-gray-500">COGS Total</p>
+                <p className="text-3xl font-bold">
+                  {formatCurrency(costData.grandTotal)}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <SummaryCard
+                  icon={<Package className="h-4 w-4" />}
+                  label="Insumos"
+                  value={costData.materials.total}
+                  percentage={costData.breakdown.materials}
+                  color="bg-blue-100 text-blue-700"
+                />
+                <SummaryCard
+                  icon={<Users className="h-4 w-4" />}
+                  label="Mano de Obra"
+                  value={costData.labor.total}
+                  percentage={costData.breakdown.labor}
+                  color="bg-green-100 text-green-700"
+                />
+                <SummaryCard
+                  icon={<Zap className="h-4 w-4" />}
+                  label="Utilities"
+                  value={costData.utilities.total}
+                  percentage={costData.breakdown.utilities}
+                  color="bg-amber-100 text-amber-700"
+                />
+                <SummaryCard
+                  icon={<Wrench className="h-4 w-4" />}
+                  label="Depreciación"
+                  value={costData.depreciation.total}
+                  percentage={costData.breakdown.depreciation}
+                  color="bg-purple-100 text-purple-700"
+                />
+              </div>
+
+              {/* Proportion bars */}
+              {costData.grandTotal > 0 && (
+                <div className="h-4 flex rounded-full overflow-hidden">
+                  {costData.breakdown.materials > 0 && (
+                    <div
+                      className="bg-blue-500"
+                      style={{ width: `${costData.breakdown.materials}%` }}
+                      title={`Insumos: ${costData.breakdown.materials}%`}
+                    />
+                  )}
+                  {costData.breakdown.labor > 0 && (
+                    <div
+                      className="bg-green-500"
+                      style={{ width: `${costData.breakdown.labor}%` }}
+                      title={`Mano de Obra: ${costData.breakdown.labor}%`}
+                    />
+                  )}
+                  {costData.breakdown.utilities > 0 && (
+                    <div
+                      className="bg-amber-500"
+                      style={{ width: `${costData.breakdown.utilities}%` }}
+                      title={`Utilities: ${costData.breakdown.utilities}%`}
+                    />
+                  )}
+                  {costData.breakdown.depreciation > 0 && (
+                    <div
+                      className="bg-purple-500"
+                      style={{ width: `${costData.breakdown.depreciation}%` }}
+                      title={`Depreciación: ${costData.breakdown.depreciation}%`}
+                    />
+                  )}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Materials Tab */}
+            <TabsContent value="materials" className="pt-4">
+              {costData.materials.entries.length === 0 ? (
+                <EmptyState message="No hay registros de insumos para este batch." />
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Producto</TableHead>
+                        <TableHead>Fase</TableHead>
+                        <TableHead className="text-right">Cantidad</TableHead>
+                        <TableHead className="text-right">Costo/Unidad</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {costData.materials.entries.map((m) => (
+                        <TableRow key={m._id}>
+                          <TableCell>
+                            {new Date(m.date).toLocaleDateString('es-CO')}
+                          </TableCell>
+                          <TableCell>{m.productName}</TableCell>
+                          <TableCell className="text-gray-500">
+                            {m.cropPhase || '-'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {m.quantity} {m.quantityUnit}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {m.costPerUnit
+                              ? formatCurrency(m.costPerUnit)
+                              : '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(m.costTotal)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow className="font-bold bg-gray-50">
+                        <TableCell colSpan={5}>Total Insumos</TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(costData.materials.total)}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Labor Tab */}
+            <TabsContent value="labor" className="pt-4">
+              {costData.labor.entries.length === 0 ? (
+                <EmptyState message="No hay registros de mano de obra para este batch." />
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Actividad</TableHead>
+                        <TableHead>Usuario</TableHead>
+                        <TableHead>Rol</TableHead>
+                        <TableHead className="text-right">Horas</TableHead>
+                        <TableHead className="text-right">Tarifa</TableHead>
+                        <TableHead className="text-right">Costo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {costData.labor.entries.map((l) => (
+                        <TableRow key={l._id}>
+                          <TableCell>
+                            {new Date(l.date).toLocaleDateString('es-CO')}
+                          </TableCell>
+                          <TableCell>{l.activityType || '-'}</TableCell>
+                          <TableCell>{l.userName}</TableCell>
+                          <TableCell className="text-gray-500">
+                            {l.roleName}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {(l.durationMinutes / 60).toFixed(1)}h
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatCurrency(l.hourlyRate)}/h
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(l.costTotal)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow className="font-bold bg-gray-50">
+                        <TableCell colSpan={6}>Total Mano de Obra</TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(costData.labor.total)}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Utilities Tab */}
+            <TabsContent value="utilities" className="pt-4">
+              {costData.utilities.entries.length === 0 ? (
+                <EmptyState message="No hay registros de utilities para este batch." />
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Periodo</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead className="text-right">Consumo Facility</TableHead>
+                        <TableHead className="text-right">Proporción</TableHead>
+                        <TableHead className="text-right">Costo Asignado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {costData.utilities.entries.map((u) => {
+                        const typeLabels: Record<string, string> = {
+                          utility_electricity: 'Electricidad',
+                          utility_water: 'Agua',
+                          utility_gas: 'Gas',
+                        };
+                        return (
+                          <TableRow key={u._id}>
+                            <TableCell>{u.period || '-'}</TableCell>
+                            <TableCell>
+                              {typeLabels[u.costType] || u.costType}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {u.details?.consumption
+                                ? `${u.details.consumption.toLocaleString('es-CO')} ${u.details.consumption_unit || ''}`
+                                : '-'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {u.details?.proportion
+                                ? `${u.details.proportion}%`
+                                : '-'}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(u.costTotal)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      <TableRow className="font-bold bg-gray-50">
+                        <TableCell colSpan={4}>Total Utilities</TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(costData.utilities.total)}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Depreciation Tab */}
+            <TabsContent value="depreciation" className="pt-4">
+              {costData.depreciation.entries.length === 0 ? (
+                <EmptyState message="No hay registros de depreciación para este batch." />
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Periodo</TableHead>
+                        <TableHead>Equipo</TableHead>
+                        <TableHead className="text-right">Depreciación Mensual</TableHead>
+                        <TableHead className="text-right">Proporción</TableHead>
+                        <TableHead className="text-right">Costo Asignado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {costData.depreciation.entries.map((d) => (
+                        <TableRow key={d._id}>
+                          <TableCell>{d.period || '-'}</TableCell>
+                          <TableCell>
+                            {d.details?.equipment_name || 'Equipo'}
+                            {d.details?.equipment_sku && (
+                              <span className="text-gray-500 text-xs ml-1">
+                                ({d.details.equipment_sku})
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {d.details?.monthly_depreciation
+                              ? formatCurrency(d.details.monthly_depreciation)
+                              : '-'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {d.details?.proportion
+                              ? `${d.details.proportion}%`
+                              : '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(d.costTotal)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow className="font-bold bg-gray-50">
+                        <TableCell colSpan={4}>Total Depreciación</TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(costData.depreciation.total)}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+function SummaryCard({
+  icon,
+  label,
+  value,
+  percentage,
+  color,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  percentage: number;
+  color: string;
+}) {
+  return (
+    <div className="rounded-lg border p-3">
+      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${color} mb-2`}>
+        {icon}
+        {label}
+      </div>
+      <p className="text-lg font-bold">{formatCurrency(value)}</p>
+      <p className="text-xs text-gray-500">{percentage}% del total</p>
+    </div>
   );
 }

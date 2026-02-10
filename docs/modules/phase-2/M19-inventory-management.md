@@ -1228,6 +1228,149 @@ const lotNumber = await generateInternalLotNumber(ctx, "clone");
 
 ---
 
+## Phase I: COGS Completo (FEAT-2026-02-cogs-completo)
+
+### Contexto
+
+El sistema de costos evoluciono de un COGS parcial (solo materiales via `inventory_transactions`) a un COGS completo que incluye 4 componentes: **materiales**, **mano de obra**, **utilities** (energia + agua + gas) y **depreciacion de equipos**.
+
+La estrategia fue crear una tabla generica `cost_entries` para registrar costos no-inventario vinculados a batches, manteniendo `inventory_transactions` exclusiva para movimientos fisicos. Una nueva query `getFullCostByBatch` combina ambas fuentes.
+
+**Commits:** `35f57d7`, `01cfe8d`, `41430cd`, `ba3de5e`, `d1db091`, `22eb273`
+**Feature doc:** `docs/backlog/completed/FEAT-2026-02-cogs-completo.md`
+
+### Schema: `cost_entries`
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| `facility_id` | `id("facilities")` | Facility donde se genero |
+| `batch_id` | `id("batches")?` | Batch asignado (null = overhead) |
+| `cost_type` | `string` | `labor` / `utility_electricity` / `utility_water` / `utility_gas` / `depreciation` |
+| `crop_phase` | `string?` | Fase del cultivo |
+| `activity_id` | `id("activities")?` | Actividad (solo labor) |
+| `source_id` | `string?` | Referencia: utility_reading_id o product_id |
+| `cost_total` | `number` | Costo en moneda local |
+| `cost_currency` | `string` | ISO 4217 |
+| `period` | `string?` | YYYY-MM (utilities/depreciacion) |
+| `details` | `any?` | Metadata del tipo |
+| `performed_by` | `id("users")?` | Usuario (solo labor) |
+| `created_at` | `number` | Timestamp |
+
+**Indices:** `by_batch_id`, `by_facility`, `by_cost_type`, `by_period`
+
+### Schema: `utility_readings`
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| `facility_id` | `id("facilities")` | Facility |
+| `utility_type` | `string` | `electricity` / `water` / `gas` |
+| `period` | `string` | YYYY-MM |
+| `reading_previous` | `number` | Lectura anterior |
+| `reading_current` | `number` | Lectura actual |
+| `consumption` | `number` | current - previous |
+| `consumption_unit` | `string` | kWh / m3 / galones |
+| `cost_total` | `number` | Costo del periodo |
+| `cost_currency` | `string` | ISO 4217 |
+| `allocation_status` | `string` | `pending` / `allocated` / `no_batches` |
+| `notes` | `string?` | Notas |
+| `recorded_by` | `id("users")` | Quien registro |
+| `created_at` | `number` | Timestamp |
+
+**Indices:** `by_facility`, `by_period`, `by_type_period`
+
+### Campos Nuevos en Tablas Existentes
+
+| Tabla | Campo | Tipo | Proposito |
+|-------|-------|------|-----------|
+| `roles` | `hourly_rate` | `number?` | Tarifa horaria para costeo de labor |
+| `roles` | `rate_currency` | `string?` | Moneda de la tarifa (default COP) |
+| `products` | `acquisition_value` | `number?` | Valor de adquisicion (equipos) |
+| `products` | `useful_life_months` | `number?` | Vida util en meses |
+| `products` | `salvage_value` | `number?` | Valor de rescate |
+| `products` | `depreciation_method` | `string?` | Solo `straight_line` por ahora |
+
+### US-COGS.1: Tarifas por rol
+
+- [x] Campos `hourly_rate` y `rate_currency` en tabla `roles`
+- [x] Mutation `roles.updateRate` para configurar tarifa
+- [x] UI en settings: card "Tarifas por Rol" con input numerico
+
+### US-COGS.2: Calculo automatico de costo de labor
+
+- [x] Helper `calculateLaborCost()` y `createLaborCostEntry()` en `convex/helpers.ts`
+- [x] Hook automatico al final de `activities.log()` y `completeScheduledActivity()`
+- [x] Formula: `(duration_minutes / 60) × hourly_rate`
+- [x] Crea `cost_entry` tipo `labor` con detalles de rol, tarifa y duracion
+
+### US-COGS.3: Lecturas de utilities
+
+- [x] Tabla `utility_readings` con validacion de unicidad tipo+periodo+facility
+- [x] CRUD completo: `createReading`, `updateReading`, `deleteReading`
+- [x] Query `getByFacility` con filtro por tipo y limite
+- [x] UI: modal de registro y tabla historica en pagina de facility
+
+### US-COGS.4: Prorrateo de utilities a batches
+
+- [x] Mutation `allocateToActiveBatches(readingId)` distribuye costo
+- [x] Algoritmo: `weight = area_m2 × (days_active / days_in_period)`, luego proporcion
+- [x] Re-prorrateo: elimina entries anteriores y recalcula
+- [x] Sin batches: crea overhead entry sin `batch_id`
+
+### US-COGS.5: Depreciacion de equipos
+
+- [x] Campos de depreciacion en productos tipo `equipment`
+- [x] Mutation `calculateDepreciation(facilityId, period)` calcula y prorratea
+- [x] Formula: `(acquisition_value - salvage_value) / useful_life_months`
+- [x] Mismo prorrateo por area que utilities
+
+### US-COGS.6: COGS completo con UI
+
+- [x] Query `getFullCostByBatch(batchId)` combina transactions + cost_entries
+- [x] Retorna: materials, labor, utilities, depreciation (cada uno con entries + total)
+- [x] Incluye `grandTotal` y `breakdown` con porcentajes
+- [x] UI con 5 tabs (Resumen + 4 tipos) en `batch-cost-summary.tsx`
+
+### Flujo de Costeo
+
+```
+1. MATERIALES (automatico al consumir/aplicar)
+   logInventoryMovement(application) → inventory_transaction con cost_per_unit × qty
+
+2. MANO DE OBRA (automatico al registrar actividad)
+   activities.log(duration_minutes) → createLaborCostEntry() → cost_entry (labor)
+
+3. UTILITIES (manual mensual)
+   createReading() → allocateToActiveBatches() → cost_entries (utility_*)
+
+4. DEPRECIACION (manual mensual)
+   calculateDepreciation(facilityId, period) → cost_entries (depreciation)
+
+5. CONSULTA (on-demand)
+   getFullCostByBatch(batchId) → combina inventory_transactions + cost_entries
+```
+
+### Archivos Creados/Modificados (Phase I)
+
+| Archivo | Cambio |
+|---------|--------|
+| `convex/schema.ts` | +tablas cost_entries, utility_readings; +campos depreciacion en products; +hourly_rate en roles |
+| `convex/utilities.ts` | NUEVO — CRUD lecturas, prorrateo, depreciacion |
+| `convex/helpers.ts` | +calculateLaborCost, +createLaborCostEntry |
+| `convex/activities.ts` | Hook labor cost en log() y completeScheduledActivity() |
+| `convex/roles.ts` | +updateRate mutation; hourly_rate/rate_currency en returns |
+| `convex/products.ts` | +campos depreciacion en create/update |
+| `convex/inventory.ts` | +getFullCostByBatch query |
+| `lib/validations/product.ts` | +campos depreciacion en Zod schema |
+| `components/facilities/utility-reading-modal.tsx` | NUEVO — modal registro lecturas |
+| `components/facilities/utility-readings-table.tsx` | NUEVO — tabla lecturas historicas |
+| `components/batches/batch-cost-summary.tsx` | Refactorizado — tabs por tipo de costo |
+| `components/products/product-form.tsx` | +seccion depreciacion para equipment |
+| `app/(dashboard)/settings/system/page.tsx` | +card "Tarifas por Rol" |
+| `app/(dashboard)/facilities/[id]/page.tsx` | +tab "Utilities" |
+| `app/(dashboard)/batches/[id]/page.tsx` | +tab "Costos" |
+
+---
+
 ## Resumen de Mutations de Inventario
 
 | Mutation | Módulo | Propósito |
@@ -1240,6 +1383,12 @@ const lotNumber = await generateInternalLotNumber(ctx, "clone");
 | `activities.logPhaseTransitionWithInventory` | activities.ts | Transición de fase con inventario |
 | `activities.logHarvest` | activities.ts | Cosecha con transformación de inventario |
 | `activities.log` | activities.ts | Actividad general con `consume_inventory: true` |
+| `roles.updateRate` | roles.ts | Configurar tarifa horaria de un rol |
+| `utilities.createReading` | utilities.ts | Registrar lectura de medidor |
+| `utilities.updateReading` | utilities.ts | Actualizar lectura existente |
+| `utilities.deleteReading` | utilities.ts | Eliminar lectura y cost_entries asociados |
+| `utilities.allocateToActiveBatches` | utilities.ts | Prorratear costo de utility a batches |
+| `utilities.calculateDepreciation` | utilities.ts | Calcular depreciacion mensual |
 
 ---
 
@@ -1253,8 +1402,10 @@ const lotNumber = await generateInternalLotNumber(ctx, "clone");
 | `inventory.getLowStock` | inventory.ts | Items con stock bajo |
 | `inventory.countByProduct` | inventory.ts | Estadisticas de inventario por producto |
 | `inventory.getProductTransactionHistory` | inventory.ts | Historial de transacciones de un producto |
-| `inventory.getCostByBatch` | inventory.ts | COGS desglosado por fase de cultivo |
+| `inventory.getCostByBatch` | inventory.ts | COGS de materiales desglosado por fase |
+| `inventory.getFullCostByBatch` | inventory.ts | COGS completo (materials + labor + utilities + depreciation) |
 | `inventory.getFullTrace` | inventory.ts | Trazabilidad completa bidireccional |
+| `utilities.getByFacility` | utilities.ts | Lecturas de utilities por facility |
 | `products.getTransformationChain` | products.ts | Cadena de transformacion de un producto |
 | `activities.getInventoryMovements` | activities.ts | Historial de movimientos de un item |
 | `activities.getByEntity` | activities.ts | Actividades de un batch/planta |
@@ -1272,7 +1423,10 @@ const lotNumber = await generateInternalLotNumber(ctx, "clone");
 | M25-Batches | Sincronizacion | Fases de batch sincronizadas con inventario |
 | M26-Plants | Tracking | Tracking individual vinculado a inventario |
 | Activities | Centro | **TODO movimiento pasa por activities** |
-| COGS | Costos | `getCostByBatch` calcula costos por batch via `batch_id` en transactions |
+| Roles | Tarifas | Tarifas horarias para costeo de mano de obra (`roles.hourly_rate`) |
+| Utilities | Lecturas | Lecturas de servicios con prorrateo a batches (`utilities.allocateToActiveBatches`) |
+| COGS Materiales | Costos | `getCostByBatch` calcula costos de materiales por batch via transactions |
+| COGS Completo | Costos | `getFullCostByBatch` retorna materials + labor + utilities + depreciation |
 | Trazabilidad | Cadena | `getFullTrace` recorre cadena completa de un lote (origen → destino) |
 
 ---

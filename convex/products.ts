@@ -146,7 +146,7 @@ export const create = mutation({
     ),
     price_unit: v.optional(v.string()),
 
-    // Procurement & Tracking
+    // Procurement & Tracking (Resource System)
     procurement_type: v.optional(
       v.union(v.literal("purchased"), v.literal("produced"), v.literal("both"))
     ),
@@ -155,9 +155,14 @@ export const create = mutation({
     ),
     shelf_life_days: v.optional(v.number()),
 
-    // Transformation Chain
+    // Transformation Chain (Resource System)
     transformation_produces_id: v.optional(v.id("products")),
     default_yield_pct: v.optional(v.number()),
+
+    // Depreciation (equipment only - COGS System)
+    acquisition_value: v.optional(v.number()),
+    useful_life_months: v.optional(v.number()),
+    salvage_value: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUserId(ctx);
@@ -230,11 +235,18 @@ export const create = mutation({
       price_currency: args.price_currency || "COP",
       price_unit: args.price_unit,
 
+      // Resource system fields
       procurement_type: args.procurement_type,
       lot_tracking: args.lot_tracking,
       shelf_life_days: args.shelf_life_days,
       transformation_produces_id: args.transformation_produces_id,
       default_yield_pct: args.default_yield_pct,
+
+      // COGS depreciation (equipment)
+      acquisition_value: args.acquisition_value,
+      useful_life_months: args.useful_life_months,
+      salvage_value: args.salvage_value,
+      depreciation_method: args.acquisition_value ? "straight_line" : undefined,
 
       status: "active",
       created_at: now,
@@ -292,7 +304,7 @@ export const update = mutation({
     organic_certified: v.optional(v.boolean()),
     organic_cert_number: v.optional(v.string()),
     status: v.optional(v.union(v.literal("active"), v.literal("discontinued"))),
-    // Procurement & Tracking
+    // Procurement & Tracking (Resource System)
     procurement_type: v.optional(
       v.union(v.literal("purchased"), v.literal("produced"), v.literal("both"))
     ),
@@ -300,9 +312,13 @@ export const update = mutation({
       v.union(v.literal("required"), v.literal("optional"), v.literal("none"))
     ),
     shelf_life_days: v.optional(v.number()),
-    // Transformation Chain
+    // Transformation Chain (Resource System)
     transformation_produces_id: v.optional(v.id("products")),
     default_yield_pct: v.optional(v.number()),
+    // Depreciation (equipment only - COGS System)
+    acquisition_value: v.optional(v.number()),
+    useful_life_months: v.optional(v.number()),
+    salvage_value: v.optional(v.number()),
     // Price history tracking (optional)
     priceChangeReason: v.optional(v.string()),
     priceChangeCategory: v.optional(v.string()),
@@ -395,6 +411,7 @@ export const update = mutation({
     if (sanitizedData.organic_cert_number !== undefined)
       updates.organic_cert_number = sanitizedData.organic_cert_number;
     if (args.status !== undefined) updates.status = args.status;
+    // Resource system fields
     if (args.procurement_type !== undefined)
       updates.procurement_type = args.procurement_type;
     if (args.lot_tracking !== undefined)
@@ -405,6 +422,15 @@ export const update = mutation({
       updates.transformation_produces_id = args.transformation_produces_id;
     if (args.default_yield_pct !== undefined)
       updates.default_yield_pct = args.default_yield_pct;
+    // COGS depreciation fields
+    if (args.acquisition_value !== undefined)
+      updates.acquisition_value = args.acquisition_value;
+    if (args.useful_life_months !== undefined)
+      updates.useful_life_months = args.useful_life_months;
+    if (args.salvage_value !== undefined)
+      updates.salvage_value = args.salvage_value;
+    if (args.acquisition_value !== undefined)
+      updates.depreciation_method = args.acquisition_value > 0 ? "straight_line" : undefined;
 
     await ctx.db.patch(args.productId, updates);
 

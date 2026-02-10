@@ -107,7 +107,7 @@ export const productFormSchema = z.object({
     .optional()
     .or(z.literal('')),
 
-  // Transformation Chain
+  // Transformation Chain (Resource System)
   transformation_produces_id: z.string().optional().or(z.literal('')),
   default_yield_pct: z.coerce
     .number()
@@ -116,13 +116,31 @@ export const productFormSchema = z.object({
     .optional()
     .or(z.literal('')),
 
-  // Procurement & Tracking
+  // Procurement & Tracking (Resource System)
   procurement_type: z.enum(['purchased', 'produced', 'both']).optional().or(z.literal('')),
   lot_tracking: z.enum(['required', 'optional', 'none']).optional().or(z.literal('')),
   shelf_life_days: z.coerce
     .number()
     .int('Días de vida útil debe ser un número entero')
     .positive('Días de vida útil debe ser positivo')
+    .optional()
+    .or(z.literal('')),
+
+  // Depreciation (equipment only - COGS System)
+  acquisition_value: z.coerce
+    .number()
+    .min(0, 'Valor de adquisición debe ser mayor o igual a 0')
+    .optional()
+    .or(z.literal('')),
+  useful_life_months: z.coerce
+    .number()
+    .int('Vida útil debe ser un número entero')
+    .min(1, 'Vida útil debe ser al menos 1 mes')
+    .optional()
+    .or(z.literal('')),
+  salvage_value: z.coerce
+    .number()
+    .min(0, 'Valor residual debe ser mayor o igual a 0')
     .optional()
     .or(z.literal('')),
 
