@@ -704,3 +704,88 @@ export const countByProduct = query({
     };
   },
 });
+
+/**
+ * Get cost breakdown by batch (COGS)
+ * Groups inventory transactions by crop_phase and calculates totals
+ */
+export const getCostByBatch = query({
+  args: {
+    batchId: v.id("batches"),
+  },
+  handler: async (ctx, args) => {
+    const transactions = await ctx.db
+      .query("inventory_transactions")
+      .withIndex("by_batch_id", (q) => q.eq("batch_id", args.batchId))
+      .collect();
+
+    // Only include transactions with cost data
+    const costTransactions = transactions.filter(
+      (tx) => tx.cost_total != null && tx.cost_total > 0
+    );
+
+    // Enrich with product names
+    const enriched = await Promise.all(
+      costTransactions.map(async (tx) => {
+        const product = await ctx.db.get(tx.product_id);
+        return {
+          _id: tx._id,
+          product_name: product?.name || "Producto desconocido",
+          product_sku: product?.sku || "",
+          crop_phase: tx.crop_phase || "sin_fase",
+          transaction_type: tx.transaction_type,
+          quantity_change: Math.abs(tx.quantity_change),
+          quantity_unit: tx.quantity_unit,
+          cost_per_unit: tx.cost_per_unit || 0,
+          cost_total: tx.cost_total || 0,
+          performed_at: tx.performed_at,
+        };
+      })
+    );
+
+    // Group by crop_phase
+    const byPhase: Record<string, {
+      phase: string;
+      transactions: typeof enriched;
+      total: number;
+    }> = {};
+
+    for (const tx of enriched) {
+      if (!byPhase[tx.crop_phase]) {
+        byPhase[tx.crop_phase] = {
+          phase: tx.crop_phase,
+          transactions: [],
+          total: 0,
+        };
+      }
+      byPhase[tx.crop_phase].transactions.push(tx);
+      byPhase[tx.crop_phase].total += tx.cost_total;
+    }
+
+    const phases = Object.values(byPhase).sort((a, b) => {
+      const order = ["propagation", "vegetative", "flowering", "harvest", "post_harvest", "processing", "sin_fase"];
+      return order.indexOf(a.phase) - order.indexOf(b.phase);
+    });
+
+    const grandTotal = phases.reduce((sum, p) => sum + p.total, 0);
+
+    // Get harvest data for COGS per unit calculation
+    const harvests = await ctx.db
+      .query("batch_harvests")
+      .withIndex("by_batch", (q) => q.eq("batch_id", args.batchId))
+      .collect();
+
+    const totalYield = harvests.reduce((sum, h) => sum + h.total_weight, 0);
+    const yieldUnit = harvests[0]?.weight_unit || "g";
+    const cogsPerUnit = totalYield > 0 ? grandTotal / totalYield : null;
+
+    return {
+      phases,
+      grandTotal,
+      totalYield,
+      yieldUnit,
+      cogsPerUnit,
+      transactionCount: enriched.length,
+    };
+  },
+});

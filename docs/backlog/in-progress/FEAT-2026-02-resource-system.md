@@ -139,11 +139,11 @@ Este plan resulta de analizar el diagnostico en `docs/data-model-references/reso
 **para** conocer el costo real de produccion y optimizar recursos
 
 #### Criterios de Aceptacion
-- [ ] Nueva query `inventory.getCostByBatch(batchId)` que retorna: costos agrupados por `crop_phase`, costo total, costo por unidad de output
-- [ ] Incluye: nombre del insumo, cantidad consumida, costo unitario, costo total, fecha
-- [ ] Si el batch tiene harvest registrado, calcula `COGS_per_gram = total_cost / yield_quantity`
-- [ ] Resultado accesible desde la pagina de detalle del batch
-- [ ] Muestra tabla resumen con total por fase y gran total
+- [x] Nueva query `inventory.getCostByBatch(batchId)` que retorna: costos agrupados por `crop_phase`, costo total, costo por unidad de output
+- [x] Incluye: nombre del insumo, cantidad consumida, costo unitario, costo total, fecha
+- [x] Si el batch tiene harvest registrado, calcula `COGS_per_gram = total_cost / yield_quantity`
+- [x] Resultado accesible desde la pagina de detalle del batch
+- [x] Muestra tabla resumen con total por fase y gran total
 
 #### Backend
 - Query: `inventory.getCostByBatch` — filtra `inventory_transactions` por `batch_id`, agrupa por `crop_phase`
