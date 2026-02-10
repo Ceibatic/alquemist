@@ -142,7 +142,7 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
 **para** soportar el nuevo modelo de actividades con tipo configurable, estado, asignacion y relaciones
 
 #### Criterios de Aceptacion
-- [ ] Campos nuevos agregados a `activities` en schema.ts (todos `v.optional()` para backward compat):
+- [x] Campos nuevos agregados a `activities` en schema.ts (todos `v.optional()` para backward compat):
   - Tipo: `type_id` (id activity_types), `category` (string)
   - Contexto: `company_id` (id companies), `facility_id` (id facilities), `batch_id` (id batches), `crop_phase` (string), `zone_id` (id areas), `structure_id` (id structures)
   - Workflow: `status` (string: planned/in_progress/completed/verified/cancelled), `priority` (string: routine/urgent/critical)
@@ -150,9 +150,9 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
   - Asignacion: `assigned_to` (id users), `verified_by` (id users), `verified_at` (number)
   - Descriptivo: `title` (string), `observations` (string, texto post-ejecucion)
   - Vinculos: `parent_activity_id` (id activities), `work_order_id` (id production_orders)
-- [ ] Nuevos indexes: by_company (company_id), by_type_id (type_id), by_batch_id (batch_id), by_facility (facility_id), by_status (status)
-- [ ] Queries existentes (`list`, `listByBatch`, `getStats`, etc.) siguen funcionando sin cambios
-- [ ] `npx next build` pasa sin errores
+- [x] Nuevos indexes: by_company (company_id), by_type_id (type_id), by_batch_id (batch_id), by_facility (facility_id), by_status (status)
+- [x] Queries existentes (`list`, `listByBatch`, `getStats`, etc.) siguen funcionando sin cambios
+- [x] `npx next build` pasa sin errores
 - [ ] Schema deploy exitoso (verificar con `npx convex dev`)
 
 #### Backend

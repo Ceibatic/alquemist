@@ -1536,10 +1536,49 @@ export default defineSchema({
     activity_metadata: v.optional(v.any()),
     notes: v.optional(v.string()),
     created_at: v.number(),
+
+    // ── New fields (v2 model — all optional for backward compat) ──
+    // Type classification
+    type_id: v.optional(v.id("activity_types")),
+    category: v.optional(v.string()), // Denormalized from activity_types
+
+    // Context
+    company_id: v.optional(v.id("companies")),
+    facility_id: v.optional(v.id("facilities")),
+    batch_id: v.optional(v.id("batches")),
+    crop_phase: v.optional(v.string()),
+    zone_id: v.optional(v.id("areas")),
+    structure_id: v.optional(v.id("structures")),
+
+    // Workflow
+    status: v.optional(v.string()), // planned/in_progress/completed/verified/cancelled
+    priority: v.optional(v.string()), // routine/urgent/critical
+
+    // Time
+    started_at: v.optional(v.number()),
+    completed_at: v.optional(v.number()),
+
+    // Assignment
+    assigned_to: v.optional(v.id("users")),
+    verified_by: v.optional(v.id("users")),
+    verified_at: v.optional(v.number()),
+
+    // Descriptive
+    title: v.optional(v.string()),
+    observations: v.optional(v.string()),
+
+    // Links
+    parent_activity_id: v.optional(v.id("activities")),
+    work_order_id: v.optional(v.id("production_orders")),
   })
     .index("by_entity", ["entity_type", "entity_id"])
     .index("by_activity_type", ["activity_type"])
-    .index("by_timestamp", ["timestamp"]),
+    .index("by_timestamp", ["timestamp"])
+    .index("by_company", ["company_id"])
+    .index("by_type_id", ["type_id"])
+    .index("by_batch_id", ["batch_id"])
+    .index("by_facility", ["facility_id"])
+    .index("by_status", ["status"]),
 
   activity_types: defineTable({
     company_id: v.id("companies"),
