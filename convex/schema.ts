@@ -1841,6 +1841,26 @@ export default defineSchema({
   // COST TRACKING (COGS)
   // ============================================================================
 
+  // Periodic meter readings for utility costs (electricity, water, gas)
+  utility_readings: defineTable({
+    facility_id: v.id("facilities"),
+    utility_type: v.string(), // electricity | water | gas
+    period: v.string(), // YYYY-MM
+    reading_previous: v.number(),
+    reading_current: v.number(),
+    consumption: v.number(), // reading_current - reading_previous
+    consumption_unit: v.string(), // kWh | m3 | galones
+    cost_total: v.number(),
+    cost_currency: v.string(), // ISO 4217
+    allocation_status: v.string(), // pending | allocated | no_batches
+    notes: v.optional(v.string()),
+    recorded_by: v.id("users"),
+    created_at: v.number(),
+  })
+    .index("by_facility", ["facility_id"])
+    .index("by_period", ["period"])
+    .index("by_type_period", ["utility_type", "period"]),
+
   // Non-inventory costs linked to batches (labor, utilities, depreciation)
   cost_entries: defineTable({
     facility_id: v.id("facilities"),
