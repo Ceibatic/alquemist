@@ -217,18 +217,18 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
 **para** que todas las actividades creadas desde operaciones de batch/receta tengan type_id, category, company_id y activity_resources
 
 #### Criterios de Aceptacion
-- [ ] Helper `getActivityTypeByCode(ctx, companyId, code)` creado en `convex/helpers.ts` que busca type por code en activity_types; retorna el tipo o null
-- [ ] En `convex/batches.ts`, los 7 inserts de actividad (`ctx.db.insert("activities", ...)`) refactorizados para:
+- [x] Helper `getActivityTypeByCode(ctx, companyId, code)` creado en `convex/helpers.ts` que busca type por code en activity_types; retorna el tipo o null
+- [x] En `convex/batches.ts`, los 7 inserts de actividad (`ctx.db.insert("activities", ...)`) refactorizados para:
   - Resolver company_id desde batch → facility → company (o pasado como arg)
   - Lookup activity_type por code (movement, loss_record, batch_split, batch_merge, harvest, phase_transition)
   - Poblar: type_id, category, company_id, facility_id, batch_id, crop_phase, status: "completed", title auto-generado
   - Crear activity_resources rows para cada material en materials_consumed (si hay)
-- [ ] En `convex/recipes.ts`, el insert de actividad (recipe_execution) refactorizado igual:
+- [x] En `convex/recipes.ts`, el insert de actividad (recipe_execution) refactorizado igual:
   - Poblar type_id, category, company_id, facility_id, status: "completed"
   - Crear activity_resources rows para cada ingrediente consumido
-- [ ] Si no existe activity_type para el code (empresa sin seed), hacer fallback graceful: insert sin type_id (como antes)
-- [ ] Comportamiento externo identico: returns, batch updates, plant updates, inventory changes NO cambian
-- [ ] `npx next build` pasa sin errores
+- [x] Si no existe activity_type para el code (empresa sin seed), hacer fallback graceful: insert sin type_id (como antes)
+- [x] Comportamiento externo identico: returns, batch updates, plant updates, inventory changes NO cambian
+- [x] `npx next build` pasa sin errores
 
 #### Backend
 - Helper: `getActivityTypeByCode()` en `convex/helpers.ts`
