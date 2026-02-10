@@ -6,7 +6,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { generateInternalLotNumber } from "./helpers";
+import { generateInternalLotNumber, consumeFromInventoryFIFO } from "./helpers";
 
 /**
  * List activities
@@ -261,6 +261,263 @@ export const log = mutation({
       notes: args.notes,
       created_at: now,
     });
+
+    return activityId;
+  },
+});
+
+// ============================================================================
+// LOG V2 — New model with type_id, activity_resources, and expanded context
+// ============================================================================
+
+/**
+ * Log an activity using the new v2 model.
+ * Uses type_id (from activity_types catalog) instead of activity_type string.
+ * Creates normalized activity_resources rows for each resource.
+ * Optionally consumes inventory via FIFO.
+ */
+export const logV2 = mutation({
+  args: {
+    // Type (required)
+    type_id: v.id("activity_types"),
+
+    // Legacy fields (still required for compat)
+    entity_type: v.string(),
+    entity_id: v.string(),
+    performed_by: v.id("users"),
+
+    // Context (optional)
+    company_id: v.optional(v.id("companies")),
+    facility_id: v.optional(v.id("facilities")),
+    batch_id: v.optional(v.id("batches")),
+    crop_phase: v.optional(v.string()),
+    zone_id: v.optional(v.id("areas")),
+    structure_id: v.optional(v.id("structures")),
+
+    // Workflow
+    status: v.optional(v.string()),
+    priority: v.optional(v.string()),
+    title: v.optional(v.string()),
+    observations: v.optional(v.string()),
+
+    // Time
+    duration_minutes: v.optional(v.number()),
+    started_at: v.optional(v.number()),
+
+    // Assignment
+    assigned_to: v.optional(v.id("users")),
+
+    // Links
+    parent_activity_id: v.optional(v.id("activities")),
+    work_order_id: v.optional(v.id("production_orders")),
+    scheduled_activity_id: v.optional(v.id("scheduled_activities")),
+
+    // Resources
+    resources: v.optional(v.array(v.object({
+      product_id: v.id("products"),
+      direction: v.string(), // consumed/produced/applied/wasted
+      quantity: v.number(),
+      quantity_unit: v.string(),
+      unit_id: v.optional(v.id("units_of_measure")),
+      inventory_item_id: v.optional(v.id("inventory_items")),
+      application_rate: v.optional(v.string()),
+      application_method: v.optional(v.string()),
+      notes: v.optional(v.string()),
+    }))),
+    consume_inventory: v.optional(v.boolean()),
+
+    // Legacy fields
+    area_from: v.optional(v.id("areas")),
+    area_to: v.optional(v.id("areas")),
+    quantity_before: v.optional(v.number()),
+    quantity_after: v.optional(v.number()),
+    qr_scanned: v.optional(v.string()),
+    equipment_used: v.optional(v.array(v.any())),
+    photos: v.optional(v.array(v.string())),
+    files: v.optional(v.array(v.string())),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // 1. Validate type_id
+    const activityType = await ctx.db.get(args.type_id);
+    if (!activityType) {
+      throw new Error("Tipo de actividad no encontrado");
+    }
+
+    // 2. Denormalize category and activity_type from the type
+    const category = activityType.category;
+    const activityTypeCode = activityType.code;
+
+    // 3. Auto-generate title if not provided
+    const title = args.title || `${activityType.name}`;
+
+    // 4. Insert activity with both legacy and new fields
+    const activityId = await ctx.db.insert("activities", {
+      // Legacy required fields
+      entity_type: args.entity_type,
+      entity_id: args.entity_id,
+      activity_type: activityTypeCode, // Legacy compat
+      performed_by: args.performed_by,
+      timestamp: now,
+      duration_minutes: args.duration_minutes,
+      materials_consumed: [], // Will be populated below for compat
+      equipment_used: args.equipment_used || [],
+      photos: args.photos || [],
+      files: args.files || [],
+      created_at: now,
+
+      // Legacy optional
+      scheduled_activity_id: args.scheduled_activity_id,
+      area_from: args.area_from,
+      area_to: args.area_to,
+      quantity_before: args.quantity_before,
+      quantity_after: args.quantity_after,
+      qr_scanned: args.qr_scanned,
+      scan_timestamp: args.qr_scanned ? now : undefined,
+      notes: args.notes,
+
+      // New v2 fields
+      type_id: args.type_id,
+      category,
+      company_id: args.company_id,
+      facility_id: args.facility_id,
+      batch_id: args.batch_id,
+      crop_phase: args.crop_phase,
+      zone_id: args.zone_id,
+      structure_id: args.structure_id,
+      status: args.status || "completed",
+      priority: args.priority || "routine",
+      started_at: args.started_at,
+      completed_at: args.status === "completed" || !args.status ? now : undefined,
+      assigned_to: args.assigned_to,
+      title,
+      observations: args.observations,
+      parent_activity_id: args.parent_activity_id,
+      work_order_id: args.work_order_id,
+    });
+
+    // 5. Process resources → create activity_resources rows
+    const materialsConsumedLegacy: Array<Record<string, unknown>> = [];
+
+    if (args.resources && args.resources.length > 0) {
+      for (const resource of args.resources) {
+        let costPerUnit: number | undefined;
+        let costTotal: number | undefined;
+        let batchNumber: string | undefined;
+        let transactionId: string | undefined;
+
+        // If consuming inventory via FIFO
+        if (
+          args.consume_inventory &&
+          (resource.direction === "consumed" || resource.direction === "applied")
+        ) {
+          if (resource.inventory_item_id) {
+            // Specific item consumption
+            const item = await ctx.db.get(resource.inventory_item_id);
+            if (!item) throw new Error("Item de inventario no encontrado");
+            if (item.quantity_available < resource.quantity) {
+              const product = await ctx.db.get(resource.product_id);
+              throw new Error(
+                `Stock insuficiente para ${product?.name || "producto"}. Disponible: ${item.quantity_available}, Requerido: ${resource.quantity}`
+              );
+            }
+            await ctx.db.patch(resource.inventory_item_id, {
+              quantity_available: item.quantity_available - resource.quantity,
+              last_movement_date: now,
+              updated_at: now,
+            });
+            costPerUnit = item.cost_per_unit;
+            costTotal = costPerUnit ? costPerUnit * resource.quantity : undefined;
+            batchNumber = item.batch_number;
+          } else {
+            // FIFO consumption
+            const consumed = await consumeFromInventoryFIFO(ctx, {
+              product_id: resource.product_id,
+              quantity: resource.quantity,
+              facility_id: args.facility_id,
+              area_id: args.zone_id,
+            });
+
+            // Create one activity_resource per consumed lot
+            for (const ci of consumed) {
+              const ciCostTotal = ci.cost_per_unit
+                ? ci.cost_per_unit * ci.quantity_consumed
+                : undefined;
+
+              await ctx.db.insert("activity_resources", {
+                activity_id: activityId,
+                direction: resource.direction,
+                product_id: resource.product_id,
+                inventory_item_id: ci.inventory_item_id,
+                quantity: ci.quantity_consumed,
+                unit_id: resource.unit_id,
+                quantity_unit: resource.quantity_unit,
+                cost_per_unit: ci.cost_per_unit,
+                cost_total: ciCostTotal,
+                application_rate: resource.application_rate,
+                application_method: resource.application_method,
+                batch_number: ci.batch_number,
+                notes: resource.notes,
+                created_at: now,
+              });
+
+              materialsConsumedLegacy.push({
+                product_id: resource.product_id,
+                inventory_item_id: ci.inventory_item_id,
+                quantity: ci.quantity_consumed,
+                quantity_unit: resource.quantity_unit,
+                batch_number: ci.batch_number,
+                consumed: true,
+              });
+            }
+            continue; // Skip the single-row insert below
+          }
+        }
+
+        // Create single activity_resource row
+        if (!costTotal && costPerUnit) {
+          costTotal = costPerUnit * resource.quantity;
+        }
+
+        await ctx.db.insert("activity_resources", {
+          activity_id: activityId,
+          direction: resource.direction,
+          product_id: resource.product_id,
+          inventory_item_id: resource.inventory_item_id,
+          quantity: resource.quantity,
+          unit_id: resource.unit_id,
+          quantity_unit: resource.quantity_unit,
+          cost_per_unit: costPerUnit,
+          cost_total: costTotal,
+          application_rate: resource.application_rate,
+          application_method: resource.application_method,
+          batch_number: batchNumber,
+          notes: resource.notes,
+          created_at: now,
+        });
+
+        // Legacy compat
+        if (resource.direction === "consumed" || resource.direction === "applied") {
+          materialsConsumedLegacy.push({
+            product_id: resource.product_id,
+            inventory_item_id: resource.inventory_item_id,
+            quantity: resource.quantity,
+            quantity_unit: resource.quantity_unit,
+            batch_number: batchNumber,
+            consumed: !!args.consume_inventory,
+          });
+        }
+      }
+
+      // 6. Update legacy materials_consumed for backward compat
+      if (materialsConsumedLegacy.length > 0) {
+        await ctx.db.patch(activityId, {
+          materials_consumed: materialsConsumedLegacy,
+        });
+      }
+    }
 
     return activityId;
   },

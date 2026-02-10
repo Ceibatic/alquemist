@@ -100,6 +100,120 @@ export function getLotPrefix(category: string): string {
 }
 
 // ============================================================================
+// FIFO INVENTORY CONSUMPTION
+// ============================================================================
+
+export interface FifoConsumedItem {
+  inventory_item_id: Id<"inventory_items">;
+  quantity_consumed: number;
+  cost_per_unit: number | undefined;
+  batch_number: string | undefined;
+}
+
+/**
+ * Consume inventory using FIFO (First In, First Out) by received_date.
+ * Deducts from the oldest available lots first.
+ *
+ * @returns Array of consumed items with quantity and cost details
+ * @throws Error if insufficient stock
+ */
+export async function consumeFromInventoryFIFO(
+  ctx: MutationCtx,
+  args: {
+    product_id: Id<"products">;
+    quantity: number;
+    facility_id?: Id<"facilities">;
+    area_id?: Id<"areas">;
+  }
+): Promise<FifoConsumedItem[]> {
+  const now = Date.now();
+
+  // Determine area filter
+  let areaIds: Id<"areas">[] = [];
+  if (args.area_id) {
+    areaIds = [args.area_id];
+  } else if (args.facility_id) {
+    const areas = await ctx.db
+      .query("areas")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facility_id!))
+      .collect();
+    areaIds = areas.map((a) => a._id);
+  }
+
+  // Get available inventory sorted FIFO
+  const allInventory = await ctx.db.query("inventory_items").collect();
+  let availableItems = allInventory
+    .filter(
+      (item) =>
+        item.product_id === args.product_id &&
+        item.lot_status === "available" &&
+        item.quantity_available > 0
+    )
+    .sort((a, b) => (a.received_date || 0) - (b.received_date || 0));
+
+  // Filter by area if specified
+  if (areaIds.length > 0) {
+    availableItems = availableItems.filter(
+      (item) => item.area_id && areaIds.includes(item.area_id)
+    );
+  }
+
+  const consumed: FifoConsumedItem[] = [];
+  let remaining = args.quantity;
+
+  for (const item of availableItems) {
+    if (remaining <= 0) break;
+
+    const consumeFromThis = Math.min(item.quantity_available, remaining);
+
+    await ctx.db.patch(item._id, {
+      quantity_available: item.quantity_available - consumeFromThis,
+      last_movement_date: now,
+      updated_at: now,
+    });
+
+    consumed.push({
+      inventory_item_id: item._id,
+      quantity_consumed: consumeFromThis,
+      cost_per_unit: item.cost_per_unit,
+      batch_number: item.batch_number,
+    });
+
+    remaining -= consumeFromThis;
+  }
+
+  if (remaining > 0) {
+    const product = await ctx.db.get(args.product_id);
+    throw new Error(
+      `Stock insuficiente para ${product?.name || "producto"}. Requerido: ${args.quantity}, Disponible: ${args.quantity - remaining}`
+    );
+  }
+
+  return consumed;
+}
+
+// ============================================================================
+// ACTIVITY TYPE LOOKUP
+// ============================================================================
+
+/**
+ * Get activity type by code for a company.
+ * Returns null if not found (graceful fallback).
+ */
+export async function getActivityTypeByCode(
+  ctx: QueryCtx | MutationCtx,
+  companyId: Id<"companies">,
+  code: string
+) {
+  return await ctx.db
+    .query("activity_types")
+    .withIndex("by_company_code", (q) =>
+      q.eq("company_id", companyId).eq("code", code)
+    )
+    .first();
+}
+
+// ============================================================================
 // DEPRECATED FUNCTIONS
 // ============================================================================
 

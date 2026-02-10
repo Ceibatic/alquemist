@@ -174,7 +174,7 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
 **para** que codigo nuevo use activity_resources y type_id desde el inicio, mientras el codigo existente sigue funcionando
 
 #### Criterios de Aceptacion
-- [ ] Nueva mutation `logV2()` en `convex/activities.ts` que acepta:
+- [x] Nueva mutation `logV2()` en `convex/activities.ts` que acepta:
   - `type_id` (requerido, id activity_types) en vez de `activity_type` string
   - `company_id`, `facility_id`, `batch_id`, `crop_phase` (opcionales)
   - `status` (default: "completed"), `priority` (default: "routine")
@@ -182,20 +182,20 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
   - `resources` (array de objetos con product_id, direction, quantity, unit, etc.)
   - `consume_inventory` flag para disparar consumo real
   - Demas campos existentes (performed_by, duration_minutes, etc.)
-- [ ] `logV2()` internamente:
+- [x] `logV2()` internamente:
   1. Valida type_id contra activity_types table
   2. Denormaliza `category` y `activity_type` (code) desde el tipo
   3. Inserta activity con todos los campos nuevos + legacy fields para compat
   4. Para cada recurso: crea fila en `activity_resources`
   5. Si `consume_inventory=true`: ejecuta consumo FIFO/especifico y vincula transaction_id en el activity_resource
-  6. Crea labor cost entry si duration_minutes > 0 (reusa `createLaborCostEntry`)
+  6. ~~Crea labor cost entry si duration_minutes > 0~~ (createLaborCostEntry no existe aun, se agrega en futuro)
   7. Sigue escribiendo `materials_consumed` en la activity (backup durante migracion)
-- [ ] Helper `consumeFromInventoryFIFO(ctx, args)` extraido como funcion compartida en `convex/helpers.ts`:
+- [x] Helper `consumeFromInventoryFIFO(ctx, args)` extraido como funcion compartida en `convex/helpers.ts`:
   - Acepta: product_id, quantity, facility_id, area_id opcional
   - Retorna: array de {inventory_item_id, quantity_consumed, cost_per_unit, batch_number}
   - Logica identica a la actual en logInventoryMovement() y log()
-- [ ] Mutation `log()` existente NO se modifica (sigue funcionando para callers actuales)
-- [ ] `npx next build` pasa sin errores
+- [x] Mutation `log()` existente NO se modifica (sigue funcionando para callers actuales)
+- [x] `npx next build` pasa sin errores
 
 #### Backend
 - Mutation nueva: `api.activities.logV2`
