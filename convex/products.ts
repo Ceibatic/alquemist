@@ -144,6 +144,15 @@ export const create = mutation({
       v.union(v.literal("COP"), v.literal("USD"), v.literal("EUR"))
     ),
     price_unit: v.optional(v.string()),
+
+    // Procurement & Tracking
+    procurement_type: v.optional(
+      v.union(v.literal("purchased"), v.literal("produced"), v.literal("both"))
+    ),
+    lot_tracking: v.optional(
+      v.union(v.literal("required"), v.literal("optional"), v.literal("none"))
+    ),
+    shelf_life_days: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUserId(ctx);
@@ -216,6 +225,10 @@ export const create = mutation({
       price_currency: args.price_currency || "COP",
       price_unit: args.price_unit,
 
+      procurement_type: args.procurement_type,
+      lot_tracking: args.lot_tracking,
+      shelf_life_days: args.shelf_life_days,
+
       status: "active",
       created_at: now,
       updated_at: now,
@@ -272,6 +285,14 @@ export const update = mutation({
     organic_certified: v.optional(v.boolean()),
     organic_cert_number: v.optional(v.string()),
     status: v.optional(v.union(v.literal("active"), v.literal("discontinued"))),
+    // Procurement & Tracking
+    procurement_type: v.optional(
+      v.union(v.literal("purchased"), v.literal("produced"), v.literal("both"))
+    ),
+    lot_tracking: v.optional(
+      v.union(v.literal("required"), v.literal("optional"), v.literal("none"))
+    ),
+    shelf_life_days: v.optional(v.number()),
     // Price history tracking (optional)
     priceChangeReason: v.optional(v.string()),
     priceChangeCategory: v.optional(v.string()),
@@ -364,6 +385,12 @@ export const update = mutation({
     if (sanitizedData.organic_cert_number !== undefined)
       updates.organic_cert_number = sanitizedData.organic_cert_number;
     if (args.status !== undefined) updates.status = args.status;
+    if (args.procurement_type !== undefined)
+      updates.procurement_type = args.procurement_type;
+    if (args.lot_tracking !== undefined)
+      updates.lot_tracking = args.lot_tracking;
+    if (args.shelf_life_days !== undefined)
+      updates.shelf_life_days = args.shelf_life_days;
 
     await ctx.db.patch(args.productId, updates);
 

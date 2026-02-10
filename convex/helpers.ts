@@ -14,20 +14,30 @@ import { Id } from "./_generated/dataModel";
  * Format: PREFIX-YYMMDD-XXXX
  */
 export const LOT_PREFIXES: Record<string, string> = {
-  // Supply categories
+  // Insumos
   seed: "SEM",
   nutrient: "NUT",
   pesticide: "PES",
-  equipment: "EQP",
   substrate: "SUS",
-  container: "CON",
-  tool: "HER",
-  other: "OTR",
-  // Plant lifecycle categories
+  biocontrol: "BIO",
+  // Material vegetal
   clone: "CLO",
   seedling: "PLT",
   mother_plant: "MAD",
   plant_material: "MAT",
+  plant_vegetative: "VEG",
+  plant_flowering: "FLO",
+  harvest_wet: "CHU",
+  harvest_dry: "CSE",
+  processed_plant: "PRO",
+  // Preparados
+  stock_solution: "SOL",
+  substrate_mix: "MIX",
+  // Infraestructura
+  equipment: "EQP",
+  container: "CON",
+  tool: "HER",
+  other: "OTR",
 };
 
 /**

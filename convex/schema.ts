@@ -692,6 +692,11 @@ export default defineSchema({
     price_currency: v.string(), // Default: "COP"
     price_unit: v.optional(v.string()), // per_kg/per_unit
 
+    // Procurement & Tracking (US-RES.2)
+    procurement_type: v.optional(v.string()), // purchased/produced/both
+    lot_tracking: v.optional(v.string()), // required/optional/none
+    shelf_life_days: v.optional(v.number()),
+
     // Metadata
     status: v.string(), // active/discontinued
     created_at: v.number(),

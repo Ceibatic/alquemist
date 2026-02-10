@@ -107,6 +107,16 @@ export const productFormSchema = z.object({
     .optional()
     .or(z.literal('')),
 
+  // Procurement & Tracking
+  procurement_type: z.enum(['purchased', 'produced', 'both']).optional().or(z.literal('')),
+  lot_tracking: z.enum(['required', 'optional', 'none']).optional().or(z.literal('')),
+  shelf_life_days: z.coerce
+    .number()
+    .int('Días de vida útil debe ser un número entero')
+    .positive('Días de vida útil debe ser positivo')
+    .optional()
+    .or(z.literal('')),
+
   // Price change tracking (for edits)
   priceChangeCategory: z.string().optional().or(z.literal('')),
   priceChangeReason: z
@@ -195,6 +205,18 @@ export const productCategoryIcons: Record<string, string> = {
   container: '🪣',
   tool: '🔧',
   other: '📋',
+};
+
+export const procurementTypeLabels: Record<string, string> = {
+  purchased: 'Comprado',
+  produced: 'Producido',
+  both: 'Comprado y Producido',
+};
+
+export const lotTrackingLabels: Record<string, string> = {
+  required: 'Obligatorio',
+  optional: 'Opcional',
+  none: 'Sin seguimiento',
 };
 
 export const productStatusLabels: Record<string, string> = {

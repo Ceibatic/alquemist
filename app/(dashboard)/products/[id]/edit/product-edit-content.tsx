@@ -50,6 +50,10 @@ export function ProductEditContent({ productId }: ProductEditContentProps) {
         organic_cert_number: data.organic_cert_number || undefined,
         default_price: typeof data.default_price === 'number' ? data.default_price : undefined,
         price_unit: data.price_unit || undefined,
+        // Procurement & Tracking
+        procurement_type: data.procurement_type || undefined,
+        lot_tracking: data.lot_tracking || undefined,
+        shelf_life_days: typeof data.shelf_life_days === 'number' ? data.shelf_life_days : undefined,
         // Price change tracking
         priceChangeCategory: data.priceChangeCategory || undefined,
         priceChangeReason: data.priceChangeReason || undefined,

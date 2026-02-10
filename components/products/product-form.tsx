@@ -35,6 +35,8 @@ import {
   productCategoryLabels,
   weightUnitLabels,
   priceChangeCategoryLabels,
+  procurementTypeLabels,
+  lotTrackingLabels,
   INVENTORY_UNITS,
   type ProductFormInput,
 } from '@/lib/validations/product';
@@ -131,6 +133,9 @@ export function ProductForm({
       default_price: undefined,
       price_currency: 'COP',
       price_unit: '',
+      procurement_type: '',
+      lot_tracking: '',
+      shelf_life_days: undefined,
       priceChangeCategory: '',
       priceChangeReason: '',
       priceChangeNotes: '',
@@ -174,6 +179,9 @@ export function ProductForm({
         default_price: existingProduct.default_price || undefined,
         price_currency: existingProduct.price_currency || 'COP',
         price_unit: existingProduct.price_unit || '',
+        procurement_type: (existingProduct as any).procurement_type || '',
+        lot_tracking: (existingProduct as any).lot_tracking || '',
+        shelf_life_days: (existingProduct as any).shelf_life_days || undefined,
       });
     }
   }, [existingProduct, form]);
@@ -411,6 +419,108 @@ export function ProductForm({
               </FormItem>
             )}
           />
+        </div>
+
+        {/* Inventory Configuration */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Configuración de Inventario</h3>
+          <Separator />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {/* Procurement Type */}
+            <FormField
+              control={form.control}
+              name="procurement_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Adquisición</FormLabel>
+                  <Select
+                    onValueChange={(value) => field.onChange(value === 'none' ? '' : value)}
+                    value={field.value || 'none'}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar tipo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Sin definir</SelectItem>
+                      {(['purchased', 'produced', 'both'] as const).map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {procurementTypeLabels[type]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Se compra, se produce internamente, o ambos
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Lot Tracking */}
+            <FormField
+              control={form.control}
+              name="lot_tracking"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Seguimiento de Lote</FormLabel>
+                  <Select
+                    onValueChange={(value) => field.onChange(value === 'none_value' ? 'none' : value === 'no_value' ? '' : value)}
+                    value={field.value === 'none' ? 'none_value' : field.value || 'no_value'}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar modo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="no_value">Sin definir</SelectItem>
+                      {(['required', 'optional', 'none'] as const).map((mode) => (
+                        <SelectItem key={mode} value={mode === 'none' ? 'none_value' : mode}>
+                          {lotTrackingLabels[mode]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Si se requiere número de lote al recibir inventario
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Shelf Life Days */}
+            <FormField
+              control={form.control}
+              name="shelf_life_days"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Vida Útil (días)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="Ej: 365"
+                      {...field}
+                      value={field.value || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.onChange(value === '' ? undefined : parseInt(value, 10));
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Auto-calcula fecha de vencimiento al recibir
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
         {/* Supplier & Manufacturer */}

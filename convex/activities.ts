@@ -585,9 +585,18 @@ export const logInventoryMovement = mutation({
         // Create new inventory item
         activityType = "inventory_receipt";
 
-        // Auto-generate internal batch number if not provided
-        const internalBatchNumber = args.batch_number ||
-          await generateInternalLotNumber(ctx, product.category);
+        // Auto-generate batch number if not provided (or if lot_tracking === "required")
+        let internalBatchNumber = args.batch_number;
+        if (!internalBatchNumber) {
+          internalBatchNumber = await generateInternalLotNumber(ctx, product.category);
+        }
+
+        // Auto-calculate expiration date from shelf_life_days if not provided
+        let expirationDate = args.expiration_date;
+        if (!expirationDate && product.shelf_life_days) {
+          const receivedDate = args.received_date || now;
+          expirationDate = receivedDate + (product.shelf_life_days * 24 * 60 * 60 * 1000);
+        }
 
         // First create the activity (without inventory link)
         const activityId = await ctx.db.insert("activities", {
@@ -631,7 +640,7 @@ export const logInventoryMovement = mutation({
           serial_numbers: [],
           received_date: args.received_date || now,
           manufacturing_date: args.manufacturing_date,
-          expiration_date: args.expiration_date,
+          expiration_date: expirationDate,
           purchase_price: args.purchase_price,
           cost_per_unit: args.cost_per_unit,
           certificates: [],
