@@ -22,14 +22,14 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
 **para** tener una fuente unica de verdad para clasificar actividades en vez de strings hardcodeados
 
 #### Criterios de Aceptacion
-- [ ] Tabla `activity_types` creada en `convex/schema.ts` con todos los campos: company_id, category, code, name, description, icon, color, requires_zone, requires_batch, requires_resources, requires_photos, requires_verification, triggers_transformation, triggers_phase_change, metadata_schema, default_resources, is_system, status, sort_order, created_at, updated_at
-- [ ] Indexes: by_company, by_company_category, by_company_code, by_status
-- [ ] Archivo `lib/constants/activity-types.ts` con ACTIVITY_CATEGORIES (10 categorias) y DEFAULT_ACTIVITY_TYPES (~33 tipos)
-- [ ] Las 10 categorias son: cultivation, monitoring, transformation, application, movement, maintenance, quality, harvest, post_harvest, administrative
-- [ ] Archivo `convex/activityTypes.ts` con mutation `seedDefaults(companyId)` que crea los ~33 tipos default con `is_system: true`
-- [ ] Seed data incluye por categoria: cultivation (6 tipos), monitoring (4), transformation (3), application (3), movement (3), maintenance (3), quality (3), harvest (2), post_harvest (3), administrative (3)
-- [ ] Cada tipo default tiene: code unico, name en espanol, category correcta, flags de requerimientos apropiados
-- [ ] `npx next build` pasa sin errores
+- [x] Tabla `activity_types` creada en `convex/schema.ts` con todos los campos: company_id, category, code, name, description, icon, color, requires_zone, requires_batch, requires_resources, requires_photos, requires_verification, triggers_transformation, triggers_phase_change, metadata_schema, default_resources, is_system, status, sort_order, created_at, updated_at
+- [x] Indexes: by_company, by_company_category, by_company_code, by_status
+- [x] Archivo `lib/constants/activity-types.ts` con ACTIVITY_CATEGORIES (10 categorias) y DEFAULT_ACTIVITY_TYPES (~33 tipos)
+- [x] Las 10 categorias son: cultivation, monitoring, transformation, application, movement, maintenance, quality, harvest, post_harvest, administrative
+- [x] Archivo `convex/activityTypes.ts` con mutation `seedDefaults(companyId)` que crea los ~33 tipos default con `is_system: true`
+- [x] Seed data incluye por categoria: cultivation (6 tipos), monitoring (4), transformation (3), application (3), movement (3), maintenance (3), quality (3), harvest (2), post_harvest (3), administrative (3)
+- [x] Cada tipo default tiene: code unico, name en espanol, category correcta, flags de requerimientos apropiados
+- [x] `npx next build` pasa sin errores
 
 #### Backend
 - Schema: `activity_types` (nueva tabla)
@@ -52,16 +52,16 @@ Esta es la Parte 1 de 3 de la mejora al sistema de actividades. Establece la fun
 **para** adaptar el catalogo a las necesidades especificas de mi empresa
 
 #### Criterios de Aceptacion
-- [ ] Query `list(companyId, category?, status?)` retorna tipos filtrados, ordenados por sort_order
-- [ ] Query `getById(typeId)` retorna un tipo con todos sus campos
-- [ ] Query `getByCode(companyId, code)` retorna el tipo por code (para lookups internos)
-- [ ] Mutation `create(companyId, category, code, name, ...)` crea un tipo custom con `is_system: false`
-- [ ] Al crear, valida que `code` sea unico dentro de la empresa (error si ya existe)
-- [ ] Al crear, valida que `category` sea uno de los 10 valores validos
-- [ ] Mutation `update(typeId, fields)` actualiza campos permitidos (name, description, icon, color, requires_*, triggers_*, metadata_schema, default_resources, sort_order)
-- [ ] Mutation `archive(typeId)` cambia status a "archived"; rechaza si `is_system: true` con mensaje "Los tipos de sistema no se pueden archivar"
-- [ ] Mutation `restore(typeId)` cambia status de "archived" a "active"
-- [ ] `npx next build` pasa sin errores
+- [x] Query `list(companyId, category?, status?)` retorna tipos filtrados, ordenados por sort_order
+- [x] Query `getById(typeId)` retorna un tipo con todos sus campos
+- [x] Query `getByCode(companyId, code)` retorna el tipo por code (para lookups internos)
+- [x] Mutation `create(companyId, category, code, name, ...)` crea un tipo custom con `is_system: false`
+- [x] Al crear, valida que `code` sea unico dentro de la empresa (error si ya existe)
+- [x] Al crear, valida que `category` sea uno de los 10 valores validos
+- [x] Mutation `update(typeId, fields)` actualiza campos permitidos (name, description, icon, color, requires_*, triggers_*, metadata_schema, default_resources, sort_order)
+- [x] Mutation `archive(typeId)` cambia status a "archived"; rechaza si `is_system: true` con mensaje "Los tipos de sistema no se pueden archivar"
+- [x] Mutation `restore(typeId)` cambia status de "archived" a "active"
+- [x] `npx next build` pasa sin errores
 
 #### Backend
 - Queries: `api.activityTypes.list`, `api.activityTypes.getById`

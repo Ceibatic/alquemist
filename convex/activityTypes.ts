@@ -57,6 +57,79 @@ const DEFAULT_SEED_TYPES = [
   { code: "regulatory_report", name: "Reporte regulatorio", category: "administrative", icon: "FileText", color: "gray", requires_zone: false, requires_batch: false, requires_resources: false, requires_photos: false, requires_verification: false, triggers_transformation: false, triggers_phase_change: false },
 ];
 
+const VALID_CATEGORIES = [
+  "cultivation", "monitoring", "transformation", "application", "movement",
+  "maintenance", "quality", "harvest", "post_harvest", "administrative",
+];
+
+// ============================================================================
+// QUERIES
+// ============================================================================
+
+/**
+ * List activity types for a company, optionally filtered by category and/or status.
+ * Ordered by sort_order.
+ */
+export const list = query({
+  args: {
+    companyId: v.id("companies"),
+    category: v.optional(v.string()),
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, { companyId, category, status }) => {
+    let types;
+    if (category) {
+      types = await ctx.db
+        .query("activity_types")
+        .withIndex("by_company_category", (q) =>
+          q.eq("company_id", companyId).eq("category", category)
+        )
+        .collect();
+    } else {
+      types = await ctx.db
+        .query("activity_types")
+        .withIndex("by_company", (q) => q.eq("company_id", companyId))
+        .collect();
+    }
+
+    if (status) {
+      types = types.filter((t) => t.status === status);
+    }
+
+    return types.sort((a, b) => a.sort_order - b.sort_order);
+  },
+});
+
+/**
+ * Get a single activity type by ID.
+ */
+export const getById = query({
+  args: {
+    typeId: v.id("activity_types"),
+  },
+  handler: async (ctx, { typeId }) => {
+    return await ctx.db.get(typeId);
+  },
+});
+
+/**
+ * Get a single activity type by company + code.
+ */
+export const getByCode = query({
+  args: {
+    companyId: v.id("companies"),
+    code: v.string(),
+  },
+  handler: async (ctx, { companyId, code }) => {
+    return await ctx.db
+      .query("activity_types")
+      .withIndex("by_company_code", (q) =>
+        q.eq("company_id", companyId).eq("code", code)
+      )
+      .first();
+  },
+});
+
 // ============================================================================
 // MUTATIONS
 // ============================================================================
@@ -111,5 +184,158 @@ export const seedDefaults = mutation({
     }
 
     return { created, total: DEFAULT_SEED_TYPES.length };
+  },
+});
+
+/**
+ * Create a custom activity type.
+ * Validates code uniqueness within the company and category validity.
+ */
+export const create = mutation({
+  args: {
+    companyId: v.id("companies"),
+    category: v.string(),
+    code: v.string(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    color: v.optional(v.string()),
+    requires_zone: v.boolean(),
+    requires_batch: v.boolean(),
+    requires_resources: v.boolean(),
+    requires_photos: v.boolean(),
+    requires_verification: v.boolean(),
+    triggers_transformation: v.boolean(),
+    triggers_phase_change: v.boolean(),
+    metadata_schema: v.optional(v.any()),
+    default_resources: v.optional(v.array(v.any())),
+    sort_order: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Validate category
+    if (!VALID_CATEGORIES.includes(args.category)) {
+      throw new Error(`Categoria invalida: "${args.category}". Valores validos: ${VALID_CATEGORIES.join(", ")}`);
+    }
+
+    // Validate code uniqueness within company
+    const existing = await ctx.db
+      .query("activity_types")
+      .withIndex("by_company_code", (q) =>
+        q.eq("company_id", args.companyId).eq("code", args.code)
+      )
+      .first();
+
+    if (existing) {
+      throw new Error(`Ya existe un tipo de actividad con el codigo "${args.code}" en esta empresa`);
+    }
+
+    const now = Date.now();
+    return await ctx.db.insert("activity_types", {
+      company_id: args.companyId,
+      category: args.category,
+      code: args.code,
+      name: args.name,
+      description: args.description,
+      icon: args.icon,
+      color: args.color,
+      requires_zone: args.requires_zone,
+      requires_batch: args.requires_batch,
+      requires_resources: args.requires_resources,
+      requires_photos: args.requires_photos,
+      requires_verification: args.requires_verification,
+      triggers_transformation: args.triggers_transformation,
+      triggers_phase_change: args.triggers_phase_change,
+      metadata_schema: args.metadata_schema,
+      default_resources: args.default_resources,
+      is_system: false,
+      status: "active",
+      sort_order: args.sort_order ?? 1000,
+      created_at: now,
+      updated_at: now,
+    });
+  },
+});
+
+/**
+ * Update an activity type's editable fields.
+ */
+export const update = mutation({
+  args: {
+    typeId: v.id("activity_types"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    color: v.optional(v.string()),
+    requires_zone: v.optional(v.boolean()),
+    requires_batch: v.optional(v.boolean()),
+    requires_resources: v.optional(v.boolean()),
+    requires_photos: v.optional(v.boolean()),
+    requires_verification: v.optional(v.boolean()),
+    triggers_transformation: v.optional(v.boolean()),
+    triggers_phase_change: v.optional(v.boolean()),
+    metadata_schema: v.optional(v.any()),
+    default_resources: v.optional(v.array(v.any())),
+    sort_order: v.optional(v.number()),
+  },
+  handler: async (ctx, { typeId, ...fields }) => {
+    const type = await ctx.db.get(typeId);
+    if (!type) throw new Error("Tipo de actividad no encontrado");
+
+    // Build patch with only provided fields
+    const patch: Record<string, unknown> = { updated_at: Date.now() };
+    for (const [key, value] of Object.entries(fields)) {
+      if (value !== undefined) {
+        patch[key] = value;
+      }
+    }
+
+    await ctx.db.patch(typeId, patch);
+    return typeId;
+  },
+});
+
+/**
+ * Archive an activity type. System types cannot be archived.
+ */
+export const archive = mutation({
+  args: {
+    typeId: v.id("activity_types"),
+  },
+  handler: async (ctx, { typeId }) => {
+    const type = await ctx.db.get(typeId);
+    if (!type) throw new Error("Tipo de actividad no encontrado");
+
+    if (type.is_system) {
+      throw new Error("Los tipos de sistema no se pueden archivar");
+    }
+
+    await ctx.db.patch(typeId, {
+      status: "archived",
+      updated_at: Date.now(),
+    });
+    return typeId;
+  },
+});
+
+/**
+ * Restore an archived activity type to active status.
+ */
+export const restore = mutation({
+  args: {
+    typeId: v.id("activity_types"),
+  },
+  handler: async (ctx, { typeId }) => {
+    const type = await ctx.db.get(typeId);
+    if (!type) throw new Error("Tipo de actividad no encontrado");
+
+    if (type.status !== "archived") {
+      throw new Error("Solo se pueden restaurar tipos archivados");
+    }
+
+    await ctx.db.patch(typeId, {
+      status: "active",
+      updated_at: Date.now(),
+    });
+    return typeId;
   },
 });
