@@ -1546,10 +1546,105 @@ export default defineSchema({
     activity_metadata: v.optional(v.any()),
     notes: v.optional(v.string()),
     created_at: v.number(),
+
+    // ── New fields (v2 model — all optional for backward compat) ──
+    // Type classification
+    type_id: v.optional(v.id("activity_types")),
+    category: v.optional(v.string()), // Denormalized from activity_types
+
+    // Context
+    company_id: v.optional(v.id("companies")),
+    facility_id: v.optional(v.id("facilities")),
+    batch_id: v.optional(v.id("batches")),
+    crop_phase: v.optional(v.string()),
+    zone_id: v.optional(v.id("areas")),
+    structure_id: v.optional(v.id("structures")),
+
+    // Workflow
+    status: v.optional(v.string()), // planned/in_progress/completed/verified/cancelled
+    priority: v.optional(v.string()), // routine/urgent/critical
+
+    // Time
+    started_at: v.optional(v.number()),
+    completed_at: v.optional(v.number()),
+
+    // Assignment
+    assigned_to: v.optional(v.id("users")),
+    verified_by: v.optional(v.id("users")),
+    verified_at: v.optional(v.number()),
+
+    // Descriptive
+    title: v.optional(v.string()),
+    observations: v.optional(v.string()),
+
+    // Links
+    parent_activity_id: v.optional(v.id("activities")),
+    work_order_id: v.optional(v.id("production_orders")),
   })
     .index("by_entity", ["entity_type", "entity_id"])
     .index("by_activity_type", ["activity_type"])
-    .index("by_timestamp", ["timestamp"]),
+    .index("by_timestamp", ["timestamp"])
+    .index("by_company", ["company_id"])
+    .index("by_type_id", ["type_id"])
+    .index("by_batch_id", ["batch_id"])
+    .index("by_facility", ["facility_id"])
+    .index("by_status", ["status"]),
+
+  activity_types: defineTable({
+    company_id: v.id("companies"),
+    category: v.string(), // cultivation/monitoring/transformation/application/movement/maintenance/quality/harvest/post_harvest/administrative
+    code: v.string(), // Unique per company (e.g. "irrigation", "foliar_spray")
+    name: v.string(), // Display name
+    description: v.optional(v.string()),
+    icon: v.optional(v.string()), // Lucide icon name
+    color: v.optional(v.string()), // Tailwind color class
+
+    // Behavior flags
+    requires_zone: v.boolean(),
+    requires_batch: v.boolean(),
+    requires_resources: v.boolean(),
+    requires_photos: v.boolean(),
+    requires_verification: v.boolean(),
+    triggers_transformation: v.boolean(),
+    triggers_phase_change: v.boolean(),
+
+    // Dynamic data
+    metadata_schema: v.optional(v.any()), // JSON Schema for activity metadata validation
+    default_resources: v.optional(v.array(v.any())), // Suggested resources [{product_id, qty, unit}]
+
+    // Status
+    is_system: v.boolean(), // System types cannot be archived
+    status: v.string(), // active / archived
+    sort_order: v.number(),
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_company", ["company_id"])
+    .index("by_company_category", ["company_id", "category"])
+    .index("by_company_code", ["company_id", "code"])
+    .index("by_status", ["status"]),
+
+  activity_resources: defineTable({
+    activity_id: v.id("activities"),
+    direction: v.string(), // consumed / produced / applied / wasted
+    product_id: v.id("products"),
+    inventory_item_id: v.optional(v.id("inventory_items")), // Specific lot (null if FIFO)
+    quantity: v.number(),
+    unit_id: v.optional(v.id("units_of_measure")),
+    quantity_unit: v.string(), // Denormalized unit label
+    cost_per_unit: v.optional(v.number()),
+    cost_total: v.optional(v.number()), // qty * cost_per_unit
+    transaction_id: v.optional(v.id("inventory_transactions")), // Link to generated transaction
+    application_rate: v.optional(v.string()), // e.g. "2mL/L"
+    application_method: v.optional(v.string()), // foliar, drench, etc.
+    batch_number: v.optional(v.string()), // From inventory_item
+    notes: v.optional(v.string()),
+    created_at: v.number(),
+  })
+    .index("by_activity", ["activity_id"])
+    .index("by_product", ["product_id"])
+    .index("by_inventory_item", ["inventory_item_id"])
+    .index("by_direction", ["direction"]),
 
   pest_disease_records: defineTable({
     facility_id: v.id("facilities"),
