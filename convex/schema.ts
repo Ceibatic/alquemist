@@ -1999,4 +1999,101 @@ export default defineSchema({
     .index("by_facility", ["facility_id"])
     .index("by_cost_type", ["cost_type"])
     .index("by_period", ["period"]),
+
+  // ============================================================================
+  // ACTIVITY TEMPLATES & SCHEDULING (P2)
+  // ============================================================================
+
+  // Reusable activity templates — define WHAT to do, WITH WHAT, HOW OFTEN
+  activity_templates: defineTable({
+    company_id: v.id("companies"),
+    type_id: v.id("activity_types"), // FK to activity_types (P1)
+
+    // Classification
+    name: v.string(),
+    code: v.optional(v.string()), // Unique per company (e.g. "FERT-VEG-S2")
+    description: v.optional(v.string()),
+
+    // Applicability
+    crop_type_ids: v.optional(v.array(v.id("crop_types"))),
+    applicable_phases: v.array(v.string()), // crop_phase values
+    phase_day_start: v.optional(v.number()),
+    phase_day_end: v.optional(v.number()),
+
+    // Time estimates
+    estimated_duration_minutes: v.optional(v.number()),
+    labor_hours_per_1000_plants: v.optional(v.number()),
+
+    // Recurrence
+    frequency_type: v.string(), // once/daily/weekly/biweekly/monthly/on_demand/custom_days
+    frequency_interval_days: v.optional(v.number()),
+    repeat_count: v.optional(v.number()), // null = until end of phase
+
+    // Default metadata for pre-filling activity form
+    default_metadata: v.optional(v.any()),
+    default_priority: v.optional(v.string()), // routine/urgent/critical
+
+    // Conditions
+    requires_conditions: v.optional(v.any()),
+    depends_on_template_id: v.optional(v.id("activity_templates")),
+    min_days_after_dependency: v.optional(v.number()),
+
+    // Regulatory
+    regulatory_reference: v.optional(v.string()),
+    requires_verification: v.boolean(),
+
+    // Status
+    sort_order: v.number(),
+    is_active: v.boolean(),
+    version: v.number(), // default 1, incremented on duplicate
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_company", ["company_id"])
+    .index("by_type_id", ["type_id"])
+    .index("by_company_phase", ["company_id"]) // filter applicable_phases in code
+    .index("by_active", ["is_active"]),
+
+  // Resources pre-defined in a template — pre-loaded when executing
+  activity_template_resources: defineTable({
+    template_id: v.id("activity_templates"),
+    product_id: v.id("products"),
+
+    // Quantity
+    quantity: v.number(),
+    unit_id: v.optional(v.id("units_of_measure")),
+    quantity_basis: v.string(), // fixed/per_plant/per_m2/per_zone/per_L_solution
+
+    // Application
+    direction: v.string(), // consumed/applied/produced
+    application_rate: v.optional(v.string()), // "2mL/L", "5g/m2"
+    application_method: v.optional(v.string()), // foliar/drench/broadcast
+
+    // Substitutes
+    is_required: v.boolean(),
+    alternative_product_ids: v.optional(v.array(v.id("products"))),
+
+    // Order
+    sequence: v.number(),
+    notes: v.optional(v.string()),
+    created_at: v.number(),
+  })
+    .index("by_template", ["template_id"]),
+
+  // Checklist steps for a template — verified during execution
+  activity_template_checklist: defineTable({
+    template_id: v.id("activity_templates"),
+    step_number: v.number(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    is_required: v.boolean(),
+    requires_photo: v.boolean(),
+    requires_value: v.boolean(),
+    value_type: v.optional(v.string()), // text/number/boolean/select
+    value_options: v.optional(v.array(v.string())),
+    value_min: v.optional(v.number()),
+    value_max: v.optional(v.number()),
+    created_at: v.number(),
+  })
+    .index("by_template", ["template_id"]),
 });
