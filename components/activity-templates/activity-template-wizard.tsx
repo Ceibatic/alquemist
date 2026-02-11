@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { WizardStepBasic } from './wizard-step-basic';
 import { WizardStepFields } from './wizard-step-fields';
+import { WizardStepResources } from './wizard-step-resources';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import {
@@ -26,6 +27,21 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
+export interface ResourceItem {
+  /** Present for existing resources loaded from DB */
+  _id?: string;
+  productId: string;
+  productName: string;
+  productCode?: string;
+  quantity: number;
+  quantityBasis: string;
+  direction: string;
+  applicationRate: string;
+  applicationMethod: string;
+  isRequired: boolean;
+  notes: string;
+}
+
 export interface WizardFormData {
   // Step 1 — Basic
   name: string;
@@ -41,10 +57,10 @@ export interface WizardFormData {
   // Step 2 — Form fields
   formFields: string[];
 
-  // Step 3 — Resources (US-TPL.3)
-  // (resources are saved via separate mutations after template creation)
+  // Step 3 — Resources
+  resources: ResourceItem[];
 
-  // Step 4 — Config (US-TPL.4)
+  // Step 4 — Config
   frequencyType: string;
   frequencyIntervalDays: string;
   repeatCount: string;
@@ -70,6 +86,7 @@ const INITIAL_FORM_DATA: WizardFormData = {
   phaseDayStart: '',
   phaseDayEnd: '',
   formFields: [],
+  resources: [],
   frequencyType: 'once',
   frequencyIntervalDays: '',
   repeatCount: '',
@@ -118,20 +135,50 @@ export function ActivityTemplateWizard({
   const [isSaving, setIsSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // Queries for step 1
+  // Queries
   const activityTypes = useQuery(
     api.activityTypes.list,
     { companyId, status: 'active' }
   );
   const cropTypes = useQuery(api.crops.getCropTypes, {});
+  const products = useQuery(
+    api.products.list,
+    { companyId, status: 'active' }
+  );
 
   // Mutations
   const createMutation = useMutation(api.activityTemplates.create);
   const updateMutation = useMutation(api.activityTemplates.update);
+  const addResourceMutation = useMutation(api.activityTemplates.addResource);
+  const removeResourceMutation = useMutation(api.activityTemplates.removeResource);
+
+  // Normalize product list (api.products.list may return { products: [] } or array)
+  const productList: Array<{ _id: string; name: string; code?: string }> =
+    products && 'products' in products
+      ? (products as any).products
+      : (products as any) ?? [];
 
   // Load template data in edit mode
   useEffect(() => {
     if (template && !loaded) {
+      // Map existing resources to local ResourceItem format
+      const existingResources: ResourceItem[] = (template.resources ?? []).map((r: any) => {
+        const product = productList.find((p) => p._id === r.product_id);
+        return {
+          _id: r._id,
+          productId: r.product_id,
+          productName: product?.name ?? 'Producto desconocido',
+          productCode: product?.code,
+          quantity: r.quantity,
+          quantityBasis: r.quantity_basis ?? 'fixed',
+          direction: r.direction ?? 'consumed',
+          applicationRate: r.application_rate ?? '',
+          applicationMethod: r.application_method ?? '',
+          isRequired: r.is_required ?? true,
+          notes: r.notes ?? '',
+        };
+      });
+
       setFormData({
         name: template.name ?? '',
         code: template.code ?? '',
@@ -143,6 +190,7 @@ export function ActivityTemplateWizard({
         phaseDayStart: template.phase_day_start?.toString() ?? '',
         phaseDayEnd: template.phase_day_end?.toString() ?? '',
         formFields: template.form_fields ?? [],
+        resources: existingResources,
         frequencyType: template.frequency_type ?? 'once',
         frequencyIntervalDays: template.frequency_interval_days?.toString() ?? '',
         repeatCount: template.repeat_count?.toString() ?? '',
@@ -158,7 +206,7 @@ export function ActivityTemplateWizard({
       });
       setLoaded(true);
     }
-  }, [template, loaded]);
+  }, [template, loaded, productList]);
 
   // Auto-generate code from name (create only)
   useEffect(() => {
@@ -218,6 +266,41 @@ export function ActivityTemplateWizard({
     setCurrentStep(step);
   };
 
+  // Sync resources after template save
+  const syncResources = async (targetTemplateId: Id<'activity_templates'>) => {
+    const localResources = formData.resources;
+    const existingIds = new Set(localResources.filter((r) => r._id).map((r) => r._id!));
+
+    // Remove resources that were deleted from the cart
+    if (template?.resources) {
+      for (const existing of template.resources) {
+        if (!existingIds.has(existing._id)) {
+          await removeResourceMutation({
+            resourceId: existing._id as Id<'activity_template_resources'>,
+          });
+        }
+      }
+    }
+
+    // Add new resources (those without _id)
+    for (let i = 0; i < localResources.length; i++) {
+      const res = localResources[i];
+      if (!res._id) {
+        await addResourceMutation({
+          templateId: targetTemplateId,
+          productId: res.productId as Id<'products'>,
+          quantity: res.quantity,
+          quantityBasis: res.quantityBasis,
+          direction: res.direction,
+          applicationRate: res.applicationRate.trim() || undefined,
+          applicationMethod: res.applicationMethod.trim() || undefined,
+          isRequired: res.isRequired,
+          notes: res.notes.trim() || undefined,
+        });
+      }
+    }
+  };
+
   const handleSave = async () => {
     const stepError = validateStep(0);
     if (stepError) {
@@ -268,13 +351,20 @@ export function ActivityTemplateWizard({
         requiresAttachments: formData.requiresAttachments || undefined,
       };
 
+      let savedTemplateId: Id<'activity_templates'>;
+
       if (isEdit && templateId) {
         await updateMutation({ templateId, ...baseArgs });
+        savedTemplateId = templateId;
+        // Sync resources
+        await syncResources(savedTemplateId);
         toast.success('Template actualizado');
       } else {
-        const newId = await createMutation({ companyId, ...baseArgs });
+        savedTemplateId = await createMutation({ companyId, ...baseArgs });
+        // Add resources for new template
+        await syncResources(savedTemplateId);
         toast.success('Template creado');
-        router.push(`/activity-templates/${newId}`);
+        router.push(`/activity-templates/${savedTemplateId}`);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al guardar');
@@ -342,15 +432,11 @@ export function ActivityTemplateWizard({
           />
         )}
         {currentStep === 2 && (
-          <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-lg">
-            <Package className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-1">Recursos</h3>
-            <p className="text-sm text-muted-foreground">
-              {isEdit
-                ? 'Guarda primero y edita recursos desde el detalle del template.'
-                : 'Los recursos se configuran despues de crear el template.'}
-            </p>
-          </div>
+          <WizardStepResources
+            formData={formData}
+            updateField={updateField}
+            productList={productList}
+          />
         )}
         {currentStep === 3 && (
           <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-lg">
