@@ -157,7 +157,7 @@ export default function InspectionDetailPage({ params }: PageProps) {
         title: 'Inspeccion eliminada',
         description: 'La inspeccion ha sido eliminada exitosamente.',
       });
-      router.push('/quality-checks');
+      router.push('/templates?tab=quality');
     } catch (error) {
       console.error('Error deleting inspection:', error);
       toast({
@@ -242,7 +242,7 @@ export default function InspectionDetailPage({ params }: PageProps) {
           icon={AlertTriangle}
           breadcrumbs={[
             { label: 'Inicio', href: '/dashboard' },
-            { label: 'Quality Checks', href: '/quality-checks' },
+            { label: 'Templates', href: '/templates?tab=quality' },
             { label: 'Inspeccion no encontrada' },
           ]}
         />
@@ -255,8 +255,8 @@ export default function InspectionDetailPage({ params }: PageProps) {
             <p className="text-sm text-gray-600 text-center mb-6">
               La inspeccion que estas buscando no existe o ha sido eliminada.
             </p>
-            <Button onClick={() => router.push('/quality-checks')}>
-              Volver a Quality Checks
+            <Button onClick={() => router.push('/templates?tab=quality')}>
+              Volver a Templates
             </Button>
           </CardContent>
         </Card>
@@ -298,7 +298,7 @@ export default function InspectionDetailPage({ params }: PageProps) {
         icon={ClipboardCheck}
         breadcrumbs={[
           { label: 'Inicio', href: '/dashboard' },
-          { label: 'Quality Checks', href: '/quality-checks' },
+          { label: 'Templates', href: '/templates?tab=quality' },
           { label: 'Inspecciones' },
           { label: inspectionId.slice(-6) },
         ]}
@@ -647,7 +647,7 @@ export default function InspectionDetailPage({ params }: PageProps) {
                 <Button
                   variant="link"
                   className="w-full text-sm text-blue-600"
-                  onClick={() => router.push(`/quality-checks?entityId=${inspection.entity_id}`)}
+                  onClick={() => router.push(`/templates?tab=quality`)}
                 >
                   Ver todas las inspecciones ({previousInspections.length})
                 </Button>
