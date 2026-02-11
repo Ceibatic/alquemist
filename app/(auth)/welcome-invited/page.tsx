@@ -20,9 +20,8 @@ export default function WelcomeInvitedPage() {
   const [welcomeData, setWelcomeData] = useState<WelcomeData | null>(null);
 
   // Check onboarding status if user is already authenticated
-  const shouldCheckOnboarding = authLoaded && isSignedIn;
   const onboardingStatus = useQuery(
-    shouldCheckOnboarding ? api.users.getOnboardingStatus : 'skip' as any
+    authLoaded && isSignedIn ? api.users.getOnboardingStatus : undefined
   );
 
   // Auto-redirect authenticated users

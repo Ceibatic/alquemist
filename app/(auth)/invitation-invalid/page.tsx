@@ -13,9 +13,8 @@ export default function InvitationInvalidPage() {
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
   // Check onboarding status if user is already authenticated
-  const shouldCheckOnboarding = authLoaded && isSignedIn;
   const onboardingStatus = useQuery(
-    shouldCheckOnboarding ? api.users.getOnboardingStatus : 'skip' as any
+    authLoaded && isSignedIn ? api.users.getOnboardingStatus : undefined
   );
 
   // Auto-redirect authenticated users
