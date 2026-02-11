@@ -137,6 +137,28 @@ export const getStats = query({
   },
 });
 
+export const countUnresolvedByBatch = query({
+  args: { batchId: v.id("batches") },
+  handler: async (ctx, args) => {
+    // Get activities for this batch
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_batch_id", (q) => q.eq("batch_id", args.batchId))
+      .collect();
+
+    let count = 0;
+    for (const act of activities) {
+      const obs = await ctx.db
+        .query("activity_observations")
+        .withIndex("by_activity", (q) => q.eq("activity_id", act._id))
+        .collect();
+      count += obs.filter((o) => !o.resolved).length;
+    }
+
+    return count;
+  },
+});
+
 // ============================================================================
 // MUTATIONS
 // ============================================================================

@@ -29,6 +29,8 @@ import {
   BatchCostSummary,
 } from '@/components/batches';
 import { CultivationTimeline } from '@/components/cultivation/cultivation-timeline';
+import { ActiveIssuesDashboard } from '@/components/observations/active-issues-dashboard';
+import { Badge } from '@/components/ui/badge';
 import {
   Layers,
   Leaf,
@@ -47,6 +49,7 @@ import {
   GitBranch,
   FileText,
   DollarSign,
+  Eye,
 } from 'lucide-react';
 
 interface PageProps {
@@ -86,6 +89,7 @@ export default function BatchDetailPage({ params }: PageProps) {
   }, []);
 
   const batch = useQuery(api.batches.getById, { batchId });
+  const unresolvedObsCount = useQuery(api.activityObservations.countUnresolvedByBatch, { batchId });
 
   const formatDate = (timestamp?: number) => {
     if (!timestamp) return '-';
@@ -282,6 +286,18 @@ export default function BatchDetailPage({ params }: PageProps) {
             >
               <ClipboardCheck className="h-4 w-4" />
               Calidad
+            </TabsTrigger>
+            <TabsTrigger
+              value="observations"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <Eye className="h-4 w-4" />
+              Observaciones
+              {(unresolvedObsCount ?? 0) > 0 && (
+                <Badge className="ml-1 bg-red-100 text-red-700 border-red-300 text-xs px-1.5 py-0">
+                  {unresolvedObsCount}
+                </Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger
               value="genealogy"
@@ -489,6 +505,11 @@ export default function BatchDetailPage({ params }: PageProps) {
         {/* Quality Checks Tab */}
         <TabsContent value="quality" className="mt-6">
           <BatchQualityChecksTab batchId={batchId} />
+        </TabsContent>
+
+        {/* Observations Tab */}
+        <TabsContent value="observations" className="mt-6">
+          <ActiveIssuesDashboard companyId={batch.company_id} />
         </TabsContent>
 
         {/* Genealogy Tab */}
