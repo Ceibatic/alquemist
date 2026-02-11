@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -23,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DynamicFormRenderer } from '@/components/quality-checks/dynamic-form-renderer';
 import { useFacility } from '@/components/providers/facility-provider';
 import { toast } from 'sonner';
 import {
@@ -35,6 +37,10 @@ import {
   Clock,
   DollarSign,
   Package,
+  ClipboardCheck,
+  ArrowLeft,
+  SkipForward,
+  CheckCircle2,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -66,6 +72,12 @@ export interface ActivityReportSheetProps {
 function todayStr() {
   return new Date().toISOString().split('T')[0];
 }
+
+const OVERALL_RESULT_OPTIONS = [
+  { value: 'pass', label: 'Aprobado', color: 'bg-green-100 text-green-800' },
+  { value: 'conditional', label: 'Condicional', color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'fail', label: 'Rechazado', color: 'bg-red-100 text-red-800' },
+];
 
 // ---------------------------------------------------------------------------
 // Component
@@ -109,8 +121,25 @@ export function ActivityReportSheet({
       : ('skip' as any)
   );
 
+  // QC template query — only when the activity template links one
+  const qcTemplateId = template?.quality_check_template_id as
+    | Id<'quality_check_templates'>
+    | undefined;
+  const qcTemplate = useQuery(
+    api.qualityCheckTemplates.getById,
+    qcTemplateId ? { templateId: qcTemplateId } : ('skip' as any)
+  );
+
+  const hasQualityStep = !!qcTemplateId && !!qcTemplate;
+
   // Mutations
   const logActivity = useMutation(api.activities.logV2);
+  const createQualityCheck = useMutation(api.qualityChecks.create);
+  const completeQualityCheck = useMutation(api.qualityChecks.complete);
+  const recordQcTemplateUsage = useMutation(api.qualityCheckTemplates.recordUsage);
+
+  // Step navigation (1 = activity report, 2 = quality check)
+  const [step, setStep] = useState(1);
 
   // Form state — essential
   const [activityDate, setActivityDate] = useState(todayStr());
@@ -131,6 +160,13 @@ export function ActivityReportSheet({
 
   // Form state — resources (quantities user can adjust)
   const [resourceQuantities, setResourceQuantities] = useState<Record<string, number>>({});
+
+  // Form state — quality check (step 2)
+  const [qcFormData, setQcFormData] = useState<Record<string, any>>({});
+  const [qcOverallResult, setQcOverallResult] = useState('pass');
+  const [qcFollowUpRequired, setQcFollowUpRequired] = useState(false);
+  const [qcFollowUpDate, setQcFollowUpDate] = useState('');
+  const [qcNotes, setQcNotes] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -173,14 +209,8 @@ export function ActivityReportSheet({
   // Which optional fields are enabled
   const enabledFields = new Set(template?.form_fields ?? []);
 
-  // Product lookup for resource names
-  const productMap = useMemo(() => {
-    const map = new Map<string, string>();
-    // template.resources already has product info from getById enrichment
-    return map;
-  }, []);
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
+    setStep(1);
     setActivityDate(todayStr());
     setResponsibleId(currentUser?.userId ?? '');
     setSelectedBatchId(batchId ?? '');
@@ -195,9 +225,34 @@ export function ActivityReportSheet({
     setEstimatedCost('');
     setActualCost('');
     setResourceQuantities({});
+    setQcFormData({});
+    setQcOverallResult('pass');
+    setQcFollowUpRequired(false);
+    setQcFollowUpDate('');
+    setQcNotes('');
+  }, [currentUser?.userId, batchId, areaId, phase]);
+
+  // Build the resources array for logV2
+  const buildResources = () => {
+    if (!template?.resources || template.resources.length === 0) return undefined;
+    return template.resources
+      .filter((res: any) => {
+        const qty = resourceQuantities[res._id] ?? res.quantity;
+        return qty > 0;
+      })
+      .map((res: any) => ({
+        product_id: res.product_id as Id<'products'>,
+        direction: res.direction as string,
+        quantity: resourceQuantities[res._id] ?? res.quantity,
+        quantity_unit: res.quantity_basis ?? 'fixed',
+        application_rate: res.application_rate,
+        application_method: res.application_method,
+        notes: res.notes,
+      }));
   };
 
-  const handleSubmit = async () => {
+  // Submit activity (and optionally advance to QC step)
+  const submitActivity = async (skipQuality: boolean) => {
     if (!template) return;
     if (!responsibleId) {
       toast.error('Selecciona un responsable');
@@ -206,25 +261,7 @@ export function ActivityReportSheet({
 
     try {
       setIsSubmitting(true);
-
-      // Build resources array
-      const resources =
-        template.resources && template.resources.length > 0
-          ? template.resources
-              .filter((res: any) => {
-                const qty = resourceQuantities[res._id] ?? res.quantity;
-                return qty > 0;
-              })
-              .map((res: any) => ({
-                product_id: res.product_id as Id<'products'>,
-                direction: res.direction as string,
-                quantity: resourceQuantities[res._id] ?? res.quantity,
-                quantity_unit: res.quantity_basis ?? 'fixed',
-                application_rate: res.application_rate,
-                application_method: res.application_method,
-                notes: res.notes,
-              }))
-          : undefined;
+      const resources = buildResources();
 
       await logActivity({
         type_id: template.type_id as Id<'activity_types'>,
@@ -243,25 +280,106 @@ export function ActivityReportSheet({
           ? (selectedAreaId as Id<'areas'>)
           : undefined,
         scheduled_activity_id: scheduledActivityId,
-        observations: observations.trim() || undefined,
+        observations: skipQuality && hasQualityStep
+          ? ((observations.trim() ? observations.trim() + ' · ' : '') + 'QC omitido por el operador')
+          : (observations.trim() || undefined),
         duration_minutes: durationMinutes ? Number(durationMinutes) : undefined,
         resources,
         consume_inventory: resources && resources.length > 0 ? true : undefined,
         notes: observations.trim() || undefined,
       });
 
-      toast.success('Actividad reportada exitosamente');
+      if (skipQuality || !hasQualityStep) {
+        toast.success('Actividad reportada exitosamente');
+        resetForm();
+        onOpenChange(false);
+        onCompleted?.();
+      }
+      // If not skipping quality, caller will advance to step 2
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle step 1 "Completar" / "Siguiente" click
+  const handleStep1Action = async () => {
+    if (hasQualityStep) {
+      // Advance to quality step without submitting yet — we'll submit both at the end
+      // Actually, submit activity first, then do QC step. Simpler and safer.
+      try {
+        await submitActivity(false);
+        setStep(2);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Error al reportar actividad');
+      }
+    } else {
+      try {
+        await submitActivity(false);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Error al reportar actividad');
+      }
+    }
+  };
+
+  // Handle "Omitir calidad" on step 2
+  const handleSkipQuality = () => {
+    toast.success('Actividad reportada. Formulario de calidad omitido.');
+    resetForm();
+    onOpenChange(false);
+    onCompleted?.();
+  };
+
+  // Handle "Completar" on step 2 (submit QC)
+  const handleCompleteWithQC = async () => {
+    if (!qcTemplateId || !currentCompanyId || !currentFacilityId) return;
+
+    try {
+      setIsSubmitting(true);
+
+      // Create QC check
+      const checkId = await createQualityCheck({
+        templateId: qcTemplateId,
+        entityType,
+        entityId,
+        performedBy: responsibleId as Id<'users'>,
+        companyId: currentCompanyId,
+        facilityId: currentFacilityId as Id<'facilities'>,
+        formData: qcFormData,
+        notes: qcNotes.trim() || undefined,
+      });
+
+      // Complete QC check
+      await completeQualityCheck({
+        checkId,
+        formData: qcFormData,
+        overallResult: qcOverallResult,
+        notes: qcNotes.trim() || undefined,
+        followUpRequired: qcFollowUpRequired || undefined,
+        followUpDate: qcFollowUpRequired && qcFollowUpDate
+          ? new Date(qcFollowUpDate).getTime()
+          : undefined,
+      });
+
+      // Record template usage
+      await recordQcTemplateUsage({ templateId: qcTemplateId });
+
+      toast.success('Actividad y control de calidad completados');
       resetForm();
       onOpenChange(false);
       onCompleted?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al reportar actividad');
+      toast.error(err instanceof Error ? err.message : 'Error al completar control de calidad');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const templateName = template?.name ?? 'Reportar Actividad';
+
+  // QC template structure for DynamicFormRenderer
+  const qcTemplateStructure = qcTemplate?.template_structure as
+    | { version: string; sections: any[] }
+    | undefined;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -272,11 +390,47 @@ export function ActivityReportSheet({
         {/* Fixed header */}
         <SheetHeader className="px-6 py-4 border-b shrink-0">
           <div className="flex items-center justify-between">
-            <SheetTitle className="text-lg">{templateName}</SheetTitle>
+            <div className="min-w-0">
+              <SheetTitle className="text-lg truncate">{templateName}</SheetTitle>
+              {/* Step indicator */}
+              {hasQualityStep && (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                        step === 1
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}
+                    >
+                      {step > 1 ? <CheckCircle2 className="h-3.5 w-3.5" /> : '1'}
+                    </div>
+                    <span className={`text-xs ${step === 1 ? 'font-medium' : 'text-muted-foreground'}`}>
+                      Reporte
+                    </span>
+                  </div>
+                  <div className="w-4 h-px bg-gray-300" />
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                        step === 2
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-gray-100 text-gray-400'
+                      }`}
+                    >
+                      2
+                    </div>
+                    <span className={`text-xs ${step === 2 ? 'font-medium' : 'text-muted-foreground'}`}>
+                      Calidad
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 shrink-0"
               onClick={() => onOpenChange(false)}
             >
               <X className="h-4 w-4" />
@@ -293,7 +447,8 @@ export function ActivityReportSheet({
             </div>
           )}
 
-          {template && (
+          {/* Step 1: Activity report */}
+          {template && step === 1 && (
             <>
               {/* Essential fields */}
               <div className="space-y-4">
@@ -542,27 +697,171 @@ export function ActivityReportSheet({
                   </div>
                 </>
               )}
+
+              {/* QC step hint */}
+              {hasQualityStep && qcTemplate && (
+                <>
+                  <Separator />
+                  <div className="rounded-lg bg-blue-50 p-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
+                      <ClipboardCheck className="h-4 w-4" />
+                      Siguiente: Formulario de Calidad
+                    </div>
+                    <p className="text-xs text-blue-700 mt-1">
+                      {qcTemplate.name}
+                      {qcTemplate.procedure_type && (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {qcTemplate.procedure_type}
+                        </Badge>
+                      )}
+                    </p>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Step 2: Quality check form */}
+          {template && step === 2 && qcTemplate && qcTemplateStructure && (
+            <>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <ClipboardCheck className="h-4 w-4 text-amber-600" />
+                  <h4 className="text-sm font-medium uppercase tracking-wide">
+                    {qcTemplate.name}
+                  </h4>
+                </div>
+
+                {/* Dynamic QC form */}
+                <DynamicFormRenderer
+                  template={qcTemplateStructure as any}
+                  initialValues={qcFormData}
+                  onChange={setQcFormData}
+                  showSubmitButton={false}
+                  className="space-y-4"
+                />
+              </div>
+
+              <Separator />
+
+              {/* Overall result */}
+              <div className="space-y-3">
+                <Label>Resultado general *</Label>
+                <div className="flex gap-2">
+                  {OVERALL_RESULT_OPTIONS.map((opt) => (
+                    <Button
+                      key={opt.value}
+                      type="button"
+                      variant={qcOverallResult === opt.value ? 'default' : 'outline'}
+                      size="sm"
+                      className={
+                        qcOverallResult === opt.value
+                          ? opt.color
+                          : ''
+                      }
+                      onClick={() => setQcOverallResult(opt.value)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Follow-up */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="qc-followup"
+                    checked={qcFollowUpRequired}
+                    onChange={(e) => setQcFollowUpRequired(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="qc-followup" className="cursor-pointer">
+                    Requiere seguimiento
+                  </Label>
+                </div>
+                {qcFollowUpRequired && (
+                  <div className="space-y-2 ml-7">
+                    <Label className="text-xs">Fecha de seguimiento</Label>
+                    <Input
+                      type="date"
+                      value={qcFollowUpDate}
+                      onChange={(e) => setQcFollowUpDate(e.target.value)}
+                      className="h-8 w-[200px]"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* QC Notes */}
+              <div className="space-y-2">
+                <Label>Notas de calidad</Label>
+                <Textarea
+                  value={qcNotes}
+                  onChange={(e) => setQcNotes(e.target.value)}
+                  placeholder="Observaciones de la inspeccion..."
+                  rows={3}
+                />
+              </div>
             </>
           )}
         </div>
 
         {/* Fixed footer */}
         <SheetFooter className="px-6 py-4 border-t shrink-0">
-          <div className="flex items-center justify-end gap-2 w-full">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || !template}
-              className="bg-amber-500 hover:bg-amber-600"
-            >
-              {isSubmitting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              {isSubmitting ? 'Completando...' : 'Completar Actividad'}
-            </Button>
-          </div>
+          {step === 1 && (
+            <div className="flex items-center justify-end gap-2 w-full">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleStep1Action}
+                disabled={isSubmitting || !template}
+                className="bg-amber-500 hover:bg-amber-600"
+              >
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting
+                  ? 'Completando...'
+                  : hasQualityStep
+                    ? 'Siguiente: Calidad'
+                    : 'Completar Actividad'}
+              </Button>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="flex items-center justify-between w-full">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setStep(1)}
+                disabled={isSubmitting}
+              >
+                <ArrowLeft className="mr-1 h-4 w-4" />
+                Volver
+              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSkipQuality}
+                  disabled={isSubmitting}
+                >
+                  <SkipForward className="mr-1 h-4 w-4" />
+                  Omitir calidad
+                </Button>
+                <Button
+                  onClick={handleCompleteWithQC}
+                  disabled={isSubmitting}
+                  className="bg-amber-500 hover:bg-amber-600"
+                >
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isSubmitting ? 'Completando...' : 'Completar'}
+                </Button>
+              </div>
+            </div>
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>
