@@ -18,7 +18,7 @@ import { Id } from "./_generated/dataModel";
  * Recalculates area's capacity_configurations.max_capacity from active structures.
  * Called after every structure create/update/remove.
  */
-async function recalculateAreaCapacity(ctx: MutationCtx, areaId: Id<"areas">) {
+export async function recalculateAreaCapacity(ctx: MutationCtx, areaId: Id<"areas">) {
   const structures = await ctx.db
     .query("structures")
     .withIndex("by_area", (q) => q.eq("area_id", areaId))
@@ -330,6 +330,85 @@ export const remove = mutation({
     await recalculateAreaCapacity(ctx, areaId);
 
     return args.id;
+  },
+});
+
+/**
+ * Create multiple structures with consecutive naming within an area.
+ * Used from the structures tab to continue an existing prefix sequence.
+ */
+export const createBatch = mutation({
+  args: {
+    areaId: v.id("areas"),
+    prefix: v.string(),
+    startNumber: v.number(),
+    quantity: v.number(),
+    structureType: v.string(),
+    environmentType: v.string(),
+    numLevels: v.number(),
+    containersPerLevel: v.number(),
+    containerType: v.string(),
+    positionsPerContainer: v.number(),
+    footprintM2: v.optional(v.number()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const area = await ctx.db.get(args.areaId);
+    if (!area) throw new Error("Area no encontrada");
+
+    const existingStructures = await ctx.db
+      .query("structures")
+      .withIndex("by_area", (q) => q.eq("area_id", args.areaId))
+      .collect();
+
+    const currentMaxOrder = existingStructures.length > 0
+      ? Math.max(...existingStructures.map((s) => s.sort_order))
+      : -1;
+
+    const totalCapacity =
+      args.numLevels * args.containersPerLevel * args.positionsPerContainer;
+    const growingAreaM2 = args.footprintM2
+      ? args.footprintM2 * args.numLevels
+      : undefined;
+
+    const ids: Id<"structures">[] = [];
+
+    for (let i = 0; i < args.quantity; i++) {
+      const num = args.startNumber + i;
+      const name = `${args.prefix} ${num}`;
+
+      const nameExists = existingStructures.some(
+        (s) => s.name.toLowerCase() === name.toLowerCase()
+      );
+      if (nameExists) {
+        throw new Error(`Ya existe una estructura con nombre "${name}"`);
+      }
+
+      const id = await ctx.db.insert("structures", {
+        area_id: args.areaId,
+        name,
+        structure_type: args.structureType,
+        environment_type: args.environmentType,
+        num_levels: args.numLevels,
+        containers_per_level: args.containersPerLevel,
+        container_type: args.containerType,
+        positions_per_container: args.positionsPerContainer,
+        total_capacity: totalCapacity,
+        footprint_m2: args.footprintM2,
+        growing_area_m2: growingAreaM2,
+        sort_order: currentMaxOrder + 1 + i,
+        status: "active",
+        notes: args.notes,
+        created_at: now,
+        updated_at: now,
+      });
+      ids.push(id);
+    }
+
+    await recalculateAreaCapacity(ctx, args.areaId);
+    return ids;
   },
 });
 

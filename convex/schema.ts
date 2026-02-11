@@ -534,6 +534,7 @@ export default defineSchema({
     facility_id: v.id("facilities"),
     name: v.string(),
     area_type: v.string(), // propagation/vegetative/flowering/drying
+    environment_type: v.optional(v.string()), // "indoor" | "outdoor"
     compatible_crop_type_ids: v.array(v.id("crop_types")),
     current_crop_type_id: v.optional(v.id("crop_types")),
 

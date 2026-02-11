@@ -41,13 +41,11 @@ export function AreaCreateModal({
         facilityId,
         name: data.name,
         areaType: data.area_type,
+        environmentType: data.environment_type,
         compatibleCropTypeIds: data.compatible_crop_type_ids as Id<'crop_types'>[],
         status: data.status || 'active',
         totalAreaM2: data.total_area_m2,
-        lengthMeters: data.length_meters,
-        widthMeters: data.width_meters,
-        heightMeters: data.height_meters,
-        usableAreaM2: data.usable_area_m2,
+        capacityMode: data.capacity_mode,
         capacityConfigurations: data.capacity_configurations,
         climateControlled: data.climate_controlled,
         lightingControlled: data.lighting_controlled,
@@ -55,6 +53,18 @@ export function AreaCreateModal({
         environmentalSpecs: data.environmental_specs,
         equipmentList: data.equipment_list || [],
         notes: data.notes,
+        // Inline structure creation
+        structures: data.structures?.map((s) => ({
+          prefix: s.prefix,
+          quantity: s.quantity,
+          structureType: s.structure_type,
+          environmentType: s.environment_type,
+          numLevels: s.num_levels,
+          containersPerLevel: s.containers_per_level,
+          containerType: s.container_type,
+          positionsPerContainer: s.positions_per_container,
+          footprintM2: s.footprint_m2,
+        })),
       });
 
       toast({
@@ -77,7 +87,7 @@ export function AreaCreateModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-2xl">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
@@ -96,6 +106,7 @@ export function AreaCreateModal({
           onSubmit={handleSubmit}
           onCancel={() => onOpenChange(false)}
           isSubmitting={isSubmitting}
+          mode="create"
         />
       </DialogContent>
     </Dialog>

@@ -27,6 +27,10 @@ export const areaStatusSchema = z.enum(['active', 'maintenance', 'inactive'], {
   errorMap: () => ({ message: 'Debes seleccionar un estado' }),
 });
 
+export const environmentTypeSchema = z.enum(['indoor', 'outdoor'], {
+  errorMap: () => ({ message: 'Debes seleccionar un tipo de ambiente' }),
+});
+
 // ============================================================================
 // ENVIRONMENTAL SPECS SCHEMA
 // ============================================================================
@@ -110,59 +114,49 @@ export const environmentalSpecsSchema = z
   );
 
 // ============================================================================
-// CONTAINER TYPE SCHEMA
+// CAPACITY CONFIGURATION SCHEMA
 // ============================================================================
-
-export const containerTypeSchema = z
-  .string()
-  .min(1, 'Debes seleccionar un tipo de contenedor valido');
 
 export const capacityModeSchema = z.enum(['manual', 'structures'], {
   errorMap: () => ({ message: 'Debes seleccionar un modo de capacidad' }),
 });
 
+export const capacityConfigurationSchema = z.object({
+  max_capacity: z
+    .number()
+    .min(0, 'Capacidad máxima debe ser al menos 0')
+    .max(1000000, 'Capacidad máxima no puede exceder 1,000,000 plantas'),
+  source: z.string().optional(),
+  structure_count: z.number().optional(),
+  total_growing_area_m2: z.number().optional(),
+});
+
 // ============================================================================
-// CAPACITY CONFIGURATION SCHEMA
+// INLINE STRUCTURE TEMPLATE SCHEMA (for area creation)
 // ============================================================================
 
-export const capacityConfigurationSchema = z
-  .object({
-    // Capacidad máxima de plantas (calculada o manual)
-    max_capacity: z
-      .number()
-      .min(1, 'Capacidad máxima debe ser al menos 1')
-      .max(1000000, 'Capacidad máxima no puede exceder 1,000,000 plantas'),
-
-    // Campos opcionales para modo contenedor
-    container_type: containerTypeSchema.optional(),
-    container_count: z
-      .number()
-      .min(1, 'Cantidad de contenedores debe ser al menos 1')
-      .max(100000, 'Cantidad de contenedores no puede exceder 100,000')
-      .optional(),
-    plants_per_container: z
-      .number()
-      .min(1, 'Plantas por contenedor debe ser al menos 1')
-      .max(1000, 'Plantas por contenedor no puede exceder 1,000')
-      .optional(),
-  })
-  .refine(
-    (data) => {
-      // Si hay tipo de contenedor, debe haber count y plants_per_container
-      if (data.container_type) {
-        return (
-          data.container_count !== undefined &&
-          data.plants_per_container !== undefined
-        );
-      }
-      return true;
-    },
-    {
-      message:
-        'Si seleccionas un tipo de contenedor, debes especificar cantidad y plantas por contenedor',
-      path: ['container_type'],
-    }
-  );
+export const inlineStructureSchema = z.object({
+  prefix: z
+    .string()
+    .min(1, 'Prefijo es requerido')
+    .max(50, 'Prefijo no puede exceder 50 caracteres'),
+  quantity: z
+    .number()
+    .int('Cantidad debe ser un número entero')
+    .min(1, 'Cantidad mínima es 1')
+    .max(100, 'Máximo 100 estructuras'),
+  structure_type: z.string().min(1, 'Tipo de estructura requerido'),
+  environment_type: environmentTypeSchema,
+  num_levels: z.number().int().min(1).max(20),
+  containers_per_level: z.number().int().min(1).max(10000),
+  container_type: z.string().min(1, 'Tipo de contenedor requerido'),
+  positions_per_container: z.number().int().min(1).max(1000),
+  footprint_m2: z
+    .number()
+    .positive('Huella debe ser un número positivo')
+    .max(100000)
+    .optional(),
+});
 
 // ============================================================================
 // CREATE AREA SCHEMA
@@ -175,41 +169,31 @@ export const createAreaSchema = z.object({
     .max(100, 'Nombre no puede exceder 100 caracteres')
     .trim(),
   area_type: areaTypeSchema,
+  environment_type: environmentTypeSchema,
   status: areaStatusSchema.default('active'),
   compatible_crop_type_ids: z
     .array(z.string())
     .min(1, 'Debes seleccionar al menos un tipo de cultivo compatible')
     .max(10, 'No puedes seleccionar más de 10 tipos de cultivo'),
 
-  // Dimensions (optional)
-  length_meters: z
-    .number()
-    .positive('Longitud debe ser un número positivo')
-    .max(1000, 'Longitud no puede exceder 1000 metros')
-    .optional(),
-  width_meters: z
-    .number()
-    .positive('Ancho debe ser un número positivo')
-    .max(1000, 'Ancho no puede exceder 1000 metros')
-    .optional(),
-  height_meters: z
-    .number()
-    .positive('Altura debe ser un número positivo')
-    .max(100, 'Altura no puede exceder 100 metros')
-    .optional(),
+  // Dimensions — simplified to total area only
   total_area_m2: z
     .number()
     .positive('Área total debe ser un número positivo')
     .max(1000000, 'Área total no puede exceder 1,000,000 m²'),
-  usable_area_m2: z
-    .number()
-    .positive('Área útil debe ser un número positivo')
-    .max(1000000, 'Área útil no puede exceder 1,000,000 m²')
-    .optional(),
+
+  // Legacy dimension fields (kept for edit backward compat)
+  length_meters: z.number().positive().max(1000).optional(),
+  width_meters: z.number().positive().max(1000).optional(),
+  height_meters: z.number().positive().max(100).optional(),
+  usable_area_m2: z.number().positive().max(1000000).optional(),
 
   // Capacity
   capacity_mode: capacityModeSchema.optional(),
   capacity_configurations: capacityConfigurationSchema.optional(),
+
+  // Inline structure creation (optional, for create flow)
+  structures: z.array(inlineStructureSchema).optional(),
 
   // Technical Features
   climate_controlled: z.boolean().default(false),
@@ -256,7 +240,8 @@ export type UpdateAreaInput = z.infer<typeof updateAreaSchema>;
 export type AreaFilterInput = z.infer<typeof areaFilterSchema>;
 export type AreaType = z.infer<typeof areaTypeSchema>;
 export type AreaStatus = z.infer<typeof areaStatusSchema>;
+export type EnvironmentType = z.infer<typeof environmentTypeSchema>;
 export type EnvironmentalSpecs = z.infer<typeof environmentalSpecsSchema>;
-export type ContainerType = z.infer<typeof containerTypeSchema>;
 export type CapacityMode = z.infer<typeof capacityModeSchema>;
 export type CapacityConfiguration = z.infer<typeof capacityConfigurationSchema>;
+export type InlineStructure = z.infer<typeof inlineStructureSchema>;

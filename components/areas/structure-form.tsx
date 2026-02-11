@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -12,6 +12,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -20,6 +21,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -45,21 +48,41 @@ interface StructureFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: CreateStructureInput) => void;
+  onSubmitBatch?: (data: {
+    prefix: string;
+    startNumber: number;
+    quantity: number;
+    structure_type: string;
+    environment_type: string;
+    num_levels: number;
+    containers_per_level: number;
+    container_type: string;
+    positions_per_container: number;
+    footprint_m2?: number;
+    notes?: string;
+  }) => void;
   environmentType: string;
   isLoading?: boolean;
   initialData?: Partial<CreateStructureInput>;
   mode?: 'create' | 'edit';
+  existingPrefixes?: Array<{ prefix: string; nextNumber: number }>;
 }
 
 export function StructureForm({
   open,
   onOpenChange,
   onSubmit,
+  onSubmitBatch,
   environmentType,
   isLoading = false,
   initialData,
   mode = 'create',
+  existingPrefixes = [],
 }: StructureFormProps) {
+  const [namingMode, setNamingMode] = useState<'custom' | 'sequence'>('custom');
+  const [selectedPrefix, setSelectedPrefix] = useState('');
+  const [batchQuantity, setBatchQuantity] = useState(1);
+
   const envType = (
     environmentType === 'mixed' || environmentType === 'greenhouse'
       ? environmentType
@@ -98,8 +121,11 @@ export function StructureForm({
         footprint_m2: initialData?.footprint_m2,
         notes: initialData?.notes || '',
       });
+      setNamingMode('custom');
+      setSelectedPrefix(existingPrefixes[0]?.prefix || '');
+      setBatchQuantity(1);
     }
-  }, [open, initialData, envType, form]);
+  }, [open, initialData, envType, form, existingPrefixes]);
 
   const watchedValues = form.watch([
     'num_levels',
@@ -110,10 +136,25 @@ export function StructureForm({
 
   const calculatedCapacity = useMemo(() => {
     const [levels, containers, positions, footprint] = watchedValues;
-    const total = (levels || 1) * (containers || 1) * (positions || 1);
-    const growingArea = footprint ? footprint * (levels || 1) : undefined;
-    return { total, growingArea };
-  }, [watchedValues]);
+    const perStructure = (levels || 1) * (containers || 1) * (positions || 1);
+    const qty = namingMode === 'sequence' ? batchQuantity : 1;
+    const total = perStructure * qty;
+    const growingArea = footprint ? footprint * (levels || 1) * qty : undefined;
+    return { perStructure, total, growingArea };
+  }, [watchedValues, namingMode, batchQuantity]);
+
+  // Preview names for sequence mode
+  const sequencePreview = useMemo(() => {
+    if (namingMode !== 'sequence' || !selectedPrefix) return [];
+    const prefixData = existingPrefixes.find((p) => p.prefix === selectedPrefix);
+    const start = prefixData?.nextNumber || 1;
+    const maxShow = 5;
+    const names = Array.from(
+      { length: Math.min(batchQuantity, maxShow) },
+      (_, i) => `${selectedPrefix} ${start + i}`
+    );
+    return names;
+  }, [namingMode, selectedPrefix, batchQuantity, existingPrefixes]);
 
   const applyPreset = (preset: CropPreset) => {
     form.setValue('structure_type', preset.structure_type);
@@ -137,7 +178,26 @@ export function StructureForm({
   };
 
   const handleSubmit = (data: CreateStructureInput) => {
-    onSubmit(data);
+    if (namingMode === 'sequence' && onSubmitBatch) {
+      const prefixData = existingPrefixes.find(
+        (p) => p.prefix === selectedPrefix
+      );
+      onSubmitBatch({
+        prefix: selectedPrefix,
+        startNumber: prefixData?.nextNumber || 1,
+        quantity: batchQuantity,
+        structure_type: data.structure_type,
+        environment_type: data.environment_type,
+        num_levels: data.num_levels,
+        containers_per_level: data.containers_per_level,
+        container_type: data.container_type,
+        positions_per_container: data.positions_per_container,
+        footprint_m2: data.footprint_m2,
+        notes: data.notes,
+      });
+    } else {
+      onSubmit(data);
+    }
   };
 
   const envTypeStr = environmentType as string;
@@ -147,6 +207,9 @@ export function StructureForm({
       envTypeStr === 'greenhouse' ||
       p.environment === envType
   );
+
+  const showSequenceMode =
+    mode === 'create' && existingPrefixes.length > 0 && !!onSubmitBatch;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -183,48 +246,141 @@ export function StructureForm({
             onSubmit={form.handleSubmit(handleSubmit)}
             className="space-y-4"
           >
-            {/* Name */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nombre *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ej: Rack A-1, Hilera Norte 3" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Naming Mode Toggle (create mode with existing prefixes) */}
+            {showSequenceMode && (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Modo de nombre
+                </p>
+                <RadioGroup
+                  value={namingMode}
+                  onValueChange={(v) => setNamingMode(v as 'custom' | 'sequence')}
+                  className="grid grid-cols-2 gap-2"
+                >
+                  <Label
+                    htmlFor="naming-custom"
+                    className={`flex items-center gap-2 rounded-md border p-3 cursor-pointer text-sm ${
+                      namingMode === 'custom'
+                        ? 'border-amber-500 bg-amber-50'
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    <RadioGroupItem value="custom" id="naming-custom" />
+                    Nombre personalizado
+                  </Label>
+                  <Label
+                    htmlFor="naming-sequence"
+                    className={`flex items-center gap-2 rounded-md border p-3 cursor-pointer text-sm ${
+                      namingMode === 'sequence'
+                        ? 'border-amber-500 bg-amber-50'
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    <RadioGroupItem value="sequence" id="naming-sequence" />
+                    Continuar secuencia
+                  </Label>
+                </RadioGroup>
+              </div>
+            )}
+
+            {/* Name (custom mode) */}
+            {namingMode === 'custom' && (
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: Rack A-1, Hilera Norte 3" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Sequence mode: prefix select + quantity */}
+            {namingMode === 'sequence' && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Prefijo *</Label>
+                    <Select
+                      value={selectedPrefix}
+                      onValueChange={setSelectedPrefix}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona prefijo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {existingPrefixes.map((p) => (
+                          <SelectItem key={p.prefix} value={p.prefix}>
+                            {p.prefix} (siguiente: {p.nextNumber})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Cantidad *</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={batchQuantity}
+                      onChange={(e) =>
+                        setBatchQuantity(parseInt(e.target.value) || 1)
+                      }
+                    />
+                  </div>
+                </div>
+                {sequencePreview.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Se crearán: {sequencePreview.join(', ')}
+                    {batchQuantity > 5 && `, ... ${selectedPrefix} ${(existingPrefixes.find((p) => p.prefix === selectedPrefix)?.nextNumber || 1) + batchQuantity - 1}`}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Structure Type */}
             <FormField
               control={form.control}
               name="structure_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo de Estructura *</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={handleStructureTypeChange}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona tipo" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {structureTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const selectedType = structureTypes.find(
+                  (t) => t.value === field.value
+                );
+                return (
+                  <FormItem>
+                    <FormLabel>Tipo de Estructura *</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={handleStructureTypeChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {structureTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedType && (
+                      <FormDescription>
+                        {selectedType.description}
+                      </FormDescription>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             {/* Hierarchy Config: Levels, Containers, Positions */}
@@ -300,29 +456,39 @@ export function StructureForm({
             <FormField
               control={form.control}
               name="container_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo de Contenedor *</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={handleContainerTypeChange}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona tipo" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {containerTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const selectedType = containerTypes.find(
+                  (t) => t.value === field.value
+                );
+                return (
+                  <FormItem>
+                    <FormLabel>Tipo de Contenedor *</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={handleContainerTypeChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {containerTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedType && 'description' in selectedType && (
+                      <FormDescription>
+                        {(selectedType as { description: string }).description}
+                      </FormDescription>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             {/* Footprint */}
@@ -331,7 +497,7 @@ export function StructureForm({
               name="footprint_m2"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Huella en piso (m2)</FormLabel>
+                  <FormLabel>Huella en piso (m²)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -341,11 +507,14 @@ export function StructureForm({
                       value={field.value ?? ''}
                       onChange={(e) =>
                         field.onChange(
-                          e.target.value ? parseFloat(e.target.value) : 'skip' as any
+                          e.target.value ? parseFloat(e.target.value) : undefined
                         )
                       }
                     />
                   </FormControl>
+                  <FormDescription>
+                    Espacio que ocupa cada estructura en el piso. Se multiplica por niveles para calcular el área de cultivo.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -360,13 +529,16 @@ export function StructureForm({
                 {calculatedCapacity.total.toLocaleString()} plantas
               </p>
               <p className="text-xs text-green-600 font-mono">
+                {namingMode === 'sequence' && batchQuantity > 1
+                  ? `${batchQuantity} estructuras × `
+                  : ''}
                 {form.watch('num_levels') || 1} niveles x{' '}
                 {form.watch('containers_per_level') || 1} contenedores x{' '}
                 {form.watch('positions_per_container') || 1} posiciones
               </p>
               {calculatedCapacity.growingArea && (
                 <p className="text-xs text-green-600">
-                  Area de cultivo: {calculatedCapacity.growingArea} m2
+                  Area de cultivo: {calculatedCapacity.growingArea} m²
                 </p>
               )}
             </div>
@@ -409,7 +581,9 @@ export function StructureForm({
                   ? 'Guardando...'
                   : mode === 'edit'
                     ? 'Guardar Cambios'
-                    : 'Crear Estructura'}
+                    : namingMode === 'sequence' && batchQuantity > 1
+                      ? `Crear ${batchQuantity} Estructuras`
+                      : 'Crear Estructura'}
               </Button>
             </div>
           </form>

@@ -60,13 +60,11 @@ export default function AreaEditPage() {
   const defaultValues: Partial<CreateAreaInput> = {
     name: area.name,
     area_type: area.area_type as CreateAreaInput['area_type'],
+    environment_type: (area.environment_type as CreateAreaInput['environment_type']) ?? 'indoor',
     status: area.status as CreateAreaInput['status'],
     compatible_crop_type_ids: area.compatible_crop_type_ids.map(String),
-    length_meters: area.length_meters ?? undefined,
-    width_meters: area.width_meters ?? undefined,
-    height_meters: area.height_meters ?? undefined,
     total_area_m2: area.total_area_m2 ?? undefined,
-    usable_area_m2: area.usable_area_m2 ?? undefined,
+    capacity_mode: area.capacity_mode as CreateAreaInput['capacity_mode'],
     capacity_configurations: area.capacity_configurations as CreateAreaInput['capacity_configurations'],
     climate_controlled: area.climate_controlled,
     lighting_controlled: area.lighting_controlled,
@@ -84,13 +82,10 @@ export default function AreaEditPage() {
         id: areaId,
         name: data.name,
         areaType: data.area_type,
+        environmentType: data.environment_type,
         compatibleCropTypeIds: data.compatible_crop_type_ids as Id<'crop_types'>[],
         status: data.status,
         totalAreaM2: data.total_area_m2,
-        lengthMeters: data.length_meters,
-        widthMeters: data.width_meters,
-        heightMeters: data.height_meters,
-        usableAreaM2: data.usable_area_m2,
         capacityConfigurations: data.capacity_configurations,
         climateControlled: data.climate_controlled,
         lightingControlled: data.lighting_controlled,
@@ -143,6 +138,7 @@ export default function AreaEditPage() {
             onSubmit={handleSubmit}
             onCancel={handleCancel}
             isSubmitting={isSubmitting}
+            mode="edit"
           />
         </CardContent>
       </Card>

@@ -88,25 +88,26 @@ export interface ContainerTypeByEnvOption {
   value: string;
   label: string;
   defaultPositions: number;
+  description: string;
 }
 
 export const CONTAINER_TYPES_BY_ENV: Record<string, ContainerTypeByEnvOption[]> = {
   indoor: [
-    { value: 'bandeja', label: 'Bandeja', defaultPositions: 20 },
-    { value: 'canal_nft', label: 'Canal NFT', defaultPositions: 12 },
-    { value: 'canaleta', label: 'Canaleta', defaultPositions: 8 },
-    { value: 'maceta_sustrato', label: 'Maceta Sustrato', defaultPositions: 1 },
-    { value: 'panel_aeroponia', label: 'Panel Aeroponia', defaultPositions: 36 },
-    { value: 'charola_propagacion', label: 'Charola de Propagacion', defaultPositions: 72 },
-    { value: 'maceta', label: 'Maceta', defaultPositions: 1 },
-    { value: 'bolsa_cultivo', label: 'Bolsa de Cultivo', defaultPositions: 1 },
+    { value: 'bandeja', label: 'Bandeja', defaultPositions: 20, description: 'Bandejas plásticas para propagación o vegetativo' },
+    { value: 'canal_nft', label: 'Canal NFT', defaultPositions: 12, description: 'Canales para cultivo hidropónico NFT' },
+    { value: 'canaleta', label: 'Canaleta', defaultPositions: 8, description: 'Canaletas para cultivos como fresas' },
+    { value: 'maceta_sustrato', label: 'Maceta Sustrato', defaultPositions: 1, description: 'Macetas individuales con sustrato' },
+    { value: 'panel_aeroponia', label: 'Panel Aeroponia', defaultPositions: 36, description: 'Paneles verticales para cultivo aeropónico' },
+    { value: 'charola_propagacion', label: 'Charola de Propagacion', defaultPositions: 72, description: 'Charolas de alvéolos para germinación y clones' },
+    { value: 'maceta', label: 'Maceta', defaultPositions: 1, description: 'Macetas individuales de tamaño estándar' },
+    { value: 'bolsa_cultivo', label: 'Bolsa de Cultivo', defaultPositions: 1, description: 'Bolsas de tela o plástico para cultivo' },
   ],
   outdoor: [
-    { value: 'posicion_suelo', label: 'Posicion en Suelo', defaultPositions: 1 },
-    { value: 'cama_elevada', label: 'Cama Elevada', defaultPositions: 50 },
-    { value: 'hilera_suelo', label: 'Hilera en Suelo', defaultPositions: 20 },
-    { value: 'maceta_exterior', label: 'Maceta Exterior', defaultPositions: 1 },
-    { value: 'cama_cultivo', label: 'Cama de Cultivo', defaultPositions: 50 },
+    { value: 'posicion_suelo', label: 'Posicion en Suelo', defaultPositions: 1, description: 'Posición directa en suelo natural' },
+    { value: 'cama_elevada', label: 'Cama Elevada', defaultPositions: 50, description: 'Camas elevadas con sustrato controlado' },
+    { value: 'hilera_suelo', label: 'Hilera en Suelo', defaultPositions: 20, description: 'Hilera de plantas directa en suelo' },
+    { value: 'maceta_exterior', label: 'Maceta Exterior', defaultPositions: 1, description: 'Macetas resistentes para uso exterior' },
+    { value: 'cama_cultivo', label: 'Cama de Cultivo', defaultPositions: 50, description: 'Camas de cultivo a nivel de suelo' },
   ],
 };
 

@@ -5,6 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { recalculateAreaCapacity } from "./structures";
 
 /**
  * Get areas by facility
@@ -220,6 +221,7 @@ export const create = mutation({
     facilityId: v.id("facilities"),
     name: v.string(),
     areaType: v.string(), // propagation/vegetative/flowering/drying
+    environmentType: v.optional(v.string()), // "indoor" | "outdoor"
     compatibleCropTypeIds: v.array(v.id("crop_types")),
 
     // Optional dimensions
@@ -232,6 +234,19 @@ export const create = mutation({
     // Optional capacity
     capacityMode: v.optional(v.string()), // "manual" | "structures"
     capacityConfigurations: v.optional(v.any()),
+
+    // Optional inline structure creation
+    structures: v.optional(v.array(v.object({
+      prefix: v.string(),
+      quantity: v.number(),
+      structureType: v.string(),
+      environmentType: v.string(),
+      numLevels: v.number(),
+      containersPerLevel: v.number(),
+      containerType: v.string(),
+      positionsPerContainer: v.number(),
+      footprintM2: v.optional(v.number()),
+    }))),
 
     // Optional technical features
     climateControlled: v.optional(v.boolean()),
@@ -279,6 +294,7 @@ export const create = mutation({
       facility_id: args.facilityId,
       name: args.name,
       area_type: args.areaType,
+      environment_type: args.environmentType,
       compatible_crop_type_ids: args.compatibleCropTypeIds,
       current_crop_type_id: undefined,
 
@@ -308,6 +324,43 @@ export const create = mutation({
       created_at: now,
       updated_at: now,
     });
+
+    // Create inline structures if provided
+    if (args.structures && args.structures.length > 0) {
+      for (const structureDef of args.structures) {
+        const totalCapacity =
+          structureDef.numLevels *
+          structureDef.containersPerLevel *
+          structureDef.positionsPerContainer;
+        const growingAreaM2 = structureDef.footprintM2
+          ? structureDef.footprintM2 * structureDef.numLevels
+          : undefined;
+
+        for (let i = 1; i <= structureDef.quantity; i++) {
+          await ctx.db.insert("structures", {
+            area_id: areaId,
+            name: `${structureDef.prefix} ${i}`,
+            structure_type: structureDef.structureType,
+            environment_type: structureDef.environmentType,
+            num_levels: structureDef.numLevels,
+            containers_per_level: structureDef.containersPerLevel,
+            container_type: structureDef.containerType,
+            positions_per_container: structureDef.positionsPerContainer,
+            total_capacity: totalCapacity,
+            footprint_m2: structureDef.footprintM2,
+            growing_area_m2: growingAreaM2,
+            sort_order: i - 1,
+            status: "active",
+            notes: undefined,
+            created_at: now,
+            updated_at: now,
+          });
+        }
+      }
+
+      // Recalculate area capacity from created structures
+      await recalculateAreaCapacity(ctx, areaId);
+    }
 
     return areaId;
   },
@@ -357,6 +410,7 @@ export const update = mutation({
 
     name: v.optional(v.string()),
     areaType: v.optional(v.string()),
+    environmentType: v.optional(v.string()),
     compatibleCropTypeIds: v.optional(v.array(v.id("crop_types"))),
 
     // Optional dimensions
@@ -411,6 +465,7 @@ export const update = mutation({
 
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.areaType !== undefined) updateData.area_type = updates.areaType;
+    if (updates.environmentType !== undefined) updateData.environment_type = updates.environmentType;
     if (updates.compatibleCropTypeIds !== undefined) {
       updateData.compatible_crop_type_ids = updates.compatibleCropTypeIds;
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 
 interface AreaStructuresTabProps {
   areaId: Id<'areas'>;
-  facilityType?: string;
+  environmentType?: string;
 }
 
 interface Structure {
@@ -45,9 +45,37 @@ interface Structure {
   sort_order: number;
 }
 
+/**
+ * Extract prefixes from existing structure names.
+ * Matches pattern: "Some Prefix 123" → prefix = "Some Prefix", number = 123
+ */
+function extractPrefixes(
+  structures: Structure[]
+): Array<{ prefix: string; nextNumber: number }> {
+  const prefixMap = new Map<string, number>();
+
+  for (const s of structures) {
+    if (s.status !== 'active') continue;
+    const match = s.name.match(/^(.+?)\s+(\d+)$/);
+    if (match) {
+      const prefix = match[1];
+      const num = parseInt(match[2], 10);
+      const current = prefixMap.get(prefix) || 0;
+      if (num >= current) {
+        prefixMap.set(prefix, num + 1);
+      }
+    }
+  }
+
+  return Array.from(prefixMap.entries()).map(([prefix, nextNumber]) => ({
+    prefix,
+    nextNumber,
+  }));
+}
+
 export function AreaStructuresTab({
   areaId,
-  facilityType = 'indoor',
+  environmentType = 'indoor',
 }: AreaStructuresTabProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingStructure, setEditingStructure] = useState<Structure | null>(
@@ -64,8 +92,14 @@ export function AreaStructuresTab({
   });
 
   const createStructure = useMutation(api.structures.create);
+  const createBatchStructures = useMutation(api.structures.createBatch);
   const updateStructure = useMutation(api.structures.update);
   const removeStructure = useMutation(api.structures.remove);
+
+  const existingPrefixes = useMemo(() => {
+    if (!structures) return [];
+    return extractPrefixes(structures as Structure[]);
+  }, [structures]);
 
   const handleCreate = async (data: CreateStructureInput) => {
     setIsSubmitting(true);
@@ -87,6 +121,50 @@ export function AreaStructuresTab({
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Error al crear estructura'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCreateBatch = async (data: {
+    prefix: string;
+    startNumber: number;
+    quantity: number;
+    structure_type: string;
+    environment_type: string;
+    num_levels: number;
+    containers_per_level: number;
+    container_type: string;
+    positions_per_container: number;
+    footprint_m2?: number;
+    notes?: string;
+  }) => {
+    setIsSubmitting(true);
+    try {
+      await createBatchStructures({
+        areaId,
+        prefix: data.prefix,
+        startNumber: data.startNumber,
+        quantity: data.quantity,
+        structureType: data.structure_type,
+        environmentType: data.environment_type,
+        numLevels: data.num_levels,
+        containersPerLevel: data.containers_per_level,
+        containerType: data.container_type,
+        positionsPerContainer: data.positions_per_container,
+        footprintM2: data.footprint_m2,
+        notes: data.notes,
+      });
+      toast.success(
+        `${data.quantity} estructura${data.quantity > 1 ? 's' : ''} creada${data.quantity > 1 ? 's' : ''} exitosamente`
+      );
+      setFormOpen(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Error al crear estructuras'
       );
     } finally {
       setIsSubmitting(false);
@@ -148,7 +226,7 @@ export function AreaStructuresTab({
     );
   }
 
-  const environmentType = facilityType === 'outdoor' ? 'outdoor' : facilityType === 'greenhouse' ? 'greenhouse' : 'indoor';
+  const envType = environmentType === 'outdoor' ? 'outdoor' : 'indoor';
 
   return (
     <div className="space-y-4">
@@ -258,9 +336,11 @@ export function AreaStructuresTab({
         open={formOpen}
         onOpenChange={setFormOpen}
         onSubmit={handleCreate}
-        environmentType={environmentType}
+        onSubmitBatch={handleCreateBatch}
+        environmentType={envType}
         isLoading={isSubmitting}
         mode="create"
+        existingPrefixes={existingPrefixes}
       />
 
       {/* Edit Form */}
@@ -271,7 +351,7 @@ export function AreaStructuresTab({
             if (!open) setEditingStructure(null);
           }}
           onSubmit={handleEdit}
-          environmentType={environmentType}
+          environmentType={envType}
           isLoading={isSubmitting}
           mode="edit"
           initialData={{
