@@ -83,9 +83,21 @@ export const getById = query({
       .withIndex("by_template", (q) => q.eq("template_id", templateId))
       .collect();
 
+    // Enrich resources with product names
+    const enrichedResources = await Promise.all(
+      resources.sort((a, b) => a.sequence - b.sequence).map(async (res) => {
+        const product = await ctx.db.get(res.product_id);
+        return {
+          ...res,
+          productName: product?.name ?? "Producto desconocido",
+          productCode: (product as any)?.code,
+        };
+      })
+    );
+
     return {
       ...template,
-      resources: resources.sort((a, b) => a.sequence - b.sequence),
+      resources: enrichedResources,
       checklist: checklist.sort((a, b) => a.step_number - b.step_number),
       resourceCount: resources.length,
       checklistCount: checklist.length,
