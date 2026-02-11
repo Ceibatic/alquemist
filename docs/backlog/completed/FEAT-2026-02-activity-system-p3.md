@@ -24,7 +24,7 @@ El modelo de referencia esta en `docs/data-model-references/activity-model.jsx` 
 **para** tener un historial consultable de problemas por zona, batch y tipo, con seguimiento de resolucion
 
 #### Criterios de Aceptacion
-- [ ] Tabla `activity_observations` en schema.ts con campos:
+- [x] Tabla `activity_observations` en schema.ts con campos:
   - `activity_id` (FK activities), `company_id` (FK companies)
   - Clasificacion: `observation_type` (pest/disease/deficiency/excess/mechanical_damage/environmental_stress/growth/positive/other), `severity` (opcional: none/low/medium/high/critical)
   - Organismo: `organism_id` (opcional FK pest_diseases — tabla existente), `organism_name` (opcional string, para cuando no hay FK)
@@ -33,12 +33,12 @@ El modelo de referencia esta en `docs/data-model-references/activity-model.jsx` 
   - Seguimiento: `follow_up_date` (opcional number), `resolved` (boolean default false), `resolved_at` (opcional number), `resolved_by` (opcional FK users), `resolved_by_activity_id` (opcional FK activities — la actividad que resolvio el problema)
   - `attachment_ids` (opcional array string — IDs de activity_attachments especificos de esta observacion)
   - `created_at`
-- [ ] Indexes: by_activity, by_company, by_observation_type, by_organism, by_follow_up_date, by_resolved
-- [ ] Backend `convex/activityObservations.ts`:
+- [x] Indexes: by_activity, by_company, by_observation_type, by_organism, by_follow_up_date, by_resolved
+- [x] Backend `convex/activityObservations.ts`:
   - Queries: `listByActivity(activityId)`, `listUnresolved(companyId, observationType?, severity?, zoneId?)`, `listByOrganism(companyId, organismId)`, `getStats(companyId, dateRange?)`
   - Mutations: `create(activityId, observationData)`, `update(observationId, fields)`, `resolve(observationId, resolvedBy, resolvedByActivityId?)`, `reopen(observationId)`
-- [ ] getStats retorna: total activas, por tipo, por severidad, overdue (follow_up_date < hoy && !resolved)
-- [ ] `npx next build` pasa
+- [x] getStats retorna: total activas, por tipo, por severidad, overdue (follow_up_date < hoy && !resolved)
+- [x] `npx next build` pasa
 
 #### Backend
 - Tabla nueva: `activity_observations`
@@ -56,7 +56,7 @@ El modelo de referencia esta en `docs/data-model-references/activity-model.jsx` 
 **para** tener un historial de condiciones ambientales correlacionado con las operaciones realizadas
 
 #### Criterios de Aceptacion
-- [ ] Tabla `activity_environmental_readings` en schema.ts con campos:
+- [x] Tabla `activity_environmental_readings` en schema.ts con campos:
   - `activity_id` (FK activities), `company_id` (FK companies)
   - `reading_type` (string: temperature/humidity/vpd/co2/light_ppfd/light_dli/ph/ec/dissolved_oxygen/wind_speed/soil_moisture)
   - `value` (number), `unit` (string: "C"/"F"/"%"/"kPa"/"ppm"/"umol/m2/s"/"mol/m2/d"/"mS/cm")
@@ -64,14 +64,14 @@ El modelo de referencia esta en `docs/data-model-references/activity-model.jsx` 
   - `sensor_id` (opcional string — para lecturas automaticas de IoT)
   - `location_note` (opcional string — "Canopy level", "Root zone", "Ambient")
   - `created_at`
-- [ ] Indexes: by_activity, by_company, by_reading_type, by_measured_at
-- [ ] Backend `convex/activityEnvironmental.ts`:
+- [x] Indexes: by_activity, by_company, by_reading_type, by_measured_at
+- [x] Backend `convex/activityEnvironmental.ts`:
   - Query: `listByActivity(activityId)` — retorna todas las lecturas de una actividad ordenadas por reading_type
   - Query: `getHistory(companyId, readingType, zoneId?, dateRange?)` — historial de un tipo de lectura para graficos
   - Mutation: `create(activityId, readings[])` — crear multiples lecturas de una vez (batch insert)
   - Mutation: `update(readingId, value, unit?)` — corregir una lectura
   - Mutation: `remove(readingId)` — eliminar lectura erronea
-- [ ] Constantes `lib/constants/environmental-readings.ts` con: READING_TYPES (array con type, label, defaultUnit, icon, normalRange)
+- [x] Constantes `lib/constants/environmental-readings.ts` con: READING_TYPES (array con type, label, defaultUnit, icon, normalRange)
   - temperature: {label: "Temperatura", unit: "C", icon: "Thermometer", range: [18, 30]}
   - humidity: {label: "Humedad Relativa", unit: "%", icon: "Droplets", range: [40, 70]}
   - vpd: {label: "VPD", unit: "kPa", icon: "Wind", range: [0.8, 1.4]}
@@ -80,7 +80,7 @@ El modelo de referencia esta en `docs/data-model-references/activity-model.jsx` 
   - ph: {label: "pH", unit: "", icon: "Flask", range: [5.5, 6.5]}
   - ec: {label: "EC", unit: "mS/cm", icon: "Zap", range: [1.0, 2.5]}
   - (y demas)
-- [ ] `npx next build` pasa
+- [x] `npx next build` pasa
 
 #### Backend
 - Tabla nueva: `activity_environmental_readings`
@@ -99,7 +99,7 @@ El modelo de referencia esta en `docs/data-model-references/activity-model.jsx` 
 **para** tener evidencia fotografica organizada y consultable, no solo URLs sin contexto
 
 #### Criterios de Aceptacion
-- [ ] Tabla `activity_attachments` en schema.ts con campos:
+- [x] Tabla `activity_attachments` en schema.ts con campos:
   - `activity_id` (FK activities), `company_id` (FK companies)
   - Clasificacion: `type` (photo/document/video/certificate/lab_result/other)
   - Archivo: `storage_id` (string — Convex storage ID), `file_url` (string — URL publica), `thumbnail_url` (opcional string)
@@ -109,8 +109,8 @@ El modelo de referencia esta en `docs/data-model-references/activity-model.jsx` 
   - Geolocation: `geo_lat` (opcional number), `geo_lng` (opcional number)
   - Orden: `sort_order` (number default 0)
   - `uploaded_by` (FK users), `created_at`
-- [ ] Indexes: by_activity, by_company, by_type
-- [ ] Backend `convex/activityAttachments.ts`:
+- [x] Indexes: by_activity, by_company, by_type
+- [x] Backend `convex/activityAttachments.ts`:
   - Query: `listByActivity(activityId)` — ordenadas por sort_order
   - Query: `listByType(companyId, type, limit?)` — ej: todos los lab_results
   - Mutation: `create(activityId, attachmentData)` — crear attachment
@@ -118,9 +118,9 @@ El modelo de referencia esta en `docs/data-model-references/activity-model.jsx` 
   - Mutation: `remove(attachmentId)` — eliminar (tambien elimina de Convex storage)
   - Mutation: `reorder(activityId, attachmentIds[])` — reordenar
   - `generateUploadUrl()` — genera URL de upload para Convex storage
-- [ ] Integracion con Convex file storage (usa `ctx.storage.generateUploadUrl()` y `ctx.storage.getUrl()`)
-- [ ] Al eliminar attachment, tambien elimina el archivo de storage
-- [ ] `npx next build` pasa
+- [x] Integracion con Convex file storage (usa `ctx.storage.generateUploadUrl()` y `ctx.storage.getUrl()`)
+- [x] Al eliminar attachment, tambien elimina el archivo de storage
+- [x] `npx next build` pasa
 
 #### Backend
 - Tabla nueva: `activity_attachments`
@@ -138,21 +138,21 @@ El modelo de referencia esta en `docs/data-model-references/activity-model.jsx` 
 **para** documentar plagas, enfermedades y deficiencias de forma estructurada durante el scouting
 
 #### Criterios de Aceptacion
-- [ ] Componente `ObservationForm` embebible en cualquier formulario de actividad:
+- [x] Componente `ObservationForm` embebible en cualquier formulario de actividad:
   - Boton "Agregar observacion" que expande un form inline
   - Campos: tipo de observacion (select con iconos), severidad (radio buttons con colores: green/yellow/orange/red), descripcion (textarea)
   - Campos opcionales expandibles: organismo (select de pest_diseases + busqueda), % area afectada (slider 0-100), plantas afectadas (number), parte de planta (select), accion recomendada (textarea), fecha follow-up (date picker)
   - Multiples observaciones por actividad (lista con boton agregar mas)
   - Cada observacion puede tener fotos vinculadas (seleccionar de activity_attachments)
-- [ ] Dashboard de problemas activos: componente `ActiveIssuesDashboard`
+- [x] Dashboard de problemas activos: componente `ActiveIssuesDashboard`
   - Accesible desde pagina de facility o batch
   - Tabla de observaciones no resueltas con: fecha detectada, zona, tipo, severidad (badge color), descripcion corta, dias desde deteccion, fecha follow-up
   - Filtros: por tipo, severidad, zona
   - Ordenar por: severidad (desc), fecha follow-up (asc), fecha deteccion (desc)
   - Accion "Resolver" que pide seleccionar la actividad que resolvio el problema
   - Counter en header: "X problemas activos (Y criticos, Z overdue)"
-- [ ] Badge en tab de batch: si hay observaciones no resueltas vinculadas al batch, mostrar count badge rojo
-- [ ] `npx next build` pasa
+- [x] Badge en tab de batch: si hay observaciones no resueltas vinculadas al batch, mostrar count badge rojo
+- [x] `npx next build` pasa
 
 #### Frontend
 - Componentes: `components/observations/observation-form.tsx`, `components/observations/observation-card.tsx`, `components/observations/active-issues-dashboard.tsx`
@@ -170,23 +170,23 @@ El modelo de referencia esta en `docs/data-model-references/activity-model.jsx` 
 **para** documentar las condiciones y evidencia visual de cada operacion
 
 #### Criterios de Aceptacion
-- [ ] Componente `EnvironmentalReadingsInput` embebible en formularios de actividad:
+- [x] Componente `EnvironmentalReadingsInput` embebible en formularios de actividad:
   - Grid de cards de lectura rapida: temperatura, humedad, VPD, CO2, pH, EC (las mas comunes)
   - Cada card: icono + label, input numerico, unidad auto-detectada, indicador de rango (verde/amarillo/rojo segun normalRange de constantes)
   - Boton "Mas lecturas" para tipos menos comunes (light, dissolved_oxygen, etc.)
   - Auto-calculo de VPD si se ingresan temperatura y humedad
   - Timestamp: default now, pero editable
-- [ ] Componente `ActivityPhotoGallery` para subir y ver fotos:
+- [x] Componente `ActivityPhotoGallery` para subir y ver fotos:
   - Zona de drop / boton de upload (acepta multiples archivos)
   - Preview de fotos subidas con: thumbnail, nombre, caption editable, tipo (select: photo/document/certificate/lab_result)
   - Drag-and-drop para reordenar fotos
   - Click en foto abre lightbox con caption
   - Indicador de upload progress
   - Usa Convex file storage (generateUploadUrl → upload → create attachment)
-- [ ] Ambos componentes se renderizan condicionalmente en el formulario de actividad segun activity_type flags:
+- [x] Ambos componentes se renderizan condicionalmente en el formulario de actividad segun activity_type flags:
   - Si type.requires_photos: mostrar PhotoGallery como requerido
   - Siempre mostrar Environmental Readings como seccion opcional (colapsable)
-- [ ] `npx next build` pasa
+- [x] `npx next build` pasa
 
 #### Frontend
 - Componentes: `components/environmental/environmental-readings-input.tsx`, `components/attachments/activity-photo-gallery.tsx`, `components/attachments/file-upload-zone.tsx`
@@ -203,22 +203,22 @@ El modelo de referencia esta en `docs/data-model-references/activity-model.jsx` 
 **para** completar la transicion al nuevo modelo y poder deprecar los campos embebidos
 
 #### Criterios de Aceptacion
-- [ ] Mutation `migrateAttachments(companyId)` en `convex/activityAttachments.ts`:
+- [x] Mutation `migrateAttachments(companyId)` en `convex/activityAttachments.ts`:
   - Para cada activity con photos[] no vacio: crear activity_attachment por cada URL con type="photo"
   - Para cada activity con files[] no vacio: crear activity_attachment por cada URL con type="document"
   - Idempotente: skip si activity ya tiene attachments en la tabla normalizada
   - Procesa en batches de 100
-- [ ] Mutation `migrateEnvironmentalData(companyId)` en `convex/activityEnvironmental.ts`:
+- [x] Mutation `migrateEnvironmentalData(companyId)` en `convex/activityEnvironmental.ts`:
   - Para cada activity con environmental_data no vacio: extraer campos conocidos (temperature, humidity, etc.) y crear activity_environmental_reading por cada uno
   - Mapear campos: temp → temperature, humidity → humidity, vpd → vpd, etc.
   - Idempotente
-- [ ] Mutation `migrateObservations(companyId)` en `convex/activityObservations.ts`:
+- [x] Mutation `migrateObservations(companyId)` en `convex/activityObservations.ts`:
   - Para cada activity con quality_check_data que tenga datos de observacion: crear activity_observation
   - Para cada pest_disease_record existente vinculado a una activity: crear activity_observation con organism_id
   - Idempotente
-- [ ] Reporte de migracion: retorna {attachments_migrated, readings_migrated, observations_migrated, errors[]}
-- [ ] Despues de migracion verificada, marcar campos como deprecated en comentarios del schema (NO eliminar aun)
-- [ ] `npx next build` pasa
+- [x] Reporte de migracion: retorna {attachments_migrated, readings_migrated, observations_migrated, errors[]}
+- [x] Despues de migracion verificada, marcar campos como deprecated en comentarios del schema (NO eliminar aun)
+- [x] `npx next build` pasa
 
 #### Backend
 - Mutations de migracion en los 3 archivos nuevos
@@ -310,15 +310,29 @@ El modelo de referencia esta en `docs/data-model-references/activity-model.jsx` 
 
 ---
 
-## Implementacion (llenado por /implement-feature)
-
-_Esta seccion se completa automaticamente al implementar la feature._
+## Implementacion
 
 ### Commits
-_pendiente_
+- `e1cbbf1` — feat(activities): US-OBS.1 schema activity_observations + CRUD backend
+- `78712b8` — feat(activities): US-OBS.2 schema activity_environmental_readings + CRUD backend
+- `092c2ac` — feat(activities): US-OBS.3 schema activity_attachments + CRUD backend + file upload
+- `93800f3` — feat(observations): US-OBS.4 observation UI + active issues dashboard
+- `4d59e8e` — feat(activities): US-OBS.5 environmental readings input + photo gallery UI
+- `114d381` — feat(activities): US-OBS.6 legacy data migration + deprecated field markers
 
 ### Archivos Modificados
-_pendiente_
+- `convex/schema.ts` — 3 new tables (activity_observations, activity_environmental_readings, activity_attachments) + deprecated field comments
+- `convex/activityObservations.ts` — CRUD + stats + batch count + migration
+- `convex/activityEnvironmental.ts` — CRUD + history + migration
+- `convex/activityAttachments.ts` — CRUD + file storage integration + migration
+- `lib/constants/environmental-readings.ts` — 11 reading types with normal ranges
+- `components/observations/observation-form.tsx` — Inline form for adding observations
+- `components/observations/observation-card.tsx` — Display card with severity/type badges
+- `components/observations/active-issues-dashboard.tsx` — Filterable dashboard of active issues
+- `components/environmental/environmental-readings-input.tsx` — Quick-input cards with range indicators
+- `components/attachments/activity-photo-gallery.tsx` — Multi-file upload + gallery with lightbox
+- `components/attachments/file-upload-zone.tsx` — Reusable drag-and-drop upload zone
+- `app/(dashboard)/batches/[id]/page.tsx` — Observations tab with unresolved count badge
 
 ### Fecha de Completado
-_pendiente_
+2026-02-10

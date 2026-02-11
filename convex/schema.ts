@@ -1563,11 +1563,15 @@ export default defineSchema({
     }))),
 
     // Quality & Environment
+    // DEPRECATED: Use activity_observations table instead
     quality_check_data: v.optional(v.object({})),
+    // DEPRECATED: Use activity_environmental_readings table instead
     environmental_data: v.optional(v.object({})),
 
     // Media
+    // DEPRECATED: Use activity_attachments table instead
     photos: v.array(v.string()), // File references
+    // DEPRECATED: Use activity_attachments table instead
     files: v.array(v.string()),
     media_metadata: v.optional(v.object({})),
 
@@ -2142,4 +2146,104 @@ export default defineSchema({
     .index("by_company", ["company_id"])
     .index("by_batch_id", ["batch_id"])
     .index("by_status", ["status"]),
+
+  // ============================================================================
+  // P3 — Observations, Environmental Readings, Attachments
+  // ============================================================================
+
+  activity_observations: defineTable({
+    activity_id: v.id("activities"),
+    company_id: v.id("companies"),
+
+    // Classification
+    observation_type: v.string(), // pest/disease/deficiency/excess/mechanical_damage/environmental_stress/growth/positive/other
+    severity: v.optional(v.string()), // none/low/medium/high/critical
+
+    // Organism
+    organism_id: v.optional(v.id("pest_diseases")),
+    organism_name: v.optional(v.string()),
+
+    // Scope
+    affected_area_pct: v.optional(v.number()), // 0-100
+    affected_plant_count: v.optional(v.number()),
+    plant_part: v.optional(v.string()), // root/stem/leaf/flower/fruit/whole
+
+    // Content
+    description: v.string(),
+    recommended_action: v.optional(v.string()),
+
+    // Follow-up
+    follow_up_date: v.optional(v.number()),
+    resolved: v.boolean(),
+    resolved_at: v.optional(v.number()),
+    resolved_by: v.optional(v.id("users")),
+    resolved_by_activity_id: v.optional(v.id("activities")),
+
+    // Linked attachments
+    attachment_ids: v.optional(v.array(v.string())),
+
+    created_at: v.number(),
+  })
+    .index("by_activity", ["activity_id"])
+    .index("by_company", ["company_id"])
+    .index("by_observation_type", ["company_id", "observation_type"])
+    .index("by_organism", ["company_id", "organism_id"])
+    .index("by_follow_up_date", ["company_id", "follow_up_date"])
+    .index("by_resolved", ["company_id", "resolved"]),
+
+  activity_environmental_readings: defineTable({
+    activity_id: v.id("activities"),
+    company_id: v.id("companies"),
+
+    reading_type: v.string(), // temperature/humidity/vpd/co2/light_ppfd/light_dli/ph/ec/dissolved_oxygen/wind_speed/soil_moisture
+    value: v.number(),
+    unit: v.string(), // "C"/"F"/"%"/"kPa"/"ppm"/"umol/m2/s"/"mol/m2/d"/"mS/cm"
+
+    measured_at: v.number(),
+    sensor_id: v.optional(v.string()),
+    location_note: v.optional(v.string()), // "Canopy level", "Root zone", "Ambient"
+
+    created_at: v.number(),
+  })
+    .index("by_activity", ["activity_id"])
+    .index("by_company", ["company_id"])
+    .index("by_reading_type", ["company_id", "reading_type"])
+    .index("by_measured_at", ["company_id", "measured_at"]),
+
+  activity_attachments: defineTable({
+    activity_id: v.id("activities"),
+    company_id: v.id("companies"),
+
+    // Classification
+    type: v.string(), // photo/document/video/certificate/lab_result/other
+
+    // File
+    storage_id: v.string(), // Convex storage ID
+    file_url: v.string(), // Public URL
+    thumbnail_url: v.optional(v.string()),
+
+    // File metadata
+    file_name: v.string(),
+    file_size_bytes: v.optional(v.number()),
+    mime_type: v.optional(v.string()),
+
+    // Content
+    caption: v.optional(v.string()),
+
+    // Temporal
+    taken_at: v.optional(v.number()), // EXIF or manual
+
+    // Geolocation
+    geo_lat: v.optional(v.number()),
+    geo_lng: v.optional(v.number()),
+
+    // Order
+    sort_order: v.number(),
+
+    uploaded_by: v.id("users"),
+    created_at: v.number(),
+  })
+    .index("by_activity", ["activity_id"])
+    .index("by_company", ["company_id"])
+    .index("by_type", ["company_id", "type"]),
 });
