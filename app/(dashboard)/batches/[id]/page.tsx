@@ -28,6 +28,7 @@ import {
   BatchNotesTab,
   BatchCostSummary,
 } from '@/components/batches';
+import { CultivationTimeline } from '@/components/cultivation/cultivation-timeline';
 import {
   Layers,
   Leaf,
@@ -269,6 +270,13 @@ export default function BatchDetailPage({ params }: PageProps) {
               Actividades
             </TabsTrigger>
             <TabsTrigger
+              value="cultivation-plan"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <Calendar className="h-4 w-4" />
+              Plan de Cultivo
+            </TabsTrigger>
+            <TabsTrigger
               value="quality"
               className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
             >
@@ -467,6 +475,15 @@ export default function BatchDetailPage({ params }: PageProps) {
         {/* Activities Tab */}
         <TabsContent value="activities" className="mt-6">
           <BatchActivitiesTab batchId={batchId} companyId={batch.company_id} />
+        </TabsContent>
+
+        {/* Cultivation Plan Tab */}
+        <TabsContent value="cultivation-plan" className="mt-6">
+          <CultivationTimeline
+            batchId={batchId}
+            companyId={batch.company_id}
+            cropTypeId={batch.crop_type_id}
+          />
         </TabsContent>
 
         {/* Quality Checks Tab */}

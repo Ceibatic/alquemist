@@ -2448,3 +2448,386 @@ export const completeScheduledActivity = mutation({
     };
   },
 });
+
+// ============================================================================
+// P2: Template-aware execution — US-TMPL.6
+// ============================================================================
+
+/**
+ * Complete a scheduled activity with template pre-fill support.
+ *
+ * Loads the linked template (if any), validates checklist responses,
+ * creates activity with resources, and handles verification requirements.
+ */
+export const completeScheduledWithTemplate = mutation({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+    completedBy: v.id("users"),
+    notes: v.optional(v.string()),
+    duration_minutes: v.optional(v.number()),
+    photos: v.optional(v.array(v.string())),
+    // Resource overrides — operator can adjust template quantities
+    resources: v.optional(
+      v.array(
+        v.object({
+          product_id: v.id("products"),
+          quantity: v.number(),
+          unit_id: v.optional(v.id("units_of_measure")),
+          quantity_unit: v.optional(v.string()),
+          direction: v.string(),
+          application_rate: v.optional(v.string()),
+          application_method: v.optional(v.string()),
+        })
+      )
+    ),
+    // Checklist responses
+    checklistResponses: v.optional(
+      v.array(
+        v.object({
+          item_id: v.string(),
+          completed: v.boolean(),
+          value: v.optional(v.any()),
+          photo_url: v.optional(v.string()),
+        })
+      )
+    ),
+    // Scale factor for resource calculation
+    plantCount: v.optional(v.number()),
+    areaM2: v.optional(v.number()),
+    solutionLiters: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const scheduledActivity = await ctx.db.get(args.scheduledActivityId);
+    if (!scheduledActivity) {
+      throw new Error("Actividad programada no encontrada");
+    }
+
+    if (scheduledActivity.status === "completed") {
+      throw new Error("Actividad ya completada");
+    }
+
+    // Load template if linked
+    let template = null;
+    let templateResources: Array<{
+      product_id: string;
+      quantity: number;
+      unit_id?: string;
+      quantity_basis: string;
+      direction: string;
+      application_rate?: string;
+      application_method?: string;
+      is_required: boolean;
+    }> = [];
+    let checklistItems: Array<{
+      _id: string;
+      title: string;
+      is_required: boolean;
+    }> = [];
+
+    if (scheduledActivity.template_id) {
+      template = await ctx.db.get(scheduledActivity.template_id);
+
+      if (template) {
+        // Load template resources
+        const resources = await ctx.db
+          .query("activity_template_resources")
+          .withIndex("by_template", (q) =>
+            q.eq("template_id", template!._id)
+          )
+          .collect();
+        templateResources = resources.map((r) => ({
+          product_id: r.product_id,
+          quantity: r.quantity,
+          unit_id: r.unit_id,
+          quantity_basis: r.quantity_basis,
+          direction: r.direction,
+          application_rate: r.application_rate,
+          application_method: r.application_method,
+          is_required: r.is_required,
+        }));
+
+        // Load checklist
+        const checklist = await ctx.db
+          .query("activity_template_checklist")
+          .withIndex("by_template", (q) =>
+            q.eq("template_id", template!._id)
+          )
+          .collect();
+        checklistItems = checklist.map((c) => ({
+          _id: c._id,
+          title: c.title,
+          is_required: c.is_required,
+        }));
+      }
+    }
+
+    // Validate required checklist items are completed
+    if (checklistItems.length > 0 && args.checklistResponses) {
+      const responseMap = new Map(
+        args.checklistResponses.map((r) => [r.item_id, r])
+      );
+      const missingRequired = checklistItems.filter(
+        (item) =>
+          item.is_required &&
+          (!responseMap.has(item._id) || !responseMap.get(item._id)?.completed)
+      );
+      if (missingRequired.length > 0) {
+        throw new Error(
+          `Faltan items requeridos del checklist: ${missingRequired.map((m) => m.title).join(", ")}`
+        );
+      }
+    }
+
+    // Determine activity type info
+    const activityTypeName = template
+      ? template.name
+      : scheduledActivity.activity_type;
+
+    // Determine status based on verification requirement
+    const activityStatus =
+      template?.requires_verification ? "requires_review" : "completed";
+
+    // Build activity metadata with template defaults
+    const activityMetadata = {
+      ...(template?.default_metadata ?? {}),
+      template_id: template?._id,
+      template_version: template?.version,
+      checklist_responses: args.checklistResponses,
+    };
+
+    // Update scheduled activity status
+    await ctx.db.patch(args.scheduledActivityId, {
+      status: "completed",
+      actual_end_time: now,
+      completed_by: args.completedBy,
+      completion_notes: args.notes,
+      checklist_responses: args.checklistResponses,
+      updated_at: now,
+    });
+
+    // Resolve context from batch
+    let facilityId: Id<"facilities"> | undefined;
+    let batchId: Id<"batches"> | undefined;
+    let cropPhase: string | undefined;
+    let companyId: Id<"companies"> | undefined;
+
+    if (scheduledActivity.entity_type === "batch") {
+      const batch = await ctx.db.get(
+        scheduledActivity.entity_id as Id<"batches">
+      );
+      if (batch) {
+        facilityId = batch.facility_id;
+        batchId = batch._id;
+        cropPhase = batch.current_phase;
+        companyId = batch.company_id;
+      }
+    }
+
+    // Create activity record
+    const activityId = await ctx.db.insert("activities", {
+      entity_type: scheduledActivity.entity_type,
+      entity_id: scheduledActivity.entity_id,
+      activity_type: activityTypeName,
+      scheduled_activity_id: args.scheduledActivityId,
+      performed_by: args.completedBy,
+      timestamp: now,
+      duration_minutes: args.duration_minutes,
+      materials_consumed: args.resources ?? [],
+      equipment_used: [],
+      photos: args.photos || [],
+      files: [],
+      activity_metadata: activityMetadata,
+      notes: args.notes,
+      created_at: now,
+
+      // v2 fields
+      type_id: scheduledActivity.type_id,
+      category: template ? undefined : undefined,
+      company_id: companyId,
+      facility_id: facilityId,
+      batch_id: batchId,
+      crop_phase: cropPhase ?? scheduledActivity.crop_phase,
+      status: activityStatus,
+      priority: template?.default_priority,
+      started_at: scheduledActivity.actual_start_time,
+      completed_at: now,
+      title: activityTypeName,
+    });
+
+    // Create activity_resources rows from provided resources
+    const resourceEntries = args.resources ?? [];
+    for (const res of resourceEntries) {
+      await ctx.db.insert("activity_resources", {
+        activity_id: activityId,
+        direction: res.direction,
+        product_id: res.product_id,
+        quantity: res.quantity,
+        unit_id: res.unit_id,
+        quantity_unit: res.quantity_unit ?? "",
+        application_rate: res.application_rate,
+        application_method: res.application_method,
+        created_at: now,
+      });
+    }
+
+    // Auto-create labor cost entry
+    if (args.duration_minutes && args.duration_minutes > 0 && facilityId) {
+      await createLaborCostEntry(ctx, {
+        userId: args.completedBy,
+        durationMinutes: args.duration_minutes,
+        activityId,
+        facilityId,
+        batchId,
+        cropPhase,
+      });
+    }
+
+    // Update schedule progress if linked
+    if (scheduledActivity.schedule_id) {
+      const schedule = await ctx.db.get(scheduledActivity.schedule_id);
+      if (schedule) {
+        await ctx.db.patch(scheduledActivity.schedule_id, {
+          completed_activities: schedule.completed_activities + 1,
+          updated_at: now,
+        });
+      }
+    }
+
+    return {
+      activityId,
+      scheduledActivityId: args.scheduledActivityId,
+      status: activityStatus,
+    };
+  },
+});
+
+/**
+ * Execute a scheduled activity as a new independent activity.
+ * Used when the operator significantly changes the plan.
+ */
+export const executeScheduledAsNew = mutation({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+    completedBy: v.id("users"),
+    activityType: v.string(),
+    notes: v.optional(v.string()),
+    duration_minutes: v.optional(v.number()),
+    photos: v.optional(v.array(v.string())),
+    resources: v.optional(
+      v.array(
+        v.object({
+          product_id: v.id("products"),
+          quantity: v.number(),
+          unit_id: v.optional(v.id("units_of_measure")),
+          quantity_unit: v.optional(v.string()),
+          direction: v.string(),
+        })
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const scheduledActivity = await ctx.db.get(args.scheduledActivityId);
+    if (!scheduledActivity) {
+      throw new Error("Actividad programada no encontrada");
+    }
+
+    // Mark scheduled as completed (even though execution differed)
+    await ctx.db.patch(args.scheduledActivityId, {
+      status: "completed",
+      actual_end_time: now,
+      completed_by: args.completedBy,
+      completion_notes: args.notes,
+      updated_at: now,
+    });
+
+    // Resolve context
+    let facilityId: Id<"facilities"> | undefined;
+    let batchId: Id<"batches"> | undefined;
+    let cropPhase: string | undefined;
+    let companyId: Id<"companies"> | undefined;
+
+    if (scheduledActivity.entity_type === "batch") {
+      const batch = await ctx.db.get(
+        scheduledActivity.entity_id as Id<"batches">
+      );
+      if (batch) {
+        facilityId = batch.facility_id;
+        batchId = batch._id;
+        cropPhase = batch.current_phase;
+        companyId = batch.company_id;
+      }
+    }
+
+    // Create new activity with provided data
+    const activityId = await ctx.db.insert("activities", {
+      entity_type: scheduledActivity.entity_type,
+      entity_id: scheduledActivity.entity_id,
+      activity_type: args.activityType,
+      scheduled_activity_id: args.scheduledActivityId,
+      performed_by: args.completedBy,
+      timestamp: now,
+      duration_minutes: args.duration_minutes,
+      materials_consumed: args.resources ?? [],
+      equipment_used: [],
+      photos: args.photos || [],
+      files: [],
+      activity_metadata: {},
+      notes: args.notes,
+      created_at: now,
+      company_id: companyId,
+      facility_id: facilityId,
+      batch_id: batchId,
+      crop_phase: cropPhase,
+      status: "completed",
+      completed_at: now,
+      title: args.activityType,
+    });
+
+    // Create activity_resources
+    if (args.resources) {
+      for (const res of args.resources) {
+        await ctx.db.insert("activity_resources", {
+          activity_id: activityId,
+          direction: res.direction,
+          product_id: res.product_id,
+          quantity: res.quantity,
+          unit_id: res.unit_id,
+          quantity_unit: res.quantity_unit ?? "",
+          created_at: now,
+        });
+      }
+    }
+
+    // Labor cost entry
+    if (args.duration_minutes && args.duration_minutes > 0 && facilityId) {
+      await createLaborCostEntry(ctx, {
+        userId: args.completedBy,
+        durationMinutes: args.duration_minutes,
+        activityId,
+        facilityId,
+        batchId,
+        cropPhase,
+      });
+    }
+
+    // Update schedule progress
+    if (scheduledActivity.schedule_id) {
+      const schedule = await ctx.db.get(scheduledActivity.schedule_id);
+      if (schedule) {
+        await ctx.db.patch(scheduledActivity.schedule_id, {
+          completed_activities: schedule.completed_activities + 1,
+          updated_at: now,
+        });
+      }
+    }
+
+    return {
+      activityId,
+      scheduledActivityId: args.scheduledActivityId,
+    };
+  },
+});
