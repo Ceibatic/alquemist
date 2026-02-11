@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { LogIn } from 'lucide-react';
-import { useSignIn } from '@clerk/nextjs';
+import { LogIn, Loader2 } from 'lucide-react';
+import { useAuth, useSignIn } from '@clerk/nextjs';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { loginSchema, type LoginFormValues } from '@/lib/validations';
 import { getClerkErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -16,9 +18,34 @@ import { PasswordInput } from '@/components/shared/password-input';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
   const { signIn, setActive, isLoaded } = useSignIn();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+
+  // Check onboarding status if user is already authenticated
+  const shouldCheckOnboarding = authLoaded && isSignedIn;
+  const onboardingStatus = useQuery(
+    shouldCheckOnboarding ? api.users.getOnboardingStatus : 'skip' as any
+  );
+
+  // Auto-redirect authenticated users
+  useEffect(() => {
+    if (!authLoaded) return;
+    if (!isSignedIn) return; // Show login form normally
+
+    if (onboardingStatus === undefined) return; // Loading
+    if (onboardingStatus === null) return; // No user in Convex (edge case)
+
+    // Redirect based on onboarding status
+    if (!onboardingStatus.hasCompany) {
+      router.replace('/company-setup');
+    } else if (!onboardingStatus.onboardingCompleted) {
+      router.replace('/facility-basic');
+    } else {
+      router.replace('/dashboard');
+    }
+  }, [authLoaded, isSignedIn, onboardingStatus, router]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -53,7 +80,17 @@ export default function LoginPage() {
     }
   };
 
-  if (!isLoaded) return null;
+  // Show loader while checking auth status
+  if (!authLoaded || !isLoaded) return null;
+
+  if (isSignedIn && onboardingStatus === undefined) {
+    return (
+      <div className="flex flex-col items-center justify-center space-y-4 py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Verificando sesión...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
