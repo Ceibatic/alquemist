@@ -25,7 +25,7 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
 **para** estandarizar las operaciones de cultivo y pre-llenar formularios al ejecutar actividades
 
 #### Criterios de Aceptacion
-- [ ] Tabla `activity_templates` en schema.ts con campos:
+- [x] Tabla `activity_templates` en schema.ts con campos:
   - Clasificacion: `company_id`, `type_id` (FK activity_types de P1), `name`, `code` (unico por empresa), `description`
   - Aplicabilidad: `crop_type_ids` (array FK crop_types), `applicable_phases` (array de strings crop_phase), `phase_day_start` (opcional int), `phase_day_end` (opcional int)
   - Tiempo: `estimated_duration_minutes` (opcional), `labor_hours_per_1000_plants` (opcional)
@@ -34,22 +34,22 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
   - Condiciones: `requires_conditions` (opcional any — condiciones ambientales requeridas), `depends_on_template_id` (opcional FK self), `min_days_after_dependency` (opcional)
   - Normativo: `regulatory_reference` (opcional string — SOP, norma), `requires_verification` (boolean)
   - Estado: `sort_order`, `is_active` (boolean), `version` (number, default 1), `created_at`, `updated_at`
-- [ ] Indexes: by_company, by_type_id, by_company_phase (company_id + applicable_phases filterable), by_active
-- [ ] Tabla `activity_template_resources` en schema.ts con campos:
+- [x] Indexes: by_company, by_type_id, by_active
+- [x] Tabla `activity_template_resources` en schema.ts con campos:
   - `template_id` (FK activity_templates), `product_id` (FK products)
   - Cantidad: `quantity` (number), `unit_id` (opcional FK units_of_measure), `quantity_basis` (fixed/per_plant/per_m2/per_zone/per_L_solution)
   - Aplicacion: `direction` (consumed/applied/produced), `application_rate` (opcional string), `application_method` (opcional string)
   - Sustitutos: `is_required` (boolean), `alternative_product_ids` (opcional array FK products)
   - Orden: `sequence` (number), `notes` (opcional string), `created_at`
-- [ ] Index: by_template
-- [ ] CRUD backend en `convex/activityTemplates.ts`:
+- [x] Index: by_template
+- [x] CRUD backend en `convex/activityTemplates.ts`:
   - Queries: `list(companyId, typeId?, cropTypeId?, phase?, isActive?)`, `getById(templateId)`, `getByCode(companyId, code)`
   - Mutations: `create(...)`, `update(templateId, fields)`, `archive(templateId)` (set is_active=false), `duplicate(templateId)` (copia con version+1 y nombre "(Copia)")
   - `addResource(templateId, resource)`, `updateResource(resourceId, fields)`, `removeResource(resourceId)`, `reorderResources(templateId, resourceIds[])`
-- [ ] Al crear template, valida que type_id exista en activity_types
-- [ ] Al crear template, valida que code sea unico por empresa
-- [ ] quantity_basis escala automaticamente en la UI (ej: per_plant con 42 plantas = qty * 42)
-- [ ] `npx next build` pasa
+- [x] Al crear template, valida que type_id exista en activity_types
+- [x] Al crear template, valida que code sea unico por empresa
+- [x] quantity_basis escala automaticamente en la UI (ej: per_plant con 42 plantas = qty * 42)
+- [x] `npx next build` pasa
 
 #### Backend
 - Tablas nuevas: `activity_templates`, `activity_template_resources`
@@ -67,7 +67,7 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
 **para** estandarizar los pasos de ejecucion y asegurar cumplimiento de SOPs
 
 #### Criterios de Aceptacion
-- [ ] Tabla `activity_template_checklist` en schema.ts con campos:
+- [x] Tabla `activity_template_checklist` en schema.ts con campos:
   - `template_id` (FK activity_templates), `step_number` (int, orden)
   - `title` (string — ej: "Verificar pH de la mezcla"), `description` (opcional string — instruccion detallada)
   - `is_required` (boolean — si es obligatorio para completar la actividad)
@@ -77,12 +77,12 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
   - `value_options` (opcional array string — para select: ["Aprobado","Rechazado","Pendiente"])
   - `value_min`, `value_max` (opcionales number — rango valido para number)
   - `created_at`
-- [ ] Index: by_template
-- [ ] CRUD en `convex/activityTemplates.ts`:
+- [x] Index: by_template
+- [x] CRUD en `convex/activityTemplates.ts`:
   - `addChecklistItem(templateId, item)`, `updateChecklistItem(itemId, fields)`, `removeChecklistItem(itemId)`, `reorderChecklist(templateId, itemIds[])`
   - Query: `getChecklist(templateId)` — retorna items ordenados por step_number
-- [ ] Al agregar item, auto-asigna step_number al final (max + 1)
-- [ ] `npx next build` pasa
+- [x] Al agregar item, auto-asigna step_number al final (max + 1)
+- [x] `npx next build` pasa
 
 #### Backend
 - Tabla nueva: `activity_template_checklist`
@@ -100,11 +100,11 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
 **para** disenar las operaciones estandar de cultivo de forma visual
 
 #### Criterios de Aceptacion
-- [ ] Pagina listado: `app/(dashboard)/activity-templates/page.tsx`
+- [x] Pagina listado: `app/(dashboard)/activity-templates/page.tsx`
   - Filtros: por categoria (tabs o dropdown), por crop_type, por fase, activo/archivado
   - Cards de template mostrando: nombre, code, tipo (con icono/color de activity_type), fases aplicables (badges), frecuencia, cantidad de recursos, cantidad de checklist items
   - Boton "Crear template" abre pagina de creacion
-- [ ] Pagina crear/editar: `app/(dashboard)/activity-templates/[id]/page.tsx`
+- [x] Pagina crear/editar: `app/(dashboard)/activity-templates/[id]/page.tsx`
   - Seccion principal: nombre, code (auto-generado editable), descripcion, tipo (selector de activity_types), prioridad default
   - Seccion aplicabilidad: crop_types (multi-select), fases (multi-select checkbox), rango de dias (phase_day_start — phase_day_end)
   - Seccion tiempo: duracion estimada (minutos), labor por 1000 plantas (horas)
@@ -114,10 +114,10 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
   - Seccion checklist: lista editable con [orden, titulo, descripcion, requerido, requiere foto, requiere valor, tipo valor]. Boton agregar paso. Drag-and-drop reorder.
   - Preview: card lateral mostrando como se vera el template al ejecutarlo (recursos calculados para N plantas/m2)
   - Guardar: valida campos requeridos, muestra toast "Template guardado"
-- [ ] Duplicar template: boton en listado que crea copia con "(Copia)" en nombre
-- [ ] Archivar/restaurar toggle
-- [ ] Loading/empty states en todas las vistas
-- [ ] `npx next build` pasa
+- [x] Duplicar template: boton en listado que crea copia con "(Copia)" en nombre
+- [x] Archivar/restaurar toggle
+- [x] Loading/empty states en todas las vistas
+- [x] `npx next build` pasa
 
 #### Frontend
 - Paginas: `app/(dashboard)/activity-templates/page.tsx`, `app/(dashboard)/activity-templates/[id]/page.tsx`
@@ -135,7 +135,7 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
 **para** generar automaticamente el calendario de actividades programadas
 
 #### Criterios de Aceptacion
-- [ ] Tabla `cultivation_schedules` en schema.ts con campos:
+- [x] Tabla `cultivation_schedules` en schema.ts con campos:
   - `company_id` (FK companies), `batch_id` (FK batches), `crop_type_id` (FK crop_types)
   - `production_order_id` (opcional FK production_orders — complementa, no reemplaza)
   - `name` (string — ej: "Plan Gelato Indoor Ciclo Feb-2026")
@@ -145,15 +145,15 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
   - Progreso: `total_activities` (number), `completed_activities` (number, default 0), `skipped_activities` (number, default 0)
   - Estado: `current_phase` (opcional string), `current_phase_day` (opcional number), `status` (draft/active/completed/cancelled)
   - `created_at`, `updated_at`
-- [ ] Indexes: by_company, by_batch_id, by_status
-- [ ] Backend `convex/cultivationSchedules.ts`:
+- [x] Indexes: by_company, by_batch_id, by_status
+- [x] Backend `convex/cultivationSchedules.ts`:
   - Mutation `create(companyId, batchId, cropTypeId, name, plannedPhases[], plannedStartDate, zoneId?)` — crea schedule en status "draft"
   - Mutation `activate(scheduleId)` — cambia status a "active" (requiere que total_activities > 0)
   - Mutation `updateProgress(scheduleId)` — recalcula completed/skipped desde scheduled_activities vinculadas
   - Query `getByBatch(batchId)` — retorna el schedule activo del batch (o draft si no hay activo)
   - Query `list(companyId, status?)` — lista schedules con progreso
-- [ ] Al crear, calcula planned_end_date = planned_start_date + sum(phase.duration_days)
-- [ ] `npx next build` pasa
+- [x] Al crear, calcula planned_end_date = planned_start_date + sum(phase.duration_days)
+- [x] `npx next build` pasa
 
 #### Backend
 - Tabla nueva: `cultivation_schedules`
@@ -171,7 +171,7 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
 **para** tener un calendario completo de operaciones sin crearlas manualmente una por una
 
 #### Criterios de Aceptacion
-- [ ] Campos nuevos agregados a `scheduled_activities` (todos v.optional):
+- [x] Campos nuevos agregados a `scheduled_activities` (todos v.optional):
   - `schedule_id` (FK cultivation_schedules)
   - `type_id` (FK activity_types — de P1)
   - `template_id` (FK activity_templates — reemplaza activity_template_id legacy)
@@ -182,8 +182,8 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
   - `company_id` (FK companies)
   - `crop_phase` (string)
   - `checklist_responses` (opcional any — respuestas del checklist al completar)
-- [ ] Nuevo index: by_schedule (schedule_id)
-- [ ] Mutation `generateFromSchedule(scheduleId)` en `convex/cultivationSchedules.ts`:
+- [x] Nuevo index: by_schedule (schedule_id)
+- [x] Mutation `generateFromSchedule(scheduleId)` en `convex/cultivationSchedules.ts`:
   1. Lee el schedule con sus planned_phases
   2. Busca activity_templates aplicables: WHERE company_id matches AND crop_type_ids includes schedule.crop_type_id AND applicable_phases intersects with scheduled phases AND is_active = true
   3. Para cada template × cada fase aplicable:
@@ -195,10 +195,10 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
   4. Inserta scheduled_activities con: schedule_id, template_id, type_id, entity_type="batch", entity_id=batchId, scheduled_date, crop_phase, phase_day, status="pending", recurrence_index/total
   5. Actualiza schedule.total_activities con el conteo
   6. Retorna: { generated: N, byPhase: {propagation: X, vegetative: Y, ...} }
-- [ ] Si se re-ejecuta, elimina scheduled_activities pendientes del schedule y regenera (no toca completed/skipped)
-- [ ] Mutation `skipScheduledActivity(scheduledId, reason)` — status → "skipped" con skipped_reason
-- [ ] Mutation `rescheduleActivity(scheduledId, newDate)` — actualiza scheduled_date
-- [ ] `npx next build` pasa
+- [x] Si se re-ejecuta, elimina scheduled_activities pendientes del schedule y regenera (no toca completed/skipped)
+- [x] Mutation `skipScheduledActivity(scheduledId, reason)` — status → "skipped" con skipped_reason
+- [x] Mutation `rescheduleActivity(scheduledId, newDate)` — actualiza scheduled_date
+- [x] `npx next build` pasa
 
 #### Backend
 - Schema: Modificar `scheduled_activities` + mutations nuevas
@@ -216,7 +216,7 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
 **para** solo ajustar los valores reales y completar rapidamente
 
 #### Criterios de Aceptacion
-- [ ] Refactorizar `completeScheduledActivity()` en activities.ts para:
+- [x] Refactorizar `completeScheduledActivity()` en activities.ts para:
   - Cargar el template vinculado (si existe) con sus recursos y checklist
   - Pre-llenar la actividad con: type_id, category, default_metadata del template, title auto-generado
   - Aceptar `resources` override (el operador puede cambiar cantidades/productos)
@@ -225,10 +225,10 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
   - Crear activity_resources rows (del P1) con los recursos reales usados
   - Si template.requires_verification: set status = "requires_review" en vez de "completed"
   - Guardar checklist_responses en scheduled_activity
-- [ ] Mutation alternativa: `executeScheduledAsNew(scheduledId, activityData)` — para cuando el operador cambia significativamente el plan (crea activity nueva, vincula a scheduled)
-- [ ] Si el operador no completa todos los items requeridos del checklist, la mutation rechaza con "Faltan items requeridos del checklist: [lista]"
-- [ ] Labor cost entry se sigue creando automaticamente (de P1)
-- [ ] `npx next build` pasa
+- [x] Mutation alternativa: `executeScheduledAsNew(scheduledId, activityData)` — para cuando el operador cambia significativamente el plan (crea activity nueva, vincula a scheduled)
+- [x] Si el operador no completa todos los items requeridos del checklist, la mutation rechaza con "Faltan items requeridos del checklist: [lista]"
+- [x] Labor cost entry se sigue creando automaticamente (de P1)
+- [x] `npx next build` pasa
 
 #### Backend
 - Mutation modificada: `activities.completeScheduledActivity`
@@ -247,18 +247,18 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
 **para** tener visibilidad del progreso, actividades pendientes, overdue y completadas
 
 #### Criterios de Aceptacion
-- [ ] Componente `CultivationTimeline` embebido en la pagina de detalle del batch (nueva tab "Plan de Cultivo")
+- [x] Componente `CultivationTimeline` embebido en la pagina de detalle del batch (nueva tab "Plan de Cultivo")
   - Header: nombre del plan, barra de progreso (completed/total), fase actual + dia actual
   - Vista por fases: cada fase como seccion con fecha inicio-fin, duracion, y lista de actividades
   - Cada actividad muestra: fecha programada, tipo (icono + nombre), status (badge: pending/completed/skipped/overdue), asignado a (avatar), recursos resumidos
   - Actividades overdue (scheduled_date < hoy && status=pending) destacadas en rojo
   - Click en actividad abre modal de ejecucion (pre-llenado con template, recursos calculados, checklist)
   - Boton "Generar plan" visible si el batch no tiene schedule: abre dialog para configurar fases y duraciones → genera schedule + scheduled_activities
-- [ ] Vista alternativa: calendario mensual con dots por dia mostrando actividades programadas
-- [ ] Filtros: por fase, por status, por tipo de actividad
-- [ ] Stats en header: total actividades, completadas, pendientes hoy, overdue
-- [ ] Empty state: "Este batch no tiene plan de cultivo. Crea uno para programar actividades automaticamente."
-- [ ] `npx next build` pasa
+- [x] Vista alternativa: calendario mensual con dots por dia mostrando actividades programadas
+- [x] Filtros: por fase, por status, por tipo de actividad
+- [x] Stats en header: total actividades, completadas, pendientes hoy, overdue
+- [x] Empty state: "Este batch no tiene plan de cultivo. Crea uno para programar actividades automaticamente."
+- [x] `npx next build` pasa
 
 #### Frontend
 - Componente: `components/cultivation/cultivation-timeline.tsx`
@@ -279,7 +279,7 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
 **para** saber que debo hacer al llegar al trabajo sin navegar batch por batch
 
 #### Criterios de Aceptacion
-- [ ] Pagina: `app/(dashboard)/scheduled-activities/page.tsx`
+- [x] Pagina: `app/(dashboard)/scheduled-activities/page.tsx`
   - Seccion "Hoy" con actividades cuya scheduled_date es hoy, agrupadas por batch
   - Seccion "Atrasadas" (overdue) con actividades cuya scheduled_date < hoy y status=pending, ordenadas por antiguedad
   - Seccion "Proximos 7 dias" colapsable
@@ -287,11 +287,11 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
   - Boton "Ejecutar" en cada actividad abre modal de ejecucion (misma US-TMPL.6)
   - Boton "Saltar" en cada actividad abre dialog para ingresar razon y marcar skipped
   - Counter en header: "X pendientes hoy · Y atrasadas · Z completadas hoy"
-- [ ] Query `getScheduledForDate(companyId, date, status?)` en cultivationSchedules.ts
+- [x] Query `getScheduledForDate(companyId, date, status?)` en cultivationSchedules.ts
   - Retorna scheduled_activities con joins a: template (nombre, recursos), batch (nombre, zona), activity_type (icono, color)
   - Ordena por scheduled_date ASC, priority DESC
-- [ ] Widget resumen en dashboard principal: card "Actividades pendientes" con count y link a esta pagina
-- [ ] `npx next build` pasa
+- [x] Widget resumen en dashboard principal: card "Actividades pendientes" con count y link a esta pagina
+- [x] `npx next build` pasa
 
 #### Frontend
 - Pagina: `app/(dashboard)/scheduled-activities/page.tsx`
@@ -432,15 +432,34 @@ Complementa (no reemplaza) `production_orders` — el schedule es el plan de act
 
 ---
 
-## Implementacion (llenado por /implement-feature)
-
-_Esta seccion se completa automaticamente al implementar la feature._
+## Implementacion
 
 ### Commits
-_pendiente_
+- `cf5e523` — feat(templates): US-TMPL.1 + US-TMPL.2 schema + CRUD backend for activity templates
+- `0fe0fbb` — feat(templates): US-TMPL.3 UI for activity template management
+- `a870d8b` — feat(schedules): US-TMPL.4 cultivation_schedules table + core backend
+- `bf833c3` — feat(schedules): US-TMPL.5 auto-generation of scheduled activities from templates
+- `8d4ec4a` — feat(activities): US-TMPL.6 template-aware scheduled activity execution
+- `10aea3a` — feat(cultivation): US-TMPL.7 cultivation timeline UI per batch
+- `4c07f79` — feat(activities): US-TMPL.8 cross-batch scheduled activities page
 
 ### Archivos Modificados
-_pendiente_
+- `convex/schema.ts` — 4 new tables (activity_templates, activity_template_resources, activity_template_checklist, cultivation_schedules) + scheduled_activities P2 fields
+- `convex/activityTemplates.ts` — NEW ~550 lines, full CRUD for templates, resources, checklist
+- `convex/cultivationSchedules.ts` — NEW ~700 lines, schedules CRUD + auto-generation + skip/reschedule
+- `convex/activities.ts` — Extended with completeScheduledWithTemplate + executeScheduledAsNew (~380 lines)
+- `app/(dashboard)/activity-templates/page.tsx` — NEW listing page
+- `app/(dashboard)/activity-templates/[id]/page.tsx` — NEW create/edit page
+- `components/activity-templates/activity-template-card.tsx` — NEW
+- `components/activity-templates/activity-template-list.tsx` — NEW
+- `components/activity-templates/resource-editor.tsx` — NEW
+- `components/activity-templates/checklist-editor.tsx` — NEW
+- `components/cultivation/cultivation-timeline.tsx` — NEW
+- `components/cultivation/scheduled-activity-card.tsx` — NEW
+- `components/cultivation/schedule-creation-dialog.tsx` — NEW
+- `app/(dashboard)/batches/[id]/page.tsx` — Added "Plan de Cultivo" tab
+- `app/(dashboard)/scheduled-activities/page.tsx` — NEW cross-batch activities page
+- `components/layout/sidebar.tsx` — Added nav links for activity-templates and scheduled-activities
 
 ### Fecha de Completado
-_pendiente_
+2026-02-10
