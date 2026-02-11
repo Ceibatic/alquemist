@@ -17,6 +17,7 @@ import {
   Layers,
   ShoppingCart,
   FileText,
+  CalendarCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -72,6 +73,11 @@ const navigationItems = [
     name: 'Templates Actividad',
     href: '/activity-templates' as const,
     icon: FileText,
+  },
+  {
+    name: 'Actividades',
+    href: '/scheduled-activities' as const,
+    icon: CalendarCheck,
   },
   {
     name: 'Control de Calidad',
