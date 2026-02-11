@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { PHASE_LABELS } from '@/lib/constants/phases';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Progress } from '@/components/ui/progress';
@@ -123,14 +124,7 @@ export function BatchCard({ batch, onClick }: BatchCardProps) {
     archived: 'Archivado',
   };
 
-  const phaseLabels: Record<string, string> = {
-    germination: 'Germinacion',
-    seedling: 'Plantula',
-    propagation: 'Propagacion',
-    vegetative: 'Vegetativo',
-    flowering: 'Floracion',
-    harvest: 'Cosecha',
-  };
+  const phaseLabels = PHASE_LABELS;
 
   // Calculate survival rate
   const survivalRate =

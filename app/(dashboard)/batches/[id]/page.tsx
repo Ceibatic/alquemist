@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { PlantsTab } from '@/components/plants';
 import { useToast } from '@/hooks/use-toast';
+import { PHASE_LABELS } from '@/lib/constants/phases';
 import { useRouter } from 'next/navigation';
 import {
   BatchMoveModal,
@@ -136,14 +137,7 @@ export default function BatchDetailPage({ params }: PageProps) {
     archived: 'Archivado',
   };
 
-  const phaseLabels: Record<string, string> = {
-    germination: 'Germinacion',
-    seedling: 'Plantula',
-    propagation: 'Propagacion',
-    vegetative: 'Vegetativo',
-    flowering: 'Floracion',
-    harvest: 'Cosecha',
-  };
+  const phaseLabels = PHASE_LABELS;
 
   const getStatusBadgeStatus = () => {
     switch (batch.status) {

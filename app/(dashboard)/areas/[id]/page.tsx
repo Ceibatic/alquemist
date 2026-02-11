@@ -10,8 +10,8 @@ import { OccupancyBar } from '@/components/ui/occupancy-bar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { getContainerTypeLabel } from '@/lib/constants/containers';
-import { AreaBatchesTab } from '@/components/areas/area-batches-tab';
-import { AreaActivitiesTab } from '@/components/areas/area-activities-tab';
+import { AreaProductionTab } from '@/components/areas/area-production-tab';
+import { AreaHistoryTab } from '@/components/areas/area-history-tab';
 import { AreaInventoryTab } from '@/components/areas/area-inventory-tab';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -147,50 +147,58 @@ export default function AreaDetailPage() {
       />
 
       {/* Tabs */}
-      <Tabs defaultValue="detail" className="w-full">
+      <Tabs defaultValue="produccion" className="w-full">
         <ScrollArea className="w-full">
           <TabsList className="inline-flex h-auto p-1 bg-gray-100 rounded-lg">
             <TabsTrigger
-              value="detail"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <Info className="h-4 w-4" />
-              Detalle
-            </TabsTrigger>
-            <TabsTrigger
-              value="structures"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <Building2 className="h-4 w-4" />
-              Estructuras
-            </TabsTrigger>
-            <TabsTrigger
-              value="batches"
+              value="produccion"
               className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
             >
               <Layers className="h-4 w-4" />
-              Lotes
+              Produccion
             </TabsTrigger>
             <TabsTrigger
-              value="activities"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <Activity className="h-4 w-4" />
-              Actividades
-            </TabsTrigger>
-            <TabsTrigger
-              value="inventory"
+              value="inventario"
               className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
             >
               <Box className="h-4 w-4" />
               Inventario
             </TabsTrigger>
+            <TabsTrigger
+              value="historial"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <Activity className="h-4 w-4" />
+              Historial
+            </TabsTrigger>
+            <TabsTrigger
+              value="detalle"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <Info className="h-4 w-4" />
+              Detalle
+            </TabsTrigger>
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
-        {/* Detail Tab */}
-        <TabsContent value="detail" className="space-y-6 mt-6">
+        {/* Produccion Tab */}
+        <TabsContent value="produccion" className="mt-6">
+          <AreaProductionTab areaId={areaId} />
+        </TabsContent>
+
+        {/* Inventario Tab */}
+        <TabsContent value="inventario" className="mt-6">
+          <AreaInventoryTab areaId={areaId} companyId={companyId} />
+        </TabsContent>
+
+        {/* Historial Tab */}
+        <TabsContent value="historial" className="mt-6">
+          <AreaHistoryTab areaId={areaId} />
+        </TabsContent>
+
+        {/* Detalle Tab */}
+        <TabsContent value="detalle" className="space-y-6 mt-6">
           {/* General Information */}
           <Card>
             <CardHeader>
@@ -508,26 +516,8 @@ export default function AreaDetailPage() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Structures Tab */}
-        <TabsContent value="structures" className="mt-6">
-          <AreaStructuresTab areaId={areaId} />
-        </TabsContent>
-
-        {/* Batches Tab */}
-        <TabsContent value="batches" className="mt-6">
-          <AreaBatchesTab areaId={areaId} companyId={companyId} />
-        </TabsContent>
-
-        {/* Activities Tab */}
-        <TabsContent value="activities" className="mt-6">
-          <AreaActivitiesTab areaId={areaId} companyId={companyId} />
-        </TabsContent>
-
-        {/* Inventory Tab */}
-        <TabsContent value="inventory" className="mt-6">
-          <AreaInventoryTab areaId={areaId} companyId={companyId} />
+          {/* Structures (integrated into Detalle) */}
+          <AreaStructuresTab areaId={areaId} environmentType={area.environment_type || 'indoor'} />
         </TabsContent>
       </Tabs>
     </div>

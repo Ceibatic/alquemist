@@ -1397,3 +1397,98 @@ export const updatePhase = mutation({
     return { success: true, message: "Phase updated successfully" };
   },
 });
+
+// ---------------------------------------------------------------------------
+// Area detail – Production tab
+// ---------------------------------------------------------------------------
+
+const PHASE_ORDER: string[] = [
+  "propagation",
+  "germination",
+  "seedling",
+  "vegetative",
+  "flowering",
+  "harvest",
+  "post_harvest",
+  "processing",
+];
+
+/**
+ * List active batches for an area, grouped by crop phase.
+ * Returns groups sorted by biological phase progression.
+ */
+export const listByAreaGroupedByPhase = query({
+  args: {
+    areaId: v.id("areas"),
+  },
+  handler: async (ctx, args) => {
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_area", (q) => q.eq("area_id", args.areaId))
+      .collect();
+
+    const activeBatches = batches.filter((b) => b.status === "active");
+
+    // Enrich with cultivar name
+    const enriched = await Promise.all(
+      activeBatches.map(async (batch) => {
+        const cultivar = batch.cultivar_id
+          ? await ctx.db.get(batch.cultivar_id)
+          : null;
+        const daysInProduction = Math.floor(
+          (Date.now() - batch.created_date) / (1000 * 60 * 60 * 24)
+        );
+        return {
+          _id: batch._id,
+          batch_code: batch.batch_code,
+          current_quantity: batch.current_quantity,
+          current_phase: batch.current_phase ?? "unknown",
+          cultivarName: cultivar?.name ?? "Sin cultivar",
+          daysInProduction,
+        };
+      })
+    );
+
+    // Group by phase
+    const groups = new Map<
+      string,
+      {
+        phase: string;
+        batches: typeof enriched;
+      }
+    >();
+
+    for (const batch of enriched) {
+      const phase = batch.current_phase;
+      if (!groups.has(phase)) {
+        groups.set(phase, { phase, batches: [] });
+      }
+      groups.get(phase)!.batches.push(batch);
+    }
+
+    // Build result with computed stats, ordered by phase progression
+    const phaseOrderMap = new Map(PHASE_ORDER.map((p, i) => [p, i]));
+
+    const result = Array.from(groups.values())
+      .map((g) => ({
+        phase: g.phase,
+        batchCount: g.batches.length,
+        totalPlants: g.batches.reduce((sum, b) => sum + b.current_quantity, 0),
+        avgDays:
+          g.batches.length > 0
+            ? Math.round(
+                g.batches.reduce((sum, b) => sum + b.daysInProduction, 0) /
+                  g.batches.length
+              )
+            : 0,
+        batches: g.batches,
+      }))
+      .sort((a, b) => {
+        const aOrder = phaseOrderMap.get(a.phase) ?? 999;
+        const bOrder = phaseOrderMap.get(b.phase) ?? 999;
+        return aOrder - bOrder;
+      });
+
+    return result;
+  },
+});

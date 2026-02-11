@@ -2831,3 +2831,233 @@ export const executeScheduledAsNew = mutation({
     };
   },
 });
+
+// ---------------------------------------------------------------------------
+// Area detail views – queries for area history, phase detail, activity detail
+// ---------------------------------------------------------------------------
+
+/**
+ * Get a single activity by ID, enriched with related entity names.
+ * Used by the activity detail page.
+ */
+export const getById = query({
+  args: {
+    activityId: v.id("activities"),
+  },
+  handler: async (ctx, args) => {
+    const activity = await ctx.db.get(args.activityId);
+    if (!activity) return null;
+
+    // Parallel lookups
+    const [performer, assignee, verifier, batch, area, facility, activityType] =
+      await Promise.all([
+        activity.performed_by ? ctx.db.get(activity.performed_by) : null,
+        activity.assigned_to ? ctx.db.get(activity.assigned_to) : null,
+        activity.verified_by ? ctx.db.get(activity.verified_by) : null,
+        activity.batch_id ? ctx.db.get(activity.batch_id) : null,
+        activity.zone_id ? ctx.db.get(activity.zone_id) : null,
+        activity.facility_id ? ctx.db.get(activity.facility_id) : null,
+        activity.type_id ? ctx.db.get(activity.type_id) : null,
+      ]);
+
+    // If batch exists, get its cultivar
+    const cultivar =
+      batch?.cultivar_id ? await ctx.db.get(batch.cultivar_id) : null;
+
+    return {
+      ...activity,
+      performedByName: performer
+        ? `${performer.first_name ?? ""} ${performer.last_name ?? ""}`.trim() || "Sin nombre"
+        : null,
+      assignedToName: assignee
+        ? `${assignee.first_name ?? ""} ${assignee.last_name ?? ""}`.trim() || "Sin nombre"
+        : null,
+      verifiedByName: verifier
+        ? `${verifier.first_name ?? ""} ${verifier.last_name ?? ""}`.trim() || "Sin nombre"
+        : null,
+      batchCode: batch?.batch_code ?? null,
+      batchCultivar: cultivar?.name ?? null,
+      areaName: area?.name ?? null,
+      facilityName: facility?.name ?? null,
+      activityTypeName: activityType?.name ?? null,
+      activityTypeCategory: activityType?.category ?? activity.category ?? null,
+      activityTypeIcon: activityType?.icon ?? null,
+    };
+  },
+});
+
+/**
+ * List activities for all batches in an area (v2 model only).
+ * Used by the area History tab.
+ */
+export const listByArea = query({
+  args: {
+    areaId: v.id("areas"),
+    category: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // 1. Get all batches in this area
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_area", (q) => q.eq("area_id", args.areaId))
+      .collect();
+
+    const batchMap = new Map(batches.map((b) => [b._id, b]));
+    const batchIds = batches.map((b) => b._id);
+
+    // 2. Get activities for each batch in parallel (v2: uses batch_id index)
+    const activitiesByBatch = await Promise.all(
+      batchIds.map((batchId) =>
+        ctx.db
+          .query("activities")
+          .withIndex("by_batch_id", (q) => q.eq("batch_id", batchId))
+          .collect()
+      )
+    );
+
+    // 3. Flatten and deduplicate
+    let activities = activitiesByBatch.flat();
+
+    // 4. Filter by category if specified
+    if (args.category) {
+      activities = activities.filter((a) => a.category === args.category);
+    }
+
+    // 5. Sort by timestamp descending, limit
+    activities.sort(
+      (a, b) => (b.started_at ?? b.timestamp ?? 0) - (a.started_at ?? a.timestamp ?? 0)
+    );
+
+    const limit = args.limit ?? 200;
+    activities = activities.slice(0, limit);
+
+    // 6. Enrich with names
+    const enriched = await Promise.all(
+      activities.map(async (activity) => {
+        const [performer, activityType] = await Promise.all([
+          activity.performed_by ? ctx.db.get(activity.performed_by) : null,
+          activity.type_id ? ctx.db.get(activity.type_id) : null,
+        ]);
+        const batch = activity.batch_id
+          ? batchMap.get(activity.batch_id) ?? null
+          : null;
+        return {
+          _id: activity._id,
+          title: activity.title,
+          category: activity.category,
+          crop_phase: activity.crop_phase,
+          status: activity.status,
+          started_at: activity.started_at,
+          completed_at: activity.completed_at,
+          timestamp: activity.timestamp,
+          duration_minutes: activity.duration_minutes,
+          observations: activity.observations,
+          notes: activity.notes,
+          batch_id: activity.batch_id,
+          batchCode: batch?.batch_code ?? null,
+          performedByName: performer
+            ? `${performer.first_name ?? ""} ${performer.last_name ?? ""}`.trim() || "Sin nombre"
+            : null,
+          activityTypeName: activityType?.name ?? activity.activity_type ?? null,
+          activityTypeCategory: activityType?.category ?? activity.category ?? null,
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+/**
+ * List activities for batches in a specific phase within an area (v2 model only).
+ * Used by the phase detail page.
+ */
+export const listByAreaAndPhase = query({
+  args: {
+    areaId: v.id("areas"),
+    phase: v.string(),
+    batchIds: v.optional(v.array(v.id("batches"))),
+    category: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // 1. Get batches in this area with matching phase
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_area", (q) => q.eq("area_id", args.areaId))
+      .collect();
+
+    const phaseBatches = batches.filter((b) => {
+      const batchPhase = b.current_phase ?? "unknown";
+      return batchPhase === args.phase && b.status === "active";
+    });
+
+    // 2. Filter to specific batches if provided
+    const targetBatches = args.batchIds
+      ? phaseBatches.filter((b) => args.batchIds!.includes(b._id))
+      : phaseBatches;
+
+    const batchMap = new Map(targetBatches.map((b) => [b._id, b]));
+    const batchIds = targetBatches.map((b) => b._id);
+
+    // 3. Get activities for each batch in parallel
+    const activitiesByBatch = await Promise.all(
+      batchIds.map((batchId) =>
+        ctx.db
+          .query("activities")
+          .withIndex("by_batch_id", (q) => q.eq("batch_id", batchId))
+          .collect()
+      )
+    );
+
+    // 4. Flatten, filter, sort
+    let activities = activitiesByBatch.flat();
+
+    if (args.category) {
+      activities = activities.filter((a) => a.category === args.category);
+    }
+
+    activities.sort(
+      (a, b) => (b.started_at ?? b.timestamp ?? 0) - (a.started_at ?? a.timestamp ?? 0)
+    );
+
+    const limit = args.limit ?? 200;
+    activities = activities.slice(0, limit);
+
+    // 5. Enrich
+    const enriched = await Promise.all(
+      activities.map(async (activity) => {
+        const [performer, activityType] = await Promise.all([
+          activity.performed_by ? ctx.db.get(activity.performed_by) : null,
+          activity.type_id ? ctx.db.get(activity.type_id) : null,
+        ]);
+        const batch = activity.batch_id
+          ? batchMap.get(activity.batch_id) ?? null
+          : null;
+        return {
+          _id: activity._id,
+          title: activity.title,
+          category: activity.category,
+          crop_phase: activity.crop_phase,
+          status: activity.status,
+          started_at: activity.started_at,
+          completed_at: activity.completed_at,
+          timestamp: activity.timestamp,
+          duration_minutes: activity.duration_minutes,
+          observations: activity.observations,
+          notes: activity.notes,
+          batch_id: activity.batch_id,
+          batchCode: batch?.batch_code ?? null,
+          performedByName: performer
+            ? `${performer.first_name ?? ""} ${performer.last_name ?? ""}`.trim() || "Sin nombre"
+            : null,
+          activityTypeName: activityType?.name ?? activity.activity_type ?? null,
+          activityTypeCategory: activityType?.category ?? activity.category ?? null,
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
