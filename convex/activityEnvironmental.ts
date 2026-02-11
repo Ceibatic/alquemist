@@ -161,3 +161,73 @@ export const remove = mutation({
     await ctx.db.delete(args.readingId);
   },
 });
+
+// ============================================================================
+// MIGRATION
+// ============================================================================
+
+// Known field-to-reading-type mappings from legacy environmental_data
+const FIELD_MAP: Record<string, { type: string; unit: string }> = {
+  temperature: { type: "temperature", unit: "C" },
+  temp: { type: "temperature", unit: "C" },
+  humidity: { type: "humidity", unit: "%" },
+  vpd: { type: "vpd", unit: "kPa" },
+  co2: { type: "co2", unit: "ppm" },
+  light: { type: "light_ppfd", unit: "umol/m2/s" },
+  light_ppfd: { type: "light_ppfd", unit: "umol/m2/s" },
+  ph: { type: "ph", unit: "" },
+  ec: { type: "ec", unit: "mS/cm" },
+};
+
+export const migrateEnvironmentalData = mutation({
+  args: { companyId: v.id("companies") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthenticatedUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .collect();
+
+    let migrated = 0;
+    const errors: string[] = [];
+
+    for (const activity of activities) {
+      const envData = activity.environmental_data as Record<string, unknown> | undefined;
+      if (!envData || Object.keys(envData).length === 0) continue;
+
+      // Check if already migrated
+      const existing = await ctx.db
+        .query("activity_environmental_readings")
+        .withIndex("by_activity", (q) => q.eq("activity_id", activity._id))
+        .first();
+      if (existing) continue;
+
+      for (const [field, value] of Object.entries(envData)) {
+        const mapping = FIELD_MAP[field.toLowerCase()];
+        if (!mapping) continue;
+
+        const numValue = typeof value === "number" ? value : parseFloat(String(value));
+        if (isNaN(numValue)) continue;
+
+        try {
+          await ctx.db.insert("activity_environmental_readings", {
+            activity_id: activity._id,
+            company_id: args.companyId,
+            reading_type: mapping.type,
+            value: numValue,
+            unit: mapping.unit,
+            measured_at: activity.timestamp,
+            created_at: activity.created_at,
+          });
+          migrated++;
+        } catch (e) {
+          errors.push(`activity ${activity._id} field ${field}: ${e}`);
+        }
+      }
+    }
+
+    return { readings_migrated: migrated, errors };
+  },
+});

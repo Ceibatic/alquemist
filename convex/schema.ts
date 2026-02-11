@@ -1563,11 +1563,15 @@ export default defineSchema({
     }))),
 
     // Quality & Environment
+    // DEPRECATED: Use activity_observations table instead
     quality_check_data: v.optional(v.object({})),
+    // DEPRECATED: Use activity_environmental_readings table instead
     environmental_data: v.optional(v.object({})),
 
     // Media
+    // DEPRECATED: Use activity_attachments table instead
     photos: v.array(v.string()), // File references
+    // DEPRECATED: Use activity_attachments table instead
     files: v.array(v.string()),
     media_metadata: v.optional(v.object({})),
 

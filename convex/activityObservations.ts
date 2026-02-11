@@ -296,3 +296,77 @@ export const reopen = mutation({
     });
   },
 });
+
+// ============================================================================
+// MIGRATION
+// ============================================================================
+
+export const migrateObservations = mutation({
+  args: { companyId: v.id("companies") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthenticatedUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .collect();
+
+    let migrated = 0;
+    const errors: string[] = [];
+
+    for (const activity of activities) {
+      const qcData = activity.quality_check_data as Record<string, unknown> | undefined;
+      if (!qcData || Object.keys(qcData).length === 0) continue;
+
+      // Check if already migrated
+      const existing = await ctx.db
+        .query("activity_observations")
+        .withIndex("by_activity", (q) => q.eq("activity_id", activity._id))
+        .first();
+      if (existing) continue;
+
+      // Try to extract observation data from quality_check_data
+      // Common patterns: { observations: [...] }, { issues: [...] }, or flat fields
+      const observations: Array<Record<string, unknown>> =
+        Array.isArray(qcData.observations)
+          ? qcData.observations
+          : Array.isArray(qcData.issues)
+            ? qcData.issues
+            : Object.keys(qcData).length > 0
+              ? [qcData]
+              : [];
+
+      for (const obs of observations) {
+        try {
+          const description =
+            (obs.description as string) ||
+            (obs.notes as string) ||
+            (obs.comment as string) ||
+            JSON.stringify(obs);
+
+          const type =
+            (obs.type as string) ||
+            (obs.observation_type as string) ||
+            "other";
+
+          await ctx.db.insert("activity_observations", {
+            activity_id: activity._id,
+            company_id: args.companyId,
+            observation_type: type,
+            severity: (obs.severity as string) || undefined,
+            organism_name: (obs.organism as string) || (obs.pest as string) || undefined,
+            description,
+            resolved: false,
+            created_at: activity.created_at,
+          });
+          migrated++;
+        } catch (e) {
+          errors.push(`activity ${activity._id}: ${e}`);
+        }
+      }
+    }
+
+    return { observations_migrated: migrated, errors };
+  },
+});

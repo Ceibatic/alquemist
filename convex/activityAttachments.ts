@@ -182,3 +182,79 @@ export const reorder = mutation({
     }
   },
 });
+
+// ============================================================================
+// MIGRATION
+// ============================================================================
+
+export const migrateAttachments = mutation({
+  args: { companyId: v.id("companies") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthenticatedUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+      .collect();
+
+    let migrated = 0;
+    const errors: string[] = [];
+
+    for (const activity of activities) {
+      // Check if already migrated
+      const existing = await ctx.db
+        .query("activity_attachments")
+        .withIndex("by_activity", (q) => q.eq("activity_id", activity._id))
+        .first();
+      if (existing) continue;
+
+      const photos: string[] = activity.photos ?? [];
+      const files: string[] = (activity as Record<string, unknown>).files as string[] ?? [];
+
+      let sortOrder = 0;
+
+      // Migrate photos
+      for (const url of photos) {
+        try {
+          await ctx.db.insert("activity_attachments", {
+            activity_id: activity._id,
+            company_id: args.companyId,
+            type: "photo",
+            storage_id: url, // Legacy: URL as storage reference
+            file_url: url,
+            file_name: url.split("/").pop() ?? "photo",
+            sort_order: sortOrder++,
+            uploaded_by: activity.performed_by,
+            created_at: activity.created_at,
+          });
+          migrated++;
+        } catch (e) {
+          errors.push(`photo ${url}: ${e}`);
+        }
+      }
+
+      // Migrate files
+      for (const url of files) {
+        try {
+          await ctx.db.insert("activity_attachments", {
+            activity_id: activity._id,
+            company_id: args.companyId,
+            type: "document",
+            storage_id: url,
+            file_url: url,
+            file_name: url.split("/").pop() ?? "file",
+            sort_order: sortOrder++,
+            uploaded_by: activity.performed_by,
+            created_at: activity.created_at,
+          });
+          migrated++;
+        } catch (e) {
+          errors.push(`file ${url}: ${e}`);
+        }
+      }
+    }
+
+    return { attachments_migrated: migrated, errors };
+  },
+});
