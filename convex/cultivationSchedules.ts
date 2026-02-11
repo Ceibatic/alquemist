@@ -283,3 +283,434 @@ export const cancel = mutation({
     return scheduleId;
   },
 });
+
+// ============================================================================
+// GENERATION — US-TMPL.5
+// ============================================================================
+
+/**
+ * Generate scheduled_activities from applicable templates for a schedule.
+ *
+ * If re-executed, deletes pending scheduled_activities and regenerates.
+ * Completed/skipped activities are preserved.
+ */
+export const generateFromSchedule = mutation({
+  args: {
+    scheduleId: v.id("cultivation_schedules"),
+  },
+  handler: async (ctx, { scheduleId }) => {
+    const schedule = await ctx.db.get(scheduleId);
+    if (!schedule) {
+      throw new Error(`Plan no encontrado: ${scheduleId}`);
+    }
+
+    // Delete existing pending activities for this schedule (regeneration)
+    const existingActivities = await ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_schedule", (q) => q.eq("schedule_id", scheduleId))
+      .collect();
+
+    const pendingToDelete = existingActivities.filter(
+      (a) => a.status === "pending" || a.status === "cancelled"
+    );
+    for (const act of pendingToDelete) {
+      await ctx.db.delete(act._id);
+    }
+
+    // Fetch applicable templates
+    const allTemplates = await ctx.db
+      .query("activity_templates")
+      .withIndex("by_company", (q) =>
+        q.eq("company_id", schedule.company_id)
+      )
+      .collect();
+
+    const scheduledPhaseNames = (
+      schedule.planned_phases as Array<{
+        phase: string;
+        duration_days: number;
+        start_day: number;
+        end_day: number;
+      }>
+    ).map((p) => p.phase);
+
+    // Filter templates: active, matching crop_type, and overlapping phases
+    const applicableTemplates = allTemplates.filter((t) => {
+      if (!t.is_active) return false;
+      // Check crop type match (if template specifies crop types)
+      if (
+        t.crop_type_ids &&
+        t.crop_type_ids.length > 0 &&
+        !t.crop_type_ids.includes(schedule.crop_type_id)
+      ) {
+        return false;
+      }
+      // Check phase overlap
+      const hasPhaseOverlap = t.applicable_phases.some((p) =>
+        scheduledPhaseNames.includes(p)
+      );
+      return hasPhaseOverlap;
+    });
+
+    // Build dependency map (template_id → last scheduled date)
+    const dependencyMap = new Map<string, number>();
+
+    const now = Date.now();
+    let totalGenerated = 0;
+    const byPhase: Record<string, number> = {};
+
+    const phases = schedule.planned_phases as Array<{
+      phase: string;
+      duration_days: number;
+      start_day: number;
+      end_day: number;
+    }>;
+
+    // Sort templates: those without dependencies first
+    const sortedTemplates = [...applicableTemplates].sort((a, b) => {
+      if (a.depends_on_template_id && !b.depends_on_template_id) return 1;
+      if (!a.depends_on_template_id && b.depends_on_template_id) return -1;
+      return a.sort_order - b.sort_order;
+    });
+
+    for (const template of sortedTemplates) {
+      for (const phase of phases) {
+        // Check if this template applies to this phase
+        if (!template.applicable_phases.includes(phase.phase)) continue;
+
+        // Determine the day range within this phase
+        let dayStart = template.phase_day_start ?? 0;
+        let dayEnd = template.phase_day_end ?? phase.duration_days;
+
+        // Clamp to phase bounds
+        dayStart = Math.max(0, Math.min(dayStart, phase.duration_days));
+        dayEnd = Math.max(dayStart, Math.min(dayEnd, phase.duration_days));
+
+        const rangeDays = dayEnd - dayStart;
+        if (rangeDays <= 0) continue;
+
+        // Check dependency
+        let dependencyOffset = 0;
+        if (template.depends_on_template_id) {
+          const lastDepDate = dependencyMap.get(template.depends_on_template_id);
+          if (lastDepDate) {
+            const minDays = template.min_days_after_dependency ?? 0;
+            const minDate = lastDepDate + minDays * 24 * 60 * 60 * 1000;
+            const phaseStartDate =
+              schedule.planned_start_date +
+              phase.start_day * 24 * 60 * 60 * 1000;
+            if (minDate > phaseStartDate) {
+              dependencyOffset = Math.ceil(
+                (minDate - phaseStartDate) / (24 * 60 * 60 * 1000)
+              );
+            }
+          }
+        }
+
+        // Generate activities based on frequency
+        const generatedDays = calculateScheduledDays(
+          template.frequency_type,
+          dayStart + dependencyOffset,
+          dayEnd,
+          template.frequency_interval_days ?? undefined,
+          template.repeat_count ?? undefined
+        );
+
+        const recurrenceTotal = generatedDays.length;
+
+        for (let idx = 0; idx < generatedDays.length; idx++) {
+          const phaseDay = generatedDays[idx];
+          const absoluteDay = phase.start_day + phaseDay;
+          const scheduledDate =
+            schedule.planned_start_date + absoluteDay * 24 * 60 * 60 * 1000;
+
+          await ctx.db.insert("scheduled_activities", {
+            // Legacy fields (required)
+            entity_type: "batch",
+            entity_id: schedule.batch_id,
+            activity_type: template.name,
+            scheduled_date: scheduledDate,
+            is_recurring: recurrenceTotal > 1,
+            assigned_team: [],
+            required_materials: [],
+            required_equipment: [],
+            status: "pending",
+            created_at: now,
+            updated_at: now,
+
+            // P2 fields
+            schedule_id: scheduleId,
+            template_id: template._id,
+            type_id: template.type_id,
+            company_id: schedule.company_id,
+            crop_phase: phase.phase,
+            phase_day: phaseDay,
+            estimated_duration_minutes: template.estimated_duration_minutes,
+            recurrence_index: recurrenceTotal > 1 ? idx + 1 : undefined,
+            recurrence_total: recurrenceTotal > 1 ? recurrenceTotal : undefined,
+          });
+
+          // Track last date for dependency resolution
+          dependencyMap.set(template._id, scheduledDate);
+          totalGenerated++;
+          byPhase[phase.phase] = (byPhase[phase.phase] ?? 0) + 1;
+        }
+      }
+    }
+
+    // Update schedule total
+    const keptActivities = existingActivities.filter(
+      (a) => a.status === "completed" || a.status === "skipped"
+    ).length;
+
+    await ctx.db.patch(scheduleId, {
+      total_activities: totalGenerated + keptActivities,
+      updated_at: now,
+    });
+
+    return { generated: totalGenerated, byPhase };
+  },
+});
+
+/**
+ * Calculate which days within a range an activity should be scheduled.
+ */
+function calculateScheduledDays(
+  frequencyType: string,
+  dayStart: number,
+  dayEnd: number,
+  intervalDays?: number,
+  repeatCount?: number
+): number[] {
+  const days: number[] = [];
+  const range = dayEnd - dayStart;
+
+  if (range <= 0) return days;
+
+  switch (frequencyType) {
+    case "once":
+      days.push(dayStart);
+      break;
+
+    case "daily": {
+      const maxDays = repeatCount ?? range;
+      for (let i = 0; i < maxDays && dayStart + i < dayEnd; i++) {
+        days.push(dayStart + i);
+      }
+      break;
+    }
+
+    case "weekly": {
+      const weeklyMax = repeatCount ?? Math.ceil(range / 7);
+      for (let i = 0; i < weeklyMax && dayStart + i * 7 < dayEnd; i++) {
+        days.push(dayStart + i * 7);
+      }
+      break;
+    }
+
+    case "biweekly": {
+      const biMax = repeatCount ?? Math.ceil(range / 14);
+      for (let i = 0; i < biMax && dayStart + i * 14 < dayEnd; i++) {
+        days.push(dayStart + i * 14);
+      }
+      break;
+    }
+
+    case "monthly": {
+      const monthlyMax = repeatCount ?? Math.ceil(range / 30);
+      for (let i = 0; i < monthlyMax && dayStart + i * 30 < dayEnd; i++) {
+        days.push(dayStart + i * 30);
+      }
+      break;
+    }
+
+    case "custom_days": {
+      const interval = intervalDays ?? 1;
+      const customMax = repeatCount ?? Math.ceil(range / interval);
+      for (let i = 0; i < customMax && dayStart + i * interval < dayEnd; i++) {
+        days.push(dayStart + i * interval);
+      }
+      break;
+    }
+
+    case "on_demand":
+      // On-demand templates don't generate automatic activities
+      break;
+
+    default:
+      days.push(dayStart);
+  }
+
+  return days;
+}
+
+// ============================================================================
+// SCHEDULED ACTIVITY MANAGEMENT — US-TMPL.5
+// ============================================================================
+
+/**
+ * Skip a scheduled activity with a reason.
+ */
+export const skipScheduledActivity = mutation({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+    reason: v.string(),
+  },
+  handler: async (ctx, { scheduledActivityId, reason }) => {
+    const activity = await ctx.db.get(scheduledActivityId);
+    if (!activity) {
+      throw new Error(`Actividad programada no encontrada: ${scheduledActivityId}`);
+    }
+
+    if (activity.status === "completed") {
+      throw new Error("No se puede saltar una actividad ya completada");
+    }
+
+    await ctx.db.patch(scheduledActivityId, {
+      status: "skipped",
+      skipped_reason: reason,
+      updated_at: Date.now(),
+    });
+
+    // Update schedule progress if linked
+    if (activity.schedule_id) {
+      const schedule = await ctx.db.get(activity.schedule_id);
+      if (schedule) {
+        await ctx.db.patch(activity.schedule_id, {
+          skipped_activities: schedule.skipped_activities + 1,
+          updated_at: Date.now(),
+        });
+      }
+    }
+
+    return scheduledActivityId;
+  },
+});
+
+/**
+ * Reschedule an activity to a new date.
+ */
+export const rescheduleActivity = mutation({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+    newDate: v.number(),
+  },
+  handler: async (ctx, { scheduledActivityId, newDate }) => {
+    const activity = await ctx.db.get(scheduledActivityId);
+    if (!activity) {
+      throw new Error(`Actividad programada no encontrada: ${scheduledActivityId}`);
+    }
+
+    if (activity.status === "completed" || activity.status === "skipped") {
+      throw new Error("No se puede reprogramar una actividad completada o saltada");
+    }
+
+    await ctx.db.patch(scheduledActivityId, {
+      scheduled_date: newDate,
+      updated_at: Date.now(),
+    });
+
+    return scheduledActivityId;
+  },
+});
+
+/**
+ * Get scheduled activities for a specific date and company.
+ * Returns enriched data with template, batch, and type info.
+ */
+export const getScheduledForDate = query({
+  args: {
+    companyId: v.id("companies"),
+    dateStart: v.number(), // start of day timestamp
+    dateEnd: v.number(), // end of day timestamp
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, { companyId, dateStart, dateEnd, status }) => {
+    // Query by scheduled_date range
+    const allActivities = await ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_scheduled_date")
+      .collect();
+
+    // Filter by date range and company
+    let activities = allActivities.filter(
+      (a) =>
+        a.company_id === companyId &&
+        a.scheduled_date >= dateStart &&
+        a.scheduled_date < dateEnd
+    );
+
+    if (status) {
+      activities = activities.filter((a) => a.status === status);
+    }
+
+    // Enrich with batch and type info
+    const enriched = await Promise.all(
+      activities.map(async (a) => {
+        const batch = a.entity_type === "batch" && a.entity_id
+          ? await ctx.db.get(a.entity_id as Id<"batches">)
+          : null;
+        const template = a.template_id
+          ? await ctx.db.get(a.template_id)
+          : null;
+        const activityType = a.type_id
+          ? await ctx.db.get(a.type_id)
+          : null;
+
+        return {
+          ...a,
+          batchName: batch?.batch_code ?? null,
+          templateName: template?.name ?? null,
+          activityTypeName: activityType?.name ?? null,
+          activityTypeIcon: activityType?.icon ?? null,
+          activityTypeColor: activityType?.color ?? null,
+        };
+      })
+    );
+
+    // Sort by scheduled_date ASC, then by priority (if template has it)
+    return enriched.sort((a, b) => a.scheduled_date - b.scheduled_date);
+  },
+});
+
+/**
+ * Get overdue activities for a company (scheduled_date < today, status = pending).
+ */
+export const getOverdue = query({
+  args: {
+    companyId: v.id("companies"),
+    beforeDate: v.number(),
+  },
+  handler: async (ctx, { companyId, beforeDate }) => {
+    const allActivities = await ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+
+    const overdue = allActivities.filter(
+      (a) =>
+        a.company_id === companyId &&
+        a.scheduled_date < beforeDate
+    );
+
+    // Enrich
+    const enriched = await Promise.all(
+      overdue.map(async (a) => {
+        const batch = a.entity_type === "batch" && a.entity_id
+          ? await ctx.db.get(a.entity_id as Id<"batches">)
+          : null;
+        const template = a.template_id
+          ? await ctx.db.get(a.template_id)
+          : null;
+
+        return {
+          ...a,
+          batchName: batch?.batch_code ?? null,
+          templateName: template?.name ?? null,
+        };
+      })
+    );
+
+    return enriched.sort((a, b) => a.scheduled_date - b.scheduled_date);
+  },
+});
