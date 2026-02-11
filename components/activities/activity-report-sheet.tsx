@@ -137,6 +137,7 @@ export function ActivityReportSheet({
   const createQualityCheck = useMutation(api.qualityChecks.create);
   const completeQualityCheck = useMutation(api.qualityChecks.complete);
   const recordQcTemplateUsage = useMutation(api.qualityCheckTemplates.recordUsage);
+  const completeScheduled = useMutation(api.activities.completeScheduledActivity);
 
   // Step navigation (1 = activity report, 2 = quality check)
   const [step, setStep] = useState(1);
@@ -288,6 +289,16 @@ export function ActivityReportSheet({
         consume_inventory: resources && resources.length > 0 ? true : undefined,
         notes: observations.trim() || undefined,
       });
+
+      // Auto-complete the scheduled activity if this report came from one
+      if (scheduledActivityId) {
+        await completeScheduled({
+          scheduledActivityId,
+          completedBy: responsibleId as Id<'users'>,
+          notes: observations.trim() || undefined,
+          duration_minutes: durationMinutes ? Number(durationMinutes) : undefined,
+        });
+      }
 
       if (skipQuality || !hasQualityStep) {
         toast.success('Actividad reportada exitosamente');
