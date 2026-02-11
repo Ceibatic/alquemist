@@ -142,6 +142,11 @@ export const create = mutation({
     regulatoryReference: v.optional(v.string()),
     requiresVerification: v.boolean(),
     sortOrder: v.optional(v.number()),
+    // Report form configuration
+    formFields: v.optional(v.array(v.string())),
+    qualityCheckTemplateId: v.optional(v.id("quality_check_templates")),
+    requiresPhotos: v.optional(v.boolean()),
+    requiresAttachments: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // Validate type_id exists
@@ -203,6 +208,10 @@ export const create = mutation({
       requires_conditions: args.requiresConditions,
       depends_on_template_id: args.dependsOnTemplateId,
       min_days_after_dependency: args.minDaysAfterDependency,
+      form_fields: args.formFields,
+      quality_check_template_id: args.qualityCheckTemplateId,
+      requires_photos: args.requiresPhotos,
+      requires_attachments: args.requiresAttachments,
       regulatory_reference: args.regulatoryReference,
       requires_verification: args.requiresVerification,
       sort_order: args.sortOrder ?? 0,
@@ -241,6 +250,11 @@ export const update = mutation({
     regulatoryReference: v.optional(v.string()),
     requiresVerification: v.optional(v.boolean()),
     sortOrder: v.optional(v.number()),
+    // Report form configuration
+    formFields: v.optional(v.array(v.string())),
+    qualityCheckTemplateId: v.optional(v.id("quality_check_templates")),
+    requiresPhotos: v.optional(v.boolean()),
+    requiresAttachments: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const template = await ctx.db.get(args.templateId);
@@ -305,6 +319,10 @@ export const update = mutation({
     if (args.regulatoryReference !== undefined) patch.regulatory_reference = args.regulatoryReference;
     if (args.requiresVerification !== undefined) patch.requires_verification = args.requiresVerification;
     if (args.sortOrder !== undefined) patch.sort_order = args.sortOrder;
+    if (args.formFields !== undefined) patch.form_fields = args.formFields;
+    if (args.qualityCheckTemplateId !== undefined) patch.quality_check_template_id = args.qualityCheckTemplateId;
+    if (args.requiresPhotos !== undefined) patch.requires_photos = args.requiresPhotos;
+    if (args.requiresAttachments !== undefined) patch.requires_attachments = args.requiresAttachments;
 
     await ctx.db.patch(args.templateId, patch);
     return args.templateId;
