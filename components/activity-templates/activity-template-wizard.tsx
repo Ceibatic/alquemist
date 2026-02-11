@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { WizardStepBasic } from './wizard-step-basic';
 import { WizardStepFields } from './wizard-step-fields';
 import { WizardStepResources } from './wizard-step-resources';
+import { WizardStepConfig } from './wizard-step-config';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import {
@@ -144,6 +145,10 @@ export function ActivityTemplateWizard({
   const products = useQuery(
     api.products.list,
     { companyId, status: 'active' }
+  );
+  const allTemplates = useQuery(
+    api.activityTemplates.list,
+    { companyId, isActive: true }
   );
 
   // Mutations
@@ -439,13 +444,13 @@ export function ActivityTemplateWizard({
           />
         )}
         {currentStep === 3 && (
-          <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-lg">
-            <Settings className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-1">Configuracion final</h3>
-            <p className="text-sm text-muted-foreground">
-              Calidad, documentacion, recurrencia y dependencias — proximamente.
-            </p>
-          </div>
+          <WizardStepConfig
+            formData={formData}
+            updateField={updateField}
+            companyId={companyId}
+            templateId={templateId}
+            allTemplates={allTemplates}
+          />
         )}
       </div>
 
