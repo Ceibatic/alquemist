@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, KeyRound, CheckCircle } from 'lucide-react';
-import { useAuthActions } from '@convex-dev/auth/react';
+import { useSignIn } from '@clerk/nextjs';
+import { getClerkErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/shared/password-input';
@@ -32,7 +33,7 @@ type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn } = useAuthActions();
+  const { signIn, setActive, isLoaded } = useSignIn();
 
   const [code, setCode] = useState(searchParams.get('token') || '');
   const [email] = useState(() => {
@@ -53,6 +54,16 @@ function ResetPasswordContent() {
     },
   });
 
+  // Redirect if no email context (user navigated directly)
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('resetEmail')) {
+      router.push('/forgot-password');
+    }
+  }, [router]);
+
+  if (!isLoaded) return null;
+  if (!email) return null;
+
   const onSubmit = async (data: ResetPasswordValues) => {
     if (code.length !== 6) {
       setGlobalError('Por favor ingresa el código de 6 dígitos');
@@ -68,17 +79,24 @@ function ResetPasswordContent() {
     setGlobalError(null);
 
     try {
-      // Use Convex Auth to verify code and set new password
-      await signIn('password', {
-        email,
-        code,
-        newPassword: data.password,
-        flow: 'reset-verification',
+      // Use Clerk to verify code and set new password
+      const result = await signIn.attemptFirstFactor({
+        strategy: 'reset_password_email_code',
+        code: code,
       });
 
-      setIsSuccess(true);
-    } catch (err: any) {
-      setGlobalError(err?.message || 'Error al restablecer la contraseña. Código inválido o expirado.');
+      if (result.status === 'needs_new_password') {
+        const resetResult = await signIn.resetPassword({
+          password: data.password,
+        });
+
+        if (resetResult.status === 'complete') {
+          await setActive({ session: resetResult.createdSessionId });
+          setIsSuccess(true);
+        }
+      }
+    } catch (err: unknown) {
+      setGlobalError(getClerkErrorMessage(err, 'Error al restablecer la contraseña. Código inválido o expirado.'));
     } finally {
       setIsSubmitting(false);
     }

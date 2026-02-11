@@ -1,6 +1,7 @@
 'use server';
 
 import { z } from 'zod';
+import { auth } from '@clerk/nextjs/server';
 import { facilityCompleteSchema } from '@/lib/validations';
 import { convex, getConvexErrorMessage } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
@@ -30,6 +31,13 @@ export async function createFacility(
   generateSampleData: boolean = true
 ) {
   try {
+    // Authenticate the Convex HTTP client with the user's Clerk JWT
+    const { getToken } = await auth();
+    const token = await getToken({ template: 'convex' });
+    if (token) {
+      convex.setAuth(token);
+    }
+
     // Validate the complete data
     const validated = facilityCompleteSchema.parse(data);
 

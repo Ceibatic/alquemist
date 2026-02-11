@@ -2,8 +2,9 @@
 
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Id } from '@/convex/_generated/dataModel';
+import { Id, Doc } from '@/convex/_generated/dataModel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ArrowRight,
@@ -16,13 +17,26 @@ import {
   MapPin,
   User,
   Calendar,
+  Sprout,
+  Search,
+  RefreshCw,
+  Shield,
+  Package,
+  Wrench,
+  CheckCircle,
+  Wheat,
+  FileText,
+  type LucideIcon,
 } from 'lucide-react';
 
 interface BatchActivitiesTabProps {
   batchId: Id<'batches'>;
+  companyId?: Id<'companies'>;
 }
 
-const activityTypeLabels: Record<string, string> = {
+// ── Legacy fallback maps (for activities without type_id) ────────────────────
+
+const LEGACY_LABELS: Record<string, string> = {
   movement: 'Movimiento',
   loss_record: 'Perdida',
   split: 'Division',
@@ -35,9 +49,14 @@ const activityTypeLabels: Record<string, string> = {
   inspection: 'Inspeccion',
   treatment: 'Tratamiento',
   inventory_transformation: 'Transformacion de Inventario',
+  recipe_execution: 'Ejecucion de Receta',
+  batch_split: 'Division de Lote',
+  batch_merge: 'Fusion de Lote',
+  relocation: 'Reubicacion',
+  incident_report: 'Incidente',
 };
 
-const activityTypeIcons: Record<string, any> = {
+const LEGACY_ICONS: Record<string, LucideIcon> = {
   movement: ArrowRight,
   loss_record: Skull,
   split: Scissors,
@@ -52,7 +71,7 @@ const activityTypeIcons: Record<string, any> = {
   inventory_transformation: TrendingUp,
 };
 
-const activityTypeColors: Record<string, string> = {
+const LEGACY_COLORS: Record<string, string> = {
   movement: 'text-blue-600 bg-blue-100',
   loss_record: 'text-red-600 bg-red-100',
   split: 'text-purple-600 bg-purple-100',
@@ -67,11 +86,79 @@ const activityTypeColors: Record<string, string> = {
   inventory_transformation: 'text-amber-600 bg-amber-100',
 };
 
-export function BatchActivitiesTab({ batchId }: BatchActivitiesTabProps) {
+// ── Category → icon/color mapping (for v2 activities with catalog type) ──────
+
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  cultivation: Sprout,
+  monitoring: Search,
+  transformation: RefreshCw,
+  application: Shield,
+  movement: Package,
+  maintenance: Wrench,
+  quality: CheckCircle,
+  harvest: Wheat,
+  post_harvest: Scissors,
+  administrative: FileText,
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  cultivation: 'text-green-600 bg-green-100',
+  monitoring: 'text-amber-600 bg-amber-100',
+  transformation: 'text-violet-600 bg-violet-100',
+  application: 'text-red-600 bg-red-100',
+  movement: 'text-cyan-600 bg-cyan-100',
+  maintenance: 'text-slate-600 bg-slate-100',
+  quality: 'text-rose-600 bg-rose-100',
+  harvest: 'text-pink-600 bg-pink-100',
+  post_harvest: 'text-orange-600 bg-orange-100',
+  administrative: 'text-gray-600 bg-gray-100',
+};
+
+export function BatchActivitiesTab({ batchId, companyId }: BatchActivitiesTabProps) {
   const activities = useQuery(api.activities.listByBatch, {
     batchId,
     limit: 100,
   });
+
+  // Query activity types catalog for the company (optional — enhances display)
+  const activityTypes = useQuery(
+    api.activityTypes.list,
+    companyId ? { companyId } : 'skip',
+  );
+
+  // Build type_id → type lookup map
+  const typeMap = new Map<string, Doc<'activity_types'>>();
+  if (activityTypes) {
+    for (const t of activityTypes) {
+      typeMap.set(t._id, t);
+    }
+  }
+
+  const resolveDisplay = (activity: any) => {
+    // v2 path: use type_id → catalog lookup
+    if (activity.type_id && typeMap.has(activity.type_id)) {
+      const type = typeMap.get(activity.type_id)!;
+      return {
+        label: activity.title || type.name,
+        icon: CATEGORY_ICONS[type.category] || Activity,
+        colorClass: CATEGORY_COLORS[type.category] || 'text-gray-600 bg-gray-100',
+      };
+    }
+    // v2 partial: has category but no type_id match
+    if (activity.category) {
+      return {
+        label: activity.title || LEGACY_LABELS[activity.activity_type] || activity.activity_type,
+        icon: CATEGORY_ICONS[activity.category] || Activity,
+        colorClass: CATEGORY_COLORS[activity.category] || 'text-gray-600 bg-gray-100',
+      };
+    }
+    // Legacy fallback
+    return {
+      label: LEGACY_LABELS[activity.activity_type] || activity.activity_type,
+      icon: LEGACY_ICONS[activity.activity_type] || Activity,
+      colorClass: LEGACY_COLORS[activity.activity_type] || 'text-gray-600 bg-gray-100',
+    };
+  };
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('es-ES', {
@@ -123,10 +210,8 @@ export function BatchActivitiesTab({ batchId }: BatchActivitiesTabProps) {
             {/* Timeline line */}
             <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200" />
 
-            {activities.map((activity: any, index: number) => {
-              const Icon = activityTypeIcons[activity.activity_type] || Activity;
-              const colorClass = activityTypeColors[activity.activity_type] || 'text-gray-600 bg-gray-100';
-              const label = activityTypeLabels[activity.activity_type] || activity.activity_type;
+            {activities.map((activity: any) => {
+              const { label, icon: Icon, colorClass } = resolveDisplay(activity);
 
               return (
                 <div key={activity._id} className="relative flex gap-4 pl-0">
@@ -141,6 +226,11 @@ export function BatchActivitiesTab({ batchId }: BatchActivitiesTabProps) {
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h4 className="font-medium text-gray-900">{label}</h4>
+                          {activity.status && (
+                            <Badge variant="secondary" className="text-[10px] mt-0.5">
+                              {activity.status}
+                            </Badge>
+                          )}
                           <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
                             <Calendar className="h-3 w-3" />
                             {formatDate(activity.timestamp)}
@@ -209,6 +299,27 @@ export function BatchActivitiesTab({ batchId }: BatchActivitiesTabProps) {
                           </span>
                         </div>
                       )}
+
+                      {/* Materials consumed (legacy embedded data) */}
+                      {activity.materials_consumed &&
+                        Array.isArray(activity.materials_consumed) &&
+                        activity.materials_consumed.length > 0 && (
+                          <div className="mt-2 rounded-lg bg-gray-50 p-2">
+                            <p className="mb-1 text-xs font-medium text-gray-600">Recursos:</p>
+                            <div className="space-y-1">
+                              {activity.materials_consumed.map((m: any, i: number) => (
+                                <div key={i} className="flex items-center justify-between text-xs">
+                                  <span className="text-gray-600">
+                                    {m.product_name || m.batch_number || 'Item'}
+                                  </span>
+                                  <span className="font-medium">
+                                    {m.quantity} {m.quantity_unit || ''}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                       {/* Notes */}
                       {activity.notes && (

@@ -38,6 +38,7 @@ import {
   Warehouse,
   Cog,
   ShieldAlert,
+  Building2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -56,6 +57,8 @@ interface AreaData {
   current_occupancy: number;
   climate_controlled: boolean;
   batchCount?: number;
+  structureCount?: number;
+  capacity_mode?: string;
   capacity_configurations?: {
     max_capacity?: number;
     container_type?: string;
@@ -197,6 +200,15 @@ export function AreaCard({ area, index }: AreaCardProps) {
             <Layers className="h-3.5 w-3.5" />
             <span>Lotes: {area.batchCount ?? 0}</span>
           </div>
+          {(area.structureCount ?? 0) > 0 && (
+            <>
+              <span className="text-gray-300">|</span>
+              <div className="flex items-center gap-1">
+                <Building2 className="h-3.5 w-3.5" />
+                <span>{area.structureCount}</span>
+              </div>
+            </>
+          )}
           <span className="text-gray-300">|</span>
           <span>Area: {area.total_area_m2 || 0} m²</span>
           <StatusBadge status={area.status} size="sm" />

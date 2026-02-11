@@ -8,13 +8,13 @@
 
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
-import { api } from "./_generated/api";
-import { auth } from "./auth";
+import { api, internal } from "./_generated/api";
+import { Webhook } from "svix";
 
 const http = httpRouter();
 
 // Convex Auth HTTP routes
-auth.addHttpRoutes(http);
+// Clerk handles auth routes — auth.addHttpRoutes removed in Clerk migration
 
 // ============================================================================
 // CORS Configuration
@@ -2386,6 +2386,165 @@ http.route({
           headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+  }),
+});
+
+// ============================================================================
+// CLERK WEBHOOK ENDPOINT
+// ============================================================================
+
+/**
+ * POST /clerk-webhook
+ * Webhook handler for Clerk user events
+ *
+ * Verifies signature and syncs user data to Convex
+ * Handles: user.created, user.updated, user.deleted
+ */
+http.route({
+  path: "/clerk-webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      // Get webhook secret from environment
+      const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
+
+      if (!webhookSecret) {
+        console.error("CLERK_WEBHOOK_SECRET not configured");
+        return new Response(
+          JSON.stringify({ success: false, error: "Webhook secret not configured" }),
+          {
+            status: 500,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+
+      // Get Svix headers for signature verification
+      const svixId = request.headers.get("svix-id");
+      const svixTimestamp = request.headers.get("svix-timestamp");
+      const svixSignature = request.headers.get("svix-signature");
+
+      if (!svixId || !svixTimestamp || !svixSignature) {
+        console.error("Missing Svix headers");
+        return new Response(
+          JSON.stringify({ success: false, error: "Missing Svix headers" }),
+          {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+
+      // Get raw body for signature verification
+      const body = await request.text();
+
+      // Create Svix webhook instance and verify
+      const wh = new Webhook(webhookSecret);
+      let evt: any;
+
+      try {
+        evt = wh.verify(body, {
+          "svix-id": svixId,
+          "svix-timestamp": svixTimestamp,
+          "svix-signature": svixSignature,
+        });
+      } catch (err) {
+        console.error("Webhook signature verification failed:", err);
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid signature" }),
+          {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+
+      // Parse webhook data
+      const eventType = evt.type;
+      const { id, email_addresses, first_name, last_name } = evt.data;
+
+      console.log(`Clerk webhook: ${eventType}`, { id, email_addresses });
+
+      // Extract primary email
+      const primaryEmail = email_addresses?.[0]?.email_address;
+
+      // Handle different event types
+      switch (eventType) {
+        case "user.created":
+          if (!primaryEmail) {
+            console.error("No primary email in user.created event");
+            return new Response(
+              JSON.stringify({ success: false, error: "No primary email" }),
+              {
+                status: 400,
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+          }
+
+          await ctx.runMutation(internal.clerkSync.createUserFromClerk, {
+            clerkId: id,
+            email: primaryEmail,
+            firstName: first_name || undefined,
+            lastName: last_name || undefined,
+          });
+
+          console.log(`User created: ${primaryEmail} (${id})`);
+          break;
+
+        case "user.updated":
+          await ctx.runMutation(internal.clerkSync.updateUserFromClerk, {
+            clerkId: id,
+            email: primaryEmail || undefined,
+            firstName: first_name || undefined,
+            lastName: last_name || undefined,
+          });
+
+          console.log(`User updated: ${id}`);
+          break;
+
+        case "user.deleted":
+          await ctx.runMutation(internal.clerkSync.deleteUserFromClerk, {
+            clerkId: id,
+          });
+
+          console.log(`User deleted: ${id}`);
+          break;
+
+        default:
+          console.log(`Unhandled Clerk event type: ${eventType}`);
+          break;
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, eventType }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } catch (error: any) {
+      console.error("Clerk webhook error:", error);
+      return new Response(
+        JSON.stringify({ success: false, error: error.message }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
           },
         }
       );

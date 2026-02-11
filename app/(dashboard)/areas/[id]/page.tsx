@@ -29,8 +29,10 @@ import {
   Layers,
   Activity,
   Box,
+  Building2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { AreaStructuresTab } from '@/components/areas/area-structures-tab';
 
 const areaTypeLabels: Record<string, string> = {
   propagation: 'Propagacion',
@@ -156,6 +158,13 @@ export default function AreaDetailPage() {
               Detalle
             </TabsTrigger>
             <TabsTrigger
+              value="structures"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <Building2 className="h-4 w-4" />
+              Estructuras
+            </TabsTrigger>
+            <TabsTrigger
               value="batches"
               className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
             >
@@ -225,14 +234,54 @@ export default function AreaDetailPage() {
               </div>
 
               {/* Capacity */}
-              {maxCapacity > 0 && (
+              {(maxCapacity > 0 || area.capacity_mode === 'structures') && (
                 <div className="pt-4 border-t">
                   <p className="text-sm font-medium text-gray-600 mb-3">
                     Capacidad y Ocupacion
                   </p>
 
+                  {/* Structure-based capacity */}
+                  {area.capacity_mode === 'structures' && area.structureSummary && (
+                    <div className="grid gap-4 md:grid-cols-3 mb-4">
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50">
+                        <Building2 className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-medium text-gray-500">
+                            Estructuras
+                          </p>
+                          <p className="text-base font-semibold">
+                            {area.structureSummary.count}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50">
+                        <Package className="h-5 w-5 text-green-600 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-medium text-gray-500">
+                            Capacidad Total
+                          </p>
+                          <p className="text-base font-semibold">
+                            {area.structureSummary.totalCapacity.toLocaleString()} plantas
+                          </p>
+                        </div>
+                      </div>
+                      {area.structureSummary.totalGrowingAreaM2 > 0 && (
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-orange-50">
+                          <div>
+                            <p className="text-xs font-medium text-gray-500">
+                              Area de Cultivo
+                            </p>
+                            <p className="text-base font-semibold">
+                              {area.structureSummary.totalGrowingAreaM2} m2
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Container details if using container mode */}
-                  {hasContainerConfig && capacityConfig && (
+                  {area.capacity_mode !== 'structures' && hasContainerConfig && capacityConfig && (
                     <div className="grid gap-4 md:grid-cols-3 mb-4">
                       <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
                         <Package className="h-5 w-5 text-gray-600 mt-0.5" />
@@ -274,7 +323,7 @@ export default function AreaDetailPage() {
                     showLabel
                   />
 
-                  {!hasContainerConfig && (
+                  {area.capacity_mode !== 'structures' && !hasContainerConfig && maxCapacity > 0 && (
                     <p className="text-xs text-gray-500 mt-2">
                       Capacidad manual: {maxCapacity.toLocaleString()} plantas
                     </p>
@@ -459,6 +508,11 @@ export default function AreaDetailPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Structures Tab */}
+        <TabsContent value="structures" className="mt-6">
+          <AreaStructuresTab areaId={areaId} />
         </TabsContent>
 
         {/* Batches Tab */}

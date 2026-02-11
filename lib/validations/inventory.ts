@@ -12,11 +12,27 @@ import { z } from 'zod';
 
 export const productCategorySchema = z.enum(
   [
+    // Insumos
+    'seed',
     'nutrient',
     'pesticide',
-    'equipment',
-    'seed',
     'substrate',
+    'biocontrol',
+    // Material vegetal
+    'clone',
+    'seedling',
+    'mother_plant',
+    'plant_material',
+    'plant_vegetative',
+    'plant_flowering',
+    'harvest_wet',
+    'harvest_dry',
+    'processed_plant',
+    // Preparados
+    'stock_solution',
+    'substrate_mix',
+    // Infraestructura
+    'equipment',
     'container',
     'tool',
     'other',
@@ -450,7 +466,7 @@ export const transferInventorySchema = z.object({
 // ============================================================================
 
 export const movementTypeSchema = z.enum(
-  ['receipt', 'consumption', 'correction', 'waste', 'transfer', 'return'],
+  ['receipt', 'consumption', 'application', 'correction', 'waste', 'transfer', 'return'],
   {
     errorMap: () => ({ message: 'Debes seleccionar un tipo de movimiento' }),
   }

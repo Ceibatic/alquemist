@@ -5,6 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 /**
  * List inventory items
@@ -372,6 +373,12 @@ export const adjustStock = mutation({
     referenceId: v.optional(v.string()),
     // For transfers
     destinationAreaId: v.optional(v.id("areas")),
+    // Cultivation context (US-RES.4)
+    batchId: v.optional(v.id("batches")),
+    zoneId: v.optional(v.id("areas")),
+    cropPhase: v.optional(v.string()),
+    activityId: v.optional(v.id("activities")),
+    costPerUnit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -426,6 +433,12 @@ export const adjustStock = mutation({
       reference_id: args.referenceId,
       source_area_id: args.adjustmentType === "transfer" ? item.area_id : undefined,
       destination_area_id: args.destinationAreaId,
+      batch_id: args.batchId,
+      zone_id: args.zoneId,
+      crop_phase: args.cropPhase,
+      activity_id: args.activityId,
+      cost_per_unit: args.costPerUnit,
+      cost_total: args.costPerUnit ? args.quantity * args.costPerUnit : undefined,
       performed_by: args.userId,
       performed_at: now,
       notes: args.notes,
@@ -561,11 +574,27 @@ export const getTransactionHistory = query({
           destinationAreaName = destArea?.name || null;
         }
 
+        // Get cultivation context names if applicable
+        let batchName = null;
+        let zoneName = null;
+
+        if (tx.batch_id) {
+          const batch = await ctx.db.get(tx.batch_id);
+          batchName = batch?.batch_code || null;
+        }
+
+        if (tx.zone_id) {
+          const zone = await ctx.db.get(tx.zone_id);
+          zoneName = zone?.name || null;
+        }
+
         return {
           ...tx,
           performedByName: userName,
           sourceAreaName,
           destinationAreaName,
+          batchName,
+          zoneName,
         };
       })
     );
@@ -673,6 +702,416 @@ export const countByProduct = query({
       totalItems,
       activeItems,
       totalQuantity,
+    };
+  },
+});
+
+/**
+ * Get cost breakdown by batch (COGS) - Simple version from Resource System
+ * Groups inventory transactions by crop_phase and calculates totals
+ * @deprecated Use getFullCostByBatch for complete COGS including labor, utilities, and depreciation
+ */
+export const getCostByBatch = query({
+  args: {
+    batchId: v.id("batches"),
+  },
+  handler: async (ctx, args) => {
+    const transactions = await ctx.db
+      .query("inventory_transactions")
+      .withIndex("by_batch_id", (q) => q.eq("batch_id", args.batchId))
+      .collect();
+
+    // Only include transactions with cost data
+    const costTransactions = transactions.filter(
+      (tx) => tx.cost_total != null && tx.cost_total > 0
+    );
+
+    // Enrich with product names
+    const enriched = await Promise.all(
+      costTransactions.map(async (tx) => {
+        const product = await ctx.db.get(tx.product_id);
+        return {
+          _id: tx._id,
+          product_name: product?.name || "Producto desconocido",
+          product_sku: product?.sku || "",
+          crop_phase: tx.crop_phase || "sin_fase",
+          transaction_type: tx.transaction_type,
+          quantity_change: Math.abs(tx.quantity_change),
+          quantity_unit: tx.quantity_unit,
+          cost_per_unit: tx.cost_per_unit || 0,
+          cost_total: tx.cost_total || 0,
+          performed_at: tx.performed_at,
+        };
+      })
+    );
+
+    // Group by crop_phase
+    const byPhase: Record<string, {
+      phase: string;
+      transactions: typeof enriched;
+      total: number;
+    }> = {};
+
+    for (const tx of enriched) {
+      if (!byPhase[tx.crop_phase]) {
+        byPhase[tx.crop_phase] = {
+          phase: tx.crop_phase,
+          transactions: [],
+          total: 0,
+        };
+      }
+      byPhase[tx.crop_phase].transactions.push(tx);
+      byPhase[tx.crop_phase].total += tx.cost_total;
+    }
+
+    const phases = Object.values(byPhase).sort((a, b) => {
+      const order = ["propagation", "vegetative", "flowering", "harvest", "post_harvest", "processing", "sin_fase"];
+      return order.indexOf(a.phase) - order.indexOf(b.phase);
+    });
+
+    const grandTotal = phases.reduce((sum, p) => sum + p.total, 0);
+
+    // Get harvest data for COGS per unit calculation
+    const harvests = await ctx.db
+      .query("batch_harvests")
+      .withIndex("by_batch", (q) => q.eq("batch_id", args.batchId))
+      .collect();
+
+    const totalYield = harvests.reduce((sum, h) => sum + h.total_weight, 0);
+    const yieldUnit = harvests[0]?.weight_unit || "g";
+    const cogsPerUnit = totalYield > 0 ? grandTotal / totalYield : null;
+
+    return {
+      phases,
+      grandTotal,
+      totalYield,
+      yieldUnit,
+      cogsPerUnit,
+      transactionCount: enriched.length,
+    };
+  },
+});
+
+/**
+ * Get full COGS for a batch - Complete COGS System
+ * Combines material consumption (from activities) + cost_entries (labor, utilities, depreciation)
+ * Returns materials (from activity material consumption), labor, utilities, and depreciation
+ */
+export const getFullCostByBatch = query({
+  args: {
+    batchId: v.id("batches"),
+  },
+  handler: async (ctx, args) => {
+    // 1. Material costs — extract from activities linked to this batch
+    // Activities track materials_consumed with quantity and product_id
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_entity", (q) =>
+        q.eq("entity_type", "batch").eq("entity_id", args.batchId)
+      )
+      .collect();
+
+    const enrichedMaterials: Array<{
+      _id: string;
+      date: number;
+      type: string;
+      productId: Id<"products">;
+      productName: string;
+      quantity: number;
+      quantityUnit: string;
+      costPerUnit: number | undefined;
+      costTotal: number;
+      cropPhase: string | undefined;
+    }> = [];
+
+    for (const activity of activities) {
+      const materials = (activity.materials_consumed || []) as Array<{
+        product_id?: string;
+        inventory_item_id?: string;
+        quantity?: number;
+        consumed?: boolean;
+      }>;
+
+      for (const mat of materials) {
+        if (!mat.product_id || !mat.quantity) continue;
+        const productId = mat.product_id as Id<"products">;
+        const product = await ctx.db.get(productId);
+
+        // Try to get cost from inventory item if available
+        let costPerUnit: number | undefined;
+        let costTotal = 0;
+        if (mat.inventory_item_id) {
+          const item = await ctx.db.get(mat.inventory_item_id as Id<"inventory_items">);
+          if (item?.cost_per_unit) {
+            costPerUnit = item.cost_per_unit;
+            costTotal = costPerUnit * (mat.quantity || 0);
+          }
+        }
+
+        enrichedMaterials.push({
+          _id: `${activity._id}-${mat.product_id}`,
+          date: activity.timestamp,
+          type: activity.activity_type,
+          productId,
+          productName: product?.name || "Desconocido",
+          quantity: mat.quantity || 0,
+          quantityUnit: product?.default_unit || "unidades",
+          costPerUnit,
+          costTotal,
+          cropPhase: undefined,
+        });
+      }
+    }
+
+    const materialsTotal = enrichedMaterials.reduce((sum, m) => sum + m.costTotal, 0);
+
+    // 2. Cost entries (labor, utilities, depreciation)
+    const costEntries = await ctx.db
+      .query("cost_entries")
+      .withIndex("by_batch_id", (q) => q.eq("batch_id", args.batchId))
+      .collect();
+
+    // Group by type
+    const laborEntries = costEntries.filter((e) => e.cost_type === "labor");
+    const utilityEntries = costEntries.filter((e) => e.cost_type.startsWith("utility_"));
+    const depreciationEntries = costEntries.filter((e) => e.cost_type === "depreciation");
+
+    // Enrich labor entries with user info
+    const enrichedLabor = await Promise.all(
+      laborEntries.map(async (e) => {
+        let userName = "Desconocido";
+        if (e.performed_by) {
+          const user = await ctx.db.get(e.performed_by);
+          if (user) userName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email || "Desconocido";
+        }
+        // Get activity info
+        let activityType = "";
+        if (e.activity_id) {
+          const activity = await ctx.db.get(e.activity_id);
+          if (activity) activityType = activity.activity_type;
+        }
+        const details = e.details as {
+          role_display_name?: string;
+          hourly_rate?: number;
+          duration_minutes?: number;
+        } | undefined;
+        return {
+          _id: e._id,
+          date: e.created_at,
+          userName,
+          activityType,
+          roleName: details?.role_display_name || "",
+          hourlyRate: details?.hourly_rate || 0,
+          durationMinutes: details?.duration_minutes || 0,
+          costTotal: e.cost_total,
+          cropPhase: e.crop_phase,
+        };
+      })
+    );
+
+    const laborTotal = laborEntries.reduce((sum, e) => sum + e.cost_total, 0);
+    const utilitiesTotal = utilityEntries.reduce((sum, e) => sum + e.cost_total, 0);
+    const depreciationTotal = depreciationEntries.reduce((sum, e) => sum + e.cost_total, 0);
+    const grandTotal = materialsTotal + laborTotal + utilitiesTotal + depreciationTotal;
+
+    return {
+      materials: {
+        entries: enrichedMaterials,
+        total: Math.round(materialsTotal * 100) / 100,
+      },
+      labor: {
+        entries: enrichedLabor,
+        total: Math.round(laborTotal * 100) / 100,
+      },
+      utilities: {
+        entries: utilityEntries.map((e) => ({
+          _id: e._id,
+          costType: e.cost_type,
+          period: e.period,
+          costTotal: e.cost_total,
+          cropPhase: e.crop_phase,
+          details: e.details as {
+            utility_type?: string;
+            consumption?: number;
+            consumption_unit?: string;
+            proportion?: number;
+          } | undefined,
+        })),
+        total: Math.round(utilitiesTotal * 100) / 100,
+      },
+      depreciation: {
+        entries: depreciationEntries.map((e) => ({
+          _id: e._id,
+          period: e.period,
+          costTotal: e.cost_total,
+          details: e.details as {
+            equipment_name?: string;
+            equipment_sku?: string;
+            monthly_depreciation?: number;
+            proportion?: number;
+          } | undefined,
+        })),
+        total: Math.round(depreciationTotal * 100) / 100,
+      },
+      grandTotal: Math.round(grandTotal * 100) / 100,
+      breakdown: {
+        materials: materialsTotal > 0 ? Math.round((materialsTotal / grandTotal) * 100) : 0,
+        labor: laborTotal > 0 ? Math.round((laborTotal / grandTotal) * 100) : 0,
+        utilities: utilitiesTotal > 0 ? Math.round((utilitiesTotal / grandTotal) * 100) : 0,
+        depreciation: depreciationTotal > 0 ? Math.round((depreciationTotal / grandTotal) * 100) : 0,
+      },
+    };
+  },
+});
+
+/**
+ * Get full traceability chain for an inventory item - Resource System
+ * Traverses backward to origin (receipt) and forward to final product
+ */
+export const getFullTrace = query({
+  args: {
+    inventoryItemId: v.id("inventory_items"),
+  },
+  handler: async (ctx, args) => {
+    type TraceStep = {
+      _id: string;
+      direction: "backward" | "current" | "forward";
+      item_id: string;
+      product_name: string;
+      product_sku: string;
+      product_category: string;
+      quantity: number;
+      quantity_unit: string;
+      batch_number?: string;
+      transformation_status?: string;
+      activity_type?: string;
+      timestamp: number;
+    };
+
+    const steps: TraceStep[] = [];
+    const visited = new Set<string>();
+
+    // Helper to enrich an inventory item into a trace step
+    async function itemToStep(
+      itemId: Id<"inventory_items">,
+      direction: "backward" | "current" | "forward"
+    ): Promise<TraceStep | null> {
+      if (visited.has(itemId)) return null;
+      visited.add(itemId);
+
+      const item = await ctx.db.get(itemId);
+      if (!item) return null;
+
+      const product = await ctx.db.get(item.product_id);
+
+      // Get activity info if available
+      let activityType: string | undefined;
+      const activityId = direction === "forward"
+        ? item.created_by_activity_id
+        : item.transformed_by_activity_id;
+      if (activityId) {
+        const activity = await ctx.db.get(activityId);
+        if (activity) {
+          activityType = activity.activity_type;
+        }
+      }
+
+      return {
+        _id: item._id,
+        direction,
+        item_id: item._id,
+        product_name: product?.name || "Producto desconocido",
+        product_sku: product?.sku || "",
+        product_category: product?.category || "",
+        quantity: item.quantity_available,
+        quantity_unit: item.quantity_unit,
+        batch_number: item.batch_number,
+        transformation_status: item.transformation_status,
+        activity_type: activityType,
+        timestamp: item.received_date || item.created_at,
+      };
+    }
+
+    // 1. Traverse backward: find items that were transformed into this one
+    // Look for items where transformed_to_item_id === our item
+    let currentBackId: Id<"inventory_items"> | undefined = args.inventoryItemId;
+    const backwardSteps: TraceStep[] = [];
+    let safetyBack = 0;
+
+    while (currentBackId && safetyBack < 20) {
+      safetyBack++;
+      // Find items that transformed into currentBackId
+      const sourceItems = await ctx.db
+        .query("inventory_items")
+        .filter((q) => q.eq(q.field("transformed_to_item_id"), currentBackId))
+        .take(1);
+
+      if (sourceItems.length === 0) break;
+
+      const sourceItem = sourceItems[0];
+      const step = await itemToStep(sourceItem._id, "backward");
+      if (!step) break;
+      backwardSteps.unshift(step);
+      currentBackId = sourceItem._id;
+    }
+
+    steps.push(...backwardSteps);
+
+    // 2. Add current item
+    const currentStep = await itemToStep(args.inventoryItemId, "current");
+    if (currentStep) {
+      steps.push(currentStep);
+    }
+
+    // 3. Traverse forward: follow transformed_to_item_id chain
+    let currentFwdId: Id<"inventory_items"> | undefined;
+    const currentItem = await ctx.db.get(args.inventoryItemId);
+    if (currentItem?.transformed_to_item_id) {
+      currentFwdId = currentItem.transformed_to_item_id;
+    }
+
+    let safetyFwd = 0;
+    while (currentFwdId && safetyFwd < 20) {
+      safetyFwd++;
+      const step = await itemToStep(currentFwdId, "forward");
+      if (!step) break;
+      steps.push(step);
+
+      const fwdItem = await ctx.db.get(currentFwdId);
+      currentFwdId = fwdItem?.transformed_to_item_id;
+    }
+
+    // 4. Get the receipt transaction for the earliest item (origin)
+    let originReceipt = null;
+    if (steps.length > 0) {
+      const earliestId = steps[0].item_id as Id<"inventory_items">;
+      const receipts = await ctx.db
+        .query("inventory_transactions")
+        .withIndex("by_inventory_item", (q) =>
+          q.eq("inventory_item_id", earliestId)
+        )
+        .filter((q) => q.eq(q.field("transaction_type"), "receipt"))
+        .take(1);
+
+      if (receipts.length > 0) {
+        const receipt = receipts[0];
+        const user = await ctx.db.get(receipt.performed_by);
+        originReceipt = {
+          date: receipt.performed_at,
+          reason: receipt.reason,
+          performed_by: user
+            ? user.first_name && user.last_name
+              ? `${user.first_name} ${user.last_name}`
+              : user.first_name || user.email
+            : "Desconocido",
+        };
+      }
+    }
+
+    return {
+      steps,
+      originReceipt,
+      totalSteps: steps.length,
     };
   },
 });

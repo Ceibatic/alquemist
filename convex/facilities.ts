@@ -5,7 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthenticatedUserId } from "./authHelpers";
 
 /**
  * List facilities for a company
@@ -18,7 +18,7 @@ export const list = query({
     offset: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     let facilitiesQuery = ctx.db.query("facilities")
@@ -53,7 +53,7 @@ export const get = query({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const facility = await ctx.db.get(args.id);
@@ -105,7 +105,7 @@ export const create = mutation({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const now = Date.now();
@@ -244,7 +244,7 @@ export const update = mutation({
     critical_alert_email: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const { id, companyId, gps_latitude, gps_longitude, ...updates } = args;
@@ -283,7 +283,7 @@ export const remove = mutation({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     // Verify company ownership
@@ -377,7 +377,7 @@ export const checkLicenseAvailability = query({
     licenseNumber: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const existingFacility = await ctx.db
@@ -403,7 +403,7 @@ export const linkCultivars = mutation({
     cultivarIds: v.array(v.id("cultivars")),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     // Verify facility exists and company ownership
@@ -449,7 +449,7 @@ export const getFacilitiesByCompany = query({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const allFacilities = await ctx.db.query("facilities")
@@ -469,7 +469,7 @@ export const getById = query({
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const facility = await ctx.db.get(args.facilityId);
@@ -495,7 +495,7 @@ export const getSettings = query({
     facilityId: v.id("facilities"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     // Get user to verify company membership
@@ -546,7 +546,7 @@ export const updateSettings = mutation({
     overdueActivityAlertEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const now = Date.now();

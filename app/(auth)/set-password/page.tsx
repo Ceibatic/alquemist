@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import { useSignUp } from '@clerk/nextjs';
 import {
   invitationAcceptSchema,
   type InvitationAcceptFormValues,
   allPasswordRequirementsMet,
 } from '@/lib/validations';
+import { getClerkErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -28,6 +30,7 @@ import { acceptInvitation } from './actions';
 
 export default function SetPasswordPage() {
   const router = useRouter();
+  const { signUp, setActive, isLoaded } = useSignUp();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -56,7 +59,7 @@ export default function SetPasswordPage() {
   }, [router]);
 
   const onSubmit = async (data: InvitationAcceptFormValues) => {
-    if (!token) {
+    if (!token || !isLoaded) {
       setError('Token de invitación no encontrado');
       return;
     }
@@ -65,37 +68,49 @@ export default function SetPasswordPage() {
     setError(null);
 
     try {
+      // Step 1: Accept invitation in backend (validates token, marks invitation)
       const result = await acceptInvitation({ ...data, token });
 
-      if (result.success) {
-        // Store session data
-        if (result.sessionToken) {
-          localStorage.setItem('sessionToken', result.sessionToken);
-        }
-        if (result.userId) {
-          sessionStorage.setItem('userId', result.userId);
-        }
-        if (result.companyId) {
-          sessionStorage.setItem('companyId', result.companyId);
-        }
-
-        // Store invitation data for welcome page
-        if (result.invitation) {
-          sessionStorage.setItem('welcomeData', JSON.stringify({
-            companyName: result.invitation.companyName,
-            roleName: result.invitation.roleName,
-            facilities: result.invitation.facilities,
-          }));
-        }
-
-        // Navigate to welcome page
-        router.push('/welcome-invited');
-      } else {
+      if (!result.success) {
         setError(result.error || 'Error al crear la cuenta');
+        return;
       }
-    } catch (err) {
-      console.error('Error accepting invitation:', err);
-      setError('Error inesperado. Por favor intenta de nuevo.');
+
+      // Step 2: Create Clerk account with the invitation email
+      const invitationEmail = sessionStorage.getItem('invitationEmail');
+      const invitationFirstName = sessionStorage.getItem('invitationFirstName');
+      const invitationLastName = sessionStorage.getItem('invitationLastName');
+
+      if (!invitationEmail) {
+        setError('Email de invitación no encontrado');
+        return;
+      }
+
+      await signUp.create({
+        emailAddress: invitationEmail,
+        password: data.password,
+        firstName: invitationFirstName || undefined,
+        lastName: invitationLastName || undefined,
+      });
+
+      // Step 3: Prepare and verify email (skip verification for invited users)
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+
+      // Store invitation data for welcome page
+      if (result.invitation) {
+        sessionStorage.setItem('welcomeData', JSON.stringify({
+          companyName: result.invitation.companyName,
+          roleName: result.invitation.roleName,
+          facilities: result.invitation.facilities,
+        }));
+      }
+
+      // Navigate to verify-email page for the invited user
+      sessionStorage.setItem('signupEmail', invitationEmail);
+      sessionStorage.setItem('isInvitedUser', 'true');
+      router.push('/verify-email');
+    } catch (err: unknown) {
+      setError(getClerkErrorMessage(err, 'Error inesperado. Por favor intenta de nuevo.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -108,7 +123,7 @@ export default function SetPasswordPage() {
 
   const isFormValid = form.formState.isValid && allRequirementsMet;
 
-  if (!token) {
+  if (!token || !isLoaded) {
     return (
       <div className="space-y-6 text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
@@ -216,6 +231,9 @@ export default function SetPasswordPage() {
               </FormItem>
             )}
           />
+
+          {/* Clerk CAPTCHA widget mount point (required for bot protection with custom flows) */}
+          <div id="clerk-captcha" />
 
           {/* Action Buttons */}
           <div className="space-y-3 pt-2">

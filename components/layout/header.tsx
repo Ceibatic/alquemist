@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useClerk } from '@clerk/nextjs';
 import { Bell, LogOut, Settings, User, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +33,7 @@ export function Header({
   notificationCount = 0,
 }: HeaderProps) {
   const router = useRouter();
+  const { signOut } = useClerk();
 
   // Get user initials for avatar
   const getInitials = (email: string) => {
@@ -39,14 +41,7 @@ export function Header({
   };
 
   const handleLogout = async () => {
-    // Clear session cookies
-    document.cookie =
-      'session_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
-    document.cookie =
-      'user_data=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
-
-    // Redirect to login
-    router.push('/login');
+    await signOut({ redirectUrl: '/login' });
   };
 
   return (

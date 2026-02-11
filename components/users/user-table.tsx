@@ -9,14 +9,14 @@ import { Id } from '@/convex/_generated/dataModel';
 interface UserTableData {
   id: Id<'users'>;
   type: 'user';
-  email: string;
+  email?: string;
   firstName?: string;
   lastName?: string;
   roleId?: Id<'roles'>;
   roleName: string;
-  status: string;
+  status?: string;
   lastLogin?: number;
-  createdAt: number;
+  createdAt?: number;
   accessibleFacilityIds?: string[];
 }
 

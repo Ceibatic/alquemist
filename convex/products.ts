@@ -5,7 +5,8 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { Id } from "./_generated/dataModel";
+import { getAuthenticatedUserId } from "./authHelpers";
 
 /**
  * List products with optional filters
@@ -100,14 +101,22 @@ export const create = mutation({
       v.literal("seed"),
       v.literal("nutrient"),
       v.literal("pesticide"),
-      v.literal("equipment"),
       v.literal("substrate"),
-      v.literal("container"),
-      v.literal("tool"),
+      v.literal("biocontrol"),
       v.literal("clone"),
       v.literal("seedling"),
       v.literal("mother_plant"),
       v.literal("plant_material"),
+      v.literal("plant_vegetative"),
+      v.literal("plant_flowering"),
+      v.literal("harvest_wet"),
+      v.literal("harvest_dry"),
+      v.literal("processed_plant"),
+      v.literal("stock_solution"),
+      v.literal("substrate_mix"),
+      v.literal("equipment"),
+      v.literal("container"),
+      v.literal("tool"),
       v.literal("other")
     ),
     subcategory: v.optional(v.string()),
@@ -136,9 +145,27 @@ export const create = mutation({
       v.union(v.literal("COP"), v.literal("USD"), v.literal("EUR"))
     ),
     price_unit: v.optional(v.string()),
+
+    // Procurement & Tracking (Resource System)
+    procurement_type: v.optional(
+      v.union(v.literal("purchased"), v.literal("produced"), v.literal("both"))
+    ),
+    lot_tracking: v.optional(
+      v.union(v.literal("required"), v.literal("optional"), v.literal("none"))
+    ),
+    shelf_life_days: v.optional(v.number()),
+
+    // Transformation Chain (Resource System)
+    transformation_produces_id: v.optional(v.id("products")),
+    default_yield_pct: v.optional(v.number()),
+
+    // Depreciation (equipment only - COGS System)
+    acquisition_value: v.optional(v.number()),
+    useful_life_months: v.optional(v.number()),
+    salvage_value: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const now = Date.now();
@@ -208,6 +235,19 @@ export const create = mutation({
       price_currency: args.price_currency || "COP",
       price_unit: args.price_unit,
 
+      // Resource system fields
+      procurement_type: args.procurement_type,
+      lot_tracking: args.lot_tracking,
+      shelf_life_days: args.shelf_life_days,
+      transformation_produces_id: args.transformation_produces_id,
+      default_yield_pct: args.default_yield_pct,
+
+      // COGS depreciation (equipment)
+      acquisition_value: args.acquisition_value,
+      useful_life_months: args.useful_life_months,
+      salvage_value: args.salvage_value,
+      depreciation_method: args.acquisition_value ? "straight_line" : undefined,
+
       status: "active",
       created_at: now,
       updated_at: now,
@@ -230,14 +270,22 @@ export const update = mutation({
         v.literal("seed"),
         v.literal("nutrient"),
         v.literal("pesticide"),
-        v.literal("equipment"),
         v.literal("substrate"),
-        v.literal("container"),
-        v.literal("tool"),
+        v.literal("biocontrol"),
         v.literal("clone"),
         v.literal("seedling"),
         v.literal("mother_plant"),
         v.literal("plant_material"),
+        v.literal("plant_vegetative"),
+        v.literal("plant_flowering"),
+        v.literal("harvest_wet"),
+        v.literal("harvest_dry"),
+        v.literal("processed_plant"),
+        v.literal("stock_solution"),
+        v.literal("substrate_mix"),
+        v.literal("equipment"),
+        v.literal("container"),
+        v.literal("tool"),
         v.literal("other")
       )
     ),
@@ -256,13 +304,28 @@ export const update = mutation({
     organic_certified: v.optional(v.boolean()),
     organic_cert_number: v.optional(v.string()),
     status: v.optional(v.union(v.literal("active"), v.literal("discontinued"))),
+    // Procurement & Tracking (Resource System)
+    procurement_type: v.optional(
+      v.union(v.literal("purchased"), v.literal("produced"), v.literal("both"))
+    ),
+    lot_tracking: v.optional(
+      v.union(v.literal("required"), v.literal("optional"), v.literal("none"))
+    ),
+    shelf_life_days: v.optional(v.number()),
+    // Transformation Chain (Resource System)
+    transformation_produces_id: v.optional(v.id("products")),
+    default_yield_pct: v.optional(v.number()),
+    // Depreciation (equipment only - COGS System)
+    acquisition_value: v.optional(v.number()),
+    useful_life_months: v.optional(v.number()),
+    salvage_value: v.optional(v.number()),
     // Price history tracking (optional)
     priceChangeReason: v.optional(v.string()),
     priceChangeCategory: v.optional(v.string()),
     priceChangeNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const now = Date.now();
@@ -348,6 +411,26 @@ export const update = mutation({
     if (sanitizedData.organic_cert_number !== undefined)
       updates.organic_cert_number = sanitizedData.organic_cert_number;
     if (args.status !== undefined) updates.status = args.status;
+    // Resource system fields
+    if (args.procurement_type !== undefined)
+      updates.procurement_type = args.procurement_type;
+    if (args.lot_tracking !== undefined)
+      updates.lot_tracking = args.lot_tracking;
+    if (args.shelf_life_days !== undefined)
+      updates.shelf_life_days = args.shelf_life_days;
+    if (args.transformation_produces_id !== undefined)
+      updates.transformation_produces_id = args.transformation_produces_id;
+    if (args.default_yield_pct !== undefined)
+      updates.default_yield_pct = args.default_yield_pct;
+    // COGS depreciation fields
+    if (args.acquisition_value !== undefined)
+      updates.acquisition_value = args.acquisition_value;
+    if (args.useful_life_months !== undefined)
+      updates.useful_life_months = args.useful_life_months;
+    if (args.salvage_value !== undefined)
+      updates.salvage_value = args.salvage_value;
+    if (args.acquisition_value !== undefined)
+      updates.depreciation_method = args.acquisition_value > 0 ? "straight_line" : undefined;
 
     await ctx.db.patch(args.productId, updates);
 
@@ -367,7 +450,7 @@ export const remove = mutation({
     productId: v.id("products"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const now = Date.now();
@@ -479,14 +562,22 @@ export const generateSku = query({
       seed: "SEM",
       nutrient: "NUT",
       pesticide: "PES",
-      equipment: "EQP",
       substrate: "SUS",
-      container: "CON",
-      tool: "HER",
+      biocontrol: "BIO",
       clone: "CLO",
       seedling: "PLT",
       mother_plant: "MAD",
       plant_material: "MAT",
+      plant_vegetative: "VEG",
+      plant_flowering: "FLO",
+      harvest_wet: "CHU",
+      harvest_dry: "CSE",
+      processed_plant: "PRO",
+      stock_solution: "SOL",
+      substrate_mix: "MIX",
+      equipment: "EQP",
+      container: "CON",
+      tool: "HER",
       other: "OTR",
     };
 
@@ -503,6 +594,55 @@ export const generateSku = query({
     const paddedNumber = String(nextNumber).padStart(4, "0");
 
     return `${prefix}-${paddedNumber}`;
+  },
+});
+
+/**
+ * Get the transformation chain starting from a product
+ * Follows transformation_produces_id recursively with a limit of 15 steps
+ */
+export const getTransformationChain = query({
+  args: {
+    productId: v.id("products"),
+  },
+  handler: async (ctx, args) => {
+    const chain: Array<{
+      _id: string;
+      name: string;
+      sku: string;
+      category: string;
+      default_yield_pct?: number;
+    }> = [];
+
+    let currentId: Id<"products"> | undefined = args.productId;
+    const visited = new Set<string>();
+
+    while (currentId && chain.length < 15) {
+      if (visited.has(currentId)) break; // Prevent cycles
+      visited.add(currentId);
+
+      const prod = await ctx.db.get(currentId) as {
+        _id: Id<"products">;
+        name: string;
+        sku: string;
+        category: string;
+        default_yield_pct?: number;
+        transformation_produces_id?: Id<"products">;
+      } | null;
+      if (!prod) break;
+
+      chain.push({
+        _id: prod._id,
+        name: prod.name,
+        sku: prod.sku,
+        category: prod.category,
+        default_yield_pct: prod.default_yield_pct,
+      });
+
+      currentId = prod.transformation_produces_id;
+    }
+
+    return chain;
   },
 });
 
@@ -591,7 +731,7 @@ export const recordPriceChange = mutation({
     effectiveDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const now = Date.now();

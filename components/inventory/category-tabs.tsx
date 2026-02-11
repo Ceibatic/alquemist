@@ -3,7 +3,12 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
-export type InventoryCategoryFilter = 'all' | 'seed' | 'nutrient' | 'pesticide' | 'equipment' | 'substrate' | 'container' | 'tool' | 'other';
+export type InventoryCategoryFilter =
+  | 'all'
+  | 'seed' | 'nutrient' | 'pesticide' | 'substrate' | 'biocontrol'
+  | 'clone' | 'seedling' | 'mother_plant' | 'plant_material' | 'plant_vegetative' | 'plant_flowering' | 'harvest_wet' | 'harvest_dry' | 'processed_plant'
+  | 'stock_solution' | 'substrate_mix'
+  | 'equipment' | 'container' | 'tool' | 'other';
 
 interface CategoryTabsProps {
   activeCategory: InventoryCategoryFilter;
@@ -15,11 +20,27 @@ interface CategoryTabsProps {
 
 const CATEGORY_CONFIG = [
   { value: 'all' as const, label: 'Todos', icon: '📦' },
+  // Insumos
   { value: 'seed' as const, label: 'Semillas', icon: '🌱' },
   { value: 'nutrient' as const, label: 'Nutrientes', icon: '🧪' },
   { value: 'pesticide' as const, label: 'Pesticidas', icon: '🛡️' },
-  { value: 'equipment' as const, label: 'Equipos', icon: '⚙️' },
   { value: 'substrate' as const, label: 'Sustratos', icon: '🌾' },
+  { value: 'biocontrol' as const, label: 'Biocontrol', icon: '🐛' },
+  // Material vegetal
+  { value: 'clone' as const, label: 'Esquejes', icon: '🪴' },
+  { value: 'seedling' as const, label: 'Plántulas', icon: '🌿' },
+  { value: 'mother_plant' as const, label: 'Plantas Madre', icon: '🌳' },
+  { value: 'plant_material' as const, label: 'Material Vegetal', icon: '🍃' },
+  { value: 'plant_vegetative' as const, label: 'Vegetativa', icon: '🌱' },
+  { value: 'plant_flowering' as const, label: 'Floración', icon: '🌸' },
+  { value: 'harvest_wet' as const, label: 'Cosecha Húmeda', icon: '🌿' },
+  { value: 'harvest_dry' as const, label: 'Cosecha Seca', icon: '🍂' },
+  { value: 'processed_plant' as const, label: 'Procesado', icon: '📦' },
+  // Preparados
+  { value: 'stock_solution' as const, label: 'Solución Madre', icon: '🧫' },
+  { value: 'substrate_mix' as const, label: 'Mezcla Sustrato', icon: '🌾' },
+  // Infraestructura
+  { value: 'equipment' as const, label: 'Equipos', icon: '⚙️' },
   { value: 'container' as const, label: 'Contenedores', icon: '🪣' },
   { value: 'tool' as const, label: 'Herramientas', icon: '🔧' },
   { value: 'other' as const, label: 'Otros', icon: '📋' },

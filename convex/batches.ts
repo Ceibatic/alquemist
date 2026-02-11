@@ -6,7 +6,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthenticatedUserId } from "./authHelpers";
+import { getActivityTypeByCode } from "./helpers";
 
 /**
  * Generate batch code in format {CULTIVAR}-{YYMMDD}-{XXX}
@@ -308,7 +309,7 @@ export const create = mutation({
     createdBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -475,7 +476,7 @@ export const move = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -563,6 +564,7 @@ export const move = mutation({
     }
 
     // Log activity
+    const moveType = batch.company_id ? await getActivityTypeByCode(ctx, batch.company_id, "relocation") : null;
     await ctx.db.insert("activities", {
       entity_type: "batch",
       entity_id: args.batchId,
@@ -580,6 +582,17 @@ export const move = mutation({
       activity_metadata: {},
       notes: `${args.reason}${args.notes ? `. ${args.notes}` : ""}`,
       created_at: now,
+      // v2 fields
+      ...(moveType && {
+        type_id: moveType._id,
+        category: moveType.category,
+      }),
+      company_id: batch.company_id,
+      facility_id: batch.facility_id,
+      batch_id: args.batchId,
+      crop_phase: batch.current_phase,
+      status: "completed",
+      title: `Movimiento — ${batch.batch_code}`,
     });
 
     return { success: true, message: "Batch moved successfully" };
@@ -601,7 +614,7 @@ export const recordLoss = mutation({
     recordedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -676,6 +689,7 @@ export const recordLoss = mutation({
     }
 
     // Log activity
+    const lossType = batch.company_id ? await getActivityTypeByCode(ctx, batch.company_id, "incident_report") : null;
     await ctx.db.insert("activities", {
       entity_type: "batch",
       entity_id: args.batchId,
@@ -694,6 +708,17 @@ export const recordLoss = mutation({
       },
       notes: `${args.reason}${args.description ? `. ${args.description}` : ""}`,
       created_at: now,
+      // v2 fields
+      ...(lossType && {
+        type_id: lossType._id,
+        category: lossType.category,
+      }),
+      company_id: batch.company_id,
+      facility_id: batch.facility_id,
+      batch_id: args.batchId,
+      crop_phase: batch.current_phase,
+      status: "completed",
+      title: `Perdida registrada — ${batch.batch_code}`,
     });
 
     return { success: true, message: "Loss recorded successfully" };
@@ -717,7 +742,7 @@ export const split = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -847,7 +872,8 @@ export const split = mutation({
       }
     }
 
-    // Log activity
+    // Log activity (no specific type for batch_split — use note as fallback)
+    const splitType = batch.company_id ? await getActivityTypeByCode(ctx, batch.company_id, "note") : null;
     await ctx.db.insert("activities", {
       entity_type: "batch",
       entity_id: args.batchId,
@@ -867,6 +893,17 @@ export const split = mutation({
       },
       notes: `Split into ${args.splits.length} batches. Reason: ${args.reason}`,
       created_at: now,
+      // v2 fields
+      ...(splitType && {
+        type_id: splitType._id,
+        category: splitType.category,
+      }),
+      company_id: batch.company_id,
+      facility_id: batch.facility_id,
+      batch_id: args.batchId,
+      crop_phase: batch.current_phase,
+      status: "completed",
+      title: `Division de lote — ${batch.batch_code}`,
     });
 
     return { success: true, newBatchIds, message: "Batch split successfully" };
@@ -884,7 +921,7 @@ export const merge = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -1006,7 +1043,8 @@ export const merge = mutation({
       }
     }
 
-    // Log activity for primary batch
+    // Log activity for primary batch (no specific merge type — use note as fallback)
+    const mergeType = primaryBatch.company_id ? await getActivityTypeByCode(ctx, primaryBatch.company_id, "note") : null;
     await ctx.db.insert("activities", {
       entity_type: "batch",
       entity_id: args.primaryBatchId,
@@ -1027,6 +1065,17 @@ export const merge = mutation({
       },
       notes: `Merged with ${secondaryBatch.batch_code}. Reason: ${args.reason}`,
       created_at: now,
+      // v2 fields
+      ...(mergeType && {
+        type_id: mergeType._id,
+        category: mergeType.category,
+      }),
+      company_id: primaryBatch.company_id,
+      facility_id: primaryBatch.facility_id,
+      batch_id: args.primaryBatchId,
+      crop_phase: primaryBatch.current_phase,
+      status: "completed",
+      title: `Fusion de lotes — ${primaryBatch.batch_code}`,
     });
 
     // Log activity for secondary batch
@@ -1049,6 +1098,17 @@ export const merge = mutation({
       },
       notes: `Merged into ${primaryBatch.batch_code}. Reason: ${args.reason}`,
       created_at: now,
+      // v2 fields
+      ...(mergeType && {
+        type_id: mergeType._id,
+        category: mergeType.category,
+      }),
+      company_id: secondaryBatch.company_id,
+      facility_id: secondaryBatch.facility_id,
+      batch_id: args.secondaryBatchId,
+      crop_phase: secondaryBatch.current_phase,
+      status: "completed",
+      title: `Fusionado en ${primaryBatch.batch_code}`,
     });
 
     return { success: true, message: "Batches merged successfully" };
@@ -1072,7 +1132,7 @@ export const harvest = mutation({
     harvestedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -1150,6 +1210,7 @@ export const harvest = mutation({
     }
 
     // Log activity
+    const harvestType = batch.company_id ? await getActivityTypeByCode(ctx, batch.company_id, "harvest_cut") : null;
     await ctx.db.insert("activities", {
       entity_type: "batch",
       entity_id: args.batchId,
@@ -1171,6 +1232,17 @@ export const harvest = mutation({
       },
       notes: args.notes || `Harvest: ${args.totalWeight}${args.weightUnit}, Grade: ${args.qualityGrade}`,
       created_at: now,
+      // v2 fields
+      ...(harvestType && {
+        type_id: harvestType._id,
+        category: harvestType.category,
+      }),
+      company_id: batch.company_id,
+      facility_id: batch.facility_id,
+      batch_id: args.batchId,
+      crop_phase: "harvest",
+      status: "completed",
+      title: `Cosecha — ${batch.batch_code}`,
     });
 
     return { success: true, message: "Harvest recorded successfully" };
@@ -1186,7 +1258,7 @@ export const archive = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -1237,7 +1309,7 @@ export const updatePhase = mutation({
     performedBy: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autorizado");
     }
@@ -1290,6 +1362,7 @@ export const updatePhase = mutation({
     }
 
     // Log activity
+    const phaseType = batch.company_id ? await getActivityTypeByCode(ctx, batch.company_id, "phase_transition") : null;
     await ctx.db.insert("activities", {
       entity_type: "batch",
       entity_id: args.batchId,
@@ -1308,6 +1381,17 @@ export const updatePhase = mutation({
       },
       notes: args.notes || `Phase changed from ${previousPhase} to ${args.newPhase}`,
       created_at: now,
+      // v2 fields
+      ...(phaseType && {
+        type_id: phaseType._id,
+        category: phaseType.category,
+      }),
+      company_id: batch.company_id,
+      facility_id: batch.facility_id,
+      batch_id: args.batchId,
+      crop_phase: args.newPhase,
+      status: "completed",
+      title: `Cambio de fase — ${previousPhase} → ${args.newPhase}`,
     });
 
     return { success: true, message: "Phase updated successfully" };

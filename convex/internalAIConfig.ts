@@ -125,6 +125,9 @@ async function requirePlatformAdmin(
     throw new Error("User not found");
   }
 
+  if (!user.role_id) {
+    throw new Error("Unauthorized: User has no role assigned");
+  }
   const role = await ctx.db.get(user.role_id);
   if (!role || role.name !== "PLATFORM_ADMIN") {
     throw new Error("Unauthorized: Platform admin access required");

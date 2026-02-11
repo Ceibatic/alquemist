@@ -33,14 +33,14 @@ import { UserErrorFallback } from './user-error-fallback';
 interface UserData {
   id: Id<'users'>;
   type: 'user';
-  email: string;
+  email?: string;
   firstName?: string;
   lastName?: string;
   roleId?: Id<'roles'>;
   roleName: string;
-  status: string;
+  status?: string;
   lastLogin?: number;
-  createdAt: number;
+  createdAt?: number;
   accessibleFacilityIds?: string[];
 }
 
@@ -134,7 +134,7 @@ export function UsersContent() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const fullName = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase();
-      const email = user.email.toLowerCase();
+      const email = (user.email ?? "").toLowerCase();
       return fullName.includes(query) || email.includes(query);
     }
 

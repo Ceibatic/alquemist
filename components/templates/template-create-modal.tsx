@@ -102,7 +102,7 @@ export function TemplateCreateModal({
         companyId,
         name: name.trim(),
         cropTypeId: cropTypeId as Id<'crop_types'>,
-        cultivarId: cultivarId ? (cultivarId as Id<'cultivars'>) : undefined,
+        cultivarId: cultivarId && cultivarId !== 'none' ? (cultivarId as Id<'cultivars'>) : undefined,
         templateCategory,
         productionMethod,
         sourceType,
@@ -206,7 +206,7 @@ export function TemplateCreateModal({
                   <SelectValue placeholder="Cualquier cultivar" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Cualquier cultivar</SelectItem>
+                  <SelectItem value="none">Cualquier cultivar</SelectItem>
                   {cultivars?.map((cv) => (
                     <SelectItem key={cv._id} value={cv._id}>
                       {cv.name}

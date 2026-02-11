@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { productCategoryLabels, productStatusLabels } from '@/lib/validations/product';
 import { ProductPriceHistory } from '@/components/products';
+import { TransformationChain } from '@/components/products/transformation-chain';
 
 interface ProductDetailContentProps {
   productId: string;
@@ -203,6 +204,9 @@ export function ProductDetailContent({ productId }: ProductDetailContentProps) {
               )}
             </CardContent>
           </Card>
+
+          {/* Transformation Chain */}
+          <TransformationChain productId={productId} />
 
           {/* Pricing Card */}
           <Card>

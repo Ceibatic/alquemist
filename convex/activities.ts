@@ -6,7 +6,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { generateInternalLotNumber } from "./helpers";
+import { generateInternalLotNumber, consumeFromInventoryFIFO, getActivityTypeByCode, createLaborCostEntry } from "./helpers";
 
 /**
  * List activities
@@ -262,6 +262,291 @@ export const log = mutation({
       created_at: now,
     });
 
+    // Auto-create labor cost_entry if duration_minutes > 0 and user has hourly rate
+    if (args.duration_minutes && args.duration_minutes > 0) {
+      let facilityId = args.facility_id;
+      let batchId: Id<"batches"> | undefined;
+      let cropPhase: string | undefined;
+
+      // Resolve facility and batch context from entity
+      if (args.entity_type === "batch") {
+        const batch = await ctx.db.get(args.entity_id as Id<"batches">);
+        if (batch) {
+          facilityId = facilityId || batch.facility_id;
+          batchId = batch._id;
+          cropPhase = batch.current_phase;
+        }
+      }
+
+      if (facilityId) {
+        await createLaborCostEntry(ctx, {
+          userId: args.performed_by,
+          durationMinutes: args.duration_minutes,
+          activityId,
+          facilityId,
+          batchId,
+          cropPhase,
+        });
+      }
+    }
+
+    return activityId;
+  },
+});
+
+// ============================================================================
+// LOG V2 — New model with type_id, activity_resources, and expanded context
+// ============================================================================
+
+/**
+ * Log an activity using the new v2 model.
+ * Uses type_id (from activity_types catalog) instead of activity_type string.
+ * Creates normalized activity_resources rows for each resource.
+ * Optionally consumes inventory via FIFO.
+ */
+export const logV2 = mutation({
+  args: {
+    // Type (required)
+    type_id: v.id("activity_types"),
+
+    // Legacy fields (still required for compat)
+    entity_type: v.string(),
+    entity_id: v.string(),
+    performed_by: v.id("users"),
+
+    // Context (optional)
+    company_id: v.optional(v.id("companies")),
+    facility_id: v.optional(v.id("facilities")),
+    batch_id: v.optional(v.id("batches")),
+    crop_phase: v.optional(v.string()),
+    zone_id: v.optional(v.id("areas")),
+    structure_id: v.optional(v.id("structures")),
+
+    // Workflow
+    status: v.optional(v.string()),
+    priority: v.optional(v.string()),
+    title: v.optional(v.string()),
+    observations: v.optional(v.string()),
+
+    // Time
+    duration_minutes: v.optional(v.number()),
+    started_at: v.optional(v.number()),
+
+    // Assignment
+    assigned_to: v.optional(v.id("users")),
+
+    // Links
+    parent_activity_id: v.optional(v.id("activities")),
+    work_order_id: v.optional(v.id("production_orders")),
+    scheduled_activity_id: v.optional(v.id("scheduled_activities")),
+
+    // Resources
+    resources: v.optional(v.array(v.object({
+      product_id: v.id("products"),
+      direction: v.string(), // consumed/produced/applied/wasted
+      quantity: v.number(),
+      quantity_unit: v.string(),
+      unit_id: v.optional(v.id("units_of_measure")),
+      inventory_item_id: v.optional(v.id("inventory_items")),
+      application_rate: v.optional(v.string()),
+      application_method: v.optional(v.string()),
+      notes: v.optional(v.string()),
+    }))),
+    consume_inventory: v.optional(v.boolean()),
+
+    // Legacy fields
+    area_from: v.optional(v.id("areas")),
+    area_to: v.optional(v.id("areas")),
+    quantity_before: v.optional(v.number()),
+    quantity_after: v.optional(v.number()),
+    qr_scanned: v.optional(v.string()),
+    equipment_used: v.optional(v.array(v.any())),
+    photos: v.optional(v.array(v.string())),
+    files: v.optional(v.array(v.string())),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // 1. Validate type_id
+    const activityType = await ctx.db.get(args.type_id);
+    if (!activityType) {
+      throw new Error("Tipo de actividad no encontrado");
+    }
+
+    // 2. Denormalize category and activity_type from the type
+    const category = activityType.category;
+    const activityTypeCode = activityType.code;
+
+    // 3. Auto-generate title if not provided
+    const title = args.title || `${activityType.name}`;
+
+    // 4. Insert activity with both legacy and new fields
+    const activityId = await ctx.db.insert("activities", {
+      // Legacy required fields
+      entity_type: args.entity_type,
+      entity_id: args.entity_id,
+      activity_type: activityTypeCode, // Legacy compat
+      performed_by: args.performed_by,
+      timestamp: now,
+      duration_minutes: args.duration_minutes,
+      materials_consumed: [], // Will be populated below for compat
+      equipment_used: args.equipment_used || [],
+      photos: args.photos || [],
+      files: args.files || [],
+      created_at: now,
+
+      // Legacy optional
+      scheduled_activity_id: args.scheduled_activity_id,
+      area_from: args.area_from,
+      area_to: args.area_to,
+      quantity_before: args.quantity_before,
+      quantity_after: args.quantity_after,
+      qr_scanned: args.qr_scanned,
+      scan_timestamp: args.qr_scanned ? now : undefined,
+      notes: args.notes,
+
+      // New v2 fields
+      type_id: args.type_id,
+      category,
+      company_id: args.company_id,
+      facility_id: args.facility_id,
+      batch_id: args.batch_id,
+      crop_phase: args.crop_phase,
+      zone_id: args.zone_id,
+      structure_id: args.structure_id,
+      status: args.status || "completed",
+      priority: args.priority || "routine",
+      started_at: args.started_at,
+      completed_at: args.status === "completed" || !args.status ? now : undefined,
+      assigned_to: args.assigned_to,
+      title,
+      observations: args.observations,
+      parent_activity_id: args.parent_activity_id,
+      work_order_id: args.work_order_id,
+    });
+
+    // 5. Process resources → create activity_resources rows
+    const materialsConsumedLegacy: Array<Record<string, unknown>> = [];
+
+    if (args.resources && args.resources.length > 0) {
+      for (const resource of args.resources) {
+        let costPerUnit: number | undefined;
+        let costTotal: number | undefined;
+        let batchNumber: string | undefined;
+        let transactionId: string | undefined;
+
+        // If consuming inventory via FIFO
+        if (
+          args.consume_inventory &&
+          (resource.direction === "consumed" || resource.direction === "applied")
+        ) {
+          if (resource.inventory_item_id) {
+            // Specific item consumption
+            const item = await ctx.db.get(resource.inventory_item_id);
+            if (!item) throw new Error("Item de inventario no encontrado");
+            if (item.quantity_available < resource.quantity) {
+              const product = await ctx.db.get(resource.product_id);
+              throw new Error(
+                `Stock insuficiente para ${product?.name || "producto"}. Disponible: ${item.quantity_available}, Requerido: ${resource.quantity}`
+              );
+            }
+            await ctx.db.patch(resource.inventory_item_id, {
+              quantity_available: item.quantity_available - resource.quantity,
+              last_movement_date: now,
+              updated_at: now,
+            });
+            costPerUnit = item.cost_per_unit;
+            costTotal = costPerUnit ? costPerUnit * resource.quantity : undefined;
+            batchNumber = item.batch_number;
+          } else {
+            // FIFO consumption
+            const consumed = await consumeFromInventoryFIFO(ctx, {
+              product_id: resource.product_id,
+              quantity: resource.quantity,
+              facility_id: args.facility_id,
+              area_id: args.zone_id,
+            });
+
+            // Create one activity_resource per consumed lot
+            for (const ci of consumed) {
+              const ciCostTotal = ci.cost_per_unit
+                ? ci.cost_per_unit * ci.quantity_consumed
+                : undefined;
+
+              await ctx.db.insert("activity_resources", {
+                activity_id: activityId,
+                direction: resource.direction,
+                product_id: resource.product_id,
+                inventory_item_id: ci.inventory_item_id,
+                quantity: ci.quantity_consumed,
+                unit_id: resource.unit_id,
+                quantity_unit: resource.quantity_unit,
+                cost_per_unit: ci.cost_per_unit,
+                cost_total: ciCostTotal,
+                application_rate: resource.application_rate,
+                application_method: resource.application_method,
+                batch_number: ci.batch_number,
+                notes: resource.notes,
+                created_at: now,
+              });
+
+              materialsConsumedLegacy.push({
+                product_id: resource.product_id,
+                inventory_item_id: ci.inventory_item_id,
+                quantity: ci.quantity_consumed,
+                quantity_unit: resource.quantity_unit,
+                batch_number: ci.batch_number,
+                consumed: true,
+              });
+            }
+            continue; // Skip the single-row insert below
+          }
+        }
+
+        // Create single activity_resource row
+        if (!costTotal && costPerUnit) {
+          costTotal = costPerUnit * resource.quantity;
+        }
+
+        await ctx.db.insert("activity_resources", {
+          activity_id: activityId,
+          direction: resource.direction,
+          product_id: resource.product_id,
+          inventory_item_id: resource.inventory_item_id,
+          quantity: resource.quantity,
+          unit_id: resource.unit_id,
+          quantity_unit: resource.quantity_unit,
+          cost_per_unit: costPerUnit,
+          cost_total: costTotal,
+          application_rate: resource.application_rate,
+          application_method: resource.application_method,
+          batch_number: batchNumber,
+          notes: resource.notes,
+          created_at: now,
+        });
+
+        // Legacy compat
+        if (resource.direction === "consumed" || resource.direction === "applied") {
+          materialsConsumedLegacy.push({
+            product_id: resource.product_id,
+            inventory_item_id: resource.inventory_item_id,
+            quantity: resource.quantity,
+            quantity_unit: resource.quantity_unit,
+            batch_number: batchNumber,
+            consumed: !!args.consume_inventory,
+          });
+        }
+      }
+
+      // 6. Update legacy materials_consumed for backward compat
+      if (materialsConsumedLegacy.length > 0) {
+        await ctx.db.patch(activityId, {
+          materials_consumed: materialsConsumedLegacy,
+        });
+      }
+    }
+
     return activityId;
   },
 });
@@ -488,6 +773,7 @@ export const logInventoryMovement = mutation({
     movement_type: v.union(
       v.literal("receipt"),
       v.literal("consumption"),
+      v.literal("application"),
       v.literal("correction"),
       v.literal("waste"),
       v.literal("transfer"),
@@ -558,6 +844,11 @@ export const logInventoryMovement = mutation({
     loss_reason: v.optional(v.string()),
     // For linking to batch (if plant-related transformation)
     source_batch_id: v.optional(v.id("batches")),
+
+    // Cultivation context (US-RES.4)
+    cultivation_batch_id: v.optional(v.id("batches")),
+    cultivation_zone_id: v.optional(v.id("areas")),
+    crop_phase: v.optional(v.string()), // propagation/vegetative/flowering/harvest/post_harvest/processing
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -567,6 +858,23 @@ export const logInventoryMovement = mutation({
     if (!product) {
       throw new Error("Producto no encontrado");
     }
+
+    // ── v2: resolve company + activity type ──
+    const facility = await ctx.db.get(args.facility_id);
+    const companyId = facility?.company_id;
+    const MOVEMENT_TYPE_CODES: Record<string, string> = {
+      receipt: "inventory_receipt",
+      consumption: "inventory_consumption",
+      correction: "inventory_correction",
+      waste: "inventory_waste",
+      transfer: "inventory_transfer",
+      return: "inventory_return",
+      transformation: "inventory_transformation",
+    };
+    const typeCode = MOVEMENT_TYPE_CODES[args.movement_type];
+    const actType = companyId && typeCode
+      ? await getActivityTypeByCode(ctx, companyId, typeCode)
+      : null;
 
     let inventoryItem = args.inventory_item_id
       ? await ctx.db.get(args.inventory_item_id)
@@ -585,9 +893,18 @@ export const logInventoryMovement = mutation({
         // Create new inventory item
         activityType = "inventory_receipt";
 
-        // Auto-generate internal batch number if not provided
-        const internalBatchNumber = args.batch_number ||
-          await generateInternalLotNumber(ctx, product.category);
+        // Auto-generate batch number if not provided (or if lot_tracking === "required")
+        let internalBatchNumber = args.batch_number;
+        if (!internalBatchNumber) {
+          internalBatchNumber = await generateInternalLotNumber(ctx, product.category);
+        }
+
+        // Auto-calculate expiration date from shelf_life_days if not provided
+        let expirationDate = args.expiration_date;
+        if (!expirationDate && product.shelf_life_days) {
+          const receivedDate = args.received_date || now;
+          expirationDate = receivedDate + (product.shelf_life_days * 24 * 60 * 60 * 1000);
+        }
 
         // First create the activity (without inventory link)
         const activityId = await ctx.db.insert("activities", {
@@ -614,6 +931,12 @@ export const logInventoryMovement = mutation({
             reason: args.reason,
           },
           notes: args.notes,
+          // ── v2 fields ──
+          ...(actType && { type_id: actType._id, category: actType.category }),
+          company_id: companyId,
+          facility_id: args.facility_id,
+          status: "completed",
+          title: `Recepcion — ${product.name}`,
           created_at: now,
         });
 
@@ -631,7 +954,7 @@ export const logInventoryMovement = mutation({
           serial_numbers: [],
           received_date: args.received_date || now,
           manufacturing_date: args.manufacturing_date,
-          expiration_date: args.expiration_date,
+          expiration_date: expirationDate,
           purchase_price: args.purchase_price,
           cost_per_unit: args.cost_per_unit,
           certificates: [],
@@ -653,6 +976,20 @@ export const logInventoryMovement = mutation({
         quantityAfter = args.quantity;
         entityId = createdInventoryItemId;
 
+        // ── v2: activity_resource ──
+        await ctx.db.insert("activity_resources", {
+          activity_id: activityId,
+          product_id: args.product_id,
+          inventory_item_id: createdInventoryItemId,
+          direction: "produced",
+          quantity: args.quantity,
+          quantity_unit: args.quantity_unit,
+          cost_per_unit: args.cost_per_unit,
+          cost_total: args.cost_per_unit ? args.cost_per_unit * args.quantity : undefined,
+          batch_number: internalBatchNumber,
+          created_at: now,
+        });
+
         return {
           activityId,
           inventoryItemId: createdInventoryItemId,
@@ -661,6 +998,14 @@ export const logInventoryMovement = mutation({
         };
       }
 
+      case "application": {
+        // Application is like consumption but requires zone_id or batch_id
+        if (!args.cultivation_zone_id && !args.cultivation_batch_id) {
+          throw new Error("Aplicación requiere zona o batch de destino");
+        }
+        // Fall through to consumption logic
+      }
+      // eslint-disable-next-line no-fallthrough
       case "consumption":
       case "waste":
       case "return": {
@@ -669,91 +1014,33 @@ export const logInventoryMovement = mutation({
         if (!inventoryItem && !args.inventory_item_id) {
           // FIFO selection if no specific item provided
           if (args.lot_selection_mode !== "specific") {
-            // Get areas in the facility
-            const areas = await ctx.db
-              .query("areas")
-              .withIndex("by_facility", (q) => q.eq("facility_id", args.facility_id))
-              .collect();
-            const areaIds = areas.map((a) => a._id);
+            const fifoResult = await consumeFromInventoryFIFO(ctx, {
+              product_id: args.product_id,
+              quantity: args.quantity,
+              facility_id: args.facility_id,
+            });
 
-            // Get available inventory for this product, FIFO order
-            const allInventory = await ctx.db.query("inventory_items").collect();
-            const availableItems = allInventory
-              .filter(
-                (item) =>
-                  item.product_id === args.product_id &&
-                  item.lot_status === "available" &&
-                  item.quantity_available > 0 &&
-                  areaIds.includes(item.area_id)
-              )
-              .sort((a, b) => (a.received_date || 0) - (b.received_date || 0));
+            const totalQuantityBefore = fifoResult.reduce((sum, ci) => sum + ci.quantity_before, 0);
+            const totalQuantityAfter = fifoResult.reduce((sum, ci) => sum + ci.quantity_after, 0);
+            const direction = args.movement_type === "return" ? "produced" : "consumed";
 
-            if (availableItems.length === 0) {
-              throw new Error(`No hay inventario disponible de ${product.name}`);
-            }
-
-            // Consume from FIFO with quantity tracking
-            let remainingToConsume = args.quantity;
-            const consumedItems: Array<{
-              inventoryItemId: string;
-              quantityConsumed: number;
-              quantityBefore: number;
-              quantityAfter: number;
-              batchNumber?: string;
-            }> = [];
-
-            for (const item of availableItems) {
-              if (remainingToConsume <= 0) break;
-
-              const quantityBefore = item.quantity_available;
-              const consumeFromThis = Math.min(quantityBefore, remainingToConsume);
-              const quantityAfter = quantityBefore - consumeFromThis;
-
-              await ctx.db.patch(item._id, {
-                quantity_available: quantityAfter,
-                last_movement_date: now,
-                updated_at: now,
-              });
-
-              consumedItems.push({
-                inventoryItemId: item._id,
-                quantityConsumed: consumeFromThis,
-                quantityBefore,
-                quantityAfter,
-                batchNumber: item.batch_number,
-              });
-
-              remainingToConsume -= consumeFromThis;
-            }
-
-            if (remainingToConsume > 0) {
-              throw new Error(
-                `Stock insuficiente de ${product.name}. Requerido: ${args.quantity}, Disponible: ${args.quantity - remainingToConsume}`
-              );
-            }
-
-            // Calculate totals for activity-level tracking
-            const totalQuantityBefore = consumedItems.reduce((sum, ci) => sum + ci.quantityBefore, 0);
-            const totalQuantityAfter = consumedItems.reduce((sum, ci) => sum + ci.quantityAfter, 0);
-
-            // Create activity with all consumed items including quantity tracking
             const activityId = await ctx.db.insert("activities", {
               entity_type: entityType,
-              entity_id: entityId || consumedItems[0].inventoryItemId,
+              entity_id: entityId || fifoResult[0].inventory_item_id,
               activity_type: activityType,
               performed_by: args.performed_by,
               timestamp: now,
               quantity_before: totalQuantityBefore,
               quantity_after: totalQuantityAfter,
-              materials_consumed: consumedItems.map((ci) => ({
-                inventory_item_id: ci.inventoryItemId,
-                quantity: ci.quantityConsumed,
+              materials_consumed: fifoResult.map((ci) => ({
+                inventory_item_id: ci.inventory_item_id,
+                quantity: ci.quantity_consumed,
                 quantity_unit: args.quantity_unit,
-                quantity_before: ci.quantityBefore,
-                quantity_after: ci.quantityAfter,
+                quantity_before: ci.quantity_before,
+                quantity_after: ci.quantity_after,
                 product_id: args.product_id,
                 product_name: product.name,
-                batch_number: ci.batchNumber,
+                batch_number: ci.batch_number,
                 consumed: true,
               })),
               equipment_used: [],
@@ -767,24 +1054,52 @@ export const logInventoryMovement = mutation({
                 quantity_unit: args.quantity_unit,
                 reason: args.reason,
                 lot_selection_mode: "fifo",
-                lots_consumed: consumedItems.map((ci) => ({
-                  inventory_item_id: ci.inventoryItemId,
-                  batch_number: ci.batchNumber,
-                  quantity_from_lot: ci.quantityConsumed,
-                  quantity_before: ci.quantityBefore,
-                  quantity_after: ci.quantityAfter,
+                lots_consumed: fifoResult.map((ci) => ({
+                  inventory_item_id: ci.inventory_item_id,
+                  batch_number: ci.batch_number,
+                  quantity_from_lot: ci.quantity_consumed,
+                  quantity_before: ci.quantity_before,
+                  quantity_after: ci.quantity_after,
                 })),
               },
               notes: args.notes,
+              // ── v2 fields ──
+              ...(actType && { type_id: actType._id, category: actType.category }),
+              company_id: companyId,
+              facility_id: args.facility_id,
+              status: "completed",
+              title: `${args.movement_type === "consumption" ? "Consumo" : args.movement_type === "waste" ? "Baja" : "Devolucion"} — ${product.name}`,
               created_at: now,
             });
+
+            // ── v2: activity_resources ──
+            for (const ci of fifoResult) {
+              await ctx.db.insert("activity_resources", {
+                activity_id: activityId,
+                product_id: args.product_id,
+                inventory_item_id: ci.inventory_item_id,
+                direction,
+                quantity: ci.quantity_consumed,
+                quantity_unit: args.quantity_unit,
+                cost_per_unit: ci.cost_per_unit,
+                cost_total: ci.cost_per_unit ? ci.cost_per_unit * ci.quantity_consumed : undefined,
+                batch_number: ci.batch_number,
+                created_at: now,
+              });
+            }
 
             return {
               activityId,
               inventoryItemId: null,
               movement_type: args.movement_type,
               quantity_change: -args.quantity,
-              consumedItems,
+              consumedItems: fifoResult.map((ci) => ({
+                inventoryItemId: ci.inventory_item_id,
+                quantityConsumed: ci.quantity_consumed,
+                quantityBefore: ci.quantity_before,
+                quantityAfter: ci.quantity_after,
+                batchNumber: ci.batch_number,
+              })),
             };
           }
         }
@@ -811,6 +1126,7 @@ export const logInventoryMovement = mutation({
 
         entityId = entityId || inventoryItem._id;
 
+        const specificDirection = args.movement_type === "return" ? "produced" : "consumed";
         const activityId = await ctx.db.insert("activities", {
           entity_type: entityType,
           entity_id: entityId,
@@ -844,6 +1160,26 @@ export const logInventoryMovement = mutation({
             lot_selection_mode: "specific",
           },
           notes: args.notes,
+          // ── v2 fields ──
+          ...(actType && { type_id: actType._id, category: actType.category }),
+          company_id: companyId,
+          facility_id: args.facility_id,
+          status: "completed",
+          title: `${args.movement_type === "consumption" ? "Consumo" : args.movement_type === "waste" ? "Baja" : "Devolucion"} — ${product.name}`,
+          created_at: now,
+        });
+
+        // ── v2: activity_resource ──
+        await ctx.db.insert("activity_resources", {
+          activity_id: activityId,
+          product_id: args.product_id,
+          inventory_item_id: inventoryItem._id,
+          direction: specificDirection,
+          quantity: args.quantity,
+          quantity_unit: args.quantity_unit,
+          cost_per_unit: inventoryItem.cost_per_unit,
+          cost_total: inventoryItem.cost_per_unit ? inventoryItem.cost_per_unit * args.quantity : undefined,
+          batch_number: inventoryItem.batch_number,
           created_at: now,
         });
 
@@ -897,6 +1233,26 @@ export const logInventoryMovement = mutation({
             reason: args.reason,
           },
           notes: args.notes,
+          // ── v2 fields ──
+          ...(actType && { type_id: actType._id, category: actType.category }),
+          company_id: companyId,
+          facility_id: args.facility_id,
+          status: "completed",
+          title: `Correccion — ${product.name}`,
+          created_at: now,
+        });
+
+        // ── v2: activity_resource ──
+        const correctionDirection = quantityChange >= 0 ? "produced" : "consumed";
+        await ctx.db.insert("activity_resources", {
+          activity_id: activityId,
+          product_id: args.product_id,
+          inventory_item_id: inventoryItem._id,
+          direction: correctionDirection,
+          quantity: Math.abs(quantityChange),
+          quantity_unit: args.quantity_unit,
+          cost_per_unit: inventoryItem.cost_per_unit,
+          batch_number: inventoryItem.batch_number,
           created_at: now,
         });
 
@@ -1013,6 +1369,38 @@ export const logInventoryMovement = mutation({
             reason: args.reason,
           },
           notes: args.notes,
+          // ── v2 fields ──
+          ...(actType && { type_id: actType._id, category: actType.category }),
+          company_id: companyId,
+          facility_id: args.facility_id,
+          status: "completed",
+          title: `Transferencia — ${product.name}`,
+          created_at: now,
+        });
+
+        // ── v2: activity_resources (consumed from source, produced at destination) ──
+        await ctx.db.insert("activity_resources", {
+          activity_id: activityId,
+          product_id: args.product_id,
+          inventory_item_id: inventoryItem._id,
+          direction: "consumed",
+          quantity: args.quantity,
+          quantity_unit: args.quantity_unit,
+          cost_per_unit: inventoryItem.cost_per_unit,
+          cost_total: inventoryItem.cost_per_unit ? inventoryItem.cost_per_unit * args.quantity : undefined,
+          batch_number: inventoryItem.batch_number,
+          created_at: now,
+        });
+        await ctx.db.insert("activity_resources", {
+          activity_id: activityId,
+          product_id: args.product_id,
+          inventory_item_id: destinationItemId,
+          direction: "produced",
+          quantity: args.quantity,
+          quantity_unit: args.quantity_unit,
+          cost_per_unit: inventoryItem.cost_per_unit,
+          cost_total: inventoryItem.cost_per_unit ? inventoryItem.cost_per_unit * args.quantity : undefined,
+          batch_number: inventoryItem.batch_number,
           created_at: now,
         });
 
@@ -1032,7 +1420,10 @@ export const logInventoryMovement = mutation({
         if (!inventoryItem) {
           throw new Error("Item de inventario no encontrado para transformación");
         }
-        if (!args.target_product_id) {
+        // Fall back to product's transformation_produces_id if no explicit target
+        const effectiveTargetProductId: Id<"products"> | undefined =
+          args.target_product_id || (product as Record<string, any>).transformation_produces_id as Id<"products"> | undefined;
+        if (!effectiveTargetProductId) {
           throw new Error("Producto destino requerido para transformación");
         }
         if (args.target_quantity === undefined || args.target_quantity === null) {
@@ -1043,9 +1434,22 @@ export const logInventoryMovement = mutation({
         }
 
         // Get target product info
-        const targetProduct = await ctx.db.get(args.target_product_id);
+        const targetProduct = await ctx.db.get(effectiveTargetProductId);
         if (!targetProduct) {
           throw new Error("Producto destino no encontrado");
+        }
+
+        // Yield deviation alert
+        let yieldAlert: string | undefined;
+        if (
+          args.target_quantity !== undefined &&
+          (product as any).default_yield_pct !== undefined
+        ) {
+          const expectedYield = args.quantity * ((product as any).default_yield_pct / 100);
+          const deviation = Math.abs(args.target_quantity - expectedYield) / expectedYield * 100;
+          if (deviation > 10) {
+            yieldAlert = `Yield real (${args.target_quantity}) difiere ${deviation.toFixed(1)}% del esperado (${expectedYield.toFixed(1)})`;
+          }
         }
 
         // Check source has enough quantity
@@ -1092,7 +1496,7 @@ export const logInventoryMovement = mutation({
             transformation_type: args.transformation_type,
             source_product_id: args.product_id,
             source_product_name: product.name,
-            target_product_id: args.target_product_id,
+            target_product_id: effectiveTargetProductId,
             target_product_name: targetProduct.name,
             source_quantity: args.quantity,
             source_quantity_unit: args.quantity_unit,
@@ -1101,8 +1505,15 @@ export const logInventoryMovement = mutation({
             loss_quantity: args.loss_quantity,
             loss_reason: args.loss_reason,
             reason: args.reason,
+            yield_alert: yieldAlert,
           },
           notes: args.notes,
+          // ── v2 fields ──
+          ...(actType && { type_id: actType._id, category: actType.category }),
+          company_id: companyId,
+          facility_id: args.facility_id,
+          status: "completed",
+          title: `Transformacion — ${product.name} → ${targetProduct.name}`,
           created_at: now,
         });
 
@@ -1113,7 +1524,7 @@ export const logInventoryMovement = mutation({
         // Create new inventory item for the transformed product
         // Note: supplier_id and supplier_lot_number are NOT copied - this is an internal product
         const transformedItemId = await ctx.db.insert("inventory_items", {
-          product_id: args.target_product_id,
+          product_id: effectiveTargetProductId,
           area_id: args.area_id,
           // supplier_id: undefined - internal products have no external supplier
           // supplier_lot_number: undefined - no supplier lot for internal products
@@ -1157,12 +1568,37 @@ export const logInventoryMovement = mutation({
         await ctx.db.patch(activityId, {
           materials_produced: [
             {
-              product_id: args.target_product_id,
+              product_id: effectiveTargetProductId,
               inventory_item_id: transformedItemId,
               quantity: args.target_quantity,
               quantity_unit: args.target_quantity_unit,
             },
           ],
+        });
+
+        // ── v2: activity_resources (consumed source, produced target) ──
+        await ctx.db.insert("activity_resources", {
+          activity_id: activityId,
+          product_id: args.product_id,
+          inventory_item_id: inventoryItem._id,
+          direction: "consumed",
+          quantity: args.quantity,
+          quantity_unit: args.quantity_unit,
+          cost_per_unit: inventoryItem.cost_per_unit,
+          cost_total: inventoryItem.cost_per_unit ? inventoryItem.cost_per_unit * args.quantity : undefined,
+          batch_number: inventoryItem.batch_number,
+          created_at: now,
+        });
+        await ctx.db.insert("activity_resources", {
+          activity_id: activityId,
+          product_id: args.target_product_id!,
+          inventory_item_id: transformedItemId,
+          direction: "produced",
+          quantity: args.target_quantity,
+          quantity_unit: args.target_quantity_unit,
+          cost_per_unit: inventoryItem.cost_per_unit,
+          batch_number: transformedBatchNumber,
+          created_at: now,
         });
 
         return {
@@ -1174,6 +1610,7 @@ export const logInventoryMovement = mutation({
           source_quantity_consumed: args.quantity,
           target_quantity_produced: args.target_quantity,
           loss_quantity: args.loss_quantity,
+          yield_alert: yieldAlert,
         };
       }
 
@@ -1305,6 +1742,16 @@ export const logPhaseTransitionWithInventory = mutation({
       throw new Error("Producto destino no encontrado");
     }
 
+    // ── v2: resolve company + type ──
+    const ptFacility = await ctx.db.get(args.facilityId);
+    const ptCompanyId = ptFacility?.company_id;
+    const ptActType = ptCompanyId
+      ? await getActivityTypeByCode(ctx, ptCompanyId, "phase_transition")
+      : null;
+    const ptTransType = ptCompanyId
+      ? await getActivityTypeByCode(ctx, ptCompanyId, "inventory_transformation")
+      : null;
+
     // Get source inventory item
     let sourceInventoryItem = args.sourceInventoryItemId
       ? await ctx.db.get(args.sourceInventoryItemId)
@@ -1410,6 +1857,14 @@ export const logPhaseTransitionWithInventory = mutation({
           loss_reason: args.lossReason,
         },
         notes: args.notes || `Transición de fase: ${previousPhase} → ${args.newPhase}`,
+        // ── v2 fields ──
+        ...(ptTransType && { type_id: ptTransType._id, category: ptTransType.category }),
+        company_id: ptCompanyId,
+        facility_id: args.facilityId,
+        batch_id: args.batchId,
+        crop_phase: args.newPhase,
+        status: "completed",
+        title: `Transicion ${previousPhase} → ${args.newPhase} — ${batch.batch_code}`,
         created_at: now,
       });
 
@@ -1468,6 +1923,31 @@ export const logPhaseTransitionWithInventory = mutation({
           },
         ],
       });
+
+      // ── v2: activity_resources (consumed source, produced target) ──
+      await ctx.db.insert("activity_resources", {
+        activity_id: inventoryActivityId,
+        product_id: sourceInventoryItem.product_id,
+        inventory_item_id: sourceInventoryItem._id,
+        direction: "consumed",
+        quantity: sourceQuantity,
+        quantity_unit: sourceInventoryItem.quantity_unit,
+        cost_per_unit: sourceInventoryItem.cost_per_unit,
+        cost_total: sourceInventoryItem.cost_per_unit ? sourceInventoryItem.cost_per_unit * sourceQuantity : undefined,
+        batch_number: sourceInventoryItem.batch_number,
+        created_at: now,
+      });
+      await ctx.db.insert("activity_resources", {
+        activity_id: inventoryActivityId,
+        product_id: args.targetProductId,
+        inventory_item_id: transformedInventoryItemId,
+        direction: "produced",
+        quantity: args.targetQuantity,
+        quantity_unit: args.targetQuantityUnit,
+        cost_per_unit: sourceInventoryItem.cost_per_unit,
+        batch_number: transformedBatchNumber,
+        created_at: now,
+      });
     } else {
       // No inventory to transform, just log the phase transition activity
       inventoryActivityId = await ctx.db.insert("activities", {
@@ -1489,6 +1969,14 @@ export const logPhaseTransitionWithInventory = mutation({
           loss_reason: args.lossReason,
         },
         notes: args.notes || `Transición de fase: ${previousPhase} → ${args.newPhase}`,
+        // ── v2 fields ──
+        ...(ptActType && { type_id: ptActType._id, category: ptActType.category }),
+        company_id: ptCompanyId,
+        facility_id: args.facilityId,
+        batch_id: args.batchId,
+        crop_phase: args.newPhase,
+        status: "completed",
+        title: `Transicion ${previousPhase} → ${args.newPhase} — ${batch.batch_code}`,
         created_at: now,
       });
     }
@@ -1566,6 +2054,13 @@ export const logHarvest = mutation({
     if (!targetProduct) {
       throw new Error("Producto destino no encontrado");
     }
+
+    // ── v2: resolve company + type ──
+    const hvFacility = await ctx.db.get(args.facilityId);
+    const hvCompanyId = hvFacility?.company_id;
+    const hvActType = hvCompanyId
+      ? await getActivityTypeByCode(ctx, hvCompanyId, "harvest_cut")
+      : null;
 
     // Get source inventory item
     let sourceInventoryItem = args.sourceInventoryItemId
@@ -1675,6 +2170,14 @@ export const logHarvest = mutation({
           moisture_content: args.moistureContent,
         },
         notes: args.notes || `Cosecha de ${args.plantsHarvested} plantas → ${args.yieldQuantity} ${args.yieldUnit}`,
+        // ── v2 fields ──
+        ...(hvActType && { type_id: hvActType._id, category: hvActType.category }),
+        company_id: hvCompanyId,
+        facility_id: args.facilityId,
+        batch_id: args.batchId,
+        crop_phase: "harvested",
+        status: "completed",
+        title: `Cosecha — ${batch.batch_code}`,
         created_at: now,
       });
 
@@ -1734,6 +2237,33 @@ export const logHarvest = mutation({
           },
         ],
       });
+
+      // ── v2: activity_resources (consumed plants, produced harvest) ──
+      await ctx.db.insert("activity_resources", {
+        activity_id: activityId,
+        product_id: sourceInventoryItem.product_id,
+        inventory_item_id: sourceInventoryItem._id,
+        direction: "consumed",
+        quantity: args.plantsHarvested,
+        quantity_unit: args.plantsUnit,
+        cost_per_unit: sourceInventoryItem.cost_per_unit,
+        cost_total: sourceInventoryItem.cost_per_unit ? sourceInventoryItem.cost_per_unit * args.plantsHarvested : undefined,
+        batch_number: sourceInventoryItem.batch_number,
+        created_at: now,
+      });
+      await ctx.db.insert("activity_resources", {
+        activity_id: activityId,
+        product_id: args.targetProductId,
+        inventory_item_id: harvestedInventoryItemId,
+        direction: "produced",
+        quantity: args.yieldQuantity,
+        quantity_unit: args.yieldUnit,
+        cost_per_unit: sourceInventoryItem.cost_per_unit
+          ? (sourceInventoryItem.cost_per_unit * args.plantsHarvested) / args.yieldQuantity
+          : undefined,
+        batch_number: harvestedBatchNumber,
+        created_at: now,
+      });
     } else {
       // No inventory to transform, just log the harvest activity
       activityId = await ctx.db.insert("activities", {
@@ -1760,6 +2290,14 @@ export const logHarvest = mutation({
           moisture_content: args.moistureContent,
         },
         notes: args.notes || `Cosecha de ${args.plantsHarvested} plantas → ${args.yieldQuantity} ${args.yieldUnit}`,
+        // ── v2 fields ──
+        ...(hvActType && { type_id: hvActType._id, category: hvActType.category }),
+        company_id: hvCompanyId,
+        facility_id: args.facilityId,
+        batch_id: args.batchId,
+        crop_phase: "harvested",
+        status: "completed",
+        title: `Cosecha — ${batch.batch_code}`,
         created_at: now,
       });
 
@@ -1796,6 +2334,17 @@ export const logHarvest = mutation({
             quantity_unit: args.yieldUnit,
           },
         ],
+      });
+
+      // ── v2: activity_resource (produced harvest only, no source to consume) ──
+      await ctx.db.insert("activity_resources", {
+        activity_id: activityId,
+        product_id: args.targetProductId,
+        inventory_item_id: harvestedInventoryItemId,
+        direction: "produced",
+        quantity: args.yieldQuantity,
+        quantity_unit: args.yieldUnit,
+        created_at: now,
       });
     }
 
@@ -1865,6 +2414,416 @@ export const completeScheduledActivity = mutation({
       notes: args.notes,
       created_at: now,
     });
+
+    // Auto-create labor cost_entry if duration_minutes > 0 and user has hourly rate
+    if (args.duration_minutes && args.duration_minutes > 0) {
+      let facilityId: Id<"facilities"> | undefined;
+      let batchId: Id<"batches"> | undefined;
+      let cropPhase: string | undefined;
+
+      if (scheduledActivity.entity_type === "batch") {
+        const batch = await ctx.db.get(scheduledActivity.entity_id as Id<"batches">);
+        if (batch) {
+          facilityId = batch.facility_id;
+          batchId = batch._id;
+          cropPhase = batch.current_phase;
+        }
+      }
+
+      if (facilityId) {
+        await createLaborCostEntry(ctx, {
+          userId: args.completedBy,
+          durationMinutes: args.duration_minutes,
+          activityId,
+          facilityId,
+          batchId,
+          cropPhase,
+        });
+      }
+    }
+
+    return {
+      activityId,
+      scheduledActivityId: args.scheduledActivityId,
+    };
+  },
+});
+
+// ============================================================================
+// P2: Template-aware execution — US-TMPL.6
+// ============================================================================
+
+/**
+ * Complete a scheduled activity with template pre-fill support.
+ *
+ * Loads the linked template (if any), validates checklist responses,
+ * creates activity with resources, and handles verification requirements.
+ */
+export const completeScheduledWithTemplate = mutation({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+    completedBy: v.id("users"),
+    notes: v.optional(v.string()),
+    duration_minutes: v.optional(v.number()),
+    photos: v.optional(v.array(v.string())),
+    // Resource overrides — operator can adjust template quantities
+    resources: v.optional(
+      v.array(
+        v.object({
+          product_id: v.id("products"),
+          quantity: v.number(),
+          unit_id: v.optional(v.id("units_of_measure")),
+          quantity_unit: v.optional(v.string()),
+          direction: v.string(),
+          application_rate: v.optional(v.string()),
+          application_method: v.optional(v.string()),
+        })
+      )
+    ),
+    // Checklist responses
+    checklistResponses: v.optional(
+      v.array(
+        v.object({
+          item_id: v.string(),
+          completed: v.boolean(),
+          value: v.optional(v.any()),
+          photo_url: v.optional(v.string()),
+        })
+      )
+    ),
+    // Scale factor for resource calculation
+    plantCount: v.optional(v.number()),
+    areaM2: v.optional(v.number()),
+    solutionLiters: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const scheduledActivity = await ctx.db.get(args.scheduledActivityId);
+    if (!scheduledActivity) {
+      throw new Error("Actividad programada no encontrada");
+    }
+
+    if (scheduledActivity.status === "completed") {
+      throw new Error("Actividad ya completada");
+    }
+
+    // Load template if linked
+    let template = null;
+    let templateResources: Array<{
+      product_id: string;
+      quantity: number;
+      unit_id?: string;
+      quantity_basis: string;
+      direction: string;
+      application_rate?: string;
+      application_method?: string;
+      is_required: boolean;
+    }> = [];
+    let checklistItems: Array<{
+      _id: string;
+      title: string;
+      is_required: boolean;
+    }> = [];
+
+    if (scheduledActivity.template_id) {
+      template = await ctx.db.get(scheduledActivity.template_id);
+
+      if (template) {
+        // Load template resources
+        const resources = await ctx.db
+          .query("activity_template_resources")
+          .withIndex("by_template", (q) =>
+            q.eq("template_id", template!._id)
+          )
+          .collect();
+        templateResources = resources.map((r) => ({
+          product_id: r.product_id,
+          quantity: r.quantity,
+          unit_id: r.unit_id,
+          quantity_basis: r.quantity_basis,
+          direction: r.direction,
+          application_rate: r.application_rate,
+          application_method: r.application_method,
+          is_required: r.is_required,
+        }));
+
+        // Load checklist
+        const checklist = await ctx.db
+          .query("activity_template_checklist")
+          .withIndex("by_template", (q) =>
+            q.eq("template_id", template!._id)
+          )
+          .collect();
+        checklistItems = checklist.map((c) => ({
+          _id: c._id,
+          title: c.title,
+          is_required: c.is_required,
+        }));
+      }
+    }
+
+    // Validate required checklist items are completed
+    if (checklistItems.length > 0 && args.checklistResponses) {
+      const responseMap = new Map(
+        args.checklistResponses.map((r) => [r.item_id, r])
+      );
+      const missingRequired = checklistItems.filter(
+        (item) =>
+          item.is_required &&
+          (!responseMap.has(item._id) || !responseMap.get(item._id)?.completed)
+      );
+      if (missingRequired.length > 0) {
+        throw new Error(
+          `Faltan items requeridos del checklist: ${missingRequired.map((m) => m.title).join(", ")}`
+        );
+      }
+    }
+
+    // Determine activity type info
+    const activityTypeName = template
+      ? template.name
+      : scheduledActivity.activity_type;
+
+    // Determine status based on verification requirement
+    const activityStatus =
+      template?.requires_verification ? "requires_review" : "completed";
+
+    // Build activity metadata with template defaults
+    const activityMetadata = {
+      ...(template?.default_metadata ?? {}),
+      template_id: template?._id,
+      template_version: template?.version,
+      checklist_responses: args.checklistResponses,
+    };
+
+    // Update scheduled activity status
+    await ctx.db.patch(args.scheduledActivityId, {
+      status: "completed",
+      actual_end_time: now,
+      completed_by: args.completedBy,
+      completion_notes: args.notes,
+      checklist_responses: args.checklistResponses,
+      updated_at: now,
+    });
+
+    // Resolve context from batch
+    let facilityId: Id<"facilities"> | undefined;
+    let batchId: Id<"batches"> | undefined;
+    let cropPhase: string | undefined;
+    let companyId: Id<"companies"> | undefined;
+
+    if (scheduledActivity.entity_type === "batch") {
+      const batch = await ctx.db.get(
+        scheduledActivity.entity_id as Id<"batches">
+      );
+      if (batch) {
+        facilityId = batch.facility_id;
+        batchId = batch._id;
+        cropPhase = batch.current_phase;
+        companyId = batch.company_id;
+      }
+    }
+
+    // Create activity record
+    const activityId = await ctx.db.insert("activities", {
+      entity_type: scheduledActivity.entity_type,
+      entity_id: scheduledActivity.entity_id,
+      activity_type: activityTypeName,
+      scheduled_activity_id: args.scheduledActivityId,
+      performed_by: args.completedBy,
+      timestamp: now,
+      duration_minutes: args.duration_minutes,
+      materials_consumed: args.resources ?? [],
+      equipment_used: [],
+      photos: args.photos || [],
+      files: [],
+      activity_metadata: activityMetadata,
+      notes: args.notes,
+      created_at: now,
+
+      // v2 fields
+      type_id: scheduledActivity.type_id,
+      category: template ? undefined : undefined,
+      company_id: companyId,
+      facility_id: facilityId,
+      batch_id: batchId,
+      crop_phase: cropPhase ?? scheduledActivity.crop_phase,
+      status: activityStatus,
+      priority: template?.default_priority,
+      started_at: scheduledActivity.actual_start_time,
+      completed_at: now,
+      title: activityTypeName,
+    });
+
+    // Create activity_resources rows from provided resources
+    const resourceEntries = args.resources ?? [];
+    for (const res of resourceEntries) {
+      await ctx.db.insert("activity_resources", {
+        activity_id: activityId,
+        direction: res.direction,
+        product_id: res.product_id,
+        quantity: res.quantity,
+        unit_id: res.unit_id,
+        quantity_unit: res.quantity_unit ?? "",
+        application_rate: res.application_rate,
+        application_method: res.application_method,
+        created_at: now,
+      });
+    }
+
+    // Auto-create labor cost entry
+    if (args.duration_minutes && args.duration_minutes > 0 && facilityId) {
+      await createLaborCostEntry(ctx, {
+        userId: args.completedBy,
+        durationMinutes: args.duration_minutes,
+        activityId,
+        facilityId,
+        batchId,
+        cropPhase,
+      });
+    }
+
+    // Update schedule progress if linked
+    if (scheduledActivity.schedule_id) {
+      const schedule = await ctx.db.get(scheduledActivity.schedule_id);
+      if (schedule) {
+        await ctx.db.patch(scheduledActivity.schedule_id, {
+          completed_activities: schedule.completed_activities + 1,
+          updated_at: now,
+        });
+      }
+    }
+
+    return {
+      activityId,
+      scheduledActivityId: args.scheduledActivityId,
+      status: activityStatus,
+    };
+  },
+});
+
+/**
+ * Execute a scheduled activity as a new independent activity.
+ * Used when the operator significantly changes the plan.
+ */
+export const executeScheduledAsNew = mutation({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+    completedBy: v.id("users"),
+    activityType: v.string(),
+    notes: v.optional(v.string()),
+    duration_minutes: v.optional(v.number()),
+    photos: v.optional(v.array(v.string())),
+    resources: v.optional(
+      v.array(
+        v.object({
+          product_id: v.id("products"),
+          quantity: v.number(),
+          unit_id: v.optional(v.id("units_of_measure")),
+          quantity_unit: v.optional(v.string()),
+          direction: v.string(),
+        })
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const scheduledActivity = await ctx.db.get(args.scheduledActivityId);
+    if (!scheduledActivity) {
+      throw new Error("Actividad programada no encontrada");
+    }
+
+    // Mark scheduled as completed (even though execution differed)
+    await ctx.db.patch(args.scheduledActivityId, {
+      status: "completed",
+      actual_end_time: now,
+      completed_by: args.completedBy,
+      completion_notes: args.notes,
+      updated_at: now,
+    });
+
+    // Resolve context
+    let facilityId: Id<"facilities"> | undefined;
+    let batchId: Id<"batches"> | undefined;
+    let cropPhase: string | undefined;
+    let companyId: Id<"companies"> | undefined;
+
+    if (scheduledActivity.entity_type === "batch") {
+      const batch = await ctx.db.get(
+        scheduledActivity.entity_id as Id<"batches">
+      );
+      if (batch) {
+        facilityId = batch.facility_id;
+        batchId = batch._id;
+        cropPhase = batch.current_phase;
+        companyId = batch.company_id;
+      }
+    }
+
+    // Create new activity with provided data
+    const activityId = await ctx.db.insert("activities", {
+      entity_type: scheduledActivity.entity_type,
+      entity_id: scheduledActivity.entity_id,
+      activity_type: args.activityType,
+      scheduled_activity_id: args.scheduledActivityId,
+      performed_by: args.completedBy,
+      timestamp: now,
+      duration_minutes: args.duration_minutes,
+      materials_consumed: args.resources ?? [],
+      equipment_used: [],
+      photos: args.photos || [],
+      files: [],
+      activity_metadata: {},
+      notes: args.notes,
+      created_at: now,
+      company_id: companyId,
+      facility_id: facilityId,
+      batch_id: batchId,
+      crop_phase: cropPhase,
+      status: "completed",
+      completed_at: now,
+      title: args.activityType,
+    });
+
+    // Create activity_resources
+    if (args.resources) {
+      for (const res of args.resources) {
+        await ctx.db.insert("activity_resources", {
+          activity_id: activityId,
+          direction: res.direction,
+          product_id: res.product_id,
+          quantity: res.quantity,
+          unit_id: res.unit_id,
+          quantity_unit: res.quantity_unit ?? "",
+          created_at: now,
+        });
+      }
+    }
+
+    // Labor cost entry
+    if (args.duration_minutes && args.duration_minutes > 0 && facilityId) {
+      await createLaborCostEntry(ctx, {
+        userId: args.completedBy,
+        durationMinutes: args.duration_minutes,
+        activityId,
+        facilityId,
+        batchId,
+        cropPhase,
+      });
+    }
+
+    // Update schedule progress
+    if (scheduledActivity.schedule_id) {
+      const schedule = await ctx.db.get(scheduledActivity.schedule_id);
+      if (schedule) {
+        await ctx.db.patch(scheduledActivity.schedule_id, {
+          completed_activities: schedule.completed_activities + 1,
+          updated_at: now,
+        });
+      }
+    }
 
     return {
       activityId,

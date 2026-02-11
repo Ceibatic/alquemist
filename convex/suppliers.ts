@@ -5,7 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthenticatedUserId } from "./authHelpers";
 import { validateEmail, formatColombianPhone } from "./validation";
 
 /**
@@ -21,7 +21,7 @@ export const getByCompany = query({
   },
   handler: async (ctx, args) => {
     // Auth: Verify user is authenticated and has access to the company
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (userId) {
       const user = await ctx.db.get(userId);
       if (user && user.company_id !== args.companyId) {
@@ -66,7 +66,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     // Auth: Verify user is authenticated and has access to the company
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (userId) {
       const user = await ctx.db.get(userId);
       if (user && user.company_id !== args.companyId) {
@@ -107,7 +107,7 @@ export const get = query({
     if (!supplier) return null;
 
     // Auth: Verify user is authenticated and has access to supplier's company
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (userId) {
       const user = await ctx.db.get(userId);
       if (user && user.company_id !== supplier.company_id) {
@@ -165,7 +165,7 @@ export const create = mutation({
     const now = Date.now();
 
     // Auth: Verify user is authenticated
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autenticado");
     }
@@ -311,7 +311,7 @@ export const update = mutation({
     const { id, companyId, ...updates } = args;
 
     // Auth: Verify user is authenticated
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autenticado");
     }
@@ -435,7 +435,7 @@ export const toggleStatus = mutation({
   },
   handler: async (ctx, args) => {
     // Auth: Verify user is authenticated
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autenticado");
     }
@@ -481,7 +481,7 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     // Auth: Verify user is authenticated
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) {
       throw new Error("No autenticado");
     }

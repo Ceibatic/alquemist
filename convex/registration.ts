@@ -6,6 +6,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getAuthenticatedUserId } from "./authHelpers";
 
 // ============================================================================
 // STEP 2: COMPANY CREATION (After Email Verification via Convex Auth)
@@ -20,7 +21,6 @@ import { mutation, query } from "./_generated/server";
  */
 export const registerCompanyStep2 = mutation({
   args: {
-    userId: v.id("users"),
     companyName: v.string(),
     businessEntityType: v.string(), // S.A.S, S.A., Ltda, E.U., Persona Natural
     companyType: v.string(), // cannabis/coffee/cocoa/flowers/mixed
@@ -31,8 +31,12 @@ export const registerCompanyStep2 = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
 
-    // 1. Get user and verify email is verified
-    const user = await ctx.db.get(args.userId);
+    // 1. Get authenticated user and verify email is verified
+    const userId = await getAuthenticatedUserId(ctx);
+    if (!userId) {
+      throw new Error("No autenticado. Por favor inicia sesión.");
+    }
+    const user = await ctx.db.get(userId);
 
     if (!user) {
       throw new Error("Usuario no encontrado");
@@ -100,21 +104,26 @@ export const registerCompanyStep2 = mutation({
       updated_at: now,
     });
 
-    // 4. Update user with company reference and timezone
-    // Usuario ya tiene role_id = COMPANY_OWNER desde signup
-    await ctx.db.patch(args.userId, {
+    // 4. Assign COMPANY_OWNER role
+    const ownerRole = await ctx.db
+      .query("roles")
+      .filter((q) => q.eq(q.field("name"), "COMPANY_OWNER"))
+      .first();
+
+    // 5. Update user with company reference, role, and timezone
+    await ctx.db.patch(userId, {
       company_id: companyId,
+      ...(ownerRole ? { role_id: ownerRole._id } : {}),
       timezone: municipality.timezone || "America/Bogota",
-      onboarding_completed: true, // Completar onboarding
       updated_at: now,
     });
 
-    // 5. Retrieve updated user with all details
-    const updatedUser = await ctx.db.get(args.userId);
+    // 6. Retrieve updated user with all details
+    const updatedUser = await ctx.db.get(userId);
 
     return {
       success: true,
-      userId: args.userId,
+      userId,
       companyId,
       user: {
         firstName: updatedUser?.first_name || "",
@@ -143,7 +152,7 @@ export const checkEmailAvailability = query({
   handler: async (ctx, args) => {
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
+      .withIndex("email", (q) => q.eq("email", args.email.toLowerCase()))
       .first();
 
     return {
@@ -189,7 +198,7 @@ export const getUserByEmail = query({
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
+      .withIndex("email", (q) => q.eq("email", args.email.toLowerCase()))
       .first();
 
     return user;
@@ -206,7 +215,7 @@ export const getUserByEmailForReset = query({
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .withIndex("email", (q) => q.eq("email", args.email))
       .first();
 
     if (!user) return null;

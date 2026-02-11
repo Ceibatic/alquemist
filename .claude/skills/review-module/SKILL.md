@@ -7,7 +7,7 @@ description: >
   en busca de aspectos esenciales faltantes de UI/UX e ingenieria, y propone un
   plan de implementacion. Usar cuando el usuario pida revisar, auditar o analizar
   un modulo, o cuando mencione un archivo de docs/modules/.
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, TodoWrite
 ---
 
 # Review Module
@@ -129,7 +129,7 @@ Ordenado por prioridad (critico > importante > menor):
 1. [tarea] - Archivos: [paths] - Descripcion breve
 ```
 
-## Reglas
+## Reglas de Auditoria
 
 - Siempre leer los archivos fuente completos, nunca asumir basandose solo en nombres
 - Reportar con referencia exacta a `archivo:linea` cuando sea posible
@@ -139,28 +139,20 @@ Ordenado por prioridad (critico > importante > menor):
 - Si hay implementacion que NO esta en el doc, mencionarlo como "implementacion extra"
 - Usar $ARGUMENTS como la ruta al archivo de documentacion del modulo a revisar
 
-## Reglas de Implementación
+---
 
-- **SIEMPRE implementar TODAS las tareas del plan** (Crítico + Importante + Menor) a menos que el usuario diga lo contrario
-- **SIEMPRE actualizar el log diario** al finalizar - esto NO es opcional
-- Usar agents especializados vía Task tool para implementación
-- Hacer commit después de cada tarea completa (no acumular)
-- Incluir `Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>` en cada commit
-- Crear branch ANTES de cualquier implementación
-- NO hacer merge sin confirmación explícita del usuario
-- Verificar build (`npm run build`) antes de crear PR
-- Seguir convenciones de commits: `feat(module):`, `fix(module):`, `docs(module):`
+## Fase 6: Implementacion
 
-## Fase 6: Implementación con Subagents
-
-⚠️ **PREREQUISITO**: Usuario debe haber aprobado explícitamente el plan de implementación.
+⚠️ **PREREQUISITO**: Usuario debe haber aprobado explicitamente el plan de implementacion.
 
 ### Paso 1: Crear Branch de Git
 
-PRIMER PASO obligatorio antes de cualquier implementación:
+PRIMER PASO obligatorio antes de cualquier implementacion:
 
 ```bash
-git checkout -b fix/[modulo]-audit-[YYYY-MM-DD] main
+git checkout main
+git pull
+git checkout -b fix/[modulo]-audit-[YYYY-MM-DD]
 ```
 
 **Convenciones de nombres de branch:**
@@ -169,83 +161,64 @@ git checkout -b fix/[modulo]-audit-[YYYY-MM-DD] main
 - New module: `feat/{modulo}-implementation`
 - Hotfixes: `hotfix/{issue-description}`
 
-**Ejemplos de branches exitosos previos:**
-- `fix/registration-audit-2026-01-27`
-- `fix/area-management-audit-2026-01-27`
-- `feat/batches-completion`
-- `feat/quality-checks-implementation`
+### Paso 2: Implementar Tareas del Plan
 
-**IMPORTANTE:** Verificar que estás en main y actualizado antes de crear branch:
-```bash
-git checkout main
-git pull
-git checkout -b fix/[modulo]-audit-[YYYY-MM-DD]
-```
-
-### Paso 2: Implementar TODAS las Tareas del Plan
-
-Implementar en orden de prioridad pero **SIN OMITIR ninguna categoría**:
-1. Tareas Críticas (bloquean funcionalidad core)
+Implementar en orden de prioridad:
+1. Tareas Criticas (bloquean funcionalidad core)
 2. Tareas Importantes (afectan experiencia de usuario)
 3. Tareas Menores (mejoras incrementales)
 
-**Método de implementación:**
+**Flujo para cada tarea:**
 
-Para cada tarea del plan:
-
-1. **Determinar el agent apropiado**:
-   - Cambios en `convex/` → usar Task con subagent `backend-dev`
-   - Cambios en `app/`, `components/` → usar Task con subagent `frontend-dev`
-   - Cambios que afectan ambos → dividir en 2 tasks separadas
-
-2. **Lanzar Task con instrucciones específicas**:
+1. **Explorar codigo relacionado:**
    ```
-   Usar Task tool con:
-   - subagent_type: "backend-dev" o "frontend-dev"
-   - description: "Implementar [nombre de tarea]"
-   - prompt: Instrucciones detalladas incluyendo:
-     * Archivos a modificar (paths específicos)
-     * Qué cambio hacer exactamente
-     * Commit message esperado: "fix([modulo]): [descripción]"
-     * Recordar incluir Co-Authored-By
+   Glob: buscar archivos afectados
+   Grep: buscar funciones/componentes existentes
+   Read: leer implementaciones a modificar
    ```
 
-3. **Esperar a que el task complete** antes de lanzar el siguiente
+2. **Implementar cambios:**
+   - Usar Edit para modificar archivos existentes
+   - Usar Write solo si se necesita crear archivo nuevo
+   - Seguir patrones existentes del proyecto
 
-4. **NO omitir tareas menores** a menos que el usuario explícitamente diga "solo implementa crítico e importante"
+3. **Validar build:**
+   ```bash
+   npm run build
+   ```
+   Si falla, corregir antes de continuar.
+
+4. **Commit de la tarea:**
+   ```bash
+   git add [archivos especificos]
+   git commit -m "fix(modulo): descripcion breve
+
+   Co-Authored-By: Claude <noreply@anthropic.com>"
+   ```
+
+5. **Continuar con siguiente tarea**
 
 **Commits de calidad:**
-- Un cambio lógico por commit (no acumular múltiples features)
+- Un cambio logico por commit (no acumular multiples features)
 - Mensajes descriptivos en formato convencional:
   - `feat(module): add feature description`
   - `fix(module): fix bug description`
   - `refactor(module): refactor description`
   - `docs(module): update documentation`
 - Siempre incluir Co-Authored-By en cada commit
-- Commits frecuentes = mejor trazabilidad
-
-**Ejemplo de uso de Task:**
-
-```
-Task para backend-dev:
-- Archivo: convex/areas.ts
-- Cambio: Agregar auth guard getAuthUserId(ctx) al inicio de createArea mutation
-- Validar que ctx esté tipado correctamente
-- Commit: "fix(areas): add auth guard to createArea mutation"
-```
 
 ### Paso 3: Actualizar Log Diario (MANDATORIO)
 
-**Este paso NO es opcional. SIEMPRE debe ejecutarse al finalizar la implementación.**
+**Este paso NO es opcional. SIEMPRE debe ejecutarse al finalizar la implementacion.**
 
 1. Crear o actualizar `docs/dev/logs/[YYYY-MM-DD].md`
 2. Si el archivo no existe, crearlo con heading `# YYYY-MM-DD`
 3. Agregar entrada con formato:
 
 ```markdown
-## [HH:MM] [nombre-modulo] — [resumen breve de la auditoría]
+## [HH:MM] [nombre-modulo] — [resumen breve de la auditoria]
 - **Files:** `path/file1.ts`, `path/file2.ts`, `path/file3.tsx`
-- **Why:** Audit de [MXX] reveló: [lista concisa de gaps encontrados y corregidos]
+- **Why:** Audit de [MXX] revelo: [lista concisa de gaps encontrados y corregidos]
 - **Commit:** `hash1`, `hash2`, `hash3`
 ```
 
@@ -253,14 +226,6 @@ Task para backend-dev:
 ```bash
 git add docs/dev/logs/
 git commit -m "docs: add implementation log for [modulo] audit"
-```
-
-**Ejemplo real:**
-```markdown
-## [14:30] areas — M08 audit implementation
-- **Files:** `convex/areas.ts`, `components/areas/area-form.tsx`, `app/(dashboard)/areas/page.tsx`
-- **Why:** Audit de M08 reveló: auth guards faltantes en mutations, validación única de nombre por facility, campos dimension y toggles de iluminación/riego faltantes
-- **Commit:** `a170d75`, `9b2afc6`, `5774067`, `57a510f`
 ```
 
 ### Paso 4: Verificar Build y Push
@@ -275,7 +240,7 @@ Si el build falla:
 - Hacer commit del fix
 - Re-verificar build
 
-**Después de build exitoso, push:**
+**Despues de build exitoso, push:**
 ```bash
 git push -u origin fix/[modulo]-audit-[fecha]
 ```
@@ -293,7 +258,7 @@ gh pr create --title "fix([modulo]): audit implementation - [resumen]" --body "$
 ## Changes Implemented
 
 ### Critical
-- [lista de fixes críticos con archivos modificados]
+- [lista de fixes criticos con archivos modificados]
 
 ### Important
 - [lista de fixes importantes con archivos modificados]
@@ -301,115 +266,63 @@ gh pr create --title "fix([modulo]): audit implementation - [resumen]" --body "$
 ### Minor
 - [lista de fixes menores con archivos modificados]
 
-## Module Status
-- **Before:** {percentage}% complete
-- **After:** {percentage}% complete
-- **Coverage:** Backend {%}, Frontend {%}, Security {%}
-
 ## Build Verification
-- ✅ TypeScript compilation successful
-- ✅ Build passes (`npm run build`)
-- ✅ No linting errors
+- TypeScript compilation successful
+- Build passes (`npm run build`)
 
 ## Test Plan
-- [Cómo verificar que funciona]
+- [Como verificar que funciona]
 - [User flows probados]
-- [Edge cases verificados]
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
 ```
 
 3. **Preguntar al usuario** si desea hacer merge
 
-4. **Si acepta, verificar antes de merge:**
-   - Build pasó en local
-   - No hay conflictos con main
-   - Commits están limpios y bien formateados
-   - Dev log está actualizado
-
-5. **Merge:**
+4. **Si acepta, merge:**
 ```bash
-# Merge normal (mantiene historial de commits)
 gh pr merge [numero] --merge
-
-# O squash merge (condensa múltiples commits en uno)
-gh pr merge [numero] --squash
 ```
 
-**Uso de squash merge:**
-- Si hay muchos commits pequeños/incrementales: usar `--squash`
-- Si commits son lógicos y bien organizados: usar `--merge`
-- En duda, preguntar al usuario
-
-6. **Post-merge cleanup:**
+5. **Post-merge cleanup:**
 ```bash
 git checkout main
 git pull
 git branch -d fix/[modulo]-audit-[fecha]
 ```
 
-⚠️ **NUNCA hacer merge sin confirmación explícita del usuario**
-
-### Paso 6: Documentación Post-Merge
-
-Después del merge exitoso:
-1. Verificar que el módulo actualice su estado en `docs/modules/` si cambió el porcentaje
-2. Cerrar issues relacionados si los hay
-3. Si el módulo alcanzó 100%, considerar mencionarlo en changelog o release notes
+⚠️ **NUNCA hacer merge sin confirmacion explicita del usuario**
 
 ---
 
-## Best Practices del Workflow
+## Best Practices
 
 ### Branch Hygiene
-- **Una branch = un módulo o feature**: No mezclar múltiples módulos en una branch
+- **Una branch = un modulo o feature**: No mezclar multiples modulos en una branch
 - **Branches cortas**: Intentar merge en < 1 semana para evitar conflictos
-- **Rebase antes de PR**: Si main avanzó, hacer `git rebase main` antes de crear PR
-- **Limpieza post-merge**: Siempre eliminar branches locales después de merge
-
-### Calidad de Commits
-**Buenos commits:**
-```
-feat(batches): add split wizard with quantity validation
-fix(batches): correct area_id field name in filter logic
-docs(batches): update M25 status to 100% complete
-```
-
-**Malos commits (EVITAR):**
-```
-updates
-fix bug
-wip
-changes
-quick fix
-```
+- **Rebase antes de PR**: Si main avanzo, hacer `git rebase main` antes de crear PR
+- **Limpieza post-merge**: Siempre eliminar branches locales despues de merge
 
 ### Code Review Checklist
 Al revisar cambios antes de PR:
-- ✅ TypeScript types correctos (no `any` innecesarios)
-- ✅ Auth guards presentes en todas las mutations
-- ✅ Validación dual (frontend Zod + backend Convex)
-- ✅ Estados de loading/error en UI
-- ✅ Responsive design (mobile + desktop)
-- ✅ Sin over-engineering (mantener simplicidad)
-- ✅ Sigue patrones existentes del proyecto
+- TypeScript types correctos (no `any` innecesarios)
+- Auth guards presentes en todas las mutations
+- Validacion dual (frontend Zod + backend Convex)
+- Estados de loading/error en UI
+- Responsive design (mobile + desktop)
+- Sin over-engineering (mantener simplicidad)
+- Sigue patrones existentes del proyecto
 
-### Manejo de Errores Durante Implementación
+### Manejo de Errores
 
 **Si el build falla:**
 1. Leer el error completo en consola
-2. Identificar archivo y línea exacta
+2. Identificar archivo y linea exacta
 3. Corregir el problema
 4. Commit del fix con mensaje descriptivo
 5. Re-verificar build
-
-**Si una task falla:**
-1. Revisar output del agent
-2. Determinar si es un problema de prompt o de código
-3. Corregir y re-lanzar task
-4. No continuar con siguiente task hasta resolver
 
 **Si hay conflictos con main:**
 1. `git fetch origin main`
@@ -420,23 +333,16 @@ Al revisar cambios antes de PR:
 
 ### Emergency Hotfixes
 
-Para bugs críticos en producción:
+Para bugs criticos en produccion:
 1. Crear branch desde main: `git checkout -b hotfix/[descripcion-bug]`
-2. Fix mínimo y específico (no agregar features)
+2. Fix minimo y especifico (no agregar features)
 3. Build verification obligatoria
-4. PR con prefijo "hotfix:" en título
+4. PR con prefijo "hotfix:" en titulo
 5. Review inmediato
 6. Merge prioritario
 
-### Tips de Productividad
-- **Draft PRs**: Crear PR en modo draft para feedback temprano
-- **Commits atómicos**: Cada commit debe ser compilable por sí solo
-- **Build local siempre**: Nunca confiar en que "debería funcionar" sin verificar
-- **PRs pequeños**: Ideal < 500 líneas cambiadas (más fácil de revisar)
-- **Comunicación**: Si hay dudas arquitecturales, preguntar antes de implementar
-
-### Referencias Rápidas
+### Referencias Rapidas
 - Convenciones de proyecto: `CLAUDE.md`
-- Documentación de módulos: `docs/modules/phase-{1,2,3,4}/`
-- Patrones de código: `docs/patterns/`
+- Documentacion de modulos: `docs/modules/phase-{1,2,3,4}/`
+- Patrones de codigo: `docs/patterns/`
 - Logs de desarrollo: `docs/dev/logs/`

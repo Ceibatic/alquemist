@@ -37,9 +37,15 @@ export const productFormSchema = z.object({
     .or(z.literal('')),
   category: z.enum(
     [
-      'nutrient', 'pesticide', 'equipment', 'seed', 'substrate', 'container', 'tool', 'other',
-      // Plant lifecycle categories
-      'clone', 'seedling', 'mother_plant', 'plant_material'
+      // Insumos
+      'seed', 'nutrient', 'pesticide', 'substrate', 'biocontrol',
+      // Material vegetal
+      'clone', 'seedling', 'mother_plant', 'plant_material',
+      'plant_vegetative', 'plant_flowering', 'harvest_wet', 'harvest_dry', 'processed_plant',
+      // Preparados
+      'stock_solution', 'substrate_mix',
+      // Infraestructura
+      'equipment', 'container', 'tool', 'other',
     ],
     { errorMap: () => ({ message: 'Debes seleccionar una categoría' }) }
   ),
@@ -101,6 +107,43 @@ export const productFormSchema = z.object({
     .optional()
     .or(z.literal('')),
 
+  // Transformation Chain (Resource System)
+  transformation_produces_id: z.string().optional().or(z.literal('')),
+  default_yield_pct: z.coerce
+    .number()
+    .min(0, 'Rendimiento debe ser mayor o igual a 0')
+    .max(100, 'Rendimiento no puede exceder 100%')
+    .optional()
+    .or(z.literal('')),
+
+  // Procurement & Tracking (Resource System)
+  procurement_type: z.enum(['purchased', 'produced', 'both']).optional().or(z.literal('')),
+  lot_tracking: z.enum(['required', 'optional', 'none']).optional().or(z.literal('')),
+  shelf_life_days: z.coerce
+    .number()
+    .int('Días de vida útil debe ser un número entero')
+    .positive('Días de vida útil debe ser positivo')
+    .optional()
+    .or(z.literal('')),
+
+  // Depreciation (equipment only - COGS System)
+  acquisition_value: z.coerce
+    .number()
+    .min(0, 'Valor de adquisición debe ser mayor o igual a 0')
+    .optional()
+    .or(z.literal('')),
+  useful_life_months: z.coerce
+    .number()
+    .int('Vida útil debe ser un número entero')
+    .min(1, 'Vida útil debe ser al menos 1 mes')
+    .optional()
+    .or(z.literal('')),
+  salvage_value: z.coerce
+    .number()
+    .min(0, 'Valor residual debe ser mayor o igual a 0')
+    .optional()
+    .or(z.literal('')),
+
   // Price change tracking (for edits)
   priceChangeCategory: z.string().optional().or(z.literal('')),
   priceChangeReason: z
@@ -138,35 +181,69 @@ export type ProductFilterInput = z.infer<typeof productFilterSchema>;
 // ============================================================================
 
 export const productCategoryLabels: Record<string, string> = {
+  // Insumos
   seed: 'Semillas',
   nutrient: 'Nutrientes',
   pesticide: 'Pesticidas',
-  equipment: 'Equipos',
   substrate: 'Sustratos',
-  container: 'Contenedores',
-  tool: 'Herramientas',
-  other: 'Otros',
-  // Plant lifecycle categories
+  biocontrol: 'Biocontrol',
+  // Material vegetal
   clone: 'Esquejes',
   seedling: 'Plántulas',
   mother_plant: 'Plantas Madre',
   plant_material: 'Material Vegetal',
+  plant_vegetative: 'Planta Vegetativa',
+  plant_flowering: 'Planta en Floración',
+  harvest_wet: 'Cosecha Húmeda',
+  harvest_dry: 'Cosecha Seca',
+  processed_plant: 'Producto Procesado',
+  // Preparados
+  stock_solution: 'Solución Madre',
+  substrate_mix: 'Mezcla de Sustrato',
+  // Infraestructura
+  equipment: 'Equipos',
+  container: 'Contenedores',
+  tool: 'Herramientas',
+  other: 'Otros',
 };
 
 export const productCategoryIcons: Record<string, string> = {
+  // Insumos
   seed: '🌱',
   nutrient: '🧪',
   pesticide: '🛡️',
-  equipment: '⚙️',
   substrate: '🌾',
-  container: '🪣',
-  tool: '🔧',
-  other: '📋',
-  // Plant lifecycle categories
+  biocontrol: '🐛',
+  // Material vegetal
   clone: '🪴',
   seedling: '🌿',
   mother_plant: '🌳',
   plant_material: '🍃',
+  plant_vegetative: '🌱',
+  plant_flowering: '🌸',
+  harvest_wet: '🌿',
+  harvest_dry: '🍂',
+  processed_plant: '📦',
+  // Preparados
+  stock_solution: '🧫',
+  substrate_mix: '🌾',
+  // Infraestructura
+  equipment: '⚙️',
+  container: '🪣',
+  tool: '🔧',
+  other: '📋',
+};
+
+export const procurementTypeLabels: Record<string, string> = {
+  purchased: 'Comprado',
+  produced: 'Producido',
+  both: 'Comprado y Producido',
+};
+
+export const lotTrackingLabels: Record<string, string> = {
+  required: 'Obligatorio',
+  optional: 'Opcional',
+  none: 'Sin seguimiento',
 };
 
 export const productStatusLabels: Record<string, string> = {

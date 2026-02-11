@@ -1,38 +1,24 @@
-import {
-  convexAuthNextjsMiddleware,
-  createRouteMatcher,
-  nextjsMiddlewareRedirect,
-} from "@convex-dev/auth/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 const isPublicRoute = createRouteMatcher([
-  "/login",
-  "/signup",
-  "/verify-email",
-  "/forgot-password",
-  "/set-password",
-  "/reset-password",
+  "/login(.*)",
+  "/signup(.*)",
+  "/verify-email(.*)",
+  "/forgot-password(.*)",
+  "/set-password(.*)",
+  "/reset-password(.*)",
   "/accept-invitation(.*)",
   "/invitation-invalid",
   "/welcome-invited",
+  "/terms",
+  "/privacy",
 ]);
 
-export default convexAuthNextjsMiddleware(
-  async (request, { convexAuth }) => {
-    if (!isPublicRoute(request) && !(await convexAuth.isAuthenticated())) {
-      return nextjsMiddlewareRedirect(request, "/login");
-    }
-    // Redirect authenticated users away from auth pages
-    if (
-      isPublicRoute(request) &&
-      (await convexAuth.isAuthenticated()) &&
-      (request.nextUrl.pathname === "/login" ||
-        request.nextUrl.pathname === "/signup")
-    ) {
-      return nextjsMiddlewareRedirect(request, "/dashboard");
-    }
-  },
-  { cookieConfig: { maxAge: 60 * 60 * 24 * 30 } } // 30 days
-);
+export default clerkMiddleware(async (auth, req) => {
+  if (!isPublicRoute(req)) {
+    await auth.protect();
+  }
+});
 
 export const config = {
   matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],

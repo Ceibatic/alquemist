@@ -6,10 +6,8 @@
 
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
-  ...authTables,
   // ============================================================================
   // CORE SYSTEM TABLES (6)
   // ============================================================================
@@ -207,6 +205,10 @@ export default defineSchema({
     is_system_role: v.boolean(), // Default: true
     is_active: v.boolean(), // Default: true
     created_at: v.number(),
+
+    // Labor costing (COGS)
+    hourly_rate: v.optional(v.number()), // Tarifa por hora para calculo de costo de mano de obra
+    rate_currency: v.optional(v.string()), // ISO 4217 (COP, USD, EUR). Default: "COP"
   })
     .index("by_name", ["name"])
     .index("by_level", ["level"])
@@ -215,9 +217,20 @@ export default defineSchema({
   users: defineTable({
     // Company & Authentication
     company_id: v.optional(v.id("companies")), // Optional during step 1
-    email: v.string(),
-    email_verified: v.boolean(), // Default: false
+    clerkId: v.optional(v.string()), // Clerk user ID
+    email: v.optional(v.string()),
+    email_verified: v.optional(v.boolean()), // Default: false
     email_verified_at: v.optional(v.number()), // Timestamp when verified
+
+    // Profile
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+
+    // Legacy fields from @convex-dev/auth (kept for existing data compatibility)
+    emailVerificationTime: v.optional(v.float64()),
+    phoneVerificationTime: v.optional(v.float64()),
+    isAnonymous: v.optional(v.boolean()),
+    image: v.optional(v.string()),
 
     // Onboarding
     onboarding_completed: v.optional(v.boolean()), // Default: false
@@ -225,20 +238,19 @@ export default defineSchema({
     // Personal Information
     first_name: v.optional(v.string()),
     last_name: v.optional(v.string()),
-    phone: v.optional(v.string()),
     identification_type: v.optional(v.string()), // CC/CE/NIT/Passport
     identification_number: v.optional(v.string()),
 
     // Roles & Access
-    role_id: v.id("roles"),
-    additional_role_ids: v.array(v.id("roles")),
+    role_id: v.optional(v.id("roles")),
+    additional_role_ids: v.optional(v.array(v.id("roles"))),
     primary_facility_id: v.optional(v.id("facilities")),
-    accessible_facility_ids: v.array(v.id("facilities")),
-    accessible_area_ids: v.array(v.id("areas")),
+    accessible_facility_ids: v.optional(v.array(v.id("facilities"))),
+    accessible_area_ids: v.optional(v.array(v.id("areas"))),
 
     // Preferences
-    locale: v.string(), // Default: "es"
-    timezone: v.string(), // Default: "America/Bogota"
+    locale: v.optional(v.string()), // Default: "es"
+    timezone: v.optional(v.string()), // Default: "America/Bogota"
     date_format: v.optional(v.string()), // Default: "DD/MM/YYYY"
     time_format: v.optional(v.string()), // Default: "24h"
     theme: v.optional(v.string()), // Default: "light"
@@ -254,18 +266,19 @@ export default defineSchema({
     quiet_hours_end: v.optional(v.string()), // Default: "08:00"
 
     // Security
-    mfa_enabled: v.boolean(), // Default: false
+    mfa_enabled: v.optional(v.boolean()), // Default: false
     mfa_secret: v.optional(v.string()),
     last_login: v.optional(v.number()),
-    failed_login_attempts: v.number(), // Default: 0
+    failed_login_attempts: v.optional(v.number()), // Default: 0
     account_locked_until: v.optional(v.number()),
 
     // Metadata
-    status: v.string(), // active/inactive/suspended
-    created_at: v.number(),
-    updated_at: v.number(),
+    status: v.optional(v.string()), // active/inactive/suspended
+    created_at: v.optional(v.number()),
+    updated_at: v.optional(v.number()),
   })
-    .index("by_email", ["email"])
+    .index("email", ["email"])
+    .index("by_clerk_id", ["clerkId"])
     .index("by_company", ["company_id"])
     .index("by_role", ["role_id"])
     .index("by_status", ["status"])
@@ -532,6 +545,7 @@ export default defineSchema({
     usable_area_m2: v.optional(v.number()),
 
     // Capacity
+    capacity_mode: v.optional(v.string()), // "manual" | "structures" (undefined = manual)
     capacity_configurations: v.optional(v.any()), // { max_capacity: number, ... }
     current_occupancy: v.number(), // Default: 0
     reserved_capacity: v.number(), // Default: 0
@@ -552,6 +566,39 @@ export default defineSchema({
     .index("by_facility", ["facility_id"])
     .index("by_current_crop_type", ["current_crop_type_id"])
     .index("by_status", ["status"]),
+
+  // ============================================================================
+  // STRUCTURE TABLE (Area sub-hierarchy for capacity model)
+  // ============================================================================
+
+  structures: defineTable({
+    area_id: v.id("areas"),
+    name: v.string(), // "Rack A-1", "Hilera Norte 3"
+    structure_type: v.string(), // rack_movil, hilera, cama, etc.
+    environment_type: v.string(), // indoor | outdoor | greenhouse
+
+    // Hierarchy configuration (levels and containers as config, not tables)
+    num_levels: v.number(), // >= 1 (outdoor ground = 1)
+    containers_per_level: v.number(), // >= 1
+    container_type: v.string(), // bandeja, canal_nft, posicion_suelo, etc.
+    positions_per_container: v.number(), // >= 1
+
+    // Computed capacity (denormalized for fast queries)
+    total_capacity: v.number(), // num_levels * containers_per_level * positions_per_container
+
+    // Physical dimensions
+    footprint_m2: v.optional(v.number()), // floor footprint
+    growing_area_m2: v.optional(v.number()), // footprint * num_levels
+
+    // Metadata
+    sort_order: v.number(),
+    status: v.string(), // active | inactive
+    notes: v.optional(v.string()),
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_area", ["area_id"])
+    .index("by_area_status", ["area_id", "status"]),
 
   // ============================================================================
   // SUPPLY CHAIN TABLES (3)
@@ -648,6 +695,21 @@ export default defineSchema({
     default_price: v.optional(v.number()),
     price_currency: v.string(), // Default: "COP"
     price_unit: v.optional(v.string()), // per_kg/per_unit
+
+    // Procurement & Tracking (Resource System - US-RES.2)
+    procurement_type: v.optional(v.string()), // purchased/produced/both
+    lot_tracking: v.optional(v.string()), // required/optional/none
+    shelf_life_days: v.optional(v.number()),
+
+    // Transformation Chain (Resource System - US-RES.3)
+    transformation_produces_id: v.optional(v.id("products")),
+    default_yield_pct: v.optional(v.number()), // 0-100
+
+    // Depreciation (equipment only - COGS System)
+    acquisition_value: v.optional(v.number()), // Valor de adquisicion
+    useful_life_months: v.optional(v.number()), // Vida util en meses
+    salvage_value: v.optional(v.number()), // Valor residual
+    depreciation_method: v.optional(v.string()), // straight_line (default)
 
     // Metadata
     status: v.string(), // active/discontinued
@@ -785,6 +847,14 @@ export default defineSchema({
     source_area_id: v.optional(v.id("areas")),
     destination_area_id: v.optional(v.id("areas")),
 
+    // Cultivation Context (US-RES.4)
+    batch_id: v.optional(v.id("batches")),
+    zone_id: v.optional(v.id("areas")),
+    crop_phase: v.optional(v.string()), // propagation/vegetative/flowering/harvest/post_harvest/processing
+    activity_id: v.optional(v.id("activities")),
+    cost_per_unit: v.optional(v.number()),
+    cost_total: v.optional(v.number()),
+
     // Audit
     performed_by: v.id("users"),
     performed_at: v.number(),
@@ -797,7 +867,8 @@ export default defineSchema({
     .index("by_product", ["product_id"])
     .index("by_transaction_type", ["transaction_type"])
     .index("by_performed_at", ["performed_at"])
-    .index("by_performed_by", ["performed_by"]),
+    .index("by_performed_by", ["performed_by"])
+    .index("by_batch_id", ["batch_id"]),
 
   // ============================================================================
   // PRODUCTION & TEMPLATES TABLES (5)
@@ -1244,12 +1315,26 @@ export default defineSchema({
     execution_results: v.optional(v.object({})),
     execution_variance: v.optional(v.object({})),
 
+    // P2 fields — Template + Schedule integration
+    schedule_id: v.optional(v.id("cultivation_schedules")),
+    type_id: v.optional(v.id("activity_types")),
+    template_id: v.optional(v.id("activity_templates")),
+    phase_day: v.optional(v.number()), // day of phase when activity is scheduled
+    due_date: v.optional(v.number()), // deadline if flexible
+    recurrence_index: v.optional(v.number()), // position in series (1 of 14)
+    recurrence_total: v.optional(v.number()), // total repetitions
+    company_id: v.optional(v.id("companies")),
+    crop_phase: v.optional(v.string()),
+    checklist_responses: v.optional(v.any()), // responses from checklist on completion
+    skipped_reason: v.optional(v.string()),
+
     created_at: v.number(),
     updated_at: v.number(),
   })
     .index("by_entity", ["entity_type", "entity_id"])
     .index("by_status", ["status"])
-    .index("by_scheduled_date", ["scheduled_date"]),
+    .index("by_scheduled_date", ["scheduled_date"])
+    .index("by_schedule", ["schedule_id"]),
 
   mother_plants: defineTable({
     qr_code: v.string(), // Unique
@@ -1478,11 +1563,15 @@ export default defineSchema({
     }))),
 
     // Quality & Environment
+    // DEPRECATED: Use activity_observations table instead
     quality_check_data: v.optional(v.object({})),
+    // DEPRECATED: Use activity_environmental_readings table instead
     environmental_data: v.optional(v.object({})),
 
     // Media
+    // DEPRECATED: Use activity_attachments table instead
     photos: v.array(v.string()), // File references
+    // DEPRECATED: Use activity_attachments table instead
     files: v.array(v.string()),
     media_metadata: v.optional(v.object({})),
 
@@ -1493,10 +1582,105 @@ export default defineSchema({
     activity_metadata: v.optional(v.any()),
     notes: v.optional(v.string()),
     created_at: v.number(),
+
+    // ── New fields (v2 model — all optional for backward compat) ──
+    // Type classification
+    type_id: v.optional(v.id("activity_types")),
+    category: v.optional(v.string()), // Denormalized from activity_types
+
+    // Context
+    company_id: v.optional(v.id("companies")),
+    facility_id: v.optional(v.id("facilities")),
+    batch_id: v.optional(v.id("batches")),
+    crop_phase: v.optional(v.string()),
+    zone_id: v.optional(v.id("areas")),
+    structure_id: v.optional(v.id("structures")),
+
+    // Workflow
+    status: v.optional(v.string()), // planned/in_progress/completed/verified/cancelled
+    priority: v.optional(v.string()), // routine/urgent/critical
+
+    // Time
+    started_at: v.optional(v.number()),
+    completed_at: v.optional(v.number()),
+
+    // Assignment
+    assigned_to: v.optional(v.id("users")),
+    verified_by: v.optional(v.id("users")),
+    verified_at: v.optional(v.number()),
+
+    // Descriptive
+    title: v.optional(v.string()),
+    observations: v.optional(v.string()),
+
+    // Links
+    parent_activity_id: v.optional(v.id("activities")),
+    work_order_id: v.optional(v.id("production_orders")),
   })
     .index("by_entity", ["entity_type", "entity_id"])
     .index("by_activity_type", ["activity_type"])
-    .index("by_timestamp", ["timestamp"]),
+    .index("by_timestamp", ["timestamp"])
+    .index("by_company", ["company_id"])
+    .index("by_type_id", ["type_id"])
+    .index("by_batch_id", ["batch_id"])
+    .index("by_facility", ["facility_id"])
+    .index("by_status", ["status"]),
+
+  activity_types: defineTable({
+    company_id: v.id("companies"),
+    category: v.string(), // cultivation/monitoring/transformation/application/movement/maintenance/quality/harvest/post_harvest/administrative
+    code: v.string(), // Unique per company (e.g. "irrigation", "foliar_spray")
+    name: v.string(), // Display name
+    description: v.optional(v.string()),
+    icon: v.optional(v.string()), // Lucide icon name
+    color: v.optional(v.string()), // Tailwind color class
+
+    // Behavior flags
+    requires_zone: v.boolean(),
+    requires_batch: v.boolean(),
+    requires_resources: v.boolean(),
+    requires_photos: v.boolean(),
+    requires_verification: v.boolean(),
+    triggers_transformation: v.boolean(),
+    triggers_phase_change: v.boolean(),
+
+    // Dynamic data
+    metadata_schema: v.optional(v.any()), // JSON Schema for activity metadata validation
+    default_resources: v.optional(v.array(v.any())), // Suggested resources [{product_id, qty, unit}]
+
+    // Status
+    is_system: v.boolean(), // System types cannot be archived
+    status: v.string(), // active / archived
+    sort_order: v.number(),
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_company", ["company_id"])
+    .index("by_company_category", ["company_id", "category"])
+    .index("by_company_code", ["company_id", "code"])
+    .index("by_status", ["status"]),
+
+  activity_resources: defineTable({
+    activity_id: v.id("activities"),
+    direction: v.string(), // consumed / produced / applied / wasted
+    product_id: v.id("products"),
+    inventory_item_id: v.optional(v.id("inventory_items")), // Specific lot (null if FIFO)
+    quantity: v.number(),
+    unit_id: v.optional(v.id("units_of_measure")),
+    quantity_unit: v.string(), // Denormalized unit label
+    cost_per_unit: v.optional(v.number()),
+    cost_total: v.optional(v.number()), // qty * cost_per_unit
+    transaction_id: v.optional(v.id("inventory_transactions")), // Link to generated transaction
+    application_rate: v.optional(v.string()), // e.g. "2mL/L"
+    application_method: v.optional(v.string()), // foliar, drench, etc.
+    batch_number: v.optional(v.string()), // From inventory_item
+    notes: v.optional(v.string()),
+    created_at: v.number(),
+  })
+    .index("by_activity", ["activity_id"])
+    .index("by_product", ["product_id"])
+    .index("by_inventory_item", ["inventory_item_id"])
+    .index("by_direction", ["direction"]),
 
   pest_disease_records: defineTable({
     facility_id: v.id("facilities"),
@@ -1789,4 +1973,277 @@ export default defineSchema({
     .index("by_certificate_type", ["certificate_type"])
     .index("by_expiry_date", ["expiry_date"])
     .index("by_status", ["status"]),
+
+  // ============================================================================
+  // COST TRACKING (COGS)
+  // ============================================================================
+
+  // Periodic meter readings for utility costs (electricity, water, gas)
+  utility_readings: defineTable({
+    facility_id: v.id("facilities"),
+    utility_type: v.string(), // electricity | water | gas
+    period: v.string(), // YYYY-MM
+    reading_previous: v.number(),
+    reading_current: v.number(),
+    consumption: v.number(), // reading_current - reading_previous
+    consumption_unit: v.string(), // kWh | m3 | galones
+    cost_total: v.number(),
+    cost_currency: v.string(), // ISO 4217
+    allocation_status: v.string(), // pending | allocated | no_batches
+    notes: v.optional(v.string()),
+    recorded_by: v.id("users"),
+    created_at: v.number(),
+  })
+    .index("by_facility", ["facility_id"])
+    .index("by_period", ["period"])
+    .index("by_type_period", ["utility_type", "period"]),
+
+  // Non-inventory costs linked to batches (labor, utilities, depreciation)
+  cost_entries: defineTable({
+    facility_id: v.id("facilities"),
+    batch_id: v.optional(v.id("batches")), // null = overhead sin asignar
+    cost_type: v.string(), // labor | utility_electricity | utility_water | utility_gas | depreciation
+    crop_phase: v.optional(v.string()), // Fase del cultivo cuando se genero
+    activity_id: v.optional(v.id("activities")), // Actividad que genero el costo (labor)
+    source_id: v.optional(v.string()), // ID de referencia (utility_reading_id o product_id para equipo)
+    cost_total: v.number(), // Costo en moneda local
+    cost_currency: v.string(), // ISO 4217 (COP, USD)
+    period: v.optional(v.string()), // YYYY-MM para utilities y depreciacion
+    details: v.optional(v.any()), // Metadata especifica del tipo
+    performed_by: v.optional(v.id("users")), // Usuario (para labor)
+    created_at: v.number(),
+  })
+    .index("by_batch_id", ["batch_id"])
+    .index("by_facility", ["facility_id"])
+    .index("by_cost_type", ["cost_type"])
+    .index("by_period", ["period"]),
+
+  // ============================================================================
+  // ACTIVITY TEMPLATES & SCHEDULING (P2)
+  // ============================================================================
+
+  // Reusable activity templates — define WHAT to do, WITH WHAT, HOW OFTEN
+  activity_templates: defineTable({
+    company_id: v.id("companies"),
+    type_id: v.id("activity_types"), // FK to activity_types (P1)
+
+    // Classification
+    name: v.string(),
+    code: v.optional(v.string()), // Unique per company (e.g. "FERT-VEG-S2")
+    description: v.optional(v.string()),
+
+    // Applicability
+    crop_type_ids: v.optional(v.array(v.id("crop_types"))),
+    applicable_phases: v.array(v.string()), // crop_phase values
+    phase_day_start: v.optional(v.number()),
+    phase_day_end: v.optional(v.number()),
+
+    // Time estimates
+    estimated_duration_minutes: v.optional(v.number()),
+    labor_hours_per_1000_plants: v.optional(v.number()),
+
+    // Recurrence
+    frequency_type: v.string(), // once/daily/weekly/biweekly/monthly/on_demand/custom_days
+    frequency_interval_days: v.optional(v.number()),
+    repeat_count: v.optional(v.number()), // null = until end of phase
+
+    // Default metadata for pre-filling activity form
+    default_metadata: v.optional(v.any()),
+    default_priority: v.optional(v.string()), // routine/urgent/critical
+
+    // Conditions
+    requires_conditions: v.optional(v.any()),
+    depends_on_template_id: v.optional(v.id("activity_templates")),
+    min_days_after_dependency: v.optional(v.number()),
+
+    // Regulatory
+    regulatory_reference: v.optional(v.string()),
+    requires_verification: v.boolean(),
+
+    // Status
+    sort_order: v.number(),
+    is_active: v.boolean(),
+    version: v.number(), // default 1, incremented on duplicate
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_company", ["company_id"])
+    .index("by_type_id", ["type_id"])
+    .index("by_active", ["is_active"]),
+
+  // Resources pre-defined in a template — pre-loaded when executing
+  activity_template_resources: defineTable({
+    template_id: v.id("activity_templates"),
+    product_id: v.id("products"),
+
+    // Quantity
+    quantity: v.number(),
+    unit_id: v.optional(v.id("units_of_measure")),
+    quantity_basis: v.string(), // fixed/per_plant/per_m2/per_zone/per_L_solution
+
+    // Application
+    direction: v.string(), // consumed/applied/produced
+    application_rate: v.optional(v.string()), // "2mL/L", "5g/m2"
+    application_method: v.optional(v.string()), // foliar/drench/broadcast
+
+    // Substitutes
+    is_required: v.boolean(),
+    alternative_product_ids: v.optional(v.array(v.id("products"))),
+
+    // Order
+    sequence: v.number(),
+    notes: v.optional(v.string()),
+    created_at: v.number(),
+  })
+    .index("by_template", ["template_id"]),
+
+  // Checklist steps for a template — verified during execution
+  activity_template_checklist: defineTable({
+    template_id: v.id("activity_templates"),
+    step_number: v.number(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    is_required: v.boolean(),
+    requires_photo: v.boolean(),
+    requires_value: v.boolean(),
+    value_type: v.optional(v.string()), // text/number/boolean/select
+    value_options: v.optional(v.array(v.string())),
+    value_min: v.optional(v.number()),
+    value_max: v.optional(v.number()),
+    created_at: v.number(),
+  })
+    .index("by_template", ["template_id"]),
+
+  // Master cultivation plan per batch — generates scheduled_activities from templates
+  cultivation_schedules: defineTable({
+    company_id: v.id("companies"),
+    batch_id: v.id("batches"),
+    crop_type_id: v.id("crop_types"),
+    production_order_id: v.optional(v.id("production_orders")),
+    name: v.string(),
+    zone_id: v.optional(v.id("areas")),
+
+    // Dates
+    planned_start_date: v.number(),
+    planned_end_date: v.number(), // calculated: start + sum(phase durations)
+
+    // Planned phases: [{phase: string, duration_days: number, start_day: number, end_day: number}]
+    planned_phases: v.array(v.any()),
+
+    // Progress tracking
+    total_activities: v.number(),
+    completed_activities: v.number(),
+    skipped_activities: v.number(),
+
+    // Current state
+    current_phase: v.optional(v.string()),
+    current_phase_day: v.optional(v.number()),
+    status: v.string(), // draft/active/completed/cancelled
+
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_company", ["company_id"])
+    .index("by_batch_id", ["batch_id"])
+    .index("by_status", ["status"]),
+
+  // ============================================================================
+  // P3 — Observations, Environmental Readings, Attachments
+  // ============================================================================
+
+  activity_observations: defineTable({
+    activity_id: v.id("activities"),
+    company_id: v.id("companies"),
+
+    // Classification
+    observation_type: v.string(), // pest/disease/deficiency/excess/mechanical_damage/environmental_stress/growth/positive/other
+    severity: v.optional(v.string()), // none/low/medium/high/critical
+
+    // Organism
+    organism_id: v.optional(v.id("pest_diseases")),
+    organism_name: v.optional(v.string()),
+
+    // Scope
+    affected_area_pct: v.optional(v.number()), // 0-100
+    affected_plant_count: v.optional(v.number()),
+    plant_part: v.optional(v.string()), // root/stem/leaf/flower/fruit/whole
+
+    // Content
+    description: v.string(),
+    recommended_action: v.optional(v.string()),
+
+    // Follow-up
+    follow_up_date: v.optional(v.number()),
+    resolved: v.boolean(),
+    resolved_at: v.optional(v.number()),
+    resolved_by: v.optional(v.id("users")),
+    resolved_by_activity_id: v.optional(v.id("activities")),
+
+    // Linked attachments
+    attachment_ids: v.optional(v.array(v.string())),
+
+    created_at: v.number(),
+  })
+    .index("by_activity", ["activity_id"])
+    .index("by_company", ["company_id"])
+    .index("by_observation_type", ["company_id", "observation_type"])
+    .index("by_organism", ["company_id", "organism_id"])
+    .index("by_follow_up_date", ["company_id", "follow_up_date"])
+    .index("by_resolved", ["company_id", "resolved"]),
+
+  activity_environmental_readings: defineTable({
+    activity_id: v.id("activities"),
+    company_id: v.id("companies"),
+
+    reading_type: v.string(), // temperature/humidity/vpd/co2/light_ppfd/light_dli/ph/ec/dissolved_oxygen/wind_speed/soil_moisture
+    value: v.number(),
+    unit: v.string(), // "C"/"F"/"%"/"kPa"/"ppm"/"umol/m2/s"/"mol/m2/d"/"mS/cm"
+
+    measured_at: v.number(),
+    sensor_id: v.optional(v.string()),
+    location_note: v.optional(v.string()), // "Canopy level", "Root zone", "Ambient"
+
+    created_at: v.number(),
+  })
+    .index("by_activity", ["activity_id"])
+    .index("by_company", ["company_id"])
+    .index("by_reading_type", ["company_id", "reading_type"])
+    .index("by_measured_at", ["company_id", "measured_at"]),
+
+  activity_attachments: defineTable({
+    activity_id: v.id("activities"),
+    company_id: v.id("companies"),
+
+    // Classification
+    type: v.string(), // photo/document/video/certificate/lab_result/other
+
+    // File
+    storage_id: v.string(), // Convex storage ID
+    file_url: v.string(), // Public URL
+    thumbnail_url: v.optional(v.string()),
+
+    // File metadata
+    file_name: v.string(),
+    file_size_bytes: v.optional(v.number()),
+    mime_type: v.optional(v.string()),
+
+    // Content
+    caption: v.optional(v.string()),
+
+    // Temporal
+    taken_at: v.optional(v.number()), // EXIF or manual
+
+    // Geolocation
+    geo_lat: v.optional(v.number()),
+    geo_lng: v.optional(v.number()),
+
+    // Order
+    sort_order: v.number(),
+
+    uploaded_by: v.id("users"),
+    created_at: v.number(),
+  })
+    .index("by_activity", ["activity_id"])
+    .index("by_company", ["company_id"])
+    .index("by_type", ["company_id", "type"]),
 });

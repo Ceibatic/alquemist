@@ -98,11 +98,11 @@ export function UserProfileContent() {
   // Generate initials for avatar
   const initials = profileUser.firstName && profileUser.lastName
     ? `${profileUser.firstName[0]}${profileUser.lastName[0]}`.toUpperCase()
-    : profileUser.email[0].toUpperCase();
+    : (profileUser.email ?? "?")[0].toUpperCase();
 
   const fullName = profileUser.firstName && profileUser.lastName
     ? `${profileUser.firstName} ${profileUser.lastName}`
-    : profileUser.email;
+    : profileUser.email ?? "";
 
   // Get role badge color
   const getRoleBadgeColor = (roleName?: string) => {
@@ -370,7 +370,7 @@ export function UserProfileContent() {
           onClose={() => setIsEditRoleModalOpen(false)}
           user={{
             id: profileUser._id,
-            email: profileUser.email,
+            email: profileUser.email ?? "",
             firstName: profileUser.firstName,
             lastName: profileUser.lastName,
             roleId: profileUser.roleId,

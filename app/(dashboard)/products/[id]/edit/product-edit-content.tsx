@@ -50,10 +50,23 @@ export function ProductEditContent({ productId }: ProductEditContentProps) {
         organic_cert_number: data.organic_cert_number || undefined,
         default_price: typeof data.default_price === 'number' ? data.default_price : undefined,
         price_unit: data.price_unit || undefined,
+        // Transformation Chain
+        transformation_produces_id: data.transformation_produces_id
+          ? (data.transformation_produces_id as Id<'products'>)
+          : undefined,
+        default_yield_pct: typeof data.default_yield_pct === 'number' ? data.default_yield_pct : undefined,
+        // Procurement & Tracking
+        procurement_type: data.procurement_type || undefined,
+        lot_tracking: data.lot_tracking || undefined,
+        shelf_life_days: typeof data.shelf_life_days === 'number' ? data.shelf_life_days : undefined,
         // Price change tracking
         priceChangeCategory: data.priceChangeCategory || undefined,
         priceChangeReason: data.priceChangeReason || undefined,
         priceChangeNotes: data.priceChangeNotes || undefined,
+        // Depreciation (equipment)
+        acquisition_value: typeof data.acquisition_value === 'number' ? data.acquisition_value : undefined,
+        useful_life_months: typeof data.useful_life_months === 'number' ? data.useful_life_months : undefined,
+        salvage_value: typeof data.salvage_value === 'number' ? data.salvage_value : undefined,
       };
 
       await updateProduct(cleanedData);

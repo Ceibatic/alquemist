@@ -5,7 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthenticatedUserId } from "./authHelpers";
 
 /**
  * DEPRECATED: Get company by organization ID (from Clerk)
@@ -35,7 +35,7 @@ export const getById = query({
     id: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
     return await ctx.db.get(args.id);
   },
@@ -51,7 +51,7 @@ export const list = query({
     offset: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     let companiesQuery = ctx.db.query("companies");
@@ -107,7 +107,7 @@ export const create = mutation({
     created_by: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const now = Date.now();
@@ -175,7 +175,7 @@ export const update = mutation({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("No autenticado");
 
     const { id, ...updates } = args;
@@ -195,7 +195,7 @@ export const update = mutation({
 export const getByUser = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) return null;
 
     const user = await ctx.db.get(userId);

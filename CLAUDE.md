@@ -5,49 +5,61 @@
 - **Frontend:** Next.js 15 (App Router) + React 19 + TypeScript strict
 - **UI:** Radix UI + shadcn/ui + Tailwind CSS
 - **Backend:** Convex (real-time serverless)
-- **Auth:** Convex Auth (`@convex-dev/auth`) — Password provider con email OTP verification
+- **Auth:** Clerk (`@clerk/nextjs`) + Convex integration (JWT template `convex`)
 - **Forms:** React Hook Form + Zod
 - **Notificaciones:** Sonner toasts
-- **Email:** Resend (OTP emails + invitaciones)
+- **Email:** Resend (invitaciones, reportes) + Clerk (verificacion, password reset)
 
-## Entornos
+## Autenticacion (Clerk + Convex)
 
-| Entorno | URL | Uso |
-|---------|-----|-----|
-| **Producción** | `https://app.alquemist.co` | App en vivo con datos reales |
-| **Desarrollo** | `http://localhost:3000` | Testing local durante desarrollo |
+El proyecto usa **Clerk** para autenticacion con integracion oficial a Convex via JWT template. Las paginas de auth son **custom UI** (no Clerk pre-built components).
 
-**Importante**: Las pruebas manuales (live-test skill) se realizan en **producción** (`https://app.alquemist.co`).
-
-## Autenticacion (Convex Auth)
-
-El proyecto usa **Convex Auth** con Password provider. No hay auth custom — todo pasa por `@convex-dev/auth`.
+> **Nota:** Migracion desde `@convex-dev/auth` en progreso. Plan completo en `docs/dev/clerk-migration-plan.md`. Skill de migracion en `.claude/skills/migrate-auth/SKILL.md`.
 
 | Concepto | Implementacion |
 |----------|---------------|
-| Config auth | `convex/auth.ts` — `convexAuth()` con Password provider |
-| Email OTP (verificacion) | `convex/ResendOTP.ts` — codigos de 6 digitos via Resend |
-| Email OTP (reset password) | `convex/ResendOTPPasswordReset.ts` |
-| Middleware rutas | `middleware.ts` — `convexAuthNextjsMiddleware` |
-| Provider React | `ConvexAuthProvider` en `components/providers/convex-client-provider.tsx` |
-| Auth en frontend | `useAuthActions()` de `@convex-dev/auth/react` → `signIn("password", { flow, ... })` |
-| Auth en backend | `getAuthUserId(ctx)` de `@convex-dev/auth/server` |
+| Provider React | `ClerkProvider` + `ConvexProviderWithClerk` en `components/providers/convex-client-provider.tsx` |
+| Middleware rutas | `middleware.ts` — `clerkMiddleware()` de `@clerk/nextjs/server` |
+| Auth en frontend | `useSignIn()`, `useSignUp()`, `useUser()`, `useAuth()` de `@clerk/nextjs` |
+| Auth en backend | `ctx.auth.getUserIdentity()` → lookup por `clerkId` en tabla `users` |
+| Auth helper backend | `getAuthenticatedUserId(ctx)` — wrapper que retorna `Id<"users">` o `null` |
 | Usuario actual | `api.users.getCurrentUser` query |
+| Webhook sync | HTTP endpoint en Convex recibe `user.created/updated/deleted` de Clerk |
 | Validadores compartidos | `convex/validation.ts` (email, phone, NIT) |
 
-### Flows de Password provider
+### Variables de entorno — Next.js (`.env.local`)
 
-| Flow | Uso |
-|------|-----|
-| `signUp` | Registro nuevo usuario |
-| `signIn` | Login |
-| `email-verification` | Verificar email con codigo OTP |
-| `reset` | Solicitar codigo de reset password |
-| `reset-verification` | Verificar codigo y cambiar password |
+| Variable | Descripcion |
+|----------|-------------|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key (`pk_test_...` dev, `pk_live_...` prod) |
+| `CLERK_SECRET_KEY` | Clerk secret key (`sk_test_...` dev, `sk_live_...` prod) |
+| `CLERK_JWT_ISSUER_DOMAIN` | Issuer URL del JWT template (ej: `https://fluent-gecko-72.clerk.accounts.dev`) |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/login` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/signup` |
+| `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` | `/dashboard` |
+| `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` | `/verify-email` |
+
+### Variables de entorno — Convex (backend)
+
+Configurar via `npx convex env set VARIABLE -- "valor"`:
+
+| Variable | Descripcion |
+|----------|-------------|
+| `CLERK_JWT_ISSUER_DOMAIN` | Mismo issuer URL del JWT template. Requerido para validar tokens |
+| `RESEND_API_KEY` | API key de Resend para invitaciones y reportes |
+
+### Schema users y Clerk
+
+La tabla `users` en `convex/schema.ts` incluye un campo `clerkId` para vincular con Clerk. Reglas:
+
+1. **Campo `clerkId`:** `v.optional(v.string())` — se llena via webhook `user.created`
+2. **Index `by_clerk_id`:** Para lookup rapido de usuario por Clerk subject
+3. **Campos custom siguen siendo `v.optional()`:** El usuario se crea via webhook con datos minimos (clerkId, email, name). Campos adicionales se llenan durante onboarding
+4. **Queries que usan campos del user:** Usar null checks o fallbacks (`user.email ?? ""`, `user.locale || "es"`)
 
 ### Rutas publicas (no requieren auth)
 
-`/login`, `/signup`, `/verify-email`, `/forgot-password`, `/set-password`, `/reset-password`, `/accept-invitation(.*)`, `/invitation-invalid`, `/welcome-invited`
+`/login`, `/signup`, `/verify-email`, `/forgot-password`, `/reset-password`, `/accept-invitation(.*)`, `/invitation-invalid`, `/welcome-invited`
 
 ## Estructura de Codigo
 
@@ -58,8 +70,8 @@ El proyecto usa **Convex Auth** con Password provider. No hay auth custom — to
 | Paginas onboarding | `app/(onboarding)/[ruta]/page.tsx` |
 | Componentes | `components/[dominio]/[nombre].tsx` |
 | Backend Convex | `convex/[dominio].ts` |
-| Schema | `convex/schema.ts` (incluye `authTables` de Convex Auth) |
-| Auth config | `convex/auth.ts`, `convex/auth.config.ts` |
+| Schema | `convex/schema.ts` (campo `clerkId` + index `by_clerk_id`) |
+| Auth config | `convex/auth.config.ts` (Clerk JWT issuer) |
 | Validacion | `convex/validation.ts` |
 | Hooks | `hooks/[nombre].ts` |
 | Documentacion modulos | `docs/modules/phase-{1,2,3,4}/` |
@@ -72,6 +84,125 @@ El proyecto usa **Convex Auth** con Password provider. No hay auth custom — to
 - Botones principales: amber-500
 - Toasts via Sonner para feedback al usuario
 - Backend Convex: mutations (escritura), queries (lectura), actions (side effects)
+
+## Engineering Behavior
+
+### 1. Assumption Surfacing
+
+Before implementing anything non-trivial, explicitly state assumptions:
+
+```
+ASSUMPTIONS:
+1. [assumption]
+2. [assumption]
+→ Proceeding with these unless corrected.
+```
+
+Never silently fill in ambiguous requirements. Surface uncertainty early — the most common failure mode is making wrong assumptions and running with them unchecked.
+
+### 2. Confusion Management
+
+When encountering inconsistencies, conflicting requirements, or unclear specs:
+
+1. **STOP.** Do not proceed with a guess.
+2. Name the specific confusion.
+3. Present the tradeoff or ask the clarifying question.
+4. Wait for resolution before continuing.
+
+Bad: Silently picking one interpretation and hoping it's right.
+Good: "I see X in file A but Y in file B. Which takes precedence?"
+
+### 3. Push Back When Warranted
+
+Not a yes-machine. When the approach has clear problems:
+
+- Point out the issue directly
+- Explain the concrete downside
+- Propose an alternative
+- Accept the decision if overridden
+
+Sycophancy is a failure mode. "Of course!" followed by implementing a bad idea helps no one.
+
+### 4. Simplicity Enforcement
+
+Actively resist overcomplication. Before finishing any implementation, ask:
+
+- Can this be done in fewer lines?
+- Are these abstractions earning their complexity?
+- Would a senior dev say "why didn't you just..."?
+
+If 1000 lines are built and 100 would suffice, that's a failure. Prefer the boring, obvious solution. Cleverness is expensive.
+
+### 5. Scope Discipline
+
+Touch only what's asked to touch. Do NOT:
+
+- Remove comments you don't understand
+- "Clean up" code orthogonal to the task
+- Refactor adjacent systems as side effects
+- Delete code that seems unused without explicit approval
+
+Surgical precision, not unsolicited renovation.
+
+### 6. Dead Code Hygiene
+
+After refactoring or implementing changes:
+
+1. Identify code that is now unreachable
+2. List it explicitly
+3. Ask: "Should I remove these now-unused elements: [list]?"
+
+Don't leave corpses. Don't delete without asking.
+
+### 7. Test-First for Non-Trivial Logic
+
+When implementing non-trivial logic:
+
+1. Write the test that defines success
+2. Implement until the test passes
+3. Show both
+
+Tests are the loop condition. Use them.
+
+### 8. Change Summary
+
+After each implementation or modification, output:
+
+```
+CHANGES MADE:
+- [file]: [what changed and why]
+
+NOT TOUCHED (intentionally):
+- [file/area]: [why it was left alone]
+
+POTENTIAL CONCERNS:
+- [risks, edge cases, things to verify]
+
+NEXT STEPS:
+- [follow-up items if any]
+```
+
+This provides immediate session-level visibility and complements the daily log in `docs/dev/logs/`.
+
+### 9. Communication Standards
+
+- Be direct about problems
+- Quantify impacts when possible ("adds ~200ms latency" not "might be slower")
+- When stuck, say so and describe what was tried
+- Don't hide uncertainty behind confident language
+
+### Failure Modes to Avoid
+
+1. Making wrong assumptions without checking
+2. Not managing own confusion — guessing instead of asking
+3. Not surfacing inconsistencies noticed in code or specs
+4. Not presenting tradeoffs on non-obvious decisions
+5. Being sycophantic to bad ideas
+6. Overcomplicating code and APIs
+7. Bloating abstractions unnecessarily
+8. Not cleaning up dead code after refactors
+9. Modifying comments/code orthogonal to the task
+10. Removing things not fully understood
 
 ## Daily Implementation Log
 
@@ -96,8 +227,66 @@ Despues de cada commit, agregar una entrada al archivo `docs/dev/logs/YYYY-MM-DD
 - Multiples commits en una sesion = multiples secciones `## [HH:MM]` en el mismo archivo
 - Solo listar los archivos mas relevantes del cambio, no todo el diff
 
-## Agents y Skills
+## Skills Disponibles
 
-- Agent profiles: `.claude/agents/` (backend-dev, code-reviewer, frontend-dev, test-engineer, typescript-expert)
-- Skills: `.claude/skills/` (review-module, live-test)
-- recuerda que deberiamos hacer commits al final de cada implementacion o modificacion relevante
+| Skill | Proposito | Invocacion |
+|-------|-----------|------------|
+| `/plan-feature` | Planificar nueva feature con User Stories detalladas | Cuando quieras documentar una nueva funcionalidad |
+| `/implement-feature` | Implementar feature del backlog sistematicamente | Cuando quieras implementar un FEAT-*.md |
+| `/review-module` | Auditar modulo existente vs documentacion | Cuando quieras revisar un modulo de docs/modules/ |
+| `/migrate-auth` | Continuar migracion Clerk | Para fases pendientes de migracion auth |
+
+## Metodologia de Desarrollo
+
+El proyecto sigue una metodologia de dos fases para implementar nuevas funcionalidades:
+
+### Flujo de Trabajo
+
+```
+1. PLANIFICACION (/plan-feature)
+   Usuario describe idea → Explorar codebase → Clarificar dudas
+   → Generar docs/backlog/pending/FEAT-YYYY-MM-nombre.md
+
+2. IMPLEMENTACION (/implement-feature)
+   Leer documento → Mover a in-progress/ → Crear branch
+   → Para cada US: explorar, implementar, build, commit, actualizar doc
+   → Mover a completed/ → Push y resumen para PR
+```
+
+### Estructura del Backlog
+
+```
+docs/backlog/
+├── pending/           # Features planificadas, listas para implementar
+├── in-progress/       # Features en desarrollo activo
+└── completed/         # Features terminadas (historial)
+```
+
+### Nomenclatura
+
+- **Archivos:** `FEAT-YYYY-MM-nombre-kebab.md` (ej: `FEAT-2026-02-dark-mode.md`)
+- **Branches:** `feat/FEAT-YYYY-MM-nombre`
+- **Commits:** Un commit por US: `feat(modulo): US-XXX.N descripcion`
+
+### Template de Feature
+
+Ver `docs/backlog/TEMPLATE.md` para el formato completo de documentos de feature.
+
+### Convenciones de Commits
+
+- `feat(modulo):` — Nueva funcionalidad
+- `fix(modulo):` — Correccion de bug
+- `refactor(modulo):` — Refactorizacion sin cambio de comportamiento
+- `docs(modulo):` — Solo documentacion
+
+Siempre incluir: `Co-Authored-By: Claude <noreply@anthropic.com>`
+
+### Reglas Criticas
+
+1. **Explorar antes de implementar** — Leer codigo existente primero
+2. **Build despues de cada US** — No continuar si falla
+3. **Un commit por US** — No acumular cambios
+4. **Actualizar documento** — Marcar criterios [x] al completar
+5. **Daily log obligatorio** — Registrar en docs/dev/logs/
+
+Recuerda hacer commits al final de cada implementacion o modificacion relevante.

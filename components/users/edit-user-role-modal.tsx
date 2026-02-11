@@ -20,7 +20,7 @@ import { Id } from '@/convex/_generated/dataModel';
 
 interface UserData {
   id: Id<'users'>;
-  email: string;
+  email?: string;
   firstName?: string;
   lastName?: string;
   roleId?: Id<'roles'>;

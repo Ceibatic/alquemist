@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuth } from '@clerk/nextjs';
 import {
   companySetupSchema,
   type CompanySetupFormValues,
@@ -22,7 +25,6 @@ import {
 } from '@/components/ui/select';
 import { CascadingSelect } from '@/components/shared/cascading-select';
 import { ProgressIndicator } from '@/components/shared/progress-indicator';
-import { createCompany } from './actions';
 
 const BUSINESS_TYPES = [
   { value: 'SAS', label: 'SAS - Sociedad por Acciones Simplificada' },
@@ -40,22 +42,41 @@ const INDUSTRIES = [
   { value: 'Mixto', label: 'Mixto' },
 ];
 
+const BUSINESS_ENTITY_TYPE_MAP: Record<string, string> = {
+  SAS: 'S.A.S',
+  SA: 'S.A.',
+  LTDA: 'Ltda',
+  EU: 'E.U.',
+  PersonaNatural: 'Persona Natural',
+};
+
+const COMPANY_TYPE_MAP: Record<string, string> = {
+  Cannabis: 'cannabis',
+  Cafe: 'coffee',
+  Cacao: 'cocoa',
+  Flores: 'flowers',
+  Mixto: 'mixed',
+};
+
 export default function CompanySetupPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
 
-  // Get userId from sessionStorage
+  const { isSignedIn } = useAuth();
+  // Ensure user exists in Convex (handles webhook race condition)
+  const ensureUserExists = useMutation(api.clerkSync.ensureUserExists);
+  const [userEnsured, setUserEnsured] = useState(false);
+
   useEffect(() => {
-    const storedUserId = sessionStorage.getItem('signupUserId');
-    if (!storedUserId) {
-      // User hasn't completed email verification
-      router.push('/signup');
-      return;
+    if (isSignedIn && !userEnsured) {
+      ensureUserExists().then(() => setUserEnsured(true));
     }
-    setUserId(storedUserId);
-  }, [router]);
+  }, [isSignedIn, userEnsured, ensureUserExists]);
+
+  // Use Convex Auth to get the authenticated user's onboarding status
+  const onboardingStatus = useQuery(api.users.getOnboardingStatus);
+  const registerCompany = useMutation(api.registration.registerCompanyStep2);
 
   const form = useForm<CompanySetupFormValues>({
     resolver: zodResolver(companySetupSchema),
@@ -84,44 +105,67 @@ export default function CompanySetupPage() {
   );
 
   const onSubmit = async (data: CompanySetupFormValues) => {
-    if (!userId) {
-      setGlobalError('Sesión expirada. Por favor vuelve a registrarte.');
-      router.push('/signup');
-      return;
-    }
-
     setIsSubmitting(true);
     setGlobalError(null);
 
     try {
-      const result = await createCompany(data, userId);
+      const mappedBusinessEntityType =
+        BUSINESS_ENTITY_TYPE_MAP[data.businessType] || data.businessType;
+      const mappedCompanyType =
+        COMPANY_TYPE_MAP[data.industry] || data.industry.toLowerCase();
+
+      const result = await registerCompany({
+        companyName: data.name,
+        businessEntityType: mappedBusinessEntityType,
+        companyType: mappedCompanyType,
+        country: 'CO',
+        departmentCode: data.departmentCode,
+        municipalityCode: data.municipalityCode,
+      });
 
       if (!result.success) {
-        setGlobalError(result.error || 'Error al crear la empresa');
+        setGlobalError('Error al crear la empresa');
         return;
       }
 
-      // Store company ID in sessionStorage for next steps
+      // Store company ID and user ID in sessionStorage for facility setup
       if (result.companyId) {
         sessionStorage.setItem('companyId', result.companyId);
       }
+      if (result.userId) {
+        sessionStorage.setItem('signupUserId', result.userId);
+      }
 
       toast.success('Empresa creada correctamente');
-
-      // Navigate to facility setup
       router.push('/facility-basic');
-    } catch {
-      setGlobalError('Error inesperado. Por favor intenta de nuevo.');
+    } catch (err: any) {
+      setGlobalError(err?.message || 'Error inesperado. Por favor intenta de nuevo.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Show loading while checking userId
-  if (!userId) {
+  // Redirect based on onboarding status (must be in useEffect, not during render)
+  useEffect(() => {
+    if (onboardingStatus === null) {
+      router.push('/login');
+    } else if (onboardingStatus?.hasCompany) {
+      if (onboardingStatus.onboardingCompleted) {
+        router.push('/dashboard');
+      } else {
+        router.push('/facility-basic');
+      }
+    }
+  }, [onboardingStatus, router]);
+
+  // Show loading while waiting for auth or redirecting
+  if (onboardingStatus === undefined || onboardingStatus === null || onboardingStatus.hasCompany) {
     return (
       <div className="text-center p-8">
         <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+        <p className="text-sm text-muted-foreground mt-2">
+          {onboardingStatus === undefined ? '' : 'Redirigiendo...'}
+        </p>
       </div>
     );
   }

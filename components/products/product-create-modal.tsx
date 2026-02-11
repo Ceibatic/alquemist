@@ -51,6 +51,16 @@ export function ProductCreateModal({ open, onOpenChange }: ProductCreateModalPro
         default_price: typeof data.default_price === 'number' ? data.default_price : undefined,
         price_currency: data.price_currency || 'COP',
         price_unit: data.price_unit || undefined,
+        // Resource system fields
+        transformation_produces_id: data.transformation_produces_id || undefined,
+        default_yield_pct: typeof data.default_yield_pct === 'number' ? data.default_yield_pct : undefined,
+        procurement_type: data.procurement_type || undefined,
+        lot_tracking: data.lot_tracking || undefined,
+        shelf_life_days: typeof data.shelf_life_days === 'number' ? data.shelf_life_days : undefined,
+        // COGS depreciation fields
+        acquisition_value: typeof data.acquisition_value === 'number' ? data.acquisition_value : undefined,
+        useful_life_months: typeof data.useful_life_months === 'number' ? data.useful_life_months : undefined,
+        salvage_value: typeof data.salvage_value === 'number' ? data.salvage_value : undefined,
       };
 
       const productId = await createProduct({ ...cleanedData, companyId: currentCompanyId! } as any);

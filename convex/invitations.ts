@@ -7,6 +7,7 @@
 import { v } from "convex/values";
 import { mutation, query, action } from "./_generated/server";
 import { api } from "./_generated/api";
+import { getAuthenticatedUserId } from "./authHelpers";
 import {
   validateEmail,
   formatColombianPhone,
@@ -403,7 +404,7 @@ export const create = mutation({
     // 3. Check if email already exists in the company
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
+      .withIndex("email", (q) => q.eq("email", args.email.toLowerCase()))
       .first();
 
     if (existingUser && existingUser.company_id === inviter.company_id) {
