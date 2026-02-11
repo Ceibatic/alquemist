@@ -33,7 +33,7 @@ export function BatchGenealogyTab({ batch }: BatchGenealogyTabProps) {
     batch.parent_batch_id
       ? api.batches.getById
       : undefined as any,
-    batch.parent_batch_id ? { batchId: batch.parent_batch_id } : undefined as any
+    batch.parent_batch_id ? { batchId: batch.parent_batch_id } : 'skip' as any as any
   );
 
   // Get merged-into batch if exists
@@ -41,7 +41,7 @@ export function BatchGenealogyTab({ batch }: BatchGenealogyTabProps) {
     batch.merged_into_batch_id
       ? api.batches.getById
       : undefined as any,
-    batch.merged_into_batch_id ? { batchId: batch.merged_into_batch_id } : undefined as any
+    batch.merged_into_batch_id ? { batchId: batch.merged_into_batch_id } : 'skip' as any as any
   );
 
   // Get child batches (batches that were split from this one)

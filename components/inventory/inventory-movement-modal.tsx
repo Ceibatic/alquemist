@@ -473,7 +473,7 @@ export function InventoryMovementModal({
                         value={field.value ?? ''}
                         onChange={(e) =>
                           field.onChange(
-                            e.target.value ? parseFloat(e.target.value) : undefined
+                            e.target.value ? parseFloat(e.target.value) : 'skip' as any
                           )
                         }
                       />

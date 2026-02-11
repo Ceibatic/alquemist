@@ -16,7 +16,7 @@ export default function TemplatesPage() {
   // Fetch templates for stats
   const templates = useQuery(
     api.productionTemplates.list,
-    currentCompanyId ? { companyId: currentCompanyId, status: 'active' } : undefined
+    currentCompanyId ? { companyId: currentCompanyId, status: 'active' } : 'skip' as any
   );
 
   // Calculate stats

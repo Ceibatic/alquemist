@@ -220,7 +220,7 @@ export function OperativeDashboard({ data }: OperativeDashboardProps) {
             badge={
               data.quickStats.pendingQualityChecks > 0
                 ? data.quickStats.pendingQualityChecks.toString()
-                : undefined
+                : 'skip' as any
             }
           />
           <QuickActionButton

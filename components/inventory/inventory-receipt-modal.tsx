@@ -146,7 +146,7 @@ export function InventoryReceiptModal({
     api.suppliers.list,
     currentCompanyId
       ? { companyId: currentCompanyId }
-      : undefined
+      : 'skip' as any
   ) || [];
 
   const form = useForm<InventoryReceiptInput>({
@@ -181,7 +181,7 @@ export function InventoryReceiptModal({
     api.products.getById,
     selectedProductId
       ? { productId: selectedProductId as Id<'products'> }
-      : undefined
+      : 'skip' as any
   );
 
   // Get the unit from the product (fallback to form value or 'unidades')
@@ -715,7 +715,7 @@ export function InventoryReceiptModal({
                               {...field}
                               onChange={(e) =>
                                 field.onChange(
-                                  e.target.value ? parseFloat(e.target.value) : undefined
+                                  e.target.value ? parseFloat(e.target.value) : 'skip' as any
                                 )
                               }
                               value={field.value || ''}

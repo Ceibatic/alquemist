@@ -21,7 +21,7 @@ export default function ProductionOrdersPage() {
           companyId: currentCompanyId,
           facilityId: currentFacilityId || undefined,
         }
-      : undefined
+      : 'skip' as any
   );
 
   // Calculate compact stats

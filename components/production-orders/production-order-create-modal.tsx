@@ -68,7 +68,7 @@ export function ProductionOrderCreateModal({
   const cropTypes = useQuery(api.crops.getCropTypes, {});
   const cultivars = useQuery(
     api.cultivars.getByCrop,
-    selectedCropType ? { companyId, cropTypeId: selectedCropType as Id<'crop_types'> } : undefined
+    selectedCropType ? { companyId, cropTypeId: selectedCropType as Id<'crop_types'> } : 'skip' as any
   );
 
   // Mutations

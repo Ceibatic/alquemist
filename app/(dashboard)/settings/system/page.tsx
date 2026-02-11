@@ -43,14 +43,14 @@ export default function SystemSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   // Get full user data including companyId
-  const user = useQuery(api.users.getUserById, userId ? { userId } : undefined);
+  const user = useQuery(api.users.getUserById, userId ? { userId } : 'skip' as any);
   const companyId = user?.companyId;
 
   // Queries
   const systemStatus = useQuery(api.config.getSystemStatus);
   const companySettings = useQuery(
     api.config.getCompanySettings,
-    companyId ? { companyId } : undefined
+    companyId ? { companyId } : 'skip' as any
   );
   const roles = useQuery(api.roles.list);
 

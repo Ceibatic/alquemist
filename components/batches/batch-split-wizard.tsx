@@ -98,7 +98,7 @@ export function BatchSplitWizard({ batch, open, onOpenChange }: BatchSplitWizard
           facilityId: batch.facility_id,
           status: 'active',
         }
-      : undefined
+      : 'skip' as any
   );
 
   // Split mutation

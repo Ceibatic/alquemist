@@ -72,12 +72,12 @@ export function BatchCreateModal({
   const facilities = useQuery(api.facilities.list, { companyId });
   const areas = useQuery(
     api.areas.getByFacility,
-    selectedFacility ? { facilityId: selectedFacility as Id<'facilities'> } : undefined
+    selectedFacility ? { facilityId: selectedFacility as Id<'facilities'> } : 'skip' as any
   );
   const cropTypes = useQuery(api.crops.getCropTypes, {});
   const cultivars = useQuery(
     api.cultivars.getByCrop,
-    selectedCropType ? { companyId, cropTypeId: selectedCropType as Id<'crop_types'> } : undefined
+    selectedCropType ? { companyId, cropTypeId: selectedCropType as Id<'crop_types'> } : 'skip' as any
   );
   const suppliers = useQuery(api.suppliers.list, { companyId });
   const productionOrders = useQuery(
@@ -88,7 +88,7 @@ export function BatchCreateModal({
           facilityId: selectedFacility as Id<'facilities'>,
           status: 'active',
         }
-      : undefined
+      : 'skip' as any
   );
 
   // Mutations

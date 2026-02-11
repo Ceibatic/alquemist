@@ -45,7 +45,7 @@ export function AreaActivitiesTab({ areaId, companyId }: AreaActivitiesTabProps)
           entity_id: areaId,
           limit: 50,
         }
-      : undefined
+      : 'skip' as any
   );
 
   if (activitiesData === undefined) {

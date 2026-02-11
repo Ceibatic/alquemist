@@ -98,19 +98,19 @@ export default function ActivityTemplateDetailPage({
   // Queries
   const template = useQuery(
     api.activityTemplates.getById,
-    !isNew ? { templateId: id as Id<'activity_templates'> } : undefined
+    !isNew ? { templateId: id as Id<'activity_templates'> } : 'skip' as any
   );
 
   const activityTypes = useQuery(
     api.activityTypes.list,
-    currentCompanyId ? { companyId: currentCompanyId, status: 'active' } : undefined
+    currentCompanyId ? { companyId: currentCompanyId, status: 'active' } : 'skip' as any
   );
 
   const cropTypes = useQuery(api.crops.getCropTypes, {});
 
   const allTemplates = useQuery(
     api.activityTemplates.list,
-    currentCompanyId ? { companyId: currentCompanyId, isActive: true } : undefined
+    currentCompanyId ? { companyId: currentCompanyId, isActive: true } : 'skip' as any
   );
 
   // Mutations

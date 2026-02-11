@@ -103,7 +103,7 @@ export function BatchHarvestWizard({ batch, open, onOpenChange }: BatchHarvestWi
     api.products.list,
     open && user?.companyId
       ? { companyId: user.companyId }
-      : undefined
+      : 'skip' as any
   );
 
   // Query storage locations (areas with storage type)
@@ -114,7 +114,7 @@ export function BatchHarvestWizard({ batch, open, onOpenChange }: BatchHarvestWi
           facilityId: batch.facility_id,
           status: 'active',
         }
-      : undefined
+      : 'skip' as any
   );
 
   // Harvest mutation

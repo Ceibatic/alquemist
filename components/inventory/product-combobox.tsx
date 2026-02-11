@@ -94,7 +94,7 @@ export function ProductCombobox({
     api.products.list,
     currentCompanyId
       ? { companyId: currentCompanyId, status: 'active', limit: 100 }
-      : undefined
+      : 'skip' as any
   );
 
   const products = productsResult?.products || [];

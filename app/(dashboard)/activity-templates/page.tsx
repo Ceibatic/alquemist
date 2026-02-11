@@ -15,7 +15,7 @@ export default function ActivityTemplatesPage() {
 
   const templates = useQuery(
     api.activityTemplates.list,
-    currentCompanyId ? { companyId: currentCompanyId } : undefined
+    currentCompanyId ? { companyId: currentCompanyId } : 'skip' as any
   );
 
   const compactStats = useMemo<CompactStat[]>(() => {

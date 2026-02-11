@@ -350,7 +350,7 @@ export function FacilityForm({
               coordinates={
                 latitude && longitude
                   ? { latitude, longitude }
-                  : undefined
+                  : 'skip' as any
               }
             />
 

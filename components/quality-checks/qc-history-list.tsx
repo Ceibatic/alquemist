@@ -422,7 +422,7 @@ export function QCHistoryList({
                     <X className="h-4 w-4 mr-2" />
                     Limpiar filtros
                   </Button>
-                ) : undefined
+                ) : 'skip' as any
               }
             />
           ) : (

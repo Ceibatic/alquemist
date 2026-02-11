@@ -193,7 +193,7 @@ export default function ProductionOrderDetailPage({ params }: PageProps) {
               <Play className="h-4 w-4 mr-2" />
               Activar Orden
             </Button>
-          ) : undefined
+          ) : 'skip' as any
         }
       />
 

@@ -96,27 +96,27 @@ export function ProductForm({
   // Fetch suppliers for dropdown
   const suppliersData = useQuery(
     api.suppliers.list,
-    currentCompanyId ? { companyId: currentCompanyId } : undefined
+    currentCompanyId ? { companyId: currentCompanyId } : 'skip' as any
   );
   const suppliers = suppliersData || [];
 
   // Fetch products for transformation target selector
   const productsData = useQuery(
     api.products.list,
-    currentCompanyId ? { companyId: currentCompanyId, status: 'active' } : undefined
+    currentCompanyId ? { companyId: currentCompanyId, status: 'active' } : 'skip' as any
   );
   const allProducts = productsData?.products || [];
 
   // Fetch product if editing
   const existingProduct = useQuery(
     api.products.getById,
-    productId ? { productId: productId as Id<'products'> } : undefined
+    productId ? { productId: productId as Id<'products'> } : 'skip' as any
   );
 
   // Generate SKU query
   const generateSkuQuery = useQuery(
     api.products.generateSku,
-    currentCompanyId ? { companyId: currentCompanyId, category: 'other' } : undefined
+    currentCompanyId ? { companyId: currentCompanyId, category: 'other' } : 'skip' as any
   );
 
   const form = useForm<ProductFormInput>({
@@ -163,7 +163,7 @@ export function ProductForm({
           companyId: currentCompanyId,
           productId: productId as Id<'products'> | undefined,
         }
-      : undefined
+      : 'skip' as any
   );
 
   // Populate form when editing

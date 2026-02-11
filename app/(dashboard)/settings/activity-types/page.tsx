@@ -13,12 +13,12 @@ import { toast } from 'sonner';
 
 export default function ActivityTypesSettingsPage() {
   const { userId } = useUser();
-  const user = useQuery(api.users.getUserById, userId ? { userId } : undefined);
+  const user = useQuery(api.users.getUserById, userId ? { userId } : 'skip' as any);
   const companyId = user?.companyId;
 
   const types = useQuery(
     api.activityTypes.list,
-    companyId ? { companyId } : undefined
+    companyId ? { companyId } : 'skip' as any
   );
 
   const seedDefaults = useMutation(api.activityTypes.seedDefaults);

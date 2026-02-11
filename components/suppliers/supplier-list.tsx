@@ -111,7 +111,7 @@ export function SupplierList({ companyId }: SupplierListProps) {
           companyId: companyId as Id<'companies'>,
           productCategory: selectedCategory || undefined,
         }
-      : undefined
+      : 'skip' as any
   );
 
   // Mutations

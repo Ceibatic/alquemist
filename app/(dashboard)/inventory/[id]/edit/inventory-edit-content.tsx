@@ -33,7 +33,7 @@ export function InventoryEditContent({
   // Get facility ID from area
   const area = useQuery(
     api.areas.getById,
-    item?.area_id ? { areaId: item.area_id } : undefined
+    item?.area_id ? { areaId: item.area_id } : 'skip' as any
   );
 
   const handleSubmit = async (data: CreateInventoryItemInput) => {

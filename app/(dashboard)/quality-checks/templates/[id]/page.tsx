@@ -118,13 +118,13 @@ export default function QCTemplateDetailPage({ params }: { params: Promise<{ id:
 
   const batches = useQuery(
     api.batches.list,
-    currentCompanyId ? { companyId: currentCompanyId } : undefined
+    currentCompanyId ? { companyId: currentCompanyId } : 'skip' as any
   );
 
   // TODO: Implement plants list query for quality checks
   // const plants = useQuery(
   //   api.plants.list,
-  //   currentCompanyId ? { companyId: currentCompanyId } : undefined
+  //   currentCompanyId ? { companyId: currentCompanyId } : 'skip' as any
   // );
   const plants: Array<{ _id: Id<'plants'>; plant_code: string }> | undefined = undefined; // Placeholder until plants.list query is implemented
 

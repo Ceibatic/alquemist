@@ -128,13 +128,13 @@ export function InventoryForm({
   // Fetch areas for this facility
   const areas = useQuery(
     api.areas.getByFacility,
-    facilityId ? { facilityId: facilityId as any } : undefined
+    facilityId ? { facilityId: facilityId as any } : 'skip' as any
   );
 
   // Fetch suppliers for this company
   const suppliers = useQuery(
     api.suppliers.list,
-    currentCompanyId ? { companyId: currentCompanyId as any, isActive: true } : undefined
+    currentCompanyId ? { companyId: currentCompanyId as any, isActive: true } : 'skip' as any
   );
 
   // Create product mutation
@@ -554,7 +554,7 @@ export function InventoryForm({
                       value={field.value || ''}
                       onChange={(e) =>
                         field.onChange(
-                          e.target.value ? parseFloat(e.target.value) : undefined
+                          e.target.value ? parseFloat(e.target.value) : 'skip' as any
                         )
                       }
                     />
@@ -583,7 +583,7 @@ export function InventoryForm({
                       value={field.value || ''}
                       onChange={(e) =>
                         field.onChange(
-                          e.target.value ? parseFloat(e.target.value) : undefined
+                          e.target.value ? parseFloat(e.target.value) : 'skip' as any
                         )
                       }
                     />
@@ -676,7 +676,7 @@ export function InventoryForm({
                         field.onChange(
                           e.target.value
                             ? new Date(e.target.value).getTime()
-                            : undefined
+                            : 'skip' as any
                         )
                       }
                     />
@@ -706,7 +706,7 @@ export function InventoryForm({
                         field.onChange(
                           e.target.value
                             ? new Date(e.target.value).getTime()
-                            : undefined
+                            : 'skip' as any
                         )
                       }
                     />
@@ -736,7 +736,7 @@ export function InventoryForm({
                         field.onChange(
                           e.target.value
                             ? new Date(e.target.value).getTime()
-                            : undefined
+                            : 'skip' as any
                         )
                       }
                     />
@@ -772,7 +772,7 @@ export function InventoryForm({
                       value={field.value || ''}
                       onChange={(e) =>
                         field.onChange(
-                          e.target.value ? parseFloat(e.target.value) : undefined
+                          e.target.value ? parseFloat(e.target.value) : 'skip' as any
                         )
                       }
                     />
@@ -798,7 +798,7 @@ export function InventoryForm({
                       value={field.value || ''}
                       onChange={(e) =>
                         field.onChange(
-                          e.target.value ? parseFloat(e.target.value) : undefined
+                          e.target.value ? parseFloat(e.target.value) : 'skip' as any
                         )
                       }
                     />
@@ -824,7 +824,7 @@ export function InventoryForm({
                       value={field.value || ''}
                       onChange={(e) =>
                         field.onChange(
-                          e.target.value ? parseFloat(e.target.value) : undefined
+                          e.target.value ? parseFloat(e.target.value) : 'skip' as any
                         )
                       }
                     />
@@ -849,7 +849,7 @@ export function InventoryForm({
                       value={field.value || ''}
                       onChange={(e) =>
                         field.onChange(
-                          e.target.value ? parseInt(e.target.value) : undefined
+                          e.target.value ? parseInt(e.target.value) : 'skip' as any
                         )
                       }
                     />

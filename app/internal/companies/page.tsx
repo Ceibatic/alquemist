@@ -70,7 +70,7 @@ export default function CompaniesPage() {
 
   const companyDetails = useQuery(
     api.internalAdmin.getCompanyDetails,
-    selectedCompany ? { companyId: selectedCompany } : undefined
+    selectedCompany ? { companyId: selectedCompany } : 'skip' as any
   );
 
   const extendTrial = useMutation(api.internalAdmin.extendTrial);

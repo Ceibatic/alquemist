@@ -204,7 +204,7 @@ export default function BatchDetailPage({ params }: PageProps) {
                 Archivar
               </Button>
             </div>
-          ) : undefined
+          ) : 'skip' as any
         }
       />
 

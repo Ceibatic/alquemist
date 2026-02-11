@@ -104,7 +104,7 @@ export default function SubscriptionPage() {
 
   const subscription = useQuery(
     api.subscription.getStatus,
-    companyId ? { companyId: companyId as Id<'companies'> } : undefined
+    companyId ? { companyId: companyId as Id<'companies'> } : 'skip' as any
   );
 
   if (!companyId || !subscription) {

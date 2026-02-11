@@ -56,13 +56,13 @@ export function UserProfileContent() {
   // Fetch profile user data
   const profileUser = useQuery(
     api.users.getUserById,
-    userId ? { userId: userId as Id<'users'> } : undefined
+    userId ? { userId: userId as Id<'users'> } : 'skip' as any
   );
 
   // Fetch current user data to check permissions
   const currentUser = useQuery(
     api.users.getUserById,
-    currentUserId ? { userId: currentUserId as Id<'users'> } : undefined
+    currentUserId ? { userId: currentUserId as Id<'users'> } : 'skip' as any
   );
 
   // Fetch facilities to display names
@@ -70,7 +70,7 @@ export function UserProfileContent() {
     api.facilities.list,
     profileUser?.company_id
       ? { companyId: profileUser.company_id as Id<'companies'> }
-      : undefined
+      : 'skip' as any
   );
 
   // Loading state
@@ -163,7 +163,7 @@ export function UserProfileContent() {
               <UserCog className="mr-2 h-4 w-4" />
               Editar Rol
             </Button>
-          ) : undefined
+          ) : 'skip' as any
         }
       />
 

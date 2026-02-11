@@ -122,7 +122,7 @@ export default function InspectionDetailPage({ params }: PageProps) {
           entityType: inspection.entity_type,
           entityId: inspection.entity_id,
         }
-      : undefined
+      : 'skip' as any
   );
 
   // Mutations

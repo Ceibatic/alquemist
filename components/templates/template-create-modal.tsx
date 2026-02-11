@@ -60,7 +60,7 @@ export function TemplateCreateModal({
   // Fetch cultivars based on selected crop type
   const cultivars = useQuery(
     api.cultivars.list,
-    cropTypeId ? { companyId, cropTypeId: cropTypeId as Id<'crop_types'> } : undefined
+    cropTypeId ? { companyId, cropTypeId: cropTypeId as Id<'crop_types'> } : 'skip' as any
   );
 
   const createTemplate = useMutation(api.productionTemplates.create);

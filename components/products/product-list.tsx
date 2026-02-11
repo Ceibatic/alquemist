@@ -101,7 +101,7 @@ export function ProductList() {
           status: selectedStatus || undefined,
           search: searchQuery || undefined,
         }
-      : undefined
+      : 'skip' as any
   );
 
   const products = productsData?.products || [];

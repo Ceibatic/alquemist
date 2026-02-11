@@ -80,7 +80,7 @@ export default function QualityChecksPage() {
             : undefined,
           status: 'active',
         }
-      : undefined
+      : 'skip' as any
   );
 
   const cropTypes = useQuery(api.crops.getCropTypes, {});

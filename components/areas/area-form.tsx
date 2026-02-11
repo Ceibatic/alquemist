@@ -722,7 +722,7 @@ export function AreaForm({
                             value={field.value ?? ''}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value ? Number(e.target.value) : undefined
+                                e.target.value ? Number(e.target.value) : 'skip' as any
                               )
                             }
                           />
@@ -747,7 +747,7 @@ export function AreaForm({
                             value={field.value ?? ''}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value ? Number(e.target.value) : undefined
+                                e.target.value ? Number(e.target.value) : 'skip' as any
                               )
                             }
                           />
@@ -772,7 +772,7 @@ export function AreaForm({
                             value={field.value ?? ''}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value ? Number(e.target.value) : undefined
+                                e.target.value ? Number(e.target.value) : 'skip' as any
                               )
                             }
                           />
@@ -797,7 +797,7 @@ export function AreaForm({
                             value={field.value ?? ''}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value ? Number(e.target.value) : undefined
+                                e.target.value ? Number(e.target.value) : 'skip' as any
                               )
                             }
                           />
@@ -822,7 +822,7 @@ export function AreaForm({
                             value={field.value ?? ''}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value ? Number(e.target.value) : undefined
+                                e.target.value ? Number(e.target.value) : 'skip' as any
                               )
                             }
                           />
@@ -847,7 +847,7 @@ export function AreaForm({
                             value={field.value ?? ''}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value ? Number(e.target.value) : undefined
+                                e.target.value ? Number(e.target.value) : 'skip' as any
                               )
                             }
                           />
@@ -872,7 +872,7 @@ export function AreaForm({
                             value={field.value ?? ''}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value ? Number(e.target.value) : undefined
+                                e.target.value ? Number(e.target.value) : 'skip' as any
                               )
                             }
                           />

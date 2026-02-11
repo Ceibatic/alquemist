@@ -39,7 +39,7 @@ export function FacilitySwitcher({
   // Get all facilities for the company
   const facilities = useQuery(
     api.facilities.getFacilitiesByCompany,
-    user?.companyId ? { companyId: user.companyId as Id<'companies'> } : undefined
+    user?.companyId ? { companyId: user.companyId as Id<'companies'> } : 'skip' as any
   );
 
   // Find current facility from the list

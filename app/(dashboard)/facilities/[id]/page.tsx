@@ -68,12 +68,12 @@ export default function FacilityDetailPage() {
           id: facilityId as Id<'facilities'>,
           companyId: companyId as Id<'companies'>,
         }
-      : undefined
+      : 'skip' as any
   );
 
   const user = useQuery(
     api.users.getUserById,
-    userId ? { userId: userId as Id<'users'> } : undefined
+    userId ? { userId: userId as Id<'users'> } : 'skip' as any
   );
 
   const cropTypes = useQuery(api.crops.getCropTypes, {});

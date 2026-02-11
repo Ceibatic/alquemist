@@ -77,7 +77,7 @@ export function BatchMergeModal({ batch, open, onOpenChange }: BatchMergeModalPr
           cultivarId: batch.cultivar_id,
           status: 'active',
         }
-      : undefined
+      : 'skip' as any
   );
 
   // Filter to only show batches in the same phase and exclude the source batch

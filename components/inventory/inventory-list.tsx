@@ -122,7 +122,7 @@ export function InventoryList({ facilityId }: InventoryListProps) {
           facilityId: facilityId as Id<'facilities'>,
           category: selectedCategory || undefined,
         }
-      : undefined
+      : 'skip' as any
   );
 
   // Enrich inventory items with product data

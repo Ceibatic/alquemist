@@ -70,7 +70,7 @@ export function BatchList({ companyId, facilityId }: BatchListProps) {
 
   const areas = useQuery(
     api.areas.list,
-    facilityId ? { facilityId } : undefined
+    facilityId ? { facilityId } : 'skip' as any
   );
 
   const cultivars = useQuery(api.cultivars.list, { companyId });
