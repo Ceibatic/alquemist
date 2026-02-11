@@ -1,15 +1,54 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, ArrowRight } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Loader2 } from 'lucide-react';
+import { useAuth } from '@clerk/nextjs';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { Button } from '@/components/ui/button';
 
 export default function InvitationInvalidPage() {
   const router = useRouter();
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
+
+  // Check onboarding status if user is already authenticated
+  const shouldCheckOnboarding = authLoaded && isSignedIn;
+  const onboardingStatus = useQuery(
+    shouldCheckOnboarding ? api.users.getOnboardingStatus : 'skip' as any
+  );
+
+  // Auto-redirect authenticated users
+  useEffect(() => {
+    if (!authLoaded) return;
+    if (!isSignedIn) return; // Show page normally
+
+    if (onboardingStatus === undefined) return; // Loading
+    if (onboardingStatus === null) return; // No user in Convex (edge case)
+
+    // Redirect based on onboarding status
+    if (onboardingStatus.onboardingCompleted) {
+      router.replace('/dashboard');
+    } else if (!onboardingStatus.hasCompany) {
+      router.replace('/company-setup');
+    } else {
+      router.replace('/facility-basic');
+    }
+  }, [authLoaded, isSignedIn, onboardingStatus, router]);
 
   const handleGoToLogin = () => {
     router.push('/login');
   };
+
+  // Show loader while checking auth status
+  if (isSignedIn && onboardingStatus === undefined) {
+    return (
+      <div className="flex flex-col items-center justify-center space-y-4 py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Verificando sesión...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
