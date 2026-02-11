@@ -13,10 +13,8 @@ import {
   Settings,
   Building2,
   LayoutTemplate,
-  ClipboardCheck,
   Layers,
   ShoppingCart,
-  FileText,
   CalendarCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -70,19 +68,9 @@ const navigationItems = [
     icon: Layers,
   },
   {
-    name: 'Templates Actividad',
-    href: '/activity-templates' as const,
-    icon: FileText,
-  },
-  {
     name: 'Actividades',
     href: '/scheduled-activities' as const,
     icon: CalendarCheck,
-  },
-  {
-    name: 'Control de Calidad',
-    href: '/quality-checks' as const,
-    icon: ClipboardCheck,
   },
   {
     name: 'Usuarios',

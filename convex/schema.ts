@@ -2057,6 +2057,12 @@ export default defineSchema({
     depends_on_template_id: v.optional(v.id("activity_templates")),
     min_days_after_dependency: v.optional(v.number()),
 
+    // Report form configuration
+    form_fields: v.optional(v.array(v.string())), // IDs of optional fields enabled in report form
+    quality_check_template_id: v.optional(v.id("quality_check_templates")), // linked QC form
+    requires_photos: v.optional(v.boolean()),
+    requires_attachments: v.optional(v.boolean()),
+
     // Regulatory
     regulatory_reference: v.optional(v.string()),
     requires_verification: v.boolean(),

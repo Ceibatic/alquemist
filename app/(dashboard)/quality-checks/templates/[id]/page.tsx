@@ -166,7 +166,7 @@ export default function QCTemplateDetailPage({ params }: { params: Promise<{ id:
         title: 'Template archivado',
         description: 'El template ha sido archivado.',
       });
-      router.push('/quality-checks');
+      router.push('/templates?tab=quality');
     } catch (error) {
       console.error('Error archiving template:', error);
       toast({
@@ -221,7 +221,7 @@ export default function QCTemplateDetailPage({ params }: { params: Promise<{ id:
           icon={AlertCircle}
           breadcrumbs={[
             { label: 'Inicio', href: '/dashboard' },
-            { label: 'Quality Checks', href: '/quality-checks' },
+            { label: 'Templates', href: '/templates?tab=quality' },
             { label: 'Template no encontrado' },
           ]}
         />
@@ -234,7 +234,7 @@ export default function QCTemplateDetailPage({ params }: { params: Promise<{ id:
             <p className="text-sm text-gray-600 text-center mb-6">
               El template que estas buscando no existe o ha sido eliminado.
             </p>
-            <Button onClick={() => router.push('/quality-checks')}>
+            <Button onClick={() => router.push('/templates?tab=quality')}>
               Volver a Quality Checks
             </Button>
           </CardContent>
@@ -260,8 +260,8 @@ export default function QCTemplateDetailPage({ params }: { params: Promise<{ id:
         icon={ClipboardCheck}
         breadcrumbs={[
           { label: 'Inicio', href: '/dashboard' },
-          { label: 'Quality Checks', href: '/quality-checks' },
-          { label: 'Templates', href: '/quality-checks' },
+          { label: 'Templates', href: '/templates?tab=quality' },
+          { label: 'Calidad', href: '/templates?tab=quality' },
           { label: template.name },
         ]}
         action={

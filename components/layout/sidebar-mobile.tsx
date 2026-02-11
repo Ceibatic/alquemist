@@ -15,7 +15,6 @@ import {
   LogOut,
   Building2,
   LayoutTemplate,
-  ClipboardCheck,
   Layers,
 } from 'lucide-react';
 import {
@@ -69,11 +68,6 @@ const navigationItems = [
     name: 'Lotes',
     href: '/batches',
     icon: Layers,
-  },
-  {
-    name: 'Control de Calidad',
-    href: '/quality-checks',
-    icon: ClipboardCheck,
   },
   {
     name: 'Usuarios',

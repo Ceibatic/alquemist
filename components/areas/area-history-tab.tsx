@@ -9,6 +9,13 @@ import { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -16,9 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ActivityReportSheet } from '@/components/activities/activity-report-sheet';
+import { useFacility } from '@/components/providers/facility-provider';
 import { getPhaseLabel } from '@/lib/constants/phases';
 import { ACTIVITY_CATEGORIES } from '@/lib/constants/activity-types';
-import { Activity } from 'lucide-react';
+import { Activity, Plus } from 'lucide-react';
 
 interface AreaHistoryTabProps {
   areaId: Id<'areas'>;
@@ -102,14 +111,33 @@ const columns: ColumnDef<ActivityRow, unknown>[] = [
 
 export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
   const router = useRouter();
+  const { currentCompanyId } = useFacility();
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+
+  // Report sheet state
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [reportSheetOpen, setReportSheetOpen] = useState(false);
+  const [reportTemplateId, setReportTemplateId] = useState<Id<'activity_templates'> | null>(null);
 
   const activities = useQuery(api.activities.listByArea, {
     areaId,
     category: categoryFilter !== 'all' ? categoryFilter : undefined,
   });
 
+  const activityTemplates = useQuery(
+    api.activityTemplates.list,
+    currentCompanyId
+      ? { companyId: currentCompanyId, isActive: true }
+      : ('skip' as any)
+  );
+
   const data = useMemo(() => activities ?? [], [activities]);
+
+  const handleTemplateSelected = (templateId: string) => {
+    setReportTemplateId(templateId as Id<'activity_templates'>);
+    setTemplatePickerOpen(false);
+    setReportSheetOpen(true);
+  };
 
   if (activities === undefined) {
     return (
@@ -122,18 +150,41 @@ export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
 
   if (activities.length === 0 && categoryFilter === 'all') {
     return (
-      <EmptyState
-        icon={Activity}
-        title="Sin actividades registradas"
-        description="Las actividades realizadas en los lotes de esta area apareceran aqui."
-      />
+      <>
+        <div className="flex justify-end mb-4">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setTemplatePickerOpen(true)}
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Registrar actividad
+          </Button>
+        </div>
+        <EmptyState
+          icon={Activity}
+          title="Sin actividades registradas"
+          description="Las actividades realizadas en los lotes de esta area apareceran aqui."
+        />
+        <TemplatePickerAndSheet
+          templatePickerOpen={templatePickerOpen}
+          setTemplatePickerOpen={setTemplatePickerOpen}
+          activityTemplates={activityTemplates}
+          handleTemplateSelected={handleTemplateSelected}
+          reportSheetOpen={reportSheetOpen}
+          setReportSheetOpen={setReportSheetOpen}
+          reportTemplateId={reportTemplateId}
+          setReportTemplateId={setReportTemplateId}
+          areaId={areaId}
+        />
+      </>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex items-center gap-3">
+      {/* Filters + action */}
+      <div className="flex items-center justify-between gap-3">
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Categoria" />
@@ -147,6 +198,15 @@ export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
             ))}
           </SelectContent>
         </Select>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setTemplatePickerOpen(true)}
+        >
+          <Plus className="h-3.5 w-3.5 mr-1" />
+          Registrar actividad
+        </Button>
       </div>
 
       {/* Table */}
@@ -158,6 +218,85 @@ export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
         onRowClick={(row) => router.push(`/areas/${areaId}/activities/${row._id}`)}
         loading={activities === undefined}
       />
+
+      <TemplatePickerAndSheet
+        templatePickerOpen={templatePickerOpen}
+        setTemplatePickerOpen={setTemplatePickerOpen}
+        activityTemplates={activityTemplates}
+        handleTemplateSelected={handleTemplateSelected}
+        reportSheetOpen={reportSheetOpen}
+        setReportSheetOpen={setReportSheetOpen}
+        reportTemplateId={reportTemplateId}
+        setReportTemplateId={setReportTemplateId}
+        areaId={areaId}
+      />
     </div>
+  );
+}
+
+/** Reusable template picker dialog + report sheet pair */
+function TemplatePickerAndSheet({
+  templatePickerOpen,
+  setTemplatePickerOpen,
+  activityTemplates,
+  handleTemplateSelected,
+  reportSheetOpen,
+  setReportSheetOpen,
+  reportTemplateId,
+  setReportTemplateId,
+  areaId,
+}: {
+  templatePickerOpen: boolean;
+  setTemplatePickerOpen: (v: boolean) => void;
+  activityTemplates: any[] | undefined;
+  handleTemplateSelected: (id: string) => void;
+  reportSheetOpen: boolean;
+  setReportSheetOpen: (v: boolean) => void;
+  reportTemplateId: Id<'activity_templates'> | null;
+  setReportTemplateId: (v: Id<'activity_templates'> | null) => void;
+  areaId: Id<'areas'>;
+}) {
+  return (
+    <>
+      <Dialog open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Seleccionar template de actividad</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Selecciona el template para registrar una actividad en esta area.
+            </p>
+            <Select onValueChange={handleTemplateSelected}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar template..." />
+              </SelectTrigger>
+              <SelectContent>
+                {activityTemplates?.map((t) => (
+                  <SelectItem key={t._id} value={t._id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {reportTemplateId && (
+        <ActivityReportSheet
+          open={reportSheetOpen}
+          onOpenChange={setReportSheetOpen}
+          activityTemplateId={reportTemplateId}
+          entityType="area"
+          entityId={areaId}
+          areaId={areaId}
+          onCompleted={() => {
+            setReportSheetOpen(false);
+            setReportTemplateId(null);
+          }}
+        />
+      )}
+    </>
   );
 }

@@ -16,15 +16,22 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useFacility } from '@/components/providers/facility-provider';
+import { ActivityReportSheet } from '@/components/activities/activity-report-sheet';
 import { toast } from 'sonner';
 import {
   CalendarCheck,
@@ -34,13 +41,8 @@ import {
   SkipForward,
   ChevronDown,
   Loader2,
+  ClipboardList,
 } from 'lucide-react';
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'text-gray-500',
-  completed: 'text-green-600',
-  skipped: 'text-yellow-600',
-};
 
 export default function ScheduledActivitiesPage() {
   const { currentCompanyId, isLoading: facilityLoading } = useFacility();
@@ -51,7 +53,20 @@ export default function ScheduledActivitiesPage() {
   const [isSkipping, setIsSkipping] = useState(false);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
 
-  const now = Date.now();
+  // Report sheet state
+  const [reportSheetOpen, setReportSheetOpen] = useState(false);
+  const [reportTemplateId, setReportTemplateId] = useState<Id<'activity_templates'> | null>(null);
+  const [reportContext, setReportContext] = useState<{
+    entityType: 'batch' | 'plant' | 'area';
+    entityId: string;
+    phase?: string;
+    scheduledActivityId?: Id<'scheduled_activities'>;
+  } | null>(null);
+
+  // Template picker dialog
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [pendingReportActivity, setPendingReportActivity] = useState<any>(null);
+
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date();
@@ -96,6 +111,14 @@ export default function ScheduledActivitiesPage() {
       : 'skip' as any
   );
 
+  // Activity templates for template picker
+  const activityTemplates = useQuery(
+    api.activityTemplates.list,
+    currentCompanyId
+      ? { companyId: currentCompanyId, isActive: true }
+      : ('skip' as any)
+  );
+
   const skipMutation = useMutation(api.cultivationSchedules.skipScheduledActivity);
 
   // Stats
@@ -137,6 +160,27 @@ export default function ScheduledActivitiesPage() {
     } finally {
       setIsSkipping(false);
     }
+  };
+
+  const handleReport = (activity: any) => {
+    setPendingReportActivity(activity);
+    setTemplatePickerOpen(true);
+  };
+
+  const handleTemplateSelected = (templateId: string) => {
+    if (!pendingReportActivity) return;
+    const a = pendingReportActivity;
+
+    setReportTemplateId(templateId as Id<'activity_templates'>);
+    setReportContext({
+      entityType: (a.entity_type ?? 'batch') as 'batch' | 'plant' | 'area',
+      entityId: a.entity_id,
+      phase: a.crop_phase ?? undefined,
+      scheduledActivityId: a._id as Id<'scheduled_activities'>,
+    });
+    setTemplatePickerOpen(false);
+    setPendingReportActivity(null);
+    setReportSheetOpen(true);
   };
 
   if (facilityLoading || !currentCompanyId) {
@@ -210,6 +254,7 @@ export default function ScheduledActivitiesPage() {
                     setActivityToSkip(a._id);
                     setSkipDialogOpen(true);
                   }}
+                  onReport={() => handleReport(a)}
                 />
               ))}
             </div>
@@ -252,6 +297,7 @@ export default function ScheduledActivitiesPage() {
                           setActivityToSkip(a._id);
                           setSkipDialogOpen(true);
                         }}
+                        onReport={() => handleReport(a)}
                       />
                     ))}
                   </div>
@@ -334,6 +380,53 @@ export default function ScheduledActivitiesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Template picker dialog */}
+      <Dialog open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Seleccionar template de actividad</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Selecciona el template para reportar esta actividad.
+              {pendingReportActivity?.templateName && (
+                <> Actividad: <strong>{pendingReportActivity.templateName}</strong></>
+              )}
+            </p>
+            <Select onValueChange={handleTemplateSelected}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar template..." />
+              </SelectTrigger>
+              <SelectContent>
+                {activityTemplates?.map((t) => (
+                  <SelectItem key={t._id} value={t._id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Activity report sheet */}
+      {reportTemplateId && reportContext && (
+        <ActivityReportSheet
+          open={reportSheetOpen}
+          onOpenChange={setReportSheetOpen}
+          activityTemplateId={reportTemplateId}
+          entityType={reportContext.entityType}
+          entityId={reportContext.entityId}
+          phase={reportContext.phase}
+          scheduledActivityId={reportContext.scheduledActivityId}
+          onCompleted={() => {
+            setReportSheetOpen(false);
+            setReportTemplateId(null);
+            setReportContext(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -343,6 +436,7 @@ function ActivityRow({
   activity,
   isOverdue,
   onSkip,
+  onReport,
 }: {
   activity: {
     _id: string;
@@ -357,6 +451,7 @@ function ActivityRow({
   };
   isOverdue?: boolean;
   onSkip?: () => void;
+  onReport?: () => void;
 }) {
   const date = new Date(activity.scheduled_date);
   const displayName = activity.templateName ?? activity.activityTypeName ?? activity.activity_type;
@@ -410,16 +505,32 @@ function ActivityRow({
         </div>
       </div>
 
-      {activity.status === 'pending' && onSkip && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={onSkip}
-          className="text-yellow-600 hover:text-yellow-700"
-        >
-          <SkipForward className="h-3 w-3 mr-1" />
-          Saltar
-        </Button>
+      {activity.status === 'pending' && (
+        <div className="flex items-center gap-1">
+          {onReport && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onReport}
+              className="text-amber-600 hover:text-amber-700"
+              title={activity.templateName ?? 'Reportar actividad'}
+            >
+              <ClipboardList className="h-3 w-3 mr-1" />
+              Reportar
+            </Button>
+          )}
+          {onSkip && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onSkip}
+              className="text-yellow-600 hover:text-yellow-700"
+            >
+              <SkipForward className="h-3 w-3 mr-1" />
+              Saltar
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );
