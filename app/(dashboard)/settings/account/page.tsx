@@ -28,7 +28,7 @@ export default function AccountSettingsPage() {
   // Get full user details
   const user = useQuery(
     api.users.getUserById,
-    currentUser?.userId ? { userId: currentUser.userId as Id<'users'> } : 'skip'
+    currentUser?.userId ? { userId: currentUser.userId as Id<'users'> } : undefined
   );
 
   // Handle dirty state changes from forms

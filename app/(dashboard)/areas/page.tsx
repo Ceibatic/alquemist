@@ -16,7 +16,7 @@ export default function AreasPage() {
   // Fetch stats
   const stats = useQuery(
     api.areas.getStats,
-    currentFacilityId ? { facilityId: currentFacilityId } : 'skip'
+    currentFacilityId ? { facilityId: currentFacilityId } : undefined
   );
 
   // Loading state

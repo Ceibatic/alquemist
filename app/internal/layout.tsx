@@ -47,7 +47,7 @@ function InternalAdminContent({ children }: { children: React.ReactNode }) {
   // Check if user is platform admin
   const isPlatformAdmin = useQuery(
     api.internalAdmin.isPlatformAdmin,
-    userId ? { userId: userId as Id<'users'> } : 'skip'
+    userId ? { userId: userId as Id<'users'> } : undefined
   );
 
   // Redirect if not platform admin

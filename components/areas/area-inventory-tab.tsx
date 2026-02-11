@@ -38,7 +38,7 @@ export function AreaInventoryTab({ areaId, companyId }: AreaInventoryTabProps) {
           area_id: areaId,
           limit: 50,
         }
-      : 'skip'
+      : undefined
   );
 
   if (inventoryData === undefined) {

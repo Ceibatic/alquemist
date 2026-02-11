@@ -108,7 +108,7 @@ export function PlantCloningModal({
   // Queries
   const areas = useQuery(
     api.areas.list,
-    plant.facility_id ? { facilityId: plant.facility_id } : 'skip'
+    plant.facility_id ? { facilityId: plant.facility_id } : undefined
   );
 
   const existingBatches = useQuery(
@@ -119,7 +119,7 @@ export function PlantCloningModal({
           cultivarId: plant.cultivar_id,
           status: 'active',
         }
-      : 'skip'
+      : undefined
   );
 
   // Mutation

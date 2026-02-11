@@ -93,7 +93,7 @@ export function PlantMoveModal({ plant, open, onOpenChange }: PlantMoveModalProp
           facilityId: plant.facility_id,
           status: 'active',
         }
-      : 'skip'
+      : undefined
   );
 
   // Query batches with same cultivar for batch transfer
@@ -105,19 +105,19 @@ export function PlantMoveModal({ plant, open, onOpenChange }: PlantMoveModalProp
           cultivarId: plant.cultivar_id,
           status: 'active',
         }
-      : 'skip'
+      : undefined
   );
 
   // Get current area details
   const currentArea = useQuery(
     api.areas.getById,
-    plant.area_id ? { areaId: plant.area_id } : 'skip'
+    plant.area_id ? { areaId: plant.area_id } : undefined
   );
 
   // Get current batch details
   const currentBatch = useQuery(
     api.batches.getById,
-    plant.batch_id ? { batchId: plant.batch_id } : 'skip'
+    plant.batch_id ? { batchId: plant.batch_id } : undefined
   );
 
   // Move mutation

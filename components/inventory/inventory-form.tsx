@@ -128,13 +128,13 @@ export function InventoryForm({
   // Fetch areas for this facility
   const areas = useQuery(
     api.areas.getByFacility,
-    facilityId ? { facilityId: facilityId as any } : 'skip'
+    facilityId ? { facilityId: facilityId as any } : undefined
   );
 
   // Fetch suppliers for this company
   const suppliers = useQuery(
     api.suppliers.list,
-    currentCompanyId ? { companyId: currentCompanyId as any, isActive: true } : 'skip'
+    currentCompanyId ? { companyId: currentCompanyId as any, isActive: true } : undefined
   );
 
   // Create product mutation

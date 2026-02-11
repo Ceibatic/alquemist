@@ -123,7 +123,7 @@ export function BatchActivitiesTab({ batchId, companyId }: BatchActivitiesTabPro
   // Query activity types catalog for the company (optional — enhances display)
   const activityTypes = useQuery(
     api.activityTypes.list,
-    companyId ? { companyId } : 'skip',
+    companyId ? { companyId } : undefined,
   );
 
   // Build type_id → type lookup map

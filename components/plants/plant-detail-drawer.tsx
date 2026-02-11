@@ -56,7 +56,7 @@ export function PlantDetailDrawer({
 
   const plant = useQuery(
     api.plants.getById,
-    plantId ? { plantId } : 'skip'
+    plantId ? { plantId } : undefined
   );
 
   const formatDate = (timestamp?: number) => {

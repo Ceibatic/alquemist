@@ -66,7 +66,7 @@ export default function ScheduledActivitiesPage() {
           dateStart: startOfDay.getTime(),
           dateEnd: endOfDay.getTime(),
         }
-      : 'skip'
+      : undefined
   );
 
   // Upcoming 7 days
@@ -82,7 +82,7 @@ export default function ScheduledActivitiesPage() {
           dateStart: endOfDay.getTime() + 1,
           dateEnd: nextWeekEnd.getTime(),
         }
-      : 'skip'
+      : undefined
   );
 
   // Overdue
@@ -93,7 +93,7 @@ export default function ScheduledActivitiesPage() {
           companyId: currentCompanyId,
           beforeDate: startOfDay.getTime(),
         }
-      : 'skip'
+      : undefined
   );
 
   const skipMutation = useMutation(api.cultivationSchedules.skipScheduledActivity);

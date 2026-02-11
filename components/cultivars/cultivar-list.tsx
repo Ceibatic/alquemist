@@ -72,7 +72,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
           cropTypeId: selectedCropType ? (selectedCropType as Id<'crop_types'>) : undefined,
           status: showDiscontinued ? undefined : 'active',
         }
-      : 'skip'
+      : undefined
   );
 
   const cropTypes = useQuery(api.crops.getCropTypes, {});

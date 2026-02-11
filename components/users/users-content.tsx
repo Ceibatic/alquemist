@@ -81,7 +81,7 @@ export function UsersContent() {
   // Get user data to access company ID
   const currentUser = useQuery(
     api.users.getUserById,
-    userId ? { userId: userId as Id<'users'> } : 'skip'
+    userId ? { userId: userId as Id<'users'> } : undefined
   );
 
   const companyId = currentUser?.companyId;
@@ -89,15 +89,15 @@ export function UsersContent() {
   // Fetch users, invitations, and company data
   const users = useQuery(
     api.users.listByCompany,
-    companyId ? { companyId: companyId as Id<'companies'> } : 'skip'
+    companyId ? { companyId: companyId as Id<'companies'> } : undefined
   );
   const pendingInvitations = useQuery(
     api.users.getPendingInvitations,
-    companyId ? { companyId: companyId as Id<'companies'> } : 'skip'
+    companyId ? { companyId: companyId as Id<'companies'> } : undefined
   );
   const company = useQuery(
     api.companies.getById,
-    companyId ? { id: companyId as Id<'companies'> } : 'skip'
+    companyId ? { id: companyId as Id<'companies'> } : undefined
   );
 
   // Handlers

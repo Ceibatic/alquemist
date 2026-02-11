@@ -48,7 +48,7 @@ export default function FacilityEditPage() {
           id: facilityId as Id<'facilities'>,
           companyId: companyId as Id<'companies'>,
         }
-      : 'skip'
+      : undefined
   );
 
   // Mutation

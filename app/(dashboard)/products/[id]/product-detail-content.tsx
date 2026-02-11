@@ -68,7 +68,7 @@ export function ProductDetailContent({ productId }: ProductDetailContentProps) {
   // Inventory count query
   const inventoryStats = useQuery(
     api.inventory.countByProduct,
-    product ? { productId: product._id } : 'skip'
+    product ? { productId: product._id } : undefined
   );
 
   if (product === undefined) {

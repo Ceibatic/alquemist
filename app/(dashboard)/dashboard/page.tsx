@@ -29,7 +29,7 @@ export default function DashboardPage() {
   const { data: dashboardData, roleInfo, isLoading: isHomeLoading } = useHomeDashboard(
     primaryFacilityId
       ? { facilityId: primaryFacilityId as Id<'facilities'> }
-      : 'skip'
+      : undefined
   );
 
   // Fetch onboarding status for new installations (lightweight query)
@@ -39,7 +39,7 @@ export default function DashboardPage() {
           facilityId: primaryFacilityId as Id<'facilities'>,
           companyId: companyId as Id<'companies'>,
         }
-      : 'skip'
+      : undefined
   );
 
   // Loading state

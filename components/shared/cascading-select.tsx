@@ -46,7 +46,7 @@ export function CascadingSelect({
   // Fetch municipalities for selected department
   const municipalities = useQuery(
     api.geographic.getMunicipalities,
-    departmentValue ? { countryCode: 'CO', departmentCode: departmentValue } : 'skip'
+    departmentValue ? { countryCode: 'CO', departmentCode: departmentValue } : undefined
   );
 
   const isLoadingDepartments = departments === undefined;

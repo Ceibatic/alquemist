@@ -16,7 +16,7 @@ export default function CultivarsPage() {
   // Fetch data for stats - requires companyId
   const cultivars = useQuery(
     api.cultivars.list,
-    currentCompanyId ? { companyId: currentCompanyId } : 'skip'
+    currentCompanyId ? { companyId: currentCompanyId } : undefined
   );
   const cropTypes = useQuery(api.crops.getCropTypes, {});
 

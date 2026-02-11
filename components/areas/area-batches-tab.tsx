@@ -43,7 +43,7 @@ export function AreaBatchesTab({ areaId, companyId }: AreaBatchesTabProps) {
           companyId: companyId as Id<'companies'>,
           areaId: areaId,
         }
-      : 'skip'
+      : undefined
   );
 
   if (batches === undefined) {

@@ -79,7 +79,7 @@ export function CultivationTimeline({
           dateStart: 0,
           dateEnd: Date.now() + 365 * 24 * 60 * 60 * 1000, // next year
         }
-      : 'skip'
+      : undefined
   );
 
   const generateMutation = useMutation(api.cultivationSchedules.generateFromSchedule);

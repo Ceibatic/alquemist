@@ -73,13 +73,13 @@ export function BatchMoveModal({ batch, open, onOpenChange }: BatchMoveModalProp
           facilityId: batch.facility_id,
           status: 'active',
         }
-      : 'skip'
+      : undefined
   );
 
   // Get selected area details for capacity check
   const selectedArea = useQuery(
     api.areas.getById,
-    selectedAreaId ? { areaId: selectedAreaId as Id<'areas'> } : 'skip'
+    selectedAreaId ? { areaId: selectedAreaId as Id<'areas'> } : undefined
   );
 
   // Move mutation

@@ -21,7 +21,7 @@ export default function BatchesPage() {
           companyId: currentCompanyId,
           facilityId: currentFacilityId || undefined,
         }
-      : 'skip'
+      : undefined
   );
 
   // Calculate compact stats

@@ -56,13 +56,13 @@ export function UserProfileContent() {
   // Fetch profile user data
   const profileUser = useQuery(
     api.users.getUserById,
-    userId ? { userId: userId as Id<'users'> } : 'skip'
+    userId ? { userId: userId as Id<'users'> } : undefined
   );
 
   // Fetch current user data to check permissions
   const currentUser = useQuery(
     api.users.getUserById,
-    currentUserId ? { userId: currentUserId as Id<'users'> } : 'skip'
+    currentUserId ? { userId: currentUserId as Id<'users'> } : undefined
   );
 
   // Fetch facilities to display names
@@ -70,7 +70,7 @@ export function UserProfileContent() {
     api.facilities.list,
     profileUser?.company_id
       ? { companyId: profileUser.company_id as Id<'companies'> }
-      : 'skip'
+      : undefined
   );
 
   // Loading state

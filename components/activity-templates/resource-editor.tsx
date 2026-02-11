@@ -64,7 +64,7 @@ export function ResourceEditor({ templateId }: ResourceEditorProps) {
   const template = useQuery(api.activityTemplates.getById, { templateId });
   const products = useQuery(
     api.products.list,
-    currentCompanyId ? { companyId: currentCompanyId, status: 'active' } : 'skip'
+    currentCompanyId ? { companyId: currentCompanyId, status: 'active' } : undefined
   );
 
   const addResourceMutation = useMutation(api.activityTemplates.addResource);

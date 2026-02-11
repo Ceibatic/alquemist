@@ -19,7 +19,7 @@ export default function CultivarDetailPage() {
   const cultivar = useQuery(api.cultivars.get, { id: cultivarId });
   const cropType = useQuery(
     api.crops.getCropTypeById,
-    cultivar ? { id: cultivar.crop_type_id } : 'skip'
+    cultivar ? { id: cultivar.crop_type_id } : undefined
   );
 
   if (!cultivar || !cropType) {

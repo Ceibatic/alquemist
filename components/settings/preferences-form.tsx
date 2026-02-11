@@ -64,7 +64,7 @@ export function PreferencesForm({ userId, user, onDirtyChange }: PreferencesForm
   // Fetch accessible facilities for the user
   const facilities = useQuery(
     api.facilities.getFacilitiesByCompany,
-    user.company_id ? { companyId: user.company_id } : 'skip'
+    user.company_id ? { companyId: user.company_id } : undefined
   );
 
   // Filter facilities by user's accessible_facility_ids

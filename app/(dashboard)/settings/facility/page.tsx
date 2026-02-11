@@ -38,7 +38,7 @@ export default function FacilitySettingsPage() {
   // Get user data to access facility
   const user = useQuery(
     api.users.getUserById,
-    userId ? { userId: userId as Id<'users'> } : 'skip'
+    userId ? { userId: userId as Id<'users'> } : undefined
   );
 
   // Get the user's primary facility or first accessible facility
@@ -52,7 +52,7 @@ export default function FacilitySettingsPage() {
     api.facilities.get,
     facilityId && user?.companyId
       ? { id: facilityId as Id<'facilities'>, companyId: user.companyId as Id<'companies'> }
-      : 'skip'
+      : undefined
   );
 
   // Loading state
