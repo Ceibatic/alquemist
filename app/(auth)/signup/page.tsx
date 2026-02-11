@@ -6,7 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useSignUp } from '@clerk/nextjs';
+import { useAuth, useSignUp } from '@clerk/nextjs';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 
 import { signupSchema, type SignupFormValues, allPasswordRequirementsMet } from '@/lib/validations';
 import { getClerkErrorMessage } from '@/lib/utils';
@@ -28,11 +30,36 @@ import { checkEmailAvailability } from './actions';
 
 export default function SignupPage() {
   const router = useRouter();
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
   const { signUp, isLoaded } = useSignUp();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [emailAvailable, setEmailAvailable] = React.useState<boolean | null>(null);
   const [checkingEmail, setCheckingEmail] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Check onboarding status if user is already authenticated
+  const shouldCheckOnboarding = authLoaded && isSignedIn;
+  const onboardingStatus = useQuery(
+    shouldCheckOnboarding ? api.users.getOnboardingStatus : 'skip' as any
+  );
+
+  // Auto-redirect authenticated users
+  React.useEffect(() => {
+    if (!authLoaded) return;
+    if (!isSignedIn) return; // Show signup form normally
+
+    if (onboardingStatus === undefined) return; // Loading
+    if (onboardingStatus === null) return; // No user in Convex (edge case)
+
+    // Redirect based on onboarding status
+    if (!onboardingStatus.hasCompany) {
+      router.replace('/company-setup');
+    } else if (!onboardingStatus.onboardingCompleted) {
+      router.replace('/facility-basic');
+    } else {
+      router.replace('/dashboard');
+    }
+  }, [authLoaded, isSignedIn, onboardingStatus, router]);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -112,7 +139,17 @@ export default function SignupPage() {
   const isFormValid =
     form.formState.isValid && emailAvailable === true && allRequirementsMet;
 
-  if (!isLoaded) return null;
+  // Show loader while checking auth status
+  if (!authLoaded || !isLoaded) return null;
+
+  if (isSignedIn && onboardingStatus === undefined) {
+    return (
+      <div className="flex flex-col items-center justify-center space-y-4 py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Verificando sesión...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
