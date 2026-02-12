@@ -15,7 +15,7 @@ import {
   LogOut,
   Building2,
   LayoutTemplate,
-  Layers,
+  Factory,
 } from 'lucide-react';
 import {
   Sheet,
@@ -55,19 +55,14 @@ const navigationItems = [
     icon: ClipboardList,
   },
   {
+    name: 'Produccion',
+    href: '/production',
+    icon: Factory,
+  },
+  {
     name: 'Templates',
     href: '/templates',
     icon: LayoutTemplate,
-  },
-  {
-    name: 'Ordenes',
-    href: '/production-orders',
-    icon: ClipboardList,
-  },
-  {
-    name: 'Lotes',
-    href: '/batches',
-    icon: Layers,
   },
   {
     name: 'Usuarios',

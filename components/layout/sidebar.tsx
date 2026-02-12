@@ -13,9 +13,8 @@ import {
   Settings,
   Building2,
   LayoutTemplate,
-  Layers,
   ShoppingCart,
-  CalendarCheck,
+  Factory,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
@@ -53,24 +52,14 @@ const navigationItems = [
     icon: ClipboardList,
   },
   {
+    name: 'Produccion',
+    href: '/production' as const,
+    icon: Factory,
+  },
+  {
     name: 'Templates',
     href: '/templates' as const,
     icon: LayoutTemplate,
-  },
-  {
-    name: 'Ordenes',
-    href: '/production-orders' as const,
-    icon: ClipboardList,
-  },
-  {
-    name: 'Lotes',
-    href: '/batches' as const,
-    icon: Layers,
-  },
-  {
-    name: 'Actividades',
-    href: '/scheduled-activities' as const,
-    icon: CalendarCheck,
   },
   {
     name: 'Usuarios',
