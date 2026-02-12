@@ -118,16 +118,16 @@ Adicionalmente, se crea un componente reutilizable de **Formulario de Reporte de
 **para** completar la definicion del template con todos los requisitos de documentacion y frecuencia
 
 #### Criterios de Aceptacion
-- [ ] **Paso 4 — Configuracion final** incluye:
+- [x] **Paso 4 — Configuracion final** incluye:
   - **Seccion Calidad**: checkbox "Requiere formulario de calidad". Si se activa, muestra un selector dropdown/searchable con los quality_check_templates disponibles (filtrados por empresa). Muestra preview del nombre y tipo de procedimiento del template seleccionado
   - **Seccion Documentacion**: checkbox "Requiere registro fotografico" y checkbox "Requiere archivos adjuntos". Si se activan, estas flags se guardan en el template
   - **Seccion Recurrencia**: frecuencia (unica/diaria/semanal/bisemanal/mensual/a demanda/custom dias), intervalo personalizado (si custom), conteo de repeticiones (opcional)
   - **Seccion Dependencias** (colapsable): template dependencia, dias minimos despues, referencia regulatoria, requiere verificacion
-- [ ] El campo `quality_check_template_id` se almacena en `activity_templates` para vincular el formulario de calidad
-- [ ] Los campos `requires_photos` y `requires_attachments` se almacenan en `activity_templates`
-- [ ] Al guardar, se ejecuta la mutation de creacion/actualizacion con todos los datos de los 4 pasos
-- [ ] Despues de guardar exitosamente, se navega al detalle del template creado con toast de confirmacion
-- [ ] El boton "Guardar" valida todos los pasos: nombre requerido, tipo requerido, al menos una fase
+- [x] El campo `quality_check_template_id` se almacena en `activity_templates` para vincular el formulario de calidad
+- [x] Los campos `requires_photos` y `requires_attachments` se almacenan en `activity_templates`
+- [x] Al guardar, se ejecuta la mutation de creacion/actualizacion con todos los datos de los 4 pasos
+- [x] Despues de guardar exitosamente, se navega al detalle del template creado con toast de confirmacion
+- [x] El boton "Guardar" valida todos los pasos: nombre requerido, tipo requerido, al menos una fase
 
 #### Backend
 - Schema changes en `activity_templates`:

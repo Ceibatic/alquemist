@@ -23,6 +23,7 @@ import {
 import { WizardStepBasic, type WizardBasicData } from './wizard-step-basic';
 import { WizardStepFields } from './wizard-step-fields';
 import { WizardStepResources, type WizardResource } from './wizard-step-resources';
+import { WizardStepConfig, type WizardConfigData } from './wizard-step-config';
 
 const STEPS = [
   { key: 'basic', label: 'Tipo y basico', icon: FileText },
@@ -63,6 +64,22 @@ export function ActivityTemplateWizard({ templateId, isNew }: ActivityTemplateWi
   // Track original resource IDs for diffing on save (edit mode)
   const [originalResourceIds, setOriginalResourceIds] = useState<Set<string>>(new Set());
 
+  // Step 4: Configuration
+  const [configData, setConfigData] = useState<WizardConfigData>({
+    qualityCheckTemplateId: '',
+    requiresPhotos: false,
+    requiresAttachments: false,
+    frequencyType: 'once',
+    frequencyIntervalDays: '',
+    repeatCount: '',
+    estimatedDurationMinutes: '',
+    laborHoursPer1000Plants: '',
+    dependsOnTemplateId: '',
+    minDaysAfterDependency: '',
+    regulatoryReference: '',
+    requiresVerification: false,
+  });
+
   // Query existing template for edit mode
   const template = useQuery(
     api.activityTemplates.getById,
@@ -89,6 +106,22 @@ export function ActivityTemplateWizard({ templateId, isNew }: ActivityTemplateWi
         phaseDayEnd: template.phase_day_end?.toString() ?? '',
       });
       setFormFields(template.form_fields ?? []);
+
+      // Load config data
+      setConfigData({
+        qualityCheckTemplateId: template.quality_check_template_id ?? '',
+        requiresPhotos: template.requires_photos ?? false,
+        requiresAttachments: template.requires_attachments ?? false,
+        frequencyType: template.frequency_type,
+        frequencyIntervalDays: template.frequency_interval_days?.toString() ?? '',
+        repeatCount: template.repeat_count?.toString() ?? '',
+        estimatedDurationMinutes: template.estimated_duration_minutes?.toString() ?? '',
+        laborHoursPer1000Plants: template.labor_hours_per_1000_plants?.toString() ?? '',
+        dependsOnTemplateId: template.depends_on_template_id ?? '',
+        minDaysAfterDependency: template.min_days_after_dependency?.toString() ?? '',
+        regulatoryReference: template.regulatory_reference ?? '',
+        requiresVerification: template.requires_verification,
+      });
 
       // Load existing resources into wizard state
       if (template.resources) {
@@ -224,9 +257,31 @@ export function ActivityTemplateWizard({ templateId, isNew }: ActivityTemplateWi
         phaseDayEnd: basicData.phaseDayEnd ? Number(basicData.phaseDayEnd) : undefined,
         defaultPriority: basicData.defaultPriority,
         formFields: formFields.length > 0 ? formFields : undefined,
-        // Defaults for fields not yet in wizard step 4
-        frequencyType: template?.frequency_type ?? 'once',
-        requiresVerification: template?.requires_verification ?? false,
+        // Step 4 config data
+        qualityCheckTemplateId: configData.qualityCheckTemplateId
+          ? (configData.qualityCheckTemplateId as Id<'quality_check_templates'>)
+          : undefined,
+        requiresPhotos: configData.requiresPhotos || undefined,
+        requiresAttachments: configData.requiresAttachments || undefined,
+        frequencyType: configData.frequencyType,
+        frequencyIntervalDays: configData.frequencyIntervalDays
+          ? Number(configData.frequencyIntervalDays)
+          : undefined,
+        repeatCount: configData.repeatCount ? Number(configData.repeatCount) : undefined,
+        estimatedDurationMinutes: configData.estimatedDurationMinutes
+          ? Number(configData.estimatedDurationMinutes)
+          : undefined,
+        laborHoursPer1000Plants: configData.laborHoursPer1000Plants
+          ? Number(configData.laborHoursPer1000Plants)
+          : undefined,
+        dependsOnTemplateId: configData.dependsOnTemplateId
+          ? (configData.dependsOnTemplateId as Id<'activity_templates'>)
+          : undefined,
+        minDaysAfterDependency: configData.minDaysAfterDependency
+          ? Number(configData.minDaysAfterDependency)
+          : undefined,
+        regulatoryReference: configData.regulatoryReference.trim() || undefined,
+        requiresVerification: configData.requiresVerification,
       };
 
       let savedTemplateId: Id<'activity_templates'>;
@@ -347,15 +402,10 @@ export function ActivityTemplateWizard({ templateId, isNew }: ActivityTemplateWi
           )}
 
           {currentStep === 3 && (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Settings className="h-12 w-12 mb-4" />
-              <p className="text-sm">
-                Configuracion final — disponible proximamente
-              </p>
-              <p className="text-xs mt-1">
-                Puedes guardar el template ahora y configurar detalles desde el detalle
-              </p>
-            </div>
+            <WizardStepConfig
+              data={configData}
+              onChange={setConfigData}
+            />
           )}
         </CardContent>
       </Card>

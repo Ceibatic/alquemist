@@ -2059,6 +2059,9 @@ export default defineSchema({
 
     // Report form configuration
     form_fields: v.optional(v.array(v.string())), // IDs of optional fields enabled in the report form
+    quality_check_template_id: v.optional(v.id("quality_check_templates")), // QC form linked for quality step
+    requires_photos: v.optional(v.boolean()), // Requires photographic documentation
+    requires_attachments: v.optional(v.boolean()), // Requires file attachments
 
     // Regulatory
     regulatory_reference: v.optional(v.string()),
