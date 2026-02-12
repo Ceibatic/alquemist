@@ -141,6 +141,7 @@ export const create = mutation({
     minDaysAfterDependency: v.optional(v.number()),
     regulatoryReference: v.optional(v.string()),
     requiresVerification: v.boolean(),
+    formFields: v.optional(v.array(v.string())),
     sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -203,6 +204,7 @@ export const create = mutation({
       requires_conditions: args.requiresConditions,
       depends_on_template_id: args.dependsOnTemplateId,
       min_days_after_dependency: args.minDaysAfterDependency,
+      form_fields: args.formFields,
       regulatory_reference: args.regulatoryReference,
       requires_verification: args.requiresVerification,
       sort_order: args.sortOrder ?? 0,
@@ -240,6 +242,7 @@ export const update = mutation({
     minDaysAfterDependency: v.optional(v.number()),
     regulatoryReference: v.optional(v.string()),
     requiresVerification: v.optional(v.boolean()),
+    formFields: v.optional(v.array(v.string())),
     sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -304,6 +307,7 @@ export const update = mutation({
     if (args.minDaysAfterDependency !== undefined) patch.min_days_after_dependency = args.minDaysAfterDependency;
     if (args.regulatoryReference !== undefined) patch.regulatory_reference = args.regulatoryReference;
     if (args.requiresVerification !== undefined) patch.requires_verification = args.requiresVerification;
+    if (args.formFields !== undefined) patch.form_fields = args.formFields;
     if (args.sortOrder !== undefined) patch.sort_order = args.sortOrder;
 
     await ctx.db.patch(args.templateId, patch);
@@ -388,6 +392,7 @@ export const duplicate = mutation({
       requires_conditions: template.requires_conditions,
       depends_on_template_id: template.depends_on_template_id,
       min_days_after_dependency: template.min_days_after_dependency,
+      form_fields: template.form_fields,
       regulatory_reference: template.regulatory_reference,
       requires_verification: template.requires_verification,
       sort_order: template.sort_order,

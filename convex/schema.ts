@@ -2057,6 +2057,9 @@ export default defineSchema({
     depends_on_template_id: v.optional(v.id("activity_templates")),
     min_days_after_dependency: v.optional(v.number()),
 
+    // Report form configuration
+    form_fields: v.optional(v.array(v.string())), // IDs of optional fields enabled in the report form
+
     // Regulatory
     regulatory_reference: v.optional(v.string()),
     requires_verification: v.boolean(),
