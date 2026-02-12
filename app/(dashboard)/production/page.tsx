@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFacility } from '@/components/providers/facility-provider';
+import { ProductionPhaseBoard } from '@/components/production/production-phase-board';
 import { Factory } from 'lucide-react';
 
 const VALID_TABS = ['board', 'analytics', 'orders'] as const;
@@ -75,9 +76,10 @@ function ProductionPageContent() {
 
         <TabsContent value="board">
           {currentFacilityId ? (
-            <div className="py-8 text-center text-muted-foreground">
-              Tablero de fases — por implementar (US-PRD.2)
-            </div>
+            <ProductionPhaseBoard
+              companyId={currentCompanyId}
+              facilityId={currentFacilityId}
+            />
           ) : (
             <div className="py-8 text-center text-muted-foreground">
               Selecciona una instalacion para ver el tablero de produccion.

@@ -21,13 +21,13 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** tener una vision integral del estado productivo sin navegar entre multiples paginas dispersas
 
 #### Criterios de Aceptacion
-- [ ] La pagina `/production` muestra 3 tabs: "Tablero" | "Analytics" | "Ordenes"
-- [ ] Tab "Tablero" es el tab activo por defecto al entrar a `/production`
-- [ ] La URL refleja el tab activo via query param (`/production?tab=analytics`, `/production?tab=orders`) para deep linking
-- [ ] El sidebar muestra un item "Produccion" que navega a `/production`
-- [ ] Se eliminan del sidebar los items: "Lotes", "Ordenes", "Actividades"
-- [ ] La pagina se muestra solo si hay facility seleccionada (usa FacilityProvider context)
-- [ ] Header de pagina muestra "Produccion" con breadcrumbs "Inicio > Produccion"
+- [x] La pagina `/production` muestra 3 tabs: "Tablero" | "Analytics" | "Ordenes"
+- [x] Tab "Tablero" es el tab activo por defecto al entrar a `/production`
+- [x] La URL refleja el tab activo via query param (`/production?tab=analytics`, `/production?tab=orders`) para deep linking
+- [x] El sidebar muestra un item "Produccion" que navega a `/production`
+- [x] Se eliminan del sidebar los items: "Lotes", "Ordenes", "Actividades"
+- [x] La pagina se muestra solo si hay facility seleccionada (usa FacilityProvider context)
+- [x] Header de pagina muestra "Produccion" con breadcrumbs "Inicio > Produccion"
 
 #### Frontend
 - Pagina: `app/(dashboard)/production/page.tsx` (nueva)
@@ -49,16 +49,16 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** tener una vista panoramica del estado de toda la produccion en curso
 
 #### Criterios de Aceptacion
-- [ ] El tab "Tablero" muestra un CompactStats global en la parte superior con: Total lotes activos, Total plantas activas, Mortalidad promedio, Ordenes activas
-- [ ] Debajo de stats, muestra un grid de `PhaseCard` (reutilizando el componente existente con adaptaciones) con todas las fases que tienen lotes activos
-- [ ] Cada PhaseCard muestra: nombre de fase con badge de color, conteo de lotes, total de plantas, dias promedio en fase
-- [ ] Dentro de cada PhaseCard se listan los lotes de esa fase mostrando: codigo del lote, nombre del cultivar, cantidad actual, area donde esta
-- [ ] Las fases se ordenan segun progresion biologica: propagacion → germinacion → plantula → vegetativo → floracion → cosecha → post-cosecha → procesamiento
-- [ ] Fases sin lotes activos NO se muestran (solo fases con produccion activa)
-- [ ] Cada PhaseCard completa es clickable y navega al detalle de la fase: `/production/phases/[phase]`
-- [ ] Cada lote dentro del card es clickable y navega al detalle del lote: `/batches/[id]`
-- [ ] El grid es responsive: 1 columna en mobile, 2 en tablet, 3 en desktop
-- [ ] Loading state: 3 skeleton cards mientras carga
+- [x] El tab "Tablero" muestra un CompactStats global en la parte superior con: Total lotes activos, Total plantas activas, Mortalidad promedio, Ordenes activas
+- [x] Debajo de stats, muestra un grid de `PhaseCard` (reutilizando el componente existente con adaptaciones) con todas las fases que tienen lotes activos
+- [x] Cada PhaseCard muestra: nombre de fase con badge de color, conteo de lotes, total de plantas, dias promedio en fase
+- [x] Dentro de cada PhaseCard se listan los lotes de esa fase mostrando: codigo del lote, nombre del cultivar, cantidad actual, area donde esta
+- [x] Las fases se ordenan segun progresion biologica: propagacion → germinacion → plantula → vegetativo → floracion → cosecha → post-cosecha → procesamiento
+- [x] Fases sin lotes activos NO se muestran (solo fases con produccion activa)
+- [x] Cada PhaseCard completa es clickable y navega al detalle de la fase: `/production/phases/[phase]`
+- [x] Cada lote dentro del card es clickable y navega al detalle del lote: `/batches/[id]`
+- [x] El grid es responsive: 1 columna en mobile, 2 en tablet, 3 en desktop
+- [x] Loading state: 3 skeleton cards mientras carga
 
 #### Backend
 - Query nueva: `api.batches.listGroupedByPhase` — similar a `listByAreaGroupedByPhase` pero agrupando TODOS los lotes activos de la facility (sin filtro de area)
