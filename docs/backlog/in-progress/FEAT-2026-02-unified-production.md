@@ -220,17 +220,17 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** saber inmediatamente que tengo que hacer hoy sin navegar a una pagina separada
 
 #### Criterios de Aceptacion
-- [ ] El dashboard principal (`/dashboard`) incluye una nueva seccion "Actividades de hoy" en la vista operativa
-- [ ] La seccion muestra 3 sub-secciones colapsables:
+- [x] El dashboard principal (`/dashboard`) incluye una nueva seccion "Actividades de hoy" en la vista operativa
+- [x] La seccion muestra 3 sub-secciones colapsables:
   - **Atrasadas** (rojo): actividades pendientes con fecha anterior a hoy, con badge de conteo
   - **Hoy**: actividades programadas para hoy, agrupadas por lote
   - **Proximos 3 dias**: actividades de los proximos 3 dias (colapsado por defecto)
-- [ ] Cada actividad muestra: icono de estado, nombre, badge de lote, fecha, fase, duracion estimada
-- [ ] Cada actividad pendiente tiene boton "Reportar" que abre el `ActivityReportSheet` del FEAT-2026-02-unified-templates-activity-report (si ya esta implementado) o navega al detalle del lote
-- [ ] El boton "Saltar" con dialogo de razon se mantiene para actividades pendientes
-- [ ] Si no hay actividades para hoy, mostrar empty state "Sin actividades programadas para hoy"
-- [ ] La seccion solo se muestra si hay facility seleccionada
-- [ ] En la vista administrativa, la seccion de actividades se muestra como card mas compacto con solo los conteos (pendientes hoy, atrasadas, completadas hoy)
+- [x] Cada actividad muestra: icono de estado, nombre, badge de lote, fecha, fase, duracion estimada
+- [x] Cada actividad pendiente tiene boton "Reportar" que abre el `ActivityReportSheet` del FEAT-2026-02-unified-templates-activity-report (si ya esta implementado) o navega al detalle del lote
+- [x] El boton "Saltar" con dialogo de razon se mantiene para actividades pendientes
+- [x] Si no hay actividades para hoy, mostrar empty state "Sin actividades programadas para hoy"
+- [x] La seccion solo se muestra si hay facility seleccionada
+- [x] En la vista administrativa, la seccion de actividades se muestra como card mas compacto con solo los conteos (pendientes hoy, atrasadas, completadas hoy)
 - [ ] La pagina `/scheduled-activities` redirige a `/dashboard` con scroll a la seccion de actividades
 
 #### Frontend
