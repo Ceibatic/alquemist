@@ -116,7 +116,61 @@ Read: leer implementaciones que se van a modificar
 - Que validaciones agregar
 - Que estados de UI implementar (loading, error, empty)
 
-#### 2.3 Validar Build
+#### 2.3 Verificacion Pre-Build
+
+Antes de ejecutar el build, revisar el codigo implementado con analisis estatico manual. Esto atrapa errores que el build reportaria de forma críptica.
+
+**Paso 1: Checklist base (siempre ejecutar)**
+
+Leer cada archivo modificado (`git diff --name-only`) y verificar:
+- [ ] Todos los imports resuelven a archivos/modulos existentes
+- [ ] Los exports coinciden con lo que otros archivos importan
+- [ ] No hay variables/funciones declaradas pero no usadas
+- [ ] Los tipos de retorno coinciden con lo que el caller espera
+
+**Paso 2: Seleccionar checklists adicionales segun archivos tocados**
+
+Ejecutar `git diff --name-only` y aplicar los checklists relevantes:
+
+**Si `convex/schema.ts` fue modificado → Checklist SCHEMA:**
+- [ ] Campos nuevos son `v.optional()` en tablas existentes (backward compat)
+- [ ] Indices nuevos estan definidos y los nombres son correctos
+- [ ] Referencias `v.id("tabla")` apuntan a tablas que existen en el schema
+- [ ] Si se agrego tabla/campo, correr `npx convex codegen` antes del build
+- [ ] Queries que usan el index nuevo pasan el campo correcto a `.withIndex()`
+
+**Si archivos `convex/*.ts` (no schema) fueron modificados → Checklist BACKEND:**
+- [ ] Mutations/queries protegidas usan `getAuthenticatedUserId(ctx)` o equivalente
+- [ ] El import de auth helpers viene de la ruta correcta (`./authHelpers` o similar)
+- [ ] Argumentos `v.id("tabla")` referencian la tabla correcta (no copypaste de otra)
+- [ ] `.withIndex("nombre", ...)` usa un index que existe en schema.ts para esa tabla
+- [ ] Campos opcionales del schema se manejan con null checks o fallbacks
+- [ ] Nombres de campos en `ctx.db.patch()`/`insert()` son camelCase (no snake_case)
+- [ ] Campos de fecha usan `Date.now()` consistentemente
+- [ ] Queries no tienen side effects (no `ctx.db.patch` en una query)
+
+**Si archivos `components/**` o `app/**` fueron modificados → Checklist FRONTEND:**
+- [ ] Componentes con hooks tienen `'use client'` al inicio del archivo
+- [ ] Imports de `api` usan la ruta correcta (`@/convex/_generated/api` → `api.modulo.funcion`)
+- [ ] `useQuery(api.x.y)` y `useMutation(api.x.y)` apuntan a funciones existentes en backend
+- [ ] Argumentos pasados a mutations/queries coinciden con los `args` definidos en Convex (Zod ↔ Convex)
+- [ ] Campos opcionales del backend tienen fallbacks en el render (`field ?? ""`, `field || default`)
+- [ ] Estados de loading/undefined de `useQuery` estan manejados antes de usar los datos
+- [ ] Feedback al usuario usa Sonner toasts (`toast.success()`, `toast.error()`)
+- [ ] No hay imports de `convex/` server-side en archivos `'use client'`
+
+**Paso 3: Busqueda activa de errores**
+
+Ademas de los checklists, buscar proactivamente:
+- Si se creo un campo/tabla nuevo, buscar con Grep si algun otro archivo lo referencia con nombre incorrecto
+- Si se cambio la firma de una funcion (args), verificar todos los call sites con Grep
+- Si se agrego un campo required (no optional) a tabla existente, ALERTAR: registros existentes no lo tendran
+- Si se creo un archivo de constantes nuevo, verificar que se exporta y se importa correctamente
+- Si se modifico un tipo/interface, verificar que todos los consumidores siguen siendo compatibles
+
+**Si se encuentran problemas:** corregir ANTES de continuar al build.
+
+#### 2.4 Validar Build
 
 Despues de cada cambio significativo:
 
@@ -130,7 +184,7 @@ Si falla:
 3. Re-validar build
 4. NO continuar hasta que pase
 
-#### 2.4 Commit de la US
+#### 2.5 Commit de la US
 
 ```bash
 # Agregar archivos modificados
@@ -155,7 +209,7 @@ EOF
 
 **Regla:** Un commit por US completada.
 
-#### 2.5 Actualizar Documento
+#### 2.6 Actualizar Documento
 
 Marcar criterios completados en el documento:
 
@@ -166,7 +220,7 @@ Marcar criterios completados en el documento:
 - [ ] Criterio pendiente (si queda alguno)
 ```
 
-#### 2.6 Registrar en Daily Log
+#### 2.7 Registrar en Daily Log
 
 Crear o actualizar `docs/dev/logs/YYYY-MM-DD.md`:
 
@@ -177,7 +231,7 @@ Crear o actualizar `docs/dev/logs/YYYY-MM-DD.md`:
 - **Commit:** `[hash]`
 ```
 
-#### 2.7 Actualizar TodoList
+#### 2.8 Actualizar TodoList
 
 Marcar la US como completada y pasar a la siguiente.
 
@@ -306,6 +360,7 @@ EOF
 | Preparacion | Read, Bash | Leer documento, crear branch |
 | Exploracion | Glob, Grep, Read | Entender codigo existente |
 | Implementacion | Edit, Write | Modificar/crear archivos |
+| Verificacion | Grep, Read, Bash (git diff) | Revision estatica pre-build |
 | Validacion | Bash | npm run build |
 | Git | Bash | add, commit, push |
 | Documentacion | Edit | Actualizar feature doc, daily log |
