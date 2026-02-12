@@ -46,19 +46,6 @@ import {
   Timer,
 } from 'lucide-react';
 
-// Constants for optional field rendering
-const OPTIONAL_FIELD_IDS = [
-  'observations',
-  'environmental_temp',
-  'environmental_humidity',
-  'environmental_ph',
-  'environmental_ec',
-  'duration_minutes',
-  'estimated_cost',
-  'actual_cost',
-  'checklist',
-  'additional_responsible',
-] as const;
 
 interface ActivityReportSheetProps {
   open: boolean;
