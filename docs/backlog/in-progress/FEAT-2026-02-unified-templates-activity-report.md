@@ -203,16 +203,16 @@ Adicionalmente, se crea un componente reutilizable de **Formulario de Reporte de
 **para** registrar la inspeccion de calidad como parte del flujo de reporte sin cambiar de contexto
 
 #### Criterios de Aceptacion
-- [ ] Si el activity template tiene `quality_check_template_id`, al hacer click en "Completar Actividad" se avanza a un segundo paso en lugar de cerrar el sheet
-- [ ] El sheet muestra indicador de 2 pasos: "1. Reporte de Actividad" → "2. Formulario de Calidad"
-- [ ] El paso 2 renderiza el `DynamicFormRenderer` con la estructura del quality_check_template vinculado
-- [ ] El paso 2 incluye: seleccion de resultado (Aprobado/Condicional/Rechazado), checkbox de seguimiento con fecha, notas adicionales
-- [ ] El timer de duracion del QC se inicia al entrar al paso 2
-- [ ] Se puede volver al paso 1 para editar datos del reporte basico
-- [ ] Se puede omitir el paso de calidad con boton "Omitir calidad" (con confirmacion) si el usuario decide no completar el QC en ese momento
-- [ ] Al completar ambos pasos, se crea el registro de actividad Y el registro de quality_check vinculados
-- [ ] Si se omite calidad, solo se crea el registro de actividad con nota de que QC fue omitido
-- [ ] El quality_check creado se vincula con la actividad via `entity_type`/`entity_id` y se registra el uso del template
+- [x] Si el activity template tiene `quality_check_template_id`, al hacer click en "Completar Actividad" se avanza a un segundo paso en lugar de cerrar el sheet
+- [x] El sheet muestra indicador de 2 pasos: "1. Reporte de Actividad" → "2. Formulario de Calidad"
+- [x] El paso 2 renderiza el `DynamicFormRenderer` con la estructura del quality_check_template vinculado
+- [x] El paso 2 incluye: seleccion de resultado (Aprobado/Condicional/Rechazado), checkbox de seguimiento con fecha, notas adicionales
+- [x] El timer de duracion del QC se inicia al entrar al paso 2
+- [x] Se puede volver al paso 1 para editar datos del reporte basico
+- [x] Se puede omitir el paso de calidad con boton "Omitir calidad" (con confirmacion) si el usuario decide no completar el QC en ese momento
+- [x] Al completar ambos pasos, se crea el registro de actividad Y el registro de quality_check vinculados
+- [x] Si se omite calidad, solo se crea el registro de actividad con nota de que QC fue omitido
+- [x] El quality_check creado se vincula con la actividad via `entity_type`/`entity_id` y se registra el uso del template
 
 #### Backend
 - Mutation: extender `api.activities.reportFromTemplate` (o crear `api.activities.reportWithQualityCheck`) para:
