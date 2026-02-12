@@ -21,13 +21,13 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** tener una vision integral del estado productivo sin navegar entre multiples paginas dispersas
 
 #### Criterios de Aceptacion
-- [ ] La pagina `/production` muestra 3 tabs: "Tablero" | "Analytics" | "Ordenes"
-- [ ] Tab "Tablero" es el tab activo por defecto al entrar a `/production`
-- [ ] La URL refleja el tab activo via query param (`/production?tab=analytics`, `/production?tab=orders`) para deep linking
-- [ ] El sidebar muestra un item "Produccion" que navega a `/production`
-- [ ] Se eliminan del sidebar los items: "Lotes", "Ordenes", "Actividades"
-- [ ] La pagina se muestra solo si hay facility seleccionada (usa FacilityProvider context)
-- [ ] Header de pagina muestra "Produccion" con breadcrumbs "Inicio > Produccion"
+- [x] La pagina `/production` muestra 3 tabs: "Tablero" | "Analytics" | "Ordenes"
+- [x] Tab "Tablero" es el tab activo por defecto al entrar a `/production`
+- [x] La URL refleja el tab activo via query param (`/production?tab=analytics`, `/production?tab=orders`) para deep linking
+- [x] El sidebar muestra un item "Produccion" que navega a `/production`
+- [x] Se eliminan del sidebar los items: "Lotes", "Ordenes", "Actividades"
+- [x] La pagina se muestra solo si hay facility seleccionada (usa FacilityProvider context)
+- [x] Header de pagina muestra "Produccion" con breadcrumbs "Inicio > Produccion"
 
 #### Frontend
 - Pagina: `app/(dashboard)/production/page.tsx` (nueva)
@@ -49,16 +49,16 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** tener una vista panoramica del estado de toda la produccion en curso
 
 #### Criterios de Aceptacion
-- [ ] El tab "Tablero" muestra un CompactStats global en la parte superior con: Total lotes activos, Total plantas activas, Mortalidad promedio, Ordenes activas
-- [ ] Debajo de stats, muestra un grid de `PhaseCard` (reutilizando el componente existente con adaptaciones) con todas las fases que tienen lotes activos
-- [ ] Cada PhaseCard muestra: nombre de fase con badge de color, conteo de lotes, total de plantas, dias promedio en fase
-- [ ] Dentro de cada PhaseCard se listan los lotes de esa fase mostrando: codigo del lote, nombre del cultivar, cantidad actual, area donde esta
-- [ ] Las fases se ordenan segun progresion biologica: propagacion → germinacion → plantula → vegetativo → floracion → cosecha → post-cosecha → procesamiento
-- [ ] Fases sin lotes activos NO se muestran (solo fases con produccion activa)
-- [ ] Cada PhaseCard completa es clickable y navega al detalle de la fase: `/production/phases/[phase]`
-- [ ] Cada lote dentro del card es clickable y navega al detalle del lote: `/batches/[id]`
-- [ ] El grid es responsive: 1 columna en mobile, 2 en tablet, 3 en desktop
-- [ ] Loading state: 3 skeleton cards mientras carga
+- [x] El tab "Tablero" muestra un CompactStats global en la parte superior con: Total lotes activos, Total plantas activas, Mortalidad promedio, Ordenes activas
+- [x] Debajo de stats, muestra un grid de `PhaseCard` (reutilizando el componente existente con adaptaciones) con todas las fases que tienen lotes activos
+- [x] Cada PhaseCard muestra: nombre de fase con badge de color, conteo de lotes, total de plantas, dias promedio en fase
+- [x] Dentro de cada PhaseCard se listan los lotes de esa fase mostrando: codigo del lote, nombre del cultivar, cantidad actual, area donde esta
+- [x] Las fases se ordenan segun progresion biologica: propagacion → germinacion → plantula → vegetativo → floracion → cosecha → post-cosecha → procesamiento
+- [x] Fases sin lotes activos NO se muestran (solo fases con produccion activa)
+- [x] Cada PhaseCard completa es clickable y navega al detalle de la fase: `/production/phases/[phase]`
+- [x] Cada lote dentro del card es clickable y navega al detalle del lote: `/batches/[id]`
+- [x] El grid es responsive: 1 columna en mobile, 2 en tablet, 3 en desktop
+- [x] Loading state: 3 skeleton cards mientras carga
 
 #### Backend
 - Query nueva: `api.batches.listGroupedByPhase` — similar a `listByAreaGroupedByPhase` pero agrupando TODOS los lotes activos de la facility (sin filtro de area)
@@ -84,18 +84,18 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** analizar el estado de produccion de una fase especifica sin estar limitado a una sola area
 
 #### Criterios de Aceptacion
-- [ ] La pagina `/production/phases/[phase]` muestra el detalle de una fase con todos los lotes de la facility en esa fase
-- [ ] Header: nombre de la fase con badge de color + breadcrumbs "Inicio > Produccion > [Fase]"
-- [ ] CompactStats: conteo de lotes, total plantas, dias promedio (mismas metricas que la PhaseCard)
-- [ ] **Filtro de areas**: multi-select de areas que tienen lotes en esta fase (ademas del filtro de lotes existente en el phase detail de areas)
-- [ ] **Filtro de lotes**: checkboxes con codigos de lote para filtrar actividades (igual que en area phase detail)
-- [ ] **Filtro de categoria**: dropdown de categorias de actividad (igual que en area phase detail)
-- [ ] Tabla de actividades con columnas: Fecha, Tipo, Lote, Area, Responsable, Duracion, Notas
-- [ ] Nota: incluye columna "Area" (diferencia vs area phase detail que no la necesita)
-- [ ] Click en fila de actividad navega a `/production/activities/[actId]` (o reutiliza la ruta existente de areas)
-- [ ] Click en codigo de lote navega a `/batches/[id]`
-- [ ] Si no hay lotes en la fase, mostrar empty state "Sin lotes en esta fase"
-- [ ] Si no hay actividades con los filtros aplicados, mostrar "Sin actividades"
+- [x] La pagina `/production/phases/[phase]` muestra el detalle de una fase con todos los lotes de la facility en esa fase
+- [x] Header: nombre de la fase con badge de color + breadcrumbs "Inicio > Produccion > [Fase]"
+- [x] CompactStats: conteo de lotes, total plantas, dias promedio (mismas metricas que la PhaseCard)
+- [x] **Filtro de areas**: multi-select de areas que tienen lotes en esta fase (ademas del filtro de lotes existente en el phase detail de areas)
+- [x] **Filtro de lotes**: checkboxes con codigos de lote para filtrar actividades (igual que en area phase detail)
+- [x] **Filtro de categoria**: dropdown de categorias de actividad (igual que en area phase detail)
+- [x] Tabla de actividades con columnas: Fecha, Tipo, Lote, Area, Responsable, Duracion, Notas
+- [x] Nota: incluye columna "Area" (diferencia vs area phase detail que no la necesita)
+- [x] Click en fila de actividad navega a `/production/activities/[actId]` (o reutiliza la ruta existente de areas)
+- [x] Click en codigo de lote navega a `/batches/[id]`
+- [x] Si no hay lotes en la fase, mostrar empty state "Sin lotes en esta fase"
+- [x] Si no hay actividades con los filtros aplicados, mostrar "Sin actividades"
 
 #### Backend
 - Query nueva: `api.batches.listByPhase` — obtener todos los lotes activos en una fase para una facility
@@ -123,16 +123,16 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** monitorear el rendimiento general de la produccion sin necesidad de consultar multiples paginas
 
 #### Criterios de Aceptacion
-- [ ] El tab "Analytics" muestra 4 KPI cards principales en fila:
+- [x] El tab "Analytics" muestra 4 KPI cards principales en fila:
   - **Plantas activas**: total de plantas en lotes activos de la facility, con icono Sprout
   - **Mortalidad global**: porcentaje promedio de mortalidad de lotes activos, con icono TrendingDown, color rojo si > 15%, amber si 5-15%, verde si < 5%
   - **Ordenes activas**: conteo de ordenes en estado "active", con icono ClipboardList
   - **Rendimiento acumulado**: suma de `actual_yield` de ordenes completadas en los ultimos 12 meses, con icono BarChart y unidad (kg/plantas segun config)
-- [ ] Debajo de KPIs, seccion "Distribucion por fase" con un chart de barras horizontal o donut chart mostrando cantidad de lotes por fase (con colores de fase)
-- [ ] Seccion "Mortalidad por periodo": chart de linea mostrando evolucion de mortalidad promedio en los ultimos 30/60/90 dias (selector de periodo)
-- [ ] Seccion "Lotes recientes": tabla con los ultimos 10 lotes creados mostrando: codigo, cultivar, fase actual, plantas, dias, area
-- [ ] Todos los KPIs se calculan para la facility seleccionada
-- [ ] Loading state: skeleton cards y charts mientras carga
+- [x] Debajo de KPIs, seccion "Distribucion por fase" con un chart de barras horizontal o donut chart mostrando cantidad de lotes por fase (con colores de fase)
+- [x] Seccion "Mortalidad por periodo": chart de linea mostrando evolucion de mortalidad promedio en los ultimos 30/60/90 dias (selector de periodo)
+- [x] Seccion "Lotes recientes": tabla con los ultimos 10 lotes creados mostrando: codigo, cultivar, fase actual, plantas, dias, area
+- [x] Todos los KPIs se calculan para la facility seleccionada
+- [x] Loading state: skeleton cards y charts mientras carga
 
 #### Backend
 - Query: reutilizar `api.batches.getStats` (ya retorna totalBatches, activeBatches, totalPlantsActive, averageMortalityRate, batchesByPhase)
@@ -161,13 +161,13 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** centralizar la gestion del ciclo de produccion sin una pagina separada
 
 #### Criterios de Aceptacion
-- [ ] El tab "Ordenes" renderiza el contenido actual de `/production-orders` sin cambios funcionales
-- [ ] CompactStats en la parte superior: Total ordenes, Activas, En planificacion, Completadas (reutiliza stats actuales)
-- [ ] Listado de ordenes con los mismos filtros: estado (planning/active/completed/cancelled), busqueda por numero/cultivar/template
-- [ ] Boton "Crear orden" abre `ProductionOrderCreateModal` existente
-- [ ] Cards de ordenes con el mismo formato existente (`ProductionOrderCard`)
-- [ ] Click en card navega al detalle de la orden: `/production/orders/[id]` (nueva ruta bajo /production)
-- [ ] El detalle de la orden se mueve a `/production/orders/[id]` manteniendo toda la funcionalidad existente (tabs Detalle, Fases, Actividades)
+- [x] El tab "Ordenes" renderiza el contenido actual de `/production-orders` sin cambios funcionales
+- [x] CompactStats en la parte superior: Total ordenes, Activas, En planificacion, Completadas (reutiliza stats actuales)
+- [x] Listado de ordenes con los mismos filtros: estado (planning/active/completed/cancelled), busqueda por numero/cultivar/template
+- [x] Boton "Crear orden" abre `ProductionOrderCreateModal` existente
+- [x] Cards de ordenes con el mismo formato existente (`ProductionOrderCard`)
+- [x] Click en card navega al detalle de la orden: `/production/orders/[id]` (nueva ruta bajo /production)
+- [x] El detalle de la orden se mueve a `/production/orders/[id]` manteniendo toda la funcionalidad existente (tabs Detalle, Fases, Actividades)
 
 #### Frontend
 - Componente: reutilizar `ProductionOrderList` en el tab
@@ -191,15 +191,15 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** simplificar la navegacion reflejando que cada orden corresponde tipicamente a un solo lote
 
 #### Criterios de Aceptacion
-- [ ] El detalle de la orden tiene 3 tabs en lugar de 4: "Detalle" | "Fases" | "Actividades" (se elimina tab "Lotes")
-- [ ] En el tab "Detalle", se agrega una seccion "Lote de produccion" que muestra:
+- [x] El detalle de la orden tiene 3 tabs en lugar de 4: "Detalle" | "Fases" | "Actividades" (se elimina tab "Lotes")
+- [x] En el tab "Detalle", se agrega una seccion "Lote de produccion" que muestra:
   - Si hay un lote vinculado: card con codigo del lote, fase actual, plantas actuales, mortalidad, dias en produccion, area, y link "Ver detalle del lote" que navega a `/batches/[id]`
   - Si hay multiples lotes (ordenes legacy): mostrar lista de cards de lotes con la misma info
   - Si no hay lotes (orden en planificacion): mostrar "Sin lote asignado — se creara al activar la orden"
-- [ ] La funcionalidad del tab "Fases" se mantiene identica (completar fases)
-- [ ] La funcionalidad del tab "Actividades" se mantiene identica (programadas + historial)
-- [ ] El boton "Activar Orden" sigue creando el lote automaticamente y la seccion de lote se actualiza en tiempo real
-- [ ] No se modifica el backend — la query `getById` ya incluye batches
+- [x] La funcionalidad del tab "Fases" se mantiene identica (completar fases)
+- [x] La funcionalidad del tab "Actividades" se mantiene identica (programadas + historial)
+- [x] El boton "Activar Orden" sigue creando el lote automaticamente y la seccion de lote se actualiza en tiempo real
+- [x] No se modifica el backend — la query `getById` ya incluye batches
 
 #### Frontend
 - Modificar: pagina de detalle de orden — eliminar TabsTrigger de "Lotes", agregar seccion en tab Detalle
@@ -220,18 +220,18 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** saber inmediatamente que tengo que hacer hoy sin navegar a una pagina separada
 
 #### Criterios de Aceptacion
-- [ ] El dashboard principal (`/dashboard`) incluye una nueva seccion "Actividades de hoy" en la vista operativa
-- [ ] La seccion muestra 3 sub-secciones colapsables:
+- [x] El dashboard principal (`/dashboard`) incluye una nueva seccion "Actividades de hoy" en la vista operativa
+- [x] La seccion muestra 3 sub-secciones colapsables:
   - **Atrasadas** (rojo): actividades pendientes con fecha anterior a hoy, con badge de conteo
   - **Hoy**: actividades programadas para hoy, agrupadas por lote
   - **Proximos 3 dias**: actividades de los proximos 3 dias (colapsado por defecto)
-- [ ] Cada actividad muestra: icono de estado, nombre, badge de lote, fecha, fase, duracion estimada
-- [ ] Cada actividad pendiente tiene boton "Reportar" que abre el `ActivityReportSheet` del FEAT-2026-02-unified-templates-activity-report (si ya esta implementado) o navega al detalle del lote
-- [ ] El boton "Saltar" con dialogo de razon se mantiene para actividades pendientes
-- [ ] Si no hay actividades para hoy, mostrar empty state "Sin actividades programadas para hoy"
-- [ ] La seccion solo se muestra si hay facility seleccionada
-- [ ] En la vista administrativa, la seccion de actividades se muestra como card mas compacto con solo los conteos (pendientes hoy, atrasadas, completadas hoy)
-- [ ] La pagina `/scheduled-activities` redirige a `/dashboard` con scroll a la seccion de actividades
+- [x] Cada actividad muestra: icono de estado, nombre, badge de lote, fecha, fase, duracion estimada
+- [x] Cada actividad pendiente tiene boton "Reportar" que abre el `ActivityReportSheet` del FEAT-2026-02-unified-templates-activity-report (si ya esta implementado) o navega al detalle del lote
+- [x] El boton "Saltar" con dialogo de razon se mantiene para actividades pendientes
+- [x] Si no hay actividades para hoy, mostrar empty state "Sin actividades programadas para hoy"
+- [x] La seccion solo se muestra si hay facility seleccionada
+- [x] En la vista administrativa, la seccion de actividades se muestra como card mas compacto con solo los conteos (pendientes hoy, atrasadas, completadas hoy)
+- [x] La pagina `/scheduled-activities` redirige a `/dashboard` con scroll a la seccion de actividades
 
 #### Frontend
 - Componente: `components/dashboard/today-activities-widget.tsx` (nuevo)
@@ -255,20 +255,20 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** tener una experiencia coherente con un unico punto de acceso para produccion
 
 #### Criterios de Aceptacion
-- [ ] El sidebar muestra "Produccion" en lugar de "Lotes", "Ordenes", "Actividades" (3 items → 1 item)
-- [ ] Se eliminan del sidebar: "Lotes" (`/batches`), "Ordenes" (`/production-orders`), "Actividades" (`/scheduled-activities`)
-- [ ] Redirects configurados:
+- [x] El sidebar muestra "Produccion" en lugar de "Lotes", "Ordenes", "Actividades" (3 items → 1 item)
+- [x] Se eliminan del sidebar: "Lotes" (`/batches`), "Ordenes" (`/production-orders`), "Actividades" (`/scheduled-activities`)
+- [x] Redirects configurados:
   - `/batches` → `/production` (tab Tablero, donde los lotes se ven por fase)
   - `/production-orders` → `/production?tab=orders`
   - `/production-orders/[id]` → `/production/orders/[id]`
   - `/scheduled-activities` → `/dashboard`
-- [ ] La ruta `/batches/[id]` (detalle del lote) se mantiene funcional — NO se redirige ni elimina
-- [ ] Breadcrumbs de paginas internas apuntan correctamente:
+- [x] La ruta `/batches/[id]` (detalle del lote) se mantiene funcional — NO se redirige ni elimina
+- [x] Breadcrumbs de paginas internas apuntan correctamente:
   - Detalle de fase: "Inicio > Produccion > [Fase]"
   - Detalle de orden: "Inicio > Produccion > Ordenes > [Numero]"
   - Detalle de lote: "Inicio > Produccion > [Codigo]" (actualizar breadcrumbs del batch detail)
-- [ ] No quedan links rotos en toda la aplicacion (verificar con build)
-- [ ] El sidebar queda con los siguientes items:
+- [x] No quedan links rotos en toda la aplicacion (verificar con build)
+- [x] El sidebar queda con los siguientes items:
   1. Dashboard
   2. Areas
   3. Produccion (NUEVO — reemplaza Lotes + Ordenes + Actividades)

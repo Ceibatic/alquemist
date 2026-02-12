@@ -120,12 +120,12 @@ export function ProductionOrderList({ companyId, facilityId }: ProductionOrderLi
 
   // Handlers for order actions
   const handleViewOrder = (order: any) => {
-    router.push(`/production-orders/${order._id}`);
+    router.push(`/production/orders/${order._id}`);
   };
 
   const handleCreateSuccess = (orderId: string) => {
     setCreateModalOpen(false);
-    router.push(`/production-orders/${orderId}`);
+    router.push(`/production/orders/${orderId}`);
   };
 
   // Loading state

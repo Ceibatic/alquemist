@@ -8,6 +8,7 @@ import { DashboardLoading } from '@/components/dashboard/dashboard-loading';
 import { DashboardError } from '@/components/dashboard/dashboard-error';
 import { TrialBanner } from '@/components/subscription/trial-banner';
 import { AdminDashboard, OperativeDashboard, TrendCharts } from '@/components/home';
+import { TodayActivitiesWidget } from '@/components/dashboard/today-activities-widget';
 import { Sprout } from 'lucide-react';
 import {
   useHomeDashboard,
@@ -115,13 +116,23 @@ export default function DashboardPage() {
           {isAdminDashboard(dashboardData) && (
             <>
               <AdminDashboard data={dashboardData} />
+              <TodayActivitiesWidget
+                companyId={companyId as Id<'companies'>}
+                variant="compact"
+              />
               <TrendCharts facilityId={primaryFacilityId as Id<'facilities'>} />
             </>
           )}
 
           {/* Operative Dashboard */}
           {isOperativeDashboard(dashboardData) && (
-            <OperativeDashboard data={dashboardData} />
+            <>
+              <OperativeDashboard data={dashboardData} />
+              <TodayActivitiesWidget
+                companyId={companyId as Id<'companies'>}
+                variant="full"
+              />
+            </>
           )}
 
           {/* Show onboarding checklist if not complete */}

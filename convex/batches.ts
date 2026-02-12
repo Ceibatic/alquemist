@@ -1492,3 +1492,249 @@ export const listByAreaGroupedByPhase = query({
     return result;
   },
 });
+
+// ---------------------------------------------------------------------------
+// Production page – Facility-level phase board & phase detail
+// ---------------------------------------------------------------------------
+
+/**
+ * List active batches in a specific phase for a facility.
+ * Used by the global phase detail page.
+ */
+export const listByPhase = query({
+  args: {
+    companyId: v.id("companies"),
+    facilityId: v.id("facilities"),
+    phase: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    const phaseBatches = batches.filter(
+      (b) =>
+        b.status === "active" &&
+        b.company_id === args.companyId &&
+        (b.current_phase ?? "unknown") === args.phase
+    );
+
+    const enriched = await Promise.all(
+      phaseBatches.map(async (batch) => {
+        const [cultivar, area] = await Promise.all([
+          batch.cultivar_id ? ctx.db.get(batch.cultivar_id) : null,
+          batch.area_id ? ctx.db.get(batch.area_id) : null,
+        ]);
+        const daysInProduction = Math.floor(
+          (Date.now() - batch.created_date) / (1000 * 60 * 60 * 24)
+        );
+        return {
+          _id: batch._id,
+          batch_code: batch.batch_code,
+          current_quantity: batch.current_quantity,
+          current_phase: batch.current_phase ?? "unknown",
+          cultivarName: cultivar?.name ?? "Sin cultivar",
+          areaId: batch.area_id ?? null,
+          areaName: area?.name ?? "Sin area",
+          daysInProduction,
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+/**
+ * Get mortality trend data for a facility over the last N days.
+ * Returns weekly averages for charting.
+ */
+export const getMortalityTrend = query({
+  args: {
+    companyId: v.id("companies"),
+    facilityId: v.id("facilities"),
+    days: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    const companyBatches = batches.filter(
+      (b) => b.company_id === args.companyId && b.status === "active"
+    );
+
+    // Group by week and calculate average mortality
+    const now = Date.now();
+    const cutoff = now - args.days * 24 * 60 * 60 * 1000;
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+
+    const weeks: { date: string; mortalityRate: number }[] = [];
+    let weekStart = cutoff;
+
+    while (weekStart < now) {
+      const weekEnd = Math.min(weekStart + weekMs, now);
+      const weekDate = new Date(weekStart).toISOString().slice(0, 10);
+
+      // Batches that existed during this week (created before week end)
+      const weekBatches = companyBatches.filter(
+        (b) => b.created_date <= weekEnd
+      );
+
+      if (weekBatches.length > 0) {
+        const avgMortality =
+          weekBatches.reduce((sum, b) => {
+            const initial = b.initial_quantity || b.current_quantity;
+            if (initial === 0) return sum;
+            const lost = initial - b.current_quantity;
+            return sum + (lost / initial) * 100;
+          }, 0) / weekBatches.length;
+
+        weeks.push({
+          date: weekDate,
+          mortalityRate: Math.round(avgMortality * 10) / 10,
+        });
+      } else {
+        weeks.push({ date: weekDate, mortalityRate: 0 });
+      }
+
+      weekStart = weekEnd;
+    }
+
+    return weeks;
+  },
+});
+
+/**
+ * List the most recently created batches for a facility.
+ */
+export const listRecent = query({
+  args: {
+    companyId: v.id("companies"),
+    facilityId: v.id("facilities"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    const companyBatches = batches
+      .filter((b) => b.company_id === args.companyId)
+      .sort((a, b) => b.created_date - a.created_date)
+      .slice(0, args.limit ?? 10);
+
+    const enriched = await Promise.all(
+      companyBatches.map(async (batch) => {
+        const [cultivar, area] = await Promise.all([
+          batch.cultivar_id ? ctx.db.get(batch.cultivar_id) : null,
+          batch.area_id ? ctx.db.get(batch.area_id) : null,
+        ]);
+        const daysInProduction = Math.floor(
+          (Date.now() - batch.created_date) / (1000 * 60 * 60 * 24)
+        );
+        return {
+          _id: batch._id,
+          batch_code: batch.batch_code,
+          current_quantity: batch.current_quantity,
+          current_phase: batch.current_phase ?? "unknown",
+          status: batch.status,
+          cultivarName: cultivar?.name ?? "Sin cultivar",
+          areaName: area?.name ?? "Sin area",
+          daysInProduction,
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+/**
+ * List active batches for a facility, grouped by crop phase.
+ * Returns groups sorted by biological phase progression.
+ * Each batch includes areaName for the global production board.
+ */
+export const listGroupedByPhase = query({
+  args: {
+    companyId: v.id("companies"),
+    facilityId: v.id("facilities"),
+  },
+  handler: async (ctx, args) => {
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    const activeBatches = batches.filter(
+      (b) => b.status === "active" && b.company_id === args.companyId
+    );
+
+    // Enrich with cultivar name and area name
+    const enriched = await Promise.all(
+      activeBatches.map(async (batch) => {
+        const [cultivar, area] = await Promise.all([
+          batch.cultivar_id ? ctx.db.get(batch.cultivar_id) : null,
+          batch.area_id ? ctx.db.get(batch.area_id) : null,
+        ]);
+        const daysInProduction = Math.floor(
+          (Date.now() - batch.created_date) / (1000 * 60 * 60 * 24)
+        );
+        return {
+          _id: batch._id,
+          batch_code: batch.batch_code,
+          current_quantity: batch.current_quantity,
+          current_phase: batch.current_phase ?? "unknown",
+          cultivarName: cultivar?.name ?? "Sin cultivar",
+          areaName: area?.name ?? "Sin area",
+          daysInProduction,
+        };
+      })
+    );
+
+    // Group by phase
+    const groups = new Map<
+      string,
+      {
+        phase: string;
+        batches: typeof enriched;
+      }
+    >();
+
+    for (const batch of enriched) {
+      const phase = batch.current_phase;
+      if (!groups.has(phase)) {
+        groups.set(phase, { phase, batches: [] });
+      }
+      groups.get(phase)!.batches.push(batch);
+    }
+
+    // Build result with computed stats, ordered by phase progression
+    const phaseOrderMap = new Map(PHASE_ORDER.map((p, i) => [p, i]));
+
+    const result = Array.from(groups.values())
+      .map((g) => ({
+        phase: g.phase,
+        batchCount: g.batches.length,
+        totalPlants: g.batches.reduce((sum, b) => sum + b.current_quantity, 0),
+        avgDays:
+          g.batches.length > 0
+            ? Math.round(
+                g.batches.reduce((sum, b) => sum + b.daysInProduction, 0) /
+                  g.batches.length
+              )
+            : 0,
+        batches: g.batches,
+      }))
+      .sort((a, b) => {
+        const aOrder = phaseOrderMap.get(a.phase) ?? 999;
+        const bOrder = phaseOrderMap.get(b.phase) ?? 999;
+        return aOrder - bOrder;
+      });
+
+    return result;
+  },
+});
