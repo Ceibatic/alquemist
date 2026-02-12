@@ -1494,8 +1494,57 @@ export const listByAreaGroupedByPhase = query({
 });
 
 // ---------------------------------------------------------------------------
-// Production page – Facility-level phase board
+// Production page – Facility-level phase board & phase detail
 // ---------------------------------------------------------------------------
+
+/**
+ * List active batches in a specific phase for a facility.
+ * Used by the global phase detail page.
+ */
+export const listByPhase = query({
+  args: {
+    companyId: v.id("companies"),
+    facilityId: v.id("facilities"),
+    phase: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    const phaseBatches = batches.filter(
+      (b) =>
+        b.status === "active" &&
+        b.company_id === args.companyId &&
+        (b.current_phase ?? "unknown") === args.phase
+    );
+
+    const enriched = await Promise.all(
+      phaseBatches.map(async (batch) => {
+        const [cultivar, area] = await Promise.all([
+          batch.cultivar_id ? ctx.db.get(batch.cultivar_id) : null,
+          batch.area_id ? ctx.db.get(batch.area_id) : null,
+        ]);
+        const daysInProduction = Math.floor(
+          (Date.now() - batch.created_date) / (1000 * 60 * 60 * 24)
+        );
+        return {
+          _id: batch._id,
+          batch_code: batch.batch_code,
+          current_quantity: batch.current_quantity,
+          current_phase: batch.current_phase ?? "unknown",
+          cultivarName: cultivar?.name ?? "Sin cultivar",
+          areaId: batch.area_id ?? null,
+          areaName: area?.name ?? "Sin area",
+          daysInProduction,
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
 
 /**
  * List active batches for a facility, grouped by crop phase.

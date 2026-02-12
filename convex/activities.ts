@@ -2970,8 +2970,10 @@ export const listByArea = query({
 });
 
 /**
- * List activities for batches in a specific phase within an area (v2 model only).
- * Used by the phase detail page.
+ * List activities for batches in a specific phase within an area.
+ * Used by the area phase detail page (/areas/[id]/phases/[phase]).
+ *
+ * NOTE: For facility-level phase activities, see listByPhase below.
  */
 export const listByAreaAndPhase = query({
   args: {
@@ -3059,5 +3061,129 @@ export const listByAreaAndPhase = query({
     );
 
     return enriched;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Production page – Global phase detail activities
+// ---------------------------------------------------------------------------
+
+/**
+ * List activities for all batches in a given phase across a facility.
+ * Includes areaName in results. Supports optional filters for area, batch, category.
+ * Used by the production phase detail page (/production/phases/[phase]).
+ */
+export const listByPhase = query({
+  args: {
+    companyId: v.id("companies"),
+    facilityId: v.id("facilities"),
+    phase: v.string(),
+    areaIds: v.optional(v.array(v.id("areas"))),
+    batchIds: v.optional(v.array(v.id("batches"))),
+    category: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const allBatches = await ctx.db
+      .query("batches")
+      .withIndex("by_facility", (q) => q.eq("facility_id", args.facilityId))
+      .collect();
+
+    let phaseBatches = allBatches.filter(
+      (b) =>
+        b.status === "active" &&
+        b.company_id === args.companyId &&
+        (b.current_phase ?? "unknown") === args.phase
+    );
+
+    if (args.areaIds && args.areaIds.length > 0) {
+      const areaIdSet = new Set(args.areaIds.map((id) => id.toString()));
+      phaseBatches = phaseBatches.filter(
+        (b) => b.area_id && areaIdSet.has(b.area_id.toString())
+      );
+    }
+
+    if (args.batchIds && args.batchIds.length > 0) {
+      const batchIdSet = new Set(args.batchIds.map((id) => id.toString()));
+      phaseBatches = phaseBatches.filter((b) =>
+        batchIdSet.has(b._id.toString())
+      );
+    }
+
+    const batchMap = new Map(phaseBatches.map((b) => [b._id, b]));
+    const batchIdList = phaseBatches.map((b) => b._id);
+
+    const activitiesByBatch = await Promise.all(
+      batchIdList.map((batchId) =>
+        ctx.db
+          .query("activities")
+          .withIndex("by_batch_id", (q) => q.eq("batch_id", batchId))
+          .collect()
+      )
+    );
+
+    let allActivities = activitiesByBatch.flat();
+
+    if (args.category) {
+      allActivities = allActivities.filter((a) => a.category === args.category);
+    }
+
+    allActivities.sort(
+      (a, b) =>
+        (b.started_at ?? b.timestamp ?? 0) - (a.started_at ?? a.timestamp ?? 0)
+    );
+
+    const limit = args.limit ?? 200;
+    allActivities = allActivities.slice(0, limit);
+
+    const areaCache = new Map<string, string>();
+
+    const phaseActivities = await Promise.all(
+      allActivities.map(async (activity) => {
+        const [performer, activityType] = await Promise.all([
+          activity.performed_by ? ctx.db.get(activity.performed_by) : null,
+          activity.type_id ? ctx.db.get(activity.type_id) : null,
+        ]);
+        const batch = activity.batch_id
+          ? batchMap.get(activity.batch_id) ?? null
+          : null;
+
+        let areaName: string | null = null;
+        if (batch?.area_id) {
+          const areaKey = batch.area_id.toString();
+          if (areaCache.has(areaKey)) {
+            areaName = areaCache.get(areaKey)!;
+          } else {
+            const area = await ctx.db.get(batch.area_id);
+            areaName = area?.name ?? "Sin area";
+            areaCache.set(areaKey, areaName);
+          }
+        }
+
+        return {
+          _id: activity._id,
+          title: activity.title,
+          category: activity.category,
+          crop_phase: activity.crop_phase,
+          status: activity.status,
+          started_at: activity.started_at,
+          completed_at: activity.completed_at,
+          timestamp: activity.timestamp,
+          duration_minutes: activity.duration_minutes,
+          notes: activity.notes,
+          batch_id: activity.batch_id,
+          batchCode: batch?.batch_code ?? null,
+          areaName,
+          performedByName: performer
+            ? `${performer.first_name ?? ""} ${performer.last_name ?? ""}`.trim() ||
+              "Sin nombre"
+            : null,
+          activityTypeName:
+            activityType?.name ?? activity.activity_type ?? null,
+        };
+      })
+    );
+
+    return phaseActivities;
   },
 });

@@ -84,18 +84,18 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** analizar el estado de produccion de una fase especifica sin estar limitado a una sola area
 
 #### Criterios de Aceptacion
-- [ ] La pagina `/production/phases/[phase]` muestra el detalle de una fase con todos los lotes de la facility en esa fase
-- [ ] Header: nombre de la fase con badge de color + breadcrumbs "Inicio > Produccion > [Fase]"
-- [ ] CompactStats: conteo de lotes, total plantas, dias promedio (mismas metricas que la PhaseCard)
-- [ ] **Filtro de areas**: multi-select de areas que tienen lotes en esta fase (ademas del filtro de lotes existente en el phase detail de areas)
-- [ ] **Filtro de lotes**: checkboxes con codigos de lote para filtrar actividades (igual que en area phase detail)
-- [ ] **Filtro de categoria**: dropdown de categorias de actividad (igual que en area phase detail)
-- [ ] Tabla de actividades con columnas: Fecha, Tipo, Lote, Area, Responsable, Duracion, Notas
-- [ ] Nota: incluye columna "Area" (diferencia vs area phase detail que no la necesita)
-- [ ] Click en fila de actividad navega a `/production/activities/[actId]` (o reutiliza la ruta existente de areas)
-- [ ] Click en codigo de lote navega a `/batches/[id]`
-- [ ] Si no hay lotes en la fase, mostrar empty state "Sin lotes en esta fase"
-- [ ] Si no hay actividades con los filtros aplicados, mostrar "Sin actividades"
+- [x] La pagina `/production/phases/[phase]` muestra el detalle de una fase con todos los lotes de la facility en esa fase
+- [x] Header: nombre de la fase con badge de color + breadcrumbs "Inicio > Produccion > [Fase]"
+- [x] CompactStats: conteo de lotes, total plantas, dias promedio (mismas metricas que la PhaseCard)
+- [x] **Filtro de areas**: multi-select de areas que tienen lotes en esta fase (ademas del filtro de lotes existente en el phase detail de areas)
+- [x] **Filtro de lotes**: checkboxes con codigos de lote para filtrar actividades (igual que en area phase detail)
+- [x] **Filtro de categoria**: dropdown de categorias de actividad (igual que en area phase detail)
+- [x] Tabla de actividades con columnas: Fecha, Tipo, Lote, Area, Responsable, Duracion, Notas
+- [x] Nota: incluye columna "Area" (diferencia vs area phase detail que no la necesita)
+- [x] Click en fila de actividad navega a `/production/activities/[actId]` (o reutiliza la ruta existente de areas)
+- [x] Click en codigo de lote navega a `/batches/[id]`
+- [x] Si no hay lotes en la fase, mostrar empty state "Sin lotes en esta fase"
+- [x] Si no hay actividades con los filtros aplicados, mostrar "Sin actividades"
 
 #### Backend
 - Query nueva: `api.batches.listByPhase` — obtener todos los lotes activos en una fase para una facility
