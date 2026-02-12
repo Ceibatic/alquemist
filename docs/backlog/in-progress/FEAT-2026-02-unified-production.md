@@ -191,15 +191,15 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** simplificar la navegacion reflejando que cada orden corresponde tipicamente a un solo lote
 
 #### Criterios de Aceptacion
-- [ ] El detalle de la orden tiene 3 tabs en lugar de 4: "Detalle" | "Fases" | "Actividades" (se elimina tab "Lotes")
-- [ ] En el tab "Detalle", se agrega una seccion "Lote de produccion" que muestra:
+- [x] El detalle de la orden tiene 3 tabs en lugar de 4: "Detalle" | "Fases" | "Actividades" (se elimina tab "Lotes")
+- [x] En el tab "Detalle", se agrega una seccion "Lote de produccion" que muestra:
   - Si hay un lote vinculado: card con codigo del lote, fase actual, plantas actuales, mortalidad, dias en produccion, area, y link "Ver detalle del lote" que navega a `/batches/[id]`
   - Si hay multiples lotes (ordenes legacy): mostrar lista de cards de lotes con la misma info
   - Si no hay lotes (orden en planificacion): mostrar "Sin lote asignado — se creara al activar la orden"
-- [ ] La funcionalidad del tab "Fases" se mantiene identica (completar fases)
-- [ ] La funcionalidad del tab "Actividades" se mantiene identica (programadas + historial)
-- [ ] El boton "Activar Orden" sigue creando el lote automaticamente y la seccion de lote se actualiza en tiempo real
-- [ ] No se modifica el backend — la query `getById` ya incluye batches
+- [x] La funcionalidad del tab "Fases" se mantiene identica (completar fases)
+- [x] La funcionalidad del tab "Actividades" se mantiene identica (programadas + historial)
+- [x] El boton "Activar Orden" sigue creando el lote automaticamente y la seccion de lote se actualiza en tiempo real
+- [x] No se modifica el backend — la query `getById` ya incluye batches
 
 #### Frontend
 - Modificar: pagina de detalle de orden — eliminar TabsTrigger de "Lotes", agregar seccion en tab Detalle
