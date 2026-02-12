@@ -86,15 +86,15 @@ Adicionalmente, se crea un componente reutilizable de **Formulario de Reporte de
 **para** configurar rapidamente los insumos necesarios sin navegar entre multiples dialogos
 
 #### Criterios de Aceptacion
-- [ ] **Paso 3 — Recursos**: se muestra un buscador de productos con campo de texto que filtra en tiempo real por nombre o codigo
-- [ ] Al encontrar un producto, se muestra en una lista de resultados con nombre, codigo, unidad base y boton "Agregar"
-- [ ] Al hacer click en "Agregar", el producto se anade a la lista de "Recursos seleccionados" debajo del buscador
-- [ ] En la lista de recursos seleccionados, cada item muestra inline: nombre del producto, input de cantidad (number), selector de base (fijo/por planta/por m²/por zona/por L solucion), selector de direccion (consumido/aplicado/producido), boton de eliminar
-- [ ] Se puede editar la cantidad directamente en la lista sin abrir un dialogo separado
-- [ ] Opcionalmente se puede expandir cada recurso para ver/editar campos adicionales: metodo de aplicacion, tasa de aplicacion, notas, es requerido (toggle)
+- [x] **Paso 3 — Recursos**: se muestra un buscador de productos con campo de texto que filtra en tiempo real por nombre o codigo
+- [x] Al encontrar un producto, se muestra en una lista de resultados con nombre, codigo, unidad base y boton "Agregar"
+- [x] Al hacer click en "Agregar", el producto se anade a la lista de "Recursos seleccionados" debajo del buscador
+- [x] En la lista de recursos seleccionados, cada item muestra inline: nombre del producto, input de cantidad (number), selector de base (fijo/por planta/por m²/por zona/por L solucion), selector de direccion (consumido/aplicado/producido), boton de eliminar
+- [x] Se puede editar la cantidad directamente en la lista sin abrir un dialogo separado
+- [x] Opcionalmente se puede expandir cada recurso para ver/editar campos adicionales: metodo de aplicacion, tasa de aplicacion, notas, es requerido (toggle)
 - [ ] Los recursos se muestran con subtotales visuales (cantidad × base)
-- [ ] Al guardar el template, todos los recursos se persisten en `activity_template_resources`
-- [ ] Si el template ya tiene recursos (modo edicion), se cargan al abrir el paso
+- [x] Al guardar el template, todos los recursos se persisten en `activity_template_resources`
+- [x] Si el template ya tiene recursos (modo edicion), se cargan al abrir el paso
 
 #### Backend
 - Sin cambios en schema — usa la tabla existente `activity_template_resources`

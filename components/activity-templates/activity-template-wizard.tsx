@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { WizardStepBasic, type WizardBasicData } from './wizard-step-basic';
 import { WizardStepFields } from './wizard-step-fields';
+import { WizardStepResources, type WizardResource } from './wizard-step-resources';
 
 const STEPS = [
   { key: 'basic', label: 'Tipo y basico', icon: FileText },
@@ -57,6 +58,11 @@ export function ActivityTemplateWizard({ templateId, isNew }: ActivityTemplateWi
   // Step 2: Form fields
   const [formFields, setFormFields] = useState<string[]>([]);
 
+  // Step 3: Resources (local state — synced to DB on save)
+  const [wizardResources, setWizardResources] = useState<WizardResource[]>([]);
+  // Track original resource IDs for diffing on save (edit mode)
+  const [originalResourceIds, setOriginalResourceIds] = useState<Set<string>>(new Set());
+
   // Query existing template for edit mode
   const template = useQuery(
     api.activityTemplates.getById,
@@ -65,6 +71,9 @@ export function ActivityTemplateWizard({ templateId, isNew }: ActivityTemplateWi
 
   const createMutation = useMutation(api.activityTemplates.create);
   const updateMutation = useMutation(api.activityTemplates.update);
+  const addResourceMutation = useMutation(api.activityTemplates.addResource);
+  const updateResourceMutation = useMutation(api.activityTemplates.updateResource);
+  const removeResourceMutation = useMutation(api.activityTemplates.removeResource);
 
   // Load template data in edit mode
   useEffect(() => {
@@ -80,6 +89,26 @@ export function ActivityTemplateWizard({ templateId, isNew }: ActivityTemplateWi
         phaseDayEnd: template.phase_day_end?.toString() ?? '',
       });
       setFormFields(template.form_fields ?? []);
+
+      // Load existing resources into wizard state
+      if (template.resources) {
+        const existing: WizardResource[] = template.resources.map((r) => ({
+          existingId: r._id,
+          productId: r.product_id,
+          productName: '', // Will be resolved by the step component from product query
+          productSku: '',
+          quantity: r.quantity,
+          quantityBasis: r.quantity_basis,
+          direction: r.direction,
+          applicationRate: r.application_rate ?? '',
+          applicationMethod: r.application_method ?? '',
+          isRequired: r.is_required,
+          notes: r.notes ?? '',
+        }));
+        setWizardResources(existing);
+        setOriginalResourceIds(new Set(template.resources.map((r) => r._id)));
+      }
+
       setLoaded(true);
     }
   }, [template, loaded]);
@@ -94,7 +123,7 @@ export function ActivityTemplateWizard({ templateId, isNew }: ActivityTemplateWi
         return null;
       case 1: // Fields — no required selections
         return null;
-      case 2: // Resources — placeholder
+      case 2: // Resources — no required selections
         return null;
       case 3: // Config — placeholder
         return null;
@@ -116,15 +145,68 @@ export function ActivityTemplateWizard({ templateId, isNew }: ActivityTemplateWi
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   };
 
+  /** Sync wizard resources to the DB after template create/update */
+  const syncResources = async (targetTemplateId: Id<'activity_templates'>) => {
+    // Resources that were in DB but are no longer in wizard state → remove
+    const currentExistingIds = new Set(
+      wizardResources.filter((r) => r.existingId).map((r) => r.existingId!)
+    );
+    for (const origId of originalResourceIds) {
+      if (!currentExistingIds.has(origId)) {
+        await removeResourceMutation({
+          resourceId: origId as Id<'activity_template_resources'>,
+        });
+      }
+    }
+
+    // For each resource in wizard state:
+    for (const resource of wizardResources) {
+      if (resource.existingId) {
+        // Update existing
+        await updateResourceMutation({
+          resourceId: resource.existingId as Id<'activity_template_resources'>,
+          productId: resource.productId as Id<'products'>,
+          quantity: resource.quantity,
+          quantityBasis: resource.quantityBasis,
+          direction: resource.direction,
+          applicationRate: resource.applicationRate || undefined,
+          applicationMethod: resource.applicationMethod || undefined,
+          isRequired: resource.isRequired,
+          notes: resource.notes || undefined,
+        });
+      } else {
+        // Add new
+        await addResourceMutation({
+          templateId: targetTemplateId,
+          productId: resource.productId as Id<'products'>,
+          quantity: resource.quantity,
+          quantityBasis: resource.quantityBasis,
+          direction: resource.direction,
+          applicationRate: resource.applicationRate || undefined,
+          applicationMethod: resource.applicationMethod || undefined,
+          isRequired: resource.isRequired,
+          notes: resource.notes || undefined,
+        });
+      }
+    }
+  };
+
   const handleSave = async () => {
-    // Validate all steps
-    for (let i = 0; i <= currentStep; i++) {
+    // Validate required steps
+    for (let i = 0; i <= Math.min(currentStep, 0); i++) {
       const error = validateStep(i);
       if (error) {
         toast.error(error);
         setCurrentStep(i);
         return;
       }
+    }
+    // Always validate step 0 (basic is required)
+    const basicError = validateStep(0);
+    if (basicError) {
+      toast.error(basicError);
+      setCurrentStep(0);
+      return;
     }
 
     if (!currentCompanyId) return;
@@ -142,24 +224,36 @@ export function ActivityTemplateWizard({ templateId, isNew }: ActivityTemplateWi
         phaseDayEnd: basicData.phaseDayEnd ? Number(basicData.phaseDayEnd) : undefined,
         defaultPriority: basicData.defaultPriority,
         formFields: formFields.length > 0 ? formFields : undefined,
-        // Defaults for fields not yet in wizard steps 3-4
+        // Defaults for fields not yet in wizard step 4
         frequencyType: template?.frequency_type ?? 'once',
         requiresVerification: template?.requires_verification ?? false,
       };
 
+      let savedTemplateId: Id<'activity_templates'>;
+
       if (isNew) {
-        const newId = await createMutation({
+        savedTemplateId = await createMutation({
           ...baseArgs,
           companyId: currentCompanyId,
         });
-        toast.success('Template creado');
-        router.push(`/activity-templates/${newId}`);
       } else if (templateId) {
         await updateMutation({
           templateId,
           ...baseArgs,
         });
-        toast.success('Template actualizado');
+        savedTemplateId = templateId;
+      } else {
+        return;
+      }
+
+      // Sync resources to DB
+      if (wizardResources.length > 0 || originalResourceIds.size > 0) {
+        await syncResources(savedTemplateId);
+      }
+
+      toast.success(isNew ? 'Template creado' : 'Template actualizado');
+      if (isNew) {
+        router.push(`/activity-templates/${savedTemplateId}`);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al guardar');
@@ -174,7 +268,6 @@ export function ActivityTemplateWizard({ templateId, isNew }: ActivityTemplateWi
       <nav aria-label="Progreso del wizard">
         <ol className="flex items-center gap-2">
           {STEPS.map((step, index) => {
-            const Icon = step.icon;
             const isActive = index === currentStep;
             const isCompleted = index < currentStep;
             const isAccessible = index <= currentStep;
@@ -247,15 +340,10 @@ export function ActivityTemplateWizard({ templateId, isNew }: ActivityTemplateWi
           )}
 
           {currentStep === 2 && (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Package className="h-12 w-12 mb-4" />
-              <p className="text-sm">
-                Seleccion de recursos — disponible proximamente
-              </p>
-              <p className="text-xs mt-1">
-                Puedes guardar el template ahora y agregar recursos desde el detalle
-              </p>
-            </div>
+            <WizardStepResources
+              resources={wizardResources}
+              onChange={setWizardResources}
+            />
           )}
 
           {currentStep === 3 && (
