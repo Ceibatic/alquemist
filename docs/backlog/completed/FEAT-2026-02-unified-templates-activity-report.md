@@ -338,12 +338,39 @@ Adicionalmente, se crea un componente reutilizable de **Formulario de Reporte de
 
 ---
 
-## Implementacion (llenado por /implement-feature)
-
-_Esta seccion se completa automaticamente al implementar la feature._
+## Implementacion
 
 ### Commits
+- `d3565aa` — feat(templates): US-TPL.1 unified templates page with three tabs
+- `cb68111` — feat(templates): US-TPL.2 activity template wizard with type/basic and form fields steps
+- `2549f7c` — feat(templates): US-TPL.3 wizard step 3 resource cart with product search
+- `fc9ddbd` — feat(templates): US-TPL.4 wizard step 4 final configuration
+- `74af6e3` — feat(activities): US-TPL.5 activity report sheet base component
+- `92f2072` — feat(activities): US-TPL.6 quality check step in activity report sheet
+- `7a1947d` — feat(activities): US-TPL.7 integrate report sheet in scheduled activities and areas
+- `a842cf7` — feat(templates): US-TPL.8 navigation cleanup and deprecated route redirects
 
 ### Archivos Modificados
+- `app/(dashboard)/templates/page.tsx` — unified templates page with 3 tabs
+- `app/(dashboard)/activity-templates/[id]/page.tsx` — wizard editor for activity templates
+- `app/(dashboard)/activity-templates/page.tsx` — redirect to /templates?tab=activities
+- `app/(dashboard)/quality-checks/page.tsx` — redirect to /templates?tab=quality
+- `app/(dashboard)/quality-checks/templates/[id]/page.tsx` — breadcrumbs updated
+- `app/(dashboard)/quality-checks/inspections/[id]/page.tsx` — breadcrumbs updated
+- `app/(dashboard)/scheduled-activities/page.tsx` — "Reportar" button + template selector
+- `components/activity-templates/activity-template-wizard.tsx` — 4-step wizard container
+- `components/activity-templates/wizard-step-basic.tsx` — step 1: type and basic info
+- `components/activity-templates/wizard-step-fields.tsx` — step 2: form field selection
+- `components/activity-templates/wizard-step-resources.tsx` — step 3: resource cart
+- `components/activity-templates/wizard-step-config.tsx` — step 4: config, QC, recurrence
+- `components/activities/activity-report-sheet.tsx` — report sheet with QC 2-step flow
+- `components/areas/area-history-tab.tsx` — "Registrar actividad" button
+- `components/areas/area-production-tab.tsx` — batch-level report integration
+- `components/areas/phase-card.tsx` — report button on batch rows
+- `components/home/operative-dashboard.tsx` — updated QC quick action link
+- `convex/schema.ts` — form_fields, quality_check_template_id, requires_photos, requires_attachments
+- `convex/activityTemplates.ts` — create/update/duplicate mutations for new fields
+- `convex/cultivationSchedules.ts` — markScheduledActivityCompleted mutation
 
 ### Fecha de Completado
+2026-02-11
