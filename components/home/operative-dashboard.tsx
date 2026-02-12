@@ -58,7 +58,7 @@ export function OperativeDashboard({ data }: OperativeDashboardProps) {
             icon={Layers}
             title="Lotes Asignados"
             value={data.quickStats.activeBatchesAssigned}
-            href="/batches"
+            href="/production"
           />
         </div>
       </section>
@@ -179,7 +179,7 @@ export function OperativeDashboard({ data }: OperativeDashboardProps) {
               <Layers className="h-5 w-5 text-green-600" />
               Mis Lotes
             </CardTitle>
-            <Link href="/batches">
+            <Link href="/production">
               <Button variant="outline" size="sm">
                 Ver todos
               </Button>
@@ -226,7 +226,7 @@ export function OperativeDashboard({ data }: OperativeDashboardProps) {
           <QuickActionButton
             icon={Layers}
             label="Ver Lotes"
-            href="/batches"
+            href="/production"
           />
           <QuickActionButton
             icon={Calendar}

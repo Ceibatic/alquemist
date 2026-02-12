@@ -39,7 +39,7 @@ export function AdminDashboard({ data }: AdminDashboardProps) {
             icon={ClipboardList}
             title="Ordenes Activas"
             value={data.overview.activeOrders}
-            href="/production-orders"
+            href="/production?tab=orders"
             variant="primary"
           />
           <KPICard
@@ -52,7 +52,7 @@ export function AdminDashboard({ data }: AdminDashboardProps) {
             icon={Layers}
             title="Lotes Activos"
             value={data.overview.activeBatches}
-            href="/batches"
+            href="/production"
           />
           <KPICard
             icon={MapPin}
@@ -109,7 +109,7 @@ export function AdminDashboard({ data }: AdminDashboardProps) {
               </span>
             </div>
             <div className="pt-2 border-t">
-              <Link href="/production-orders">
+              <Link href="/production?tab=orders">
                 <Button variant="ghost" size="sm" className="w-full">
                   Ver todas las ordenes
                   <ChevronRight className="ml-1 h-4 w-4" />
@@ -171,7 +171,7 @@ export function AdminDashboard({ data }: AdminDashboardProps) {
               </div>
             </div>
             <div className="pt-2 border-t">
-              <Link href="/batches">
+              <Link href="/production">
                 <Button variant="ghost" size="sm" className="w-full">
                   Ver lotes
                   <ChevronRight className="ml-1 h-4 w-4" />
@@ -227,7 +227,7 @@ export function AdminDashboard({ data }: AdminDashboardProps) {
               <Clock className="h-5 w-5 text-gray-500" />
               Ordenes Recientes
             </CardTitle>
-            <Link href="/production-orders">
+            <Link href="/production?tab=orders">
               <Button variant="outline" size="sm">
                 Ver todas
               </Button>
@@ -239,7 +239,7 @@ export function AdminDashboard({ data }: AdminDashboardProps) {
             <div className="flex flex-col items-center justify-center py-8 text-gray-500">
               <ClipboardList className="h-8 w-8 mb-2" />
               <span className="text-sm">No hay ordenes recientes</span>
-              <Link href="/production-orders/new" className="mt-2">
+              <Link href="/production?tab=orders" className="mt-2">
                 <Button size="sm">Crear primera orden</Button>
               </Link>
             </div>
@@ -391,7 +391,7 @@ function OrderItem({ order }: OrderItemProps) {
 
   return (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    <Link href={`/production-orders/${order.id}` as any}>
+    <Link href={`/production/orders/${order.id}` as any}>
       <div className="flex items-center gap-4 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">

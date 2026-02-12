@@ -166,7 +166,7 @@ export default function BatchDetailPage({ params }: PageProps) {
         icon={Layers}
         breadcrumbs={[
           { label: 'Inicio', href: '/dashboard' },
-          { label: 'Lotes', href: '/batches' },
+          { label: 'Produccion', href: '/production' },
           { label: batch.batch_code },
         ]}
         description={`${batch.cultivarName || batch.cropTypeName || 'Sin cultivar'} - ${batch.areaName || 'Sin area'}`}
@@ -427,7 +427,7 @@ export default function BatchDetailPage({ params }: PageProps) {
                       <Button
                         variant="link"
                         className="p-0 h-auto text-green-700"
-                        onClick={() => router.push(`/production-orders/${batch.production_order_id}`)}
+                        onClick={() => router.push(`/production/orders/${batch.production_order_id}`)}
                       >
                         {batch.orderNumber}
                       </Button>

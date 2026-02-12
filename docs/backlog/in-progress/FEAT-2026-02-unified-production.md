@@ -231,7 +231,7 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 - [x] Si no hay actividades para hoy, mostrar empty state "Sin actividades programadas para hoy"
 - [x] La seccion solo se muestra si hay facility seleccionada
 - [x] En la vista administrativa, la seccion de actividades se muestra como card mas compacto con solo los conteos (pendientes hoy, atrasadas, completadas hoy)
-- [ ] La pagina `/scheduled-activities` redirige a `/dashboard` con scroll a la seccion de actividades
+- [x] La pagina `/scheduled-activities` redirige a `/dashboard` con scroll a la seccion de actividades
 
 #### Frontend
 - Componente: `components/dashboard/today-activities-widget.tsx` (nuevo)
@@ -255,20 +255,20 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** tener una experiencia coherente con un unico punto de acceso para produccion
 
 #### Criterios de Aceptacion
-- [ ] El sidebar muestra "Produccion" en lugar de "Lotes", "Ordenes", "Actividades" (3 items → 1 item)
-- [ ] Se eliminan del sidebar: "Lotes" (`/batches`), "Ordenes" (`/production-orders`), "Actividades" (`/scheduled-activities`)
-- [ ] Redirects configurados:
+- [x] El sidebar muestra "Produccion" en lugar de "Lotes", "Ordenes", "Actividades" (3 items → 1 item)
+- [x] Se eliminan del sidebar: "Lotes" (`/batches`), "Ordenes" (`/production-orders`), "Actividades" (`/scheduled-activities`)
+- [x] Redirects configurados:
   - `/batches` → `/production` (tab Tablero, donde los lotes se ven por fase)
   - `/production-orders` → `/production?tab=orders`
   - `/production-orders/[id]` → `/production/orders/[id]`
   - `/scheduled-activities` → `/dashboard`
-- [ ] La ruta `/batches/[id]` (detalle del lote) se mantiene funcional — NO se redirige ni elimina
-- [ ] Breadcrumbs de paginas internas apuntan correctamente:
+- [x] La ruta `/batches/[id]` (detalle del lote) se mantiene funcional — NO se redirige ni elimina
+- [x] Breadcrumbs de paginas internas apuntan correctamente:
   - Detalle de fase: "Inicio > Produccion > [Fase]"
   - Detalle de orden: "Inicio > Produccion > Ordenes > [Numero]"
   - Detalle de lote: "Inicio > Produccion > [Codigo]" (actualizar breadcrumbs del batch detail)
-- [ ] No quedan links rotos en toda la aplicacion (verificar con build)
-- [ ] El sidebar queda con los siguientes items:
+- [x] No quedan links rotos en toda la aplicacion (verificar con build)
+- [x] El sidebar queda con los siguientes items:
   1. Dashboard
   2. Areas
   3. Produccion (NUEVO — reemplaza Lotes + Ordenes + Actividades)

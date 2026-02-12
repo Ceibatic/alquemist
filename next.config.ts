@@ -6,6 +6,25 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
   },
+  async redirects() {
+    return [
+      {
+        source: '/production-orders',
+        destination: '/production?tab=orders',
+        permanent: false,
+      },
+      {
+        source: '/production-orders/:id',
+        destination: '/production/orders/:id',
+        permanent: false,
+      },
+      {
+        source: '/scheduled-activities',
+        destination: '/dashboard',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
