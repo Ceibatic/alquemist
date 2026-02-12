@@ -155,10 +155,10 @@ Adicionalmente, se crea un componente reutilizable de **Formulario de Reporte de
 **para** registrar rapidamente la ejecucion de actividades con la informacion correcta sin formularios genericos
 
 #### Criterios de Aceptacion
-- [ ] El componente `ActivityReportSheet` se abre como Sheet lateral (derecha) con ancho adecuado (~500px desktop, full en mobile)
-- [ ] **Props requeridos**: `activityTemplateId` (o template inline), `entityType` (batch/plant/area), `entityId`, `areaId`, `facilityId`, `scheduledActivityId` (opcional, si viene de una actividad programada)
-- [ ] **Seccion esencial** (siempre visible): fecha de actividad (default hoy), responsable (default usuario actual), lote (pre-llenado si viene de contexto), area (pre-llenado), fase del cultivo (pre-llenado)
-- [ ] **Seccion campos opcionales**: renderiza solo los campos habilitados en `template.form_fields`:
+- [x] El componente `ActivityReportSheet` se abre como Sheet lateral (derecha) con ancho adecuado (~500px desktop, full en mobile)
+- [x] **Props requeridos**: `activityTemplateId` (o template inline), `entityType` (batch/plant/area), `entityId`, `areaId`, `facilityId`, `scheduledActivityId` (opcional, si viene de una actividad programada)
+- [x] **Seccion esencial** (siempre visible): fecha de actividad (default hoy), responsable (default usuario actual), lote (pre-llenado si viene de contexto), area (pre-llenado), fase del cultivo (pre-llenado)
+- [x] **Seccion campos opcionales**: renderiza solo los campos habilitados en `template.form_fields`:
   - `observations`: textarea de observaciones/notas
   - `environmental_temp`: input numerico para temperatura (°C)
   - `environmental_humidity`: input numerico para humedad (%)
@@ -168,12 +168,12 @@ Adicionalmente, se crea un componente reutilizable de **Formulario de Reporte de
   - `estimated_cost` / `actual_cost`: inputs numericos para costos
   - `additional_responsible`: selector de usuario adicional
   - `checklist`: renderiza los checklist items del template como checkboxes
-- [ ] **Seccion recursos**: si el template tiene recursos, muestra una tabla editable con los productos pre-cargados. El usuario puede ajustar cantidades reales consumidas
-- [ ] El sheet tiene header fijo con titulo (nombre de actividad) y boton de cerrar
-- [ ] El sheet tiene footer fijo con botones: "Cancelar" y "Completar Actividad" (amber-500)
+- [x] **Seccion recursos**: si el template tiene recursos, muestra una tabla editable con los productos pre-cargados. El usuario puede ajustar cantidades reales consumidas
+- [x] El sheet tiene header fijo con titulo (nombre de actividad) y boton de cerrar
+- [x] El sheet tiene footer fijo con botones: "Cancelar" y "Completar Actividad" (amber-500)
 - [ ] Validacion: campos esenciales requeridos, recursos con cantidad > 0 si estan marcados como requeridos
-- [ ] Al completar, llama a `api.activities.logInventoryMovement` (o mutation equivalente) con todos los datos
-- [ ] Toast de confirmacion al completar exitosamente y cierre automatico del sheet
+- [x] Al completar, llama a `api.activities.logV2` con todos los datos y consume_inventory
+- [x] Toast de confirmacion al completar exitosamente y cierre automatico del sheet
 
 #### Backend
 - Query: `api.activityTemplates.getById` (con recursos y checklist)
