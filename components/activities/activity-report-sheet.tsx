@@ -162,6 +162,7 @@ export function ActivityReportSheet({
 
   // Mutations
   const logActivityV2 = useMutation(api.activities.logV2);
+  const markScheduledCompleted = useMutation(api.cultivationSchedules.markScheduledActivityCompleted);
   const createQualityCheck = useMutation(api.qualityChecks.create);
   const completeQualityCheck = useMutation(api.qualityChecks.complete);
 
@@ -274,7 +275,7 @@ export function ActivityReportSheet({
   /** Submit activity without QC */
   const handleSubmitActivityOnly = async (qcSkipped = false) => {
     const args = buildActivityArgs();
-    if (!args) return;
+    if (!args || !currentUser) return;
 
     try {
       setIsSubmitting(true);
@@ -284,6 +285,14 @@ export function ActivityReportSheet({
         : args.notes;
 
       await logActivityV2({ ...args, notes });
+
+      // Mark scheduled activity as completed
+      if (scheduledActivityId) {
+        await markScheduledCompleted({
+          scheduledActivityId,
+          completedBy: currentUser.userId,
+        });
+      }
 
       toast.success('Actividad registrada exitosamente');
       onOpenChange(false);
@@ -317,7 +326,15 @@ export function ActivityReportSheet({
         facilityId: effectiveFacilityId as Id<'facilities'>,
       });
 
-      // 3. Complete the QC record
+      // 3. Mark scheduled activity as completed
+      if (scheduledActivityId) {
+        await markScheduledCompleted({
+          scheduledActivityId,
+          completedBy: currentUser.userId,
+        });
+      }
+
+      // 4. Complete the QC record
       const durationMinutes = qcStartTime
         ? Math.round((Date.now() - qcStartTime) / 60000)
         : undefined;

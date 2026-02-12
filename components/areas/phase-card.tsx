@@ -1,8 +1,9 @@
 'use client';
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { getPhaseLabel, getPhaseColors } from '@/lib/constants/phases';
-import { Layers, Sprout, Clock } from 'lucide-react';
+import { Layers, Sprout, Clock, ClipboardList } from 'lucide-react';
 import Link from 'next/link';
 import { Id } from '@/convex/_generated/dataModel';
 
@@ -21,6 +22,7 @@ interface PhaseCardProps {
   avgDays: number;
   batches: PhaseBatch[];
   areaId: string;
+  onReportBatch?: (batch: PhaseBatch, phase: string) => void;
 }
 
 export function PhaseCard({
@@ -30,6 +32,7 @@ export function PhaseCard({
   avgDays,
   batches,
   areaId,
+  onReportBatch,
 }: PhaseCardProps) {
   const colors = getPhaseColors(phase);
   const label = getPhaseLabel(phase);
@@ -68,7 +71,7 @@ export function PhaseCard({
             {batches.map((batch) => (
               <div
                 key={batch._id}
-                className="flex items-center justify-between py-1.5 px-2 rounded bg-gray-50 text-sm"
+                className="flex items-center justify-between py-1.5 px-2 rounded bg-gray-50 text-sm group"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-mono font-medium text-gray-900 truncate">
@@ -76,9 +79,26 @@ export function PhaseCard({
                   </span>
                   <span className="text-gray-500 truncate">{batch.cultivarName}</span>
                 </div>
-                <span className="text-gray-700 font-medium whitespace-nowrap ml-2">
-                  {batch.current_quantity.toLocaleString()}
-                </span>
+                <div className="flex items-center gap-1">
+                  {onReportBatch && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-amber-600 hover:text-amber-700"
+                      title="Registrar actividad"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onReportBatch(batch, phase);
+                      }}
+                    >
+                      <ClipboardList className="h-3 w-3" />
+                    </Button>
+                  )}
+                  <span className="text-gray-700 font-medium whitespace-nowrap ml-1">
+                    {batch.current_quantity.toLocaleString()}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

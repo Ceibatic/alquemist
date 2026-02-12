@@ -7,8 +7,17 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { ColumnDef } from '@tanstack/react-table';
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -16,9 +25,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ActivityReportSheet } from '@/components/activities/activity-report-sheet';
+import { useFacility } from '@/components/providers/facility-provider';
 import { getPhaseLabel } from '@/lib/constants/phases';
 import { ACTIVITY_CATEGORIES } from '@/lib/constants/activity-types';
-import { Activity } from 'lucide-react';
+import { Activity, Plus } from 'lucide-react';
 
 interface AreaHistoryTabProps {
   areaId: Id<'areas'>;
@@ -102,12 +113,36 @@ const columns: ColumnDef<ActivityRow, unknown>[] = [
 
 export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
   const router = useRouter();
+  const { currentCompanyId } = useFacility();
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+
+  // Template selector state
+  const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [reportSheetOpen, setReportSheetOpen] = useState(false);
+  const [reportTemplateId, setReportTemplateId] = useState<Id<'activity_templates'> | null>(null);
 
   const activities = useQuery(api.activities.listByArea, {
     areaId,
     category: categoryFilter !== 'all' ? categoryFilter : undefined,
   });
+
+  const activityTemplates = useQuery(
+    api.activityTemplates.list,
+    currentCompanyId ? { companyId: currentCompanyId, isActive: true } : 'skip' as any
+  );
+
+  const handleRegisterActivity = () => {
+    setSelectedTemplateId('');
+    setTemplateSelectorOpen(true);
+  };
+
+  const handleTemplateSelectorConfirm = () => {
+    if (!selectedTemplateId) return;
+    setReportTemplateId(selectedTemplateId as Id<'activity_templates'>);
+    setTemplateSelectorOpen(false);
+    setReportSheetOpen(true);
+  };
 
   const data = useMemo(() => activities ?? [], [activities]);
 
@@ -132,8 +167,8 @@ export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex items-center gap-3">
+      {/* Filters + Register button */}
+      <div className="flex items-center justify-between gap-3">
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Categoria" />
@@ -147,6 +182,15 @@ export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
             ))}
           </SelectContent>
         </Select>
+
+        <Button
+          size="sm"
+          onClick={handleRegisterActivity}
+          className="bg-amber-500 hover:bg-amber-600"
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          Registrar actividad
+        </Button>
       </div>
 
       {/* Table */}
@@ -158,6 +202,60 @@ export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
         onRowClick={(row) => router.push(`/areas/${areaId}/activities/${row._id}`)}
         loading={activities === undefined}
       />
+
+      {/* Template selector dialog */}
+      <Dialog open={templateSelectorOpen} onOpenChange={setTemplateSelectorOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Seleccionar template de actividad</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Template *</Label>
+              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(activityTemplates ?? []).map((t) => (
+                    <SelectItem key={t._id} value={t._id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplateSelectorOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleTemplateSelectorConfirm}
+              disabled={!selectedTemplateId}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              Continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Activity Report Sheet */}
+      {reportTemplateId && (
+        <ActivityReportSheet
+          open={reportSheetOpen}
+          onOpenChange={setReportSheetOpen}
+          activityTemplateId={reportTemplateId}
+          entityType="area"
+          entityId={areaId}
+          areaId={areaId}
+          onCompleted={() => {
+            setReportSheetOpen(false);
+            setReportTemplateId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

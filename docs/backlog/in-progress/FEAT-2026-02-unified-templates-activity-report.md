@@ -242,13 +242,13 @@ Adicionalmente, se crea un componente reutilizable de **Formulario de Reporte de
 **para** completar actividades rapidamente sin navegar a multiples paginas
 
 #### Criterios de Aceptacion
-- [ ] En `/scheduled-activities`, cada actividad pendiente muestra boton "Reportar" (icono + texto) que abre el `ActivityReportSheet` pre-llenado con datos de la actividad programada
-- [ ] El sheet recibe `scheduledActivityId` y pre-llena: template de actividad, lote, area, fase, fecha programada
-- [ ] Al completar el reporte, la scheduled_activity se marca como `completed` automaticamente con `actual_start_time` y `actual_end_time`
-- [ ] En el tab de Historial del area (`/areas/[id]` → History tab), se agrega boton "Registrar actividad" que abre el sheet con area pre-seleccionada
-- [ ] En el tab de Produccion del area, cada batch card muestra opcion "Registrar actividad" en su menu contextual
-- [ ] El boton "Reportar" muestra el nombre del template de actividad como tooltip
-- [ ] Si la actividad no tiene template vinculado, el boton "Reportar" permite seleccionar un template antes de abrir el formulario completo
+- [x] En `/scheduled-activities`, cada actividad pendiente muestra boton "Reportar" (icono + texto) que abre el `ActivityReportSheet` pre-llenado con datos de la actividad programada
+- [x] El sheet recibe `scheduledActivityId` y pre-llena: template de actividad, lote, area, fase, fecha programada
+- [x] Al completar el reporte, la scheduled_activity se marca como `completed` automaticamente con `actual_start_time` y `actual_end_time`
+- [x] En el tab de Historial del area (`/areas/[id]` → History tab), se agrega boton "Registrar actividad" que abre el sheet con area pre-seleccionada
+- [x] En el tab de Produccion del area, cada batch card muestra opcion "Registrar actividad" en su menu contextual
+- [x] El boton "Reportar" muestra el nombre del template de actividad como tooltip
+- [x] Si la actividad no tiene template vinculado, el boton "Reportar" permite seleccionar un template antes de abrir el formulario completo
 
 #### Frontend
 - Modificar: `app/(dashboard)/scheduled-activities/page.tsx` — agregar boton "Reportar" por actividad

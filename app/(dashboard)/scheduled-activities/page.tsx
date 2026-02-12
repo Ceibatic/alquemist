@@ -20,10 +20,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { ActivityReportSheet } from '@/components/activities/activity-report-sheet';
 import { useFacility } from '@/components/providers/facility-provider';
 import { toast } from 'sonner';
 import {
@@ -34,6 +42,7 @@ import {
   SkipForward,
   ChevronDown,
   Loader2,
+  ClipboardList,
 } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -50,6 +59,27 @@ export default function ScheduledActivitiesPage() {
   const [skipReason, setSkipReason] = useState('');
   const [isSkipping, setIsSkipping] = useState(false);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
+
+  // Report sheet state
+  const [reportSheetOpen, setReportSheetOpen] = useState(false);
+  const [reportContext, setReportContext] = useState<{
+    templateId: Id<'activity_templates'>;
+    entityType: 'batch' | 'plant' | 'area';
+    entityId: string;
+    scheduledActivityId: Id<'scheduled_activities'>;
+    cropPhase?: string;
+    batchId?: Id<'batches'>;
+  } | null>(null);
+
+  // Template selector dialog for activities without template_id
+  const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
+  const [pendingReportActivity, setPendingReportActivity] = useState<{
+    scheduledActivityId: Id<'scheduled_activities'>;
+    entityType: string;
+    entityId: string;
+    cropPhase?: string;
+  } | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
 
   const now = Date.now();
   const startOfDay = new Date();
@@ -97,6 +127,62 @@ export default function ScheduledActivitiesPage() {
   );
 
   const skipMutation = useMutation(api.cultivationSchedules.skipScheduledActivity);
+
+  // Activity templates for selector dialog
+  const activityTemplates = useQuery(
+    api.activityTemplates.list,
+    currentCompanyId ? { companyId: currentCompanyId, isActive: true } : 'skip' as any
+  );
+
+  const handleReport = (activity: {
+    _id: string;
+    template_id?: string | null;
+    entity_type?: string;
+    entity_id?: string;
+    crop_phase?: string | null;
+  }) => {
+    const entityType = (activity.entity_type as 'batch' | 'plant' | 'area') || 'batch';
+    const entityId = activity.entity_id ?? '';
+    const cropPhase = activity.crop_phase ?? undefined;
+
+    if (activity.template_id) {
+      // Has template — open report sheet directly
+      setReportContext({
+        templateId: activity.template_id as Id<'activity_templates'>,
+        entityType,
+        entityId,
+        scheduledActivityId: activity._id as Id<'scheduled_activities'>,
+        cropPhase,
+        batchId: entityType === 'batch' ? (entityId as Id<'batches'>) : undefined,
+      });
+      setReportSheetOpen(true);
+    } else {
+      // No template — show template selector
+      setPendingReportActivity({
+        scheduledActivityId: activity._id as Id<'scheduled_activities'>,
+        entityType,
+        entityId,
+        cropPhase,
+      });
+      setSelectedTemplateId('');
+      setTemplateSelectorOpen(true);
+    }
+  };
+
+  const handleTemplateSelectorConfirm = () => {
+    if (!selectedTemplateId || !pendingReportActivity) return;
+    const { scheduledActivityId, entityType, entityId, cropPhase } = pendingReportActivity;
+    setReportContext({
+      templateId: selectedTemplateId as Id<'activity_templates'>,
+      entityType: entityType as 'batch' | 'plant' | 'area',
+      entityId,
+      scheduledActivityId: scheduledActivityId as Id<'scheduled_activities'>,
+      cropPhase,
+      batchId: entityType === 'batch' ? (entityId as Id<'batches'>) : undefined,
+    });
+    setTemplateSelectorOpen(false);
+    setReportSheetOpen(true);
+  };
 
   // Stats
   const pendingToday = (todayActivities ?? []).filter((a) => a.status === 'pending').length;
@@ -206,6 +292,7 @@ export default function ScheduledActivitiesPage() {
                   key={a._id}
                   activity={a}
                   isOverdue
+                  onReport={() => handleReport(a)}
                   onSkip={() => {
                     setActivityToSkip(a._id);
                     setSkipDialogOpen(true);
@@ -248,6 +335,7 @@ export default function ScheduledActivitiesPage() {
                       <ActivityRow
                         key={a._id}
                         activity={a}
+                        onReport={() => handleReport(a)}
                         onSkip={() => {
                           setActivityToSkip(a._id);
                           setSkipDialogOpen(true);
@@ -289,7 +377,7 @@ export default function ScheduledActivitiesPage() {
               ) : (
                 <div className="space-y-2">
                   {upcomingActivities.map((a) => (
-                    <ActivityRow key={a._id} activity={a} />
+                    <ActivityRow key={a._id} activity={a} onReport={() => handleReport(a)} />
                   ))}
                 </div>
               )}
@@ -334,6 +422,63 @@ export default function ScheduledActivitiesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Template selector dialog — for activities without template_id */}
+      <Dialog open={templateSelectorOpen} onOpenChange={setTemplateSelectorOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Seleccionar template de actividad</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Template *</Label>
+              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(activityTemplates ?? []).map((t) => (
+                    <SelectItem key={t._id} value={t._id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplateSelectorOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleTemplateSelectorConfirm}
+              disabled={!selectedTemplateId}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Activity Report Sheet */}
+      {reportContext && (
+        <ActivityReportSheet
+          open={reportSheetOpen}
+          onOpenChange={setReportSheetOpen}
+          activityTemplateId={reportContext.templateId}
+          entityType={reportContext.entityType}
+          entityId={reportContext.entityId}
+          scheduledActivityId={reportContext.scheduledActivityId}
+          cropPhase={reportContext.cropPhase}
+          batchId={reportContext.batchId}
+          onCompleted={() => {
+            setReportSheetOpen(false);
+            setReportContext(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -343,6 +488,7 @@ function ActivityRow({
   activity,
   isOverdue,
   onSkip,
+  onReport,
 }: {
   activity: {
     _id: string;
@@ -354,9 +500,13 @@ function ActivityRow({
     activityTypeName?: string | null;
     crop_phase?: string | null;
     estimated_duration_minutes?: number | null;
+    template_id?: string | null;
+    entity_type?: string;
+    entity_id?: string;
   };
   isOverdue?: boolean;
   onSkip?: () => void;
+  onReport?: () => void;
 }) {
   const date = new Date(activity.scheduled_date);
   const displayName = activity.templateName ?? activity.activityTypeName ?? activity.activity_type;
@@ -410,16 +560,32 @@ function ActivityRow({
         </div>
       </div>
 
-      {activity.status === 'pending' && onSkip && (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={onSkip}
-          className="text-yellow-600 hover:text-yellow-700"
-        >
-          <SkipForward className="h-3 w-3 mr-1" />
-          Saltar
-        </Button>
+      {activity.status === 'pending' && (
+        <div className="flex items-center gap-1">
+          {onReport && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onReport}
+              className="text-amber-600 hover:text-amber-700"
+              title={activity.templateName ? `Reportar: ${activity.templateName}` : 'Reportar actividad'}
+            >
+              <ClipboardList className="h-3 w-3 mr-1" />
+              Reportar
+            </Button>
+          )}
+          {onSkip && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onSkip}
+              className="text-yellow-600 hover:text-yellow-700"
+            >
+              <SkipForward className="h-3 w-3 mr-1" />
+              Saltar
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );

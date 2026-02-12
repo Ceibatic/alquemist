@@ -588,6 +588,46 @@ export const skipScheduledActivity = mutation({
 });
 
 /**
+ * Mark a scheduled activity as completed when reported via ActivityReportSheet.
+ * Lighter than activities.completeScheduledActivity — only patches the status.
+ */
+export const markScheduledActivityCompleted = mutation({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+    completedBy: v.id("users"),
+  },
+  handler: async (ctx, { scheduledActivityId, completedBy }) => {
+    const activity = await ctx.db.get(scheduledActivityId);
+    if (!activity) {
+      throw new Error("Actividad programada no encontrada");
+    }
+    if (activity.status === "completed") return; // Already done
+
+    const now = Date.now();
+    await ctx.db.patch(scheduledActivityId, {
+      status: "completed",
+      actual_start_time: now,
+      actual_end_time: now,
+      completed_by: completedBy,
+      updated_at: now,
+    });
+
+    // Update schedule progress if linked
+    if (activity.schedule_id) {
+      const schedule = await ctx.db.get(activity.schedule_id);
+      if (schedule) {
+        await ctx.db.patch(activity.schedule_id, {
+          completed_activities: schedule.completed_activities + 1,
+          updated_at: now,
+        });
+      }
+    }
+
+    return scheduledActivityId;
+  },
+});
+
+/**
  * Reschedule an activity to a new date.
  */
 export const rescheduleActivity = mutation({
