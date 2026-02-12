@@ -272,15 +272,15 @@ Adicionalmente, se crea un componente reutilizable de **Formulario de Reporte de
 **para** tener una experiencia consistente donde cada funcionalidad tiene un unico punto de acceso
 
 #### Criterios de Aceptacion
-- [ ] El sidebar muestra un solo item "Templates" (en lugar de "Templates", "Templates Actividad", "Control de Calidad")
-- [ ] Se eliminan los items del sidebar: "Templates Actividad" y "Control de Calidad"
-- [ ] La ruta `/activity-templates` redirige a `/templates?tab=activities` via Next.js redirect
-- [ ] La ruta `/activity-templates/[id]` redirige a `/templates/activity/[id]` (nueva ruta para detalle/edit de activity template)
-- [ ] La ruta `/quality-checks` redirige a `/templates?tab=quality` via Next.js redirect
-- [ ] La ruta `/quality-checks/templates/[id]` redirige a `/templates/quality/[id]` (nueva ruta para detalle de QC template)
-- [ ] La ruta `/quality-checks/inspections/[id]` se mantiene accesible (o se mueve a `/inspections/[id]`)
-- [ ] Breadcrumbs de paginas internas apuntan a `/templates` con el tab correcto
-- [ ] No quedan links rotos en toda la aplicacion (verificar con build)
+- [x] El sidebar muestra un solo item "Templates" (en lugar de "Templates", "Templates Actividad", "Control de Calidad")
+- [x] Se eliminan los items del sidebar: "Templates Actividad" y "Control de Calidad"
+- [x] La ruta `/activity-templates` redirige a `/templates?tab=activities` via Next.js redirect
+- [x] La ruta `/activity-templates/[id]` se mantiene funcional con breadcrumbs apuntando a `/templates?tab=activities`
+- [x] La ruta `/quality-checks` redirige a `/templates?tab=quality` via Next.js redirect
+- [x] La ruta `/quality-checks/templates/[id]` se mantiene funcional con breadcrumbs apuntando a `/templates?tab=quality`
+- [x] La ruta `/quality-checks/inspections/[id]` se mantiene accesible con breadcrumbs actualizados
+- [x] Breadcrumbs de paginas internas apuntan a `/templates` con el tab correcto
+- [x] No quedan links rotos en toda la aplicacion (verificar con build)
 
 #### Frontend
 - Modificar: `components/layout/sidebar.tsx` — reducir a un solo item "Templates"

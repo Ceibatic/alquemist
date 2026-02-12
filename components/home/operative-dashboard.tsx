@@ -216,7 +216,7 @@ export function OperativeDashboard({ data }: OperativeDashboardProps) {
           <QuickActionButton
             icon={ClipboardCheck}
             label="Control de Calidad"
-            href="/quality-checks"
+            href="/templates?tab=quality"
             badge={
               data.quickStats.pendingQualityChecks > 0
                 ? data.quickStats.pendingQualityChecks.toString()
