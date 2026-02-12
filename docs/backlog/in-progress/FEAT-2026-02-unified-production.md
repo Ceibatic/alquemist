@@ -161,13 +161,13 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** centralizar la gestion del ciclo de produccion sin una pagina separada
 
 #### Criterios de Aceptacion
-- [ ] El tab "Ordenes" renderiza el contenido actual de `/production-orders` sin cambios funcionales
-- [ ] CompactStats en la parte superior: Total ordenes, Activas, En planificacion, Completadas (reutiliza stats actuales)
-- [ ] Listado de ordenes con los mismos filtros: estado (planning/active/completed/cancelled), busqueda por numero/cultivar/template
-- [ ] Boton "Crear orden" abre `ProductionOrderCreateModal` existente
-- [ ] Cards de ordenes con el mismo formato existente (`ProductionOrderCard`)
-- [ ] Click en card navega al detalle de la orden: `/production/orders/[id]` (nueva ruta bajo /production)
-- [ ] El detalle de la orden se mueve a `/production/orders/[id]` manteniendo toda la funcionalidad existente (tabs Detalle, Fases, Actividades)
+- [x] El tab "Ordenes" renderiza el contenido actual de `/production-orders` sin cambios funcionales
+- [x] CompactStats en la parte superior: Total ordenes, Activas, En planificacion, Completadas (reutiliza stats actuales)
+- [x] Listado de ordenes con los mismos filtros: estado (planning/active/completed/cancelled), busqueda por numero/cultivar/template
+- [x] Boton "Crear orden" abre `ProductionOrderCreateModal` existente
+- [x] Cards de ordenes con el mismo formato existente (`ProductionOrderCard`)
+- [x] Click en card navega al detalle de la orden: `/production/orders/[id]` (nueva ruta bajo /production)
+- [x] El detalle de la orden se mueve a `/production/orders/[id]` manteniendo toda la funcionalidad existente (tabs Detalle, Fases, Actividades)
 
 #### Frontend
 - Componente: reutilizar `ProductionOrderList` en el tab

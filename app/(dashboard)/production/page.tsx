@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFacility } from '@/components/providers/facility-provider';
 import { ProductionPhaseBoard } from '@/components/production/production-phase-board';
 import { ProductionAnalytics } from '@/components/production/production-analytics';
+import { ProductionOrdersTab } from '@/components/production/production-orders-tab';
 import { Factory } from 'lucide-react';
 
 const VALID_TABS = ['board', 'analytics', 'orders'] as const;
@@ -102,9 +103,10 @@ function ProductionPageContent() {
         </TabsContent>
 
         <TabsContent value="orders">
-          <div className="py-8 text-center text-muted-foreground">
-            Ordenes de produccion — por implementar (US-PRD.5)
-          </div>
+          <ProductionOrdersTab
+            companyId={currentCompanyId}
+            facilityId={currentFacilityId || undefined}
+          />
         </TabsContent>
       </Tabs>
     </div>
