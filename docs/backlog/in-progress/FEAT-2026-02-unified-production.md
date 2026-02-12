@@ -123,16 +123,16 @@ El tablero de fases muestra un board con las fases de produccion activas a nivel
 **para** monitorear el rendimiento general de la produccion sin necesidad de consultar multiples paginas
 
 #### Criterios de Aceptacion
-- [ ] El tab "Analytics" muestra 4 KPI cards principales en fila:
+- [x] El tab "Analytics" muestra 4 KPI cards principales en fila:
   - **Plantas activas**: total de plantas en lotes activos de la facility, con icono Sprout
   - **Mortalidad global**: porcentaje promedio de mortalidad de lotes activos, con icono TrendingDown, color rojo si > 15%, amber si 5-15%, verde si < 5%
   - **Ordenes activas**: conteo de ordenes en estado "active", con icono ClipboardList
   - **Rendimiento acumulado**: suma de `actual_yield` de ordenes completadas en los ultimos 12 meses, con icono BarChart y unidad (kg/plantas segun config)
-- [ ] Debajo de KPIs, seccion "Distribucion por fase" con un chart de barras horizontal o donut chart mostrando cantidad de lotes por fase (con colores de fase)
-- [ ] Seccion "Mortalidad por periodo": chart de linea mostrando evolucion de mortalidad promedio en los ultimos 30/60/90 dias (selector de periodo)
-- [ ] Seccion "Lotes recientes": tabla con los ultimos 10 lotes creados mostrando: codigo, cultivar, fase actual, plantas, dias, area
-- [ ] Todos los KPIs se calculan para la facility seleccionada
-- [ ] Loading state: skeleton cards y charts mientras carga
+- [x] Debajo de KPIs, seccion "Distribucion por fase" con un chart de barras horizontal o donut chart mostrando cantidad de lotes por fase (con colores de fase)
+- [x] Seccion "Mortalidad por periodo": chart de linea mostrando evolucion de mortalidad promedio en los ultimos 30/60/90 dias (selector de periodo)
+- [x] Seccion "Lotes recientes": tabla con los ultimos 10 lotes creados mostrando: codigo, cultivar, fase actual, plantas, dias, area
+- [x] Todos los KPIs se calculan para la facility seleccionada
+- [x] Loading state: skeleton cards y charts mientras carga
 
 #### Backend
 - Query: reutilizar `api.batches.getStats` (ya retorna totalBatches, activeBatches, totalPlantsActive, averageMortalityRate, batchesByPhase)

@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFacility } from '@/components/providers/facility-provider';
 import { ProductionPhaseBoard } from '@/components/production/production-phase-board';
+import { ProductionAnalytics } from '@/components/production/production-analytics';
 import { Factory } from 'lucide-react';
 
 const VALID_TABS = ['board', 'analytics', 'orders'] as const;
@@ -89,9 +90,10 @@ function ProductionPageContent() {
 
         <TabsContent value="analytics">
           {currentFacilityId ? (
-            <div className="py-8 text-center text-muted-foreground">
-              Analytics de produccion — por implementar (US-PRD.4)
-            </div>
+            <ProductionAnalytics
+              companyId={currentCompanyId}
+              facilityId={currentFacilityId}
+            />
           ) : (
             <div className="py-8 text-center text-muted-foreground">
               Selecciona una instalacion para ver analytics.
