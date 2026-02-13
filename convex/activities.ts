@@ -1022,7 +1022,7 @@ export const listByBatch = query({
         q.eq("entity_type", "batch").eq("entity_id", args.batchId)
       );
 
-    const activities = await activitiesQuery.order("desc").take(args.limit || 100);
+    const activities = await activitiesQuery.order("desc").take(args.limit || 500);
 
     // Filter by activity_type if specified
     const filtered = args.activity_type

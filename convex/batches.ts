@@ -212,7 +212,17 @@ export const getById = query({
       totalPhases: number;
     } | null = null;
 
-    if (batch.production_order_id && batch.current_phase) {
+    // Fetch all order phases for the production order (used for phase navigator)
+    let orderPhases: Array<{
+      phase_name: string;
+      phase_order: number;
+      planned_start_date: number;
+      planned_end_date: number;
+      actual_start_date?: number;
+      status: string;
+    }> = [];
+
+    if (batch.production_order_id) {
       const phases = await ctx.db
         .query("order_phases")
         .withIndex("by_order", (q) =>
@@ -220,7 +230,18 @@ export const getById = query({
         )
         .collect();
 
-      if (phases.length > 0) {
+      orderPhases = phases
+        .sort((a, b) => a.phase_order - b.phase_order)
+        .map((p) => ({
+          phase_name: p.phase_name,
+          phase_order: p.phase_order,
+          planned_start_date: p.planned_start_date,
+          planned_end_date: p.planned_end_date,
+          actual_start_date: p.actual_start_date,
+          status: p.status,
+        }));
+
+      if (batch.current_phase && phases.length > 0) {
         const matchingPhase = phases.find(
           (p) => p.phase_name.toLowerCase() === batch.current_phase?.toLowerCase()
         );
@@ -250,6 +271,7 @@ export const getById = query({
       parentBatchCode: parentBatch?.batch_code || null,
       daysInProduction,
       currentPhaseInfo,
+      orderPhases,
       plants,
       plantsCount: plants.length,
       movements: movements.sort((a, b) => b.movement_date - a.movement_date),
