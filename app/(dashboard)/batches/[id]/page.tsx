@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { BatchStatsBar } from '@/components/batches/batch-stats-bar';
 import { BatchActivitiesTable } from '@/components/batches/batch-activities-table';
+import { BatchAnalyticsTab } from '@/components/batches/batch-analytics-tab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PHASE_LABELS } from '@/lib/constants/phases';
 import { useRouter } from 'next/navigation';
@@ -309,14 +310,14 @@ export default function BatchDetailPage({ params }: PageProps) {
           />
         </TabsContent>
 
-        {/* Analytics Tab — placeholder, implemented in US-LOT.5 */}
+        {/* Analytics Tab */}
         <TabsContent value="analytics" className="mt-6">
-          <Card>
-            <CardContent className="py-12 text-center text-gray-500">
-              <TrendingDown className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-              <p>Analytics (en desarrollo)</p>
-            </CardContent>
-          </Card>
+          <BatchAnalyticsTab
+            batchId={batchId}
+            orderPhases={batch.orderPhases ?? []}
+            losses={batch.losses ?? []}
+            initialQuantity={batch.initial_quantity}
+          />
         </TabsContent>
       </Tabs>
 
