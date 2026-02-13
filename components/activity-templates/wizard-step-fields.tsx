@@ -13,7 +13,6 @@ import {
   Zap,
   Clock,
   DollarSign,
-  ListChecks,
   UserPlus,
 } from 'lucide-react';
 import type { WizardFormData } from './activity-template-wizard';
@@ -94,13 +93,6 @@ const OPTIONAL_FIELDS = [
     description: 'Costo real de la actividad ejecutada',
     icon: DollarSign,
     group: 'cost',
-  },
-  {
-    id: 'checklist',
-    label: 'Checklist de verificacion',
-    description: 'Lista de pasos a verificar (configurada en el template)',
-    icon: ListChecks,
-    group: 'general',
   },
   {
     id: 'additional_responsible',

@@ -1329,13 +1329,18 @@ export default defineSchema({
     checklist_responses: v.optional(v.any()), // responses from checklist on completion
     skipped_reason: v.optional(v.string()),
 
+    // Multi-batch grouping (US-ACT3.3)
+    group_id: v.optional(v.string()), // UUID shared across multi-batch scheduled activities
+    source: v.optional(v.string()), // "template" | "manual" | "adhoc"
+
     created_at: v.number(),
     updated_at: v.number(),
   })
     .index("by_entity", ["entity_type", "entity_id"])
     .index("by_status", ["status"])
     .index("by_scheduled_date", ["scheduled_date"])
-    .index("by_schedule", ["schedule_id"]),
+    .index("by_schedule", ["schedule_id"])
+    .index("by_group", ["group_id"]),
 
   mother_plants: defineTable({
     qr_code: v.string(), // Unique
@@ -1625,7 +1630,8 @@ export default defineSchema({
     .index("by_type_id", ["type_id"])
     .index("by_batch_id", ["batch_id"])
     .index("by_facility", ["facility_id"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_parent_activity", ["parent_activity_id"]),
 
   activity_types: defineTable({
     company_id: v.id("companies"),
@@ -2104,7 +2110,7 @@ export default defineSchema({
   })
     .index("by_template", ["template_id"]),
 
-  // Checklist steps for a template — verified during execution
+  // DEPRECATED — dead code, no se renderiza en ejecucion. Tabla conservada por datos existentes.
   activity_template_checklist: defineTable({
     template_id: v.id("activity_templates"),
     step_number: v.number(),

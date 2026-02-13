@@ -54,7 +54,6 @@ const PRIORITY_COLORS: Record<string, string> = {
 interface ActivityTemplateCardProps {
   template: Doc<'activity_templates'> & {
     resourceCount?: number;
-    checklistCount?: number;
   };
   activityTypeName?: string;
   activityTypeColor?: string;

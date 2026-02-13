@@ -17,17 +17,19 @@ import { OrderBatchSummary } from '@/components/production-orders/order-batch-su
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/providers/user-provider';
+import { ActivityExecutionSheet } from '@/components/activities/activity-execution-sheet';
+import { ScheduleActivityDialog } from '@/components/activities/schedule-activity-dialog';
 import {
   ClipboardList,
   Play,
-  Leaf,
   Calendar,
+  CalendarPlus,
   CheckCircle,
   Clock,
   Info,
   Activity,
   AlertTriangle,
-  Loader2,
+  Plus,
 } from 'lucide-react';
 
 interface PageProps {
@@ -47,9 +49,15 @@ export default function ProductionOrderDetailPage({ params }: PageProps) {
 
   const activateOrder = useMutation(api.productionOrders.activate);
   const completePhase = useMutation(api.productionOrders.completePhase);
-  const completeScheduledActivity = useMutation(api.activities.completeScheduledActivity);
-
-  const [completingActivity, setCompletingActivity] = useState<string | null>(null);
+  // Execution sheet + schedule dialog state
+  const [executionSheetOpen, setExecutionSheetOpen] = useState(false);
+  const [executionContext, setExecutionContext] = useState<{
+    scheduledActivityId?: Id<'scheduled_activities'>;
+    entityType?: string;
+    entityId?: string;
+    batchIds?: string[];
+  } | null>(null);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
   const formatDate = (timestamp?: number) => {
     if (!timestamp) return '-';
@@ -96,27 +104,14 @@ export default function ProductionOrderDetailPage({ params }: PageProps) {
     }
   };
 
-  const handleCompleteActivity = async (activityId: Id<'scheduled_activities'>) => {
-    if (!userId) return;
-    setCompletingActivity(activityId);
-    try {
-      await completeScheduledActivity({
-        scheduledActivityId: activityId,
-        completedBy: userId as Id<'users'>,
-      });
-      toast({
-        title: 'Actividad completada',
-        description: 'La actividad ha sido registrada correctamente.',
-      });
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'No se pudo completar la actividad.',
-        variant: 'destructive',
-      });
-    } finally {
-      setCompletingActivity(null);
-    }
+  const handleReport = (activity: any) => {
+    setExecutionContext({
+      scheduledActivityId: activity._id as Id<'scheduled_activities'>,
+      entityType: activity.entity_type ?? 'batch',
+      entityId: activity.entity_id,
+      batchIds: activity.entity_type === 'batch' ? [activity.entity_id] : undefined,
+    });
+    setExecutionSheetOpen(true);
   };
 
   if (order === undefined) {
@@ -420,6 +415,29 @@ export default function ProductionOrderDetailPage({ params }: PageProps) {
 
         {/* Activities Tab */}
         <TabsContent value="activities" className="mt-6 space-y-6">
+          {/* Action buttons */}
+          <div className="flex justify-end gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setScheduleDialogOpen(true)}
+            >
+              <CalendarPlus className="h-3.5 w-3.5 mr-1" />
+              Programar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setExecutionContext(null);
+                setExecutionSheetOpen(true);
+              }}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Reportar Ad-hoc
+            </Button>
+          </div>
+
           {/* Scheduled Activities */}
           <Card>
             <CardHeader>
@@ -484,17 +502,10 @@ export default function ProductionOrderDetailPage({ params }: PageProps) {
                               <Button
                                 size="sm"
                                 variant={isOverdue ? 'destructive' : 'default'}
-                                onClick={() => handleCompleteActivity(activity._id)}
-                                disabled={completingActivity === activity._id}
+                                onClick={() => handleReport(activity)}
                               >
-                                {completingActivity === activity._id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                    Completar
-                                  </>
-                                )}
+                                <ClipboardList className="h-4 w-4 mr-1" />
+                                Reportar
                               </Button>
                             )}
                             <Badge
@@ -596,6 +607,28 @@ export default function ProductionOrderDetailPage({ params }: PageProps) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Execution sheet */}
+      <ActivityExecutionSheet
+        open={executionSheetOpen}
+        onOpenChange={setExecutionSheetOpen}
+        scheduledActivityId={executionContext?.scheduledActivityId}
+        entityType={executionContext?.entityType}
+        entityId={executionContext?.entityId}
+        batchIds={executionContext?.batchIds}
+        onCompleted={() => {
+          setExecutionSheetOpen(false);
+          setExecutionContext(null);
+        }}
+      />
+
+      {/* Schedule dialog */}
+      <ScheduleActivityDialog
+        open={scheduleDialogOpen}
+        onOpenChange={setScheduleDialogOpen}
+        fromOrderId={orderId}
+        onScheduled={() => setScheduleDialogOpen(false)}
+      />
     </div>
   );
 }
