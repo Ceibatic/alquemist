@@ -17,18 +17,13 @@ import { useToast } from '@/hooks/use-toast';
 import { PHASE_LABELS } from '@/lib/constants/phases';
 import { useRouter } from 'next/navigation';
 import {
-  BatchMoveModal,
-  BatchSplitWizard,
-  BatchLossModal,
-  BatchHarvestWizard,
-  BatchMergeModal,
-  BatchArchiveModal,
   BatchActivitiesTab,
   BatchQualityChecksTab,
   BatchGenealogyTab,
   BatchNotesTab,
   BatchCostSummary,
 } from '@/components/batches';
+import { ActivityExecutionSheet } from '@/components/activities/activity-execution-sheet';
 import { CultivationTimeline } from '@/components/cultivation/cultivation-timeline';
 import { ActiveIssuesDashboard } from '@/components/observations/active-issues-dashboard';
 import { Badge } from '@/components/ui/badge';
@@ -42,9 +37,6 @@ import {
   TrendingDown,
   ArrowRight,
   History,
-  Scissors,
-  Merge,
-  Archive,
   Activity,
   ClipboardCheck,
   GitBranch,
@@ -64,13 +56,8 @@ export default function BatchDetailPage({ params }: PageProps) {
   const router = useRouter();
   const [userId, setUserId] = useState<Id<'users'> | null>(null);
 
-  // Modal state management
-  const [moveModalOpen, setMoveModalOpen] = useState(false);
-  const [splitModalOpen, setSplitModalOpen] = useState(false);
-  const [lossModalOpen, setLossModalOpen] = useState(false);
-  const [harvestModalOpen, setHarvestModalOpen] = useState(false);
-  const [mergeModalOpen, setMergeModalOpen] = useState(false);
-  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+  // Execution sheet state
+  const [executionSheetOpen, setExecutionSheetOpen] = useState(false);
 
   // Get user ID from cookies
   useEffect(() => {
@@ -172,32 +159,13 @@ export default function BatchDetailPage({ params }: PageProps) {
         description={`${batch.cultivarName || batch.cropTypeName || 'Sin cultivar'} - ${batch.areaName || 'Sin area'}`}
         action={
           batch.status === 'active' ? (
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => setMoveModalOpen(true)}>
-                <ArrowRight className="h-4 w-4 mr-2" />
-                Mover
-              </Button>
-              <Button variant="outline" onClick={() => setSplitModalOpen(true)}>
-                <Scissors className="h-4 w-4 mr-2" />
-                Dividir
-              </Button>
-              <Button variant="outline" onClick={() => setMergeModalOpen(true)}>
-                <Merge className="h-4 w-4 mr-2" />
-                Fusionar
-              </Button>
-              <Button variant="outline" onClick={() => setHarvestModalOpen(true)}>
-                <Leaf className="h-4 w-4 mr-2" />
-                Cosechar
-              </Button>
-              <Button variant="outline" onClick={() => setLossModalOpen(true)} className="text-red-600 hover:text-red-700">
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                Perdida
-              </Button>
-              <Button variant="outline" onClick={() => setArchiveModalOpen(true)}>
-                <Archive className="h-4 w-4 mr-2" />
-                Archivar
-              </Button>
-            </div>
+            <Button
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+              onClick={() => setExecutionSheetOpen(true)}
+            >
+              <Activity className="h-4 w-4 mr-2" />
+              Reportar Actividad
+            </Button>
           ) : 'skip' as any
         }
       />
@@ -649,41 +617,16 @@ export default function BatchDetailPage({ params }: PageProps) {
         </TabsContent>
       </Tabs>
 
-      {/* Operation Modals */}
-      {batch && (
-        <>
-          <BatchMoveModal
-            batch={batch as any}
-            open={moveModalOpen}
-            onOpenChange={setMoveModalOpen}
-          />
-          <BatchSplitWizard
-            batch={batch as any}
-            open={splitModalOpen}
-            onOpenChange={setSplitModalOpen}
-          />
-          <BatchLossModal
-            batch={batch as any}
-            open={lossModalOpen}
-            onOpenChange={setLossModalOpen}
-          />
-          <BatchHarvestWizard
-            batch={batch as any}
-            open={harvestModalOpen}
-            onOpenChange={setHarvestModalOpen}
-          />
-          <BatchMergeModal
-            batch={batch as any}
-            open={mergeModalOpen}
-            onOpenChange={setMergeModalOpen}
-          />
-          <BatchArchiveModal
-            batch={batch as any}
-            open={archiveModalOpen}
-            onOpenChange={setArchiveModalOpen}
-          />
-        </>
-      )}
+      {/* Execution Sheet */}
+      <ActivityExecutionSheet
+        open={executionSheetOpen}
+        onOpenChange={setExecutionSheetOpen}
+        entityType="batch"
+        entityId={batchId}
+        batchIds={[batchId]}
+        phase={batch.current_phase}
+        onCompleted={() => setExecutionSheetOpen(false)}
+      />
     </div>
   );
 }
