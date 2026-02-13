@@ -1,37 +1,16 @@
 'use client';
 
-import { useState } from 'react';
 import { PHASE_LABELS } from '@/lib/constants/phases';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Progress } from '@/components/ui/progress';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
   Layers,
-  MoreVertical,
-  Eye,
-  ArrowRight,
-  Split,
-  Merge,
-  Trash2,
   Leaf,
   MapPin,
   Calendar,
   AlertTriangle,
-  Archive,
 } from 'lucide-react';
-import { BatchMoveModal } from './batch-move-modal';
-import { BatchSplitWizard } from './batch-split-wizard';
-import { BatchLossModal } from './batch-loss-modal';
-import { BatchHarvestWizard } from './batch-harvest-wizard';
-import { BatchMergeModal } from './batch-merge-modal';
-import { BatchArchiveModal } from './batch-archive-modal';
 import { Id } from '@/convex/_generated/dataModel';
 
 interface BatchCardProps {
@@ -69,14 +48,6 @@ interface BatchCardProps {
 }
 
 export function BatchCard({ batch, onClick }: BatchCardProps) {
-  // Modal state management
-  const [moveModalOpen, setMoveModalOpen] = useState(false);
-  const [splitModalOpen, setSplitModalOpen] = useState(false);
-  const [lossModalOpen, setLossModalOpen] = useState(false);
-  const [harvestModalOpen, setHarvestModalOpen] = useState(false);
-  const [mergeModalOpen, setMergeModalOpen] = useState(false);
-  const [archiveModalOpen, setArchiveModalOpen] = useState(false);
-
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('es-ES', {
       day: '2-digit',
@@ -167,59 +138,12 @@ export function BatchCard({ batch, onClick }: BatchCardProps) {
       </div>
 
       <CardContent className="pt-4 space-y-3">
-        {/* Title + Menu */}
-        <div className="flex items-start justify-between">
-          <div>
-            <span className="font-bold text-sm">{batch.batch_code}</span>
-            {batch.orderNumber && (
-              <p className="text-xs text-gray-500">{batch.orderNumber}</p>
-            )}
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger onClick={(e) => e.stopPropagation()}>
-              <MoreVertical className="h-4 w-4 text-gray-500" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onClick(); }}>
-                <Eye className="h-4 w-4 mr-2" />
-                Ver Detalle
-              </DropdownMenuItem>
-              {batch.status === 'active' && (
-                <>
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setMoveModalOpen(true); }}>
-                    <ArrowRight className="h-4 w-4 mr-2" />
-                    Mover
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSplitModalOpen(true); }}>
-                    <Split className="h-4 w-4 mr-2" />
-                    Dividir
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setMergeModalOpen(true); }}>
-                    <Merge className="h-4 w-4 mr-2" />
-                    Fusionar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setHarvestModalOpen(true); }}>
-                    <Leaf className="h-4 w-4 mr-2" />
-                    Cosechar
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={(e) => { e.stopPropagation(); setLossModalOpen(true); }}
-                    className="text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Registrar Perdida
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={(e) => { e.stopPropagation(); setArchiveModalOpen(true); }}
-                  >
-                    <Archive className="h-4 w-4 mr-2" />
-                    Archivar
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {/* Title */}
+        <div>
+          <span className="font-bold text-sm">{batch.batch_code}</span>
+          {batch.orderNumber && (
+            <p className="text-xs text-gray-500">{batch.orderNumber}</p>
+          )}
         </div>
 
         {/* Cultivar and Phase */}
@@ -311,37 +235,6 @@ export function BatchCard({ batch, onClick }: BatchCardProps) {
         </div>
       </CardContent>
 
-      {/* Modals */}
-      <BatchMoveModal
-        batch={batch as any}
-        open={moveModalOpen}
-        onOpenChange={setMoveModalOpen}
-      />
-      <BatchSplitWizard
-        batch={batch as any}
-        open={splitModalOpen}
-        onOpenChange={setSplitModalOpen}
-      />
-      <BatchLossModal
-        batch={batch as any}
-        open={lossModalOpen}
-        onOpenChange={setLossModalOpen}
-      />
-      <BatchHarvestWizard
-        batch={batch as any}
-        open={harvestModalOpen}
-        onOpenChange={setHarvestModalOpen}
-      />
-      <BatchMergeModal
-        batch={batch as any}
-        open={mergeModalOpen}
-        onOpenChange={setMergeModalOpen}
-      />
-      <BatchArchiveModal
-        batch={batch as any}
-        open={archiveModalOpen}
-        onOpenChange={setArchiveModalOpen}
-      />
     </Card>
   );
 }

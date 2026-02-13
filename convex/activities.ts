@@ -1022,7 +1022,7 @@ export const listByBatch = query({
         q.eq("entity_type", "batch").eq("entity_id", args.batchId)
       );
 
-    const activities = await activitiesQuery.order("desc").take(args.limit || 100);
+    const activities = await activitiesQuery.order("desc").take(args.limit || 500);
 
     // Filter by activity_type if specified
     const filtered = args.activity_type
@@ -3264,5 +3264,131 @@ export const listByPhase = query({
     );
 
     return phaseActivities;
+  },
+});
+
+/**
+ * Get aggregated analytics data for a batch
+ */
+export const getBatchAnalytics = query({
+  args: {
+    batchId: v.id("batches"),
+  },
+  handler: async (ctx, args) => {
+    // 1. Fetch all activities for the batch
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_entity", (q) =>
+        q.eq("entity_type", "batch").eq("entity_id", args.batchId)
+      )
+      .order("asc")
+      .collect();
+
+    // 2. Aggregate activities by category
+    const categoryMap = new Map<string, number>();
+    for (const a of activities) {
+      const cat = a.category || "uncategorized";
+      categoryMap.set(cat, (categoryMap.get(cat) || 0) + 1);
+    }
+    const activitiesByCategory = Array.from(categoryMap.entries())
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // 3. Aggregate activities by phase
+    const phaseMap = new Map<string, number>();
+    for (const a of activities) {
+      const phase = a.crop_phase || "unknown";
+      phaseMap.set(phase, (phaseMap.get(phase) || 0) + 1);
+    }
+    const activitiesByPhase = Array.from(phaseMap.entries())
+      .map(([phase, count]) => ({ phase, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // 4. Collect activity IDs for resource lookup
+    const activityIds = activities.map((a) => a._id);
+
+    // 5. Fetch activity_resources for these activities (batch by activity)
+    const resourceRows: Array<{
+      product_id: Id<"products">;
+      quantity: number;
+      quantity_unit: string;
+      cost_total?: number;
+    }> = [];
+
+    for (const actId of activityIds) {
+      const resources = await ctx.db
+        .query("activity_resources")
+        .withIndex("by_activity", (q) => q.eq("activity_id", actId))
+        .collect();
+      for (const r of resources) {
+        resourceRows.push({
+          product_id: r.product_id,
+          quantity: r.quantity,
+          quantity_unit: r.quantity_unit,
+          cost_total: r.cost_total,
+        });
+      }
+    }
+
+    // 6. Aggregate resources by product
+    const productAgg = new Map<
+      string,
+      { productId: Id<"products">; totalQuantity: number; unit: string; totalCost: number }
+    >();
+    for (const r of resourceRows) {
+      const key = r.product_id;
+      const existing = productAgg.get(key);
+      if (existing) {
+        existing.totalQuantity += r.quantity;
+        existing.totalCost += r.cost_total || 0;
+      } else {
+        productAgg.set(key, {
+          productId: r.product_id,
+          totalQuantity: r.quantity,
+          unit: r.quantity_unit,
+          totalCost: r.cost_total || 0,
+        });
+      }
+    }
+
+    // Sort by total cost desc and take top 5
+    const topResources = Array.from(productAgg.values())
+      .sort((a, b) => b.totalCost - a.totalCost)
+      .slice(0, 5);
+
+    // Enrich with product names
+    const resourceSummary = await Promise.all(
+      topResources.map(async (r) => {
+        const product = await ctx.db.get(r.productId);
+        return {
+          productId: r.productId,
+          productName: product?.name || "Desconocido",
+          totalQuantity: r.totalQuantity,
+          unit: r.unit,
+          totalCost: r.totalCost,
+        };
+      })
+    );
+
+    const totalCost = Array.from(productAgg.values()).reduce(
+      (sum, r) => sum + r.totalCost,
+      0
+    );
+
+    // 7. Survival curve — activities with quantity_after, ordered chronologically
+    const survivalCurve = activities
+      .filter((a) => a.quantity_after != null)
+      .map((a) => ({
+        timestamp: a.timestamp,
+        quantity: a.quantity_after as number,
+      }));
+
+    return {
+      activitiesByCategory,
+      activitiesByPhase,
+      resourceSummary,
+      totalCost,
+      survivalCurve,
+    };
   },
 });
