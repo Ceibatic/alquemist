@@ -2819,6 +2819,9 @@ export const logHarvest = mutation({
 
 /**
  * Complete a scheduled activity
+ * @deprecated Use executeActivity instead — supports multi-batch, resources, QC, and ad-hoc mode.
+ * Kept temporarily for backward compatibility with production orders page (handleCompleteActivity).
+ * Remove once all callers migrate to executeActivity.
  */
 export const completeScheduledActivity = mutation({
   args: {
