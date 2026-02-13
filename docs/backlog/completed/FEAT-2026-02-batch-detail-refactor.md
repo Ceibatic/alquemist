@@ -243,12 +243,28 @@ Ninguno — toda la data necesaria ya existe en las tablas actuales (`activities
 
 ---
 
-## Implementacion (llenado por /implement-feature)
-
-_Esta seccion se completa automaticamente al implementar la feature._
+## Implementacion
 
 ### Commits
+- `465f9ec` — feat(batches): US-LOT.1 simplify header — remove 6 modals, single action button
+- `2cfe311` — feat(batches): US-LOT.2 compact stats badges with phase progress
+- `eec2d28` — feat(batches): US-LOT.3 reduce tabs to 3 — Detalle, Actividades, Analytics
+- `85e95e4` — feat(batches): US-LOT.4 activity table with phase paginator and filters
+- `052acf7` — feat(batches): US-LOT.5 analytics tab with Recharts visualizations
 
 ### Archivos Modificados
+- `app/(dashboard)/batches/[id]/page.tsx` — refactored from 12 tabs to 3, removed 6 modals
+- `components/batches/batch-stats-bar.tsx` — NEW: compact stats badges with phase progress
+- `components/batches/batch-activities-table.tsx` — NEW: TanStack table with phase paginator and filters
+- `components/batches/batch-analytics-tab.tsx` — NEW: Recharts analytics (6 visualizations)
+- `components/batches/batch-card.tsx` — simplified actions dropdown
+- `components/batches/index.ts` — cleaned exports
+- `convex/batches.ts` — enriched getById with orderPhases
+- `convex/activities.ts` — increased listByBatch limit, added getBatchAnalytics query
+
+### Archivos Eliminados
+- 6 modales: batch-move-modal, batch-split-wizard, batch-loss-modal, batch-harvest-wizard, batch-merge-modal, batch-archive-modal
+- 4 tabs: batch-activities-tab, batch-quality-checks-tab, batch-genealogy-tab, batch-notes-tab
 
 ### Fecha de Completado
+2026-02-13
