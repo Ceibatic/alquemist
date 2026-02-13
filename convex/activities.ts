@@ -5,7 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { Id, Doc } from "./_generated/dataModel";
 import { generateInternalLotNumber, consumeFromInventoryFIFO, getActivityTypeByCode, createLaborCostEntry } from "./helpers";
 
 /**
@@ -548,6 +548,461 @@ export const logV2 = mutation({
     }
 
     return activityId;
+  },
+});
+
+// ============================================================================
+// Unified Execution — executeActivity
+// ============================================================================
+
+/**
+ * Resource entry for executeActivity.
+ */
+const executeResourceArg = v.object({
+  product_id: v.id("products"),
+  direction: v.string(),
+  quantity: v.number(),
+  quantity_unit: v.string(),
+  unit_id: v.optional(v.id("units_of_measure")),
+  inventory_item_id: v.optional(v.id("inventory_items")),
+  application_rate: v.optional(v.string()),
+  application_method: v.optional(v.string()),
+  notes: v.optional(v.string()),
+});
+
+/**
+ * Unified execution mutation that handles all activity creation flows:
+ * 1. From scheduled activity (scheduledActivityId)
+ * 2. From multi-batch group (groupId)
+ * 3. Ad-hoc (typeId + batchIds)
+ *
+ * For multi-batch: creates 1 parent activity (entity_type "multi_batch") + N children.
+ */
+export const executeActivity = mutation({
+  args: {
+    // Origin context (at least one)
+    scheduledActivityId: v.optional(v.id("scheduled_activities")),
+    groupId: v.optional(v.string()),
+
+    // For ad-hoc / direct execution
+    typeId: v.optional(v.id("activity_types")),
+    batchIds: v.optional(v.array(v.id("batches"))),
+    entityType: v.optional(v.string()),
+    entityId: v.optional(v.string()),
+
+    // Execution data
+    performedBy: v.id("users"),
+    companyId: v.optional(v.id("companies")),
+    facilityId: v.optional(v.id("facilities")),
+    cropPhase: v.optional(v.string()),
+    zoneId: v.optional(v.id("areas")),
+    observations: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    durationMinutes: v.optional(v.number()),
+    priority: v.optional(v.string()),
+
+    // Environmental
+    envTemp: v.optional(v.number()),
+    envHumidity: v.optional(v.number()),
+    envPh: v.optional(v.number()),
+    envEc: v.optional(v.number()),
+
+    // Resources
+    resources: v.optional(v.array(executeResourceArg)),
+    consumeInventory: v.optional(v.boolean()),
+
+    // Multi-batch resource distribution
+    resourceDistribution: v.optional(v.string()), // "identical" | "split_proportional"
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // ── Resolve activity type ──────────────────────────────────────────
+    let typeId = args.typeId;
+    let scheduledActivity: Doc<"scheduled_activities"> | null = null;
+    let groupActivities: Doc<"scheduled_activities">[] = [];
+
+    // If coming from a single scheduled activity
+    if (args.scheduledActivityId) {
+      scheduledActivity = await ctx.db.get(args.scheduledActivityId);
+      if (!scheduledActivity) {
+        throw new Error("Actividad programada no encontrada");
+      }
+      if (scheduledActivity.status === "completed") {
+        throw new Error("Actividad ya completada");
+      }
+      typeId = typeId ?? scheduledActivity.type_id;
+    }
+
+    // If coming from a multi-batch group
+    if (args.groupId) {
+      const groupItems = await ctx.db
+        .query("scheduled_activities")
+        .withIndex("by_group", (q) => q.eq("group_id", args.groupId))
+        .collect();
+      groupActivities = groupItems.filter(
+        (sa) => sa.status !== "completed" && sa.status !== "cancelled"
+      );
+      if (groupActivities.length === 0) {
+        throw new Error("No hay actividades pendientes en el grupo");
+      }
+      typeId = typeId ?? groupActivities[0]!.type_id;
+    }
+
+    if (!typeId) {
+      throw new Error("Se requiere typeId o una actividad programada con type_id");
+    }
+
+    const activityType = await ctx.db.get(typeId);
+    if (!activityType) {
+      throw new Error("Tipo de actividad no encontrado");
+    }
+
+    const category = activityType.category;
+    const activityTypeCode = activityType.code;
+    const title = activityType.name;
+
+    // ── Determine batch list ───────────────────────────────────────────
+    let batchIds: Id<"batches">[] = [];
+
+    if (args.groupId && groupActivities.length > 0) {
+      // Multi-batch from group: extract batch IDs from scheduled activities
+      batchIds = groupActivities
+        .filter((sa) => sa.entity_type === "batch")
+        .map((sa) => sa.entity_id as Id<"batches">);
+    } else if (args.batchIds && args.batchIds.length > 0) {
+      batchIds = args.batchIds;
+    } else if (args.scheduledActivityId && scheduledActivity) {
+      if (scheduledActivity.entity_type === "batch") {
+        batchIds = [scheduledActivity.entity_id as Id<"batches">];
+      }
+    }
+
+    const isMultiBatch = batchIds.length > 1;
+    const distribution = args.resourceDistribution || "identical";
+    const resources = args.resources || [];
+
+    // ── Build environmental metadata ────────────────────────────────
+    const envData: Record<string, number> = {};
+    if (args.envTemp !== undefined) envData.env_temp = args.envTemp;
+    if (args.envHumidity !== undefined) envData.env_humidity = args.envHumidity;
+    if (args.envPh !== undefined) envData.env_ph = args.envPh;
+    if (args.envEc !== undefined) envData.env_ec = args.envEc;
+
+    // ── Helper to create one activity + resources ─────────────────
+    async function createSingleActivity(opts: {
+      entityType: string;
+      entityId: string;
+      batchId?: Id<"batches">;
+      facilityId?: Id<"facilities">;
+      companyId?: Id<"companies">;
+      cropPhase?: string;
+      parentActivityId?: Id<"activities">;
+      scheduledActivityId?: Id<"scheduled_activities">;
+      activityResources: typeof resources;
+    }): Promise<Id<"activities">> {
+      const activityId = await ctx.db.insert("activities", {
+        entity_type: opts.entityType,
+        entity_id: opts.entityId,
+        activity_type: activityTypeCode,
+        performed_by: args.performedBy,
+        timestamp: now,
+        duration_minutes: args.durationMinutes,
+        materials_consumed: [],
+        equipment_used: [],
+        photos: [],
+        files: [],
+        created_at: now,
+
+        scheduled_activity_id: opts.scheduledActivityId,
+        notes: args.notes,
+
+        type_id: typeId!,
+        category,
+        company_id: opts.companyId ?? args.companyId,
+        facility_id: opts.facilityId ?? args.facilityId,
+        batch_id: opts.batchId,
+        crop_phase: opts.cropPhase ?? args.cropPhase,
+        zone_id: args.zoneId,
+        status: "completed",
+        priority: args.priority || "routine",
+        completed_at: now,
+        title,
+        observations: args.observations,
+        parent_activity_id: opts.parentActivityId,
+        activity_metadata: Object.keys(envData).length > 0 ? envData : undefined,
+      });
+
+      // Create activity_resources
+      const materialsConsumedLegacy: Array<Record<string, unknown>> = [];
+
+      for (const resource of opts.activityResources) {
+        let costPerUnit: number | undefined;
+        let costTotal: number | undefined;
+        let batchNumber: string | undefined;
+
+        if (
+          args.consumeInventory &&
+          (resource.direction === "consumed" || resource.direction === "applied")
+        ) {
+          if (resource.inventory_item_id) {
+            const item = await ctx.db.get(resource.inventory_item_id);
+            if (!item) throw new Error("Item de inventario no encontrado");
+            if (item.quantity_available < resource.quantity) {
+              const product = await ctx.db.get(resource.product_id);
+              throw new Error(
+                `Stock insuficiente para ${product?.name || "producto"}. Disponible: ${item.quantity_available}, Requerido: ${resource.quantity}`
+              );
+            }
+            await ctx.db.patch(resource.inventory_item_id, {
+              quantity_available: item.quantity_available - resource.quantity,
+              last_movement_date: now,
+              updated_at: now,
+            });
+            costPerUnit = item.cost_per_unit;
+            costTotal = costPerUnit ? costPerUnit * resource.quantity : undefined;
+            batchNumber = item.batch_number;
+          } else {
+            const consumed = await consumeFromInventoryFIFO(ctx, {
+              product_id: resource.product_id,
+              quantity: resource.quantity,
+              facility_id: opts.facilityId ?? args.facilityId,
+              area_id: args.zoneId,
+            });
+
+            for (const ci of consumed) {
+              const ciCostTotal = ci.cost_per_unit
+                ? ci.cost_per_unit * ci.quantity_consumed
+                : undefined;
+
+              await ctx.db.insert("activity_resources", {
+                activity_id: activityId,
+                direction: resource.direction,
+                product_id: resource.product_id,
+                inventory_item_id: ci.inventory_item_id,
+                quantity: ci.quantity_consumed,
+                unit_id: resource.unit_id,
+                quantity_unit: resource.quantity_unit,
+                cost_per_unit: ci.cost_per_unit,
+                cost_total: ciCostTotal,
+                application_rate: resource.application_rate,
+                application_method: resource.application_method,
+                batch_number: ci.batch_number,
+                notes: resource.notes,
+                created_at: now,
+              });
+
+              materialsConsumedLegacy.push({
+                product_id: resource.product_id,
+                inventory_item_id: ci.inventory_item_id,
+                quantity: ci.quantity_consumed,
+                quantity_unit: resource.quantity_unit,
+                batch_number: ci.batch_number,
+                consumed: true,
+              });
+            }
+            continue;
+          }
+        }
+
+        if (!costTotal && costPerUnit) {
+          costTotal = costPerUnit * resource.quantity;
+        }
+
+        await ctx.db.insert("activity_resources", {
+          activity_id: activityId,
+          direction: resource.direction,
+          product_id: resource.product_id,
+          inventory_item_id: resource.inventory_item_id,
+          quantity: resource.quantity,
+          unit_id: resource.unit_id,
+          quantity_unit: resource.quantity_unit,
+          cost_per_unit: costPerUnit,
+          cost_total: costTotal,
+          application_rate: resource.application_rate,
+          application_method: resource.application_method,
+          batch_number: batchNumber,
+          notes: resource.notes,
+          created_at: now,
+        });
+
+        if (resource.direction === "consumed" || resource.direction === "applied") {
+          materialsConsumedLegacy.push({
+            product_id: resource.product_id,
+            inventory_item_id: resource.inventory_item_id,
+            quantity: resource.quantity,
+            quantity_unit: resource.quantity_unit,
+            batch_number: batchNumber,
+            consumed: !!args.consumeInventory,
+          });
+        }
+      }
+
+      if (materialsConsumedLegacy.length > 0) {
+        await ctx.db.patch(activityId, {
+          materials_consumed: materialsConsumedLegacy,
+        });
+      }
+
+      // Labor cost
+      if (args.durationMinutes && args.durationMinutes > 0 && (opts.facilityId ?? args.facilityId)) {
+        await createLaborCostEntry(ctx, {
+          userId: args.performedBy,
+          durationMinutes: args.durationMinutes,
+          activityId,
+          facilityId: (opts.facilityId ?? args.facilityId)!,
+          batchId: opts.batchId,
+          cropPhase: opts.cropPhase ?? args.cropPhase,
+        });
+      }
+
+      return activityId;
+    }
+
+    // ── Mark scheduled activity/group as completed ──────────────────
+    async function markScheduledCompleted(saId: Id<"scheduled_activities">) {
+      await ctx.db.patch(saId, {
+        status: "completed",
+        actual_end_time: now,
+        completed_by: args.performedBy,
+        completion_notes: args.notes,
+        updated_at: now,
+      });
+
+      // Update schedule progress
+      const sa = await ctx.db.get(saId);
+      if (sa?.schedule_id) {
+        const schedule = await ctx.db.get(sa.schedule_id);
+        if (schedule) {
+          await ctx.db.patch(sa.schedule_id, {
+            completed_activities: schedule.completed_activities + 1,
+            updated_at: now,
+          });
+        }
+      }
+    }
+
+    // ── Execute: single batch ──────────────────────────────────────
+    if (!isMultiBatch) {
+      const batchId = batchIds[0];
+      let entityType = args.entityType || "batch";
+      let entityId = args.entityId || (batchId as string);
+      let facilityId = args.facilityId;
+      let companyId = args.companyId;
+      let cropPhase = args.cropPhase;
+
+      // Resolve context from batch
+      if (batchId) {
+        const batch = await ctx.db.get(batchId);
+        if (batch) {
+          facilityId = facilityId ?? batch.facility_id;
+          companyId = companyId ?? batch.company_id;
+          cropPhase = cropPhase ?? batch.current_phase;
+          entityType = "batch";
+          entityId = batchId;
+        }
+      }
+
+      const activityId = await createSingleActivity({
+        entityType,
+        entityId,
+        batchId,
+        facilityId,
+        companyId,
+        cropPhase,
+        scheduledActivityId: args.scheduledActivityId,
+        activityResources: resources,
+      });
+
+      // Mark scheduled activity as completed
+      if (args.scheduledActivityId) {
+        await markScheduledCompleted(args.scheduledActivityId);
+      }
+
+      return { activityId };
+    }
+
+    // ── Execute: multi-batch ───────────────────────────────────────
+    // 1. Create parent activity
+    const parentActivityId = await ctx.db.insert("activities", {
+      entity_type: "multi_batch",
+      entity_id: args.groupId || "multi_batch",
+      activity_type: activityTypeCode,
+      performed_by: args.performedBy,
+      timestamp: now,
+      duration_minutes: args.durationMinutes,
+      materials_consumed: [],
+      equipment_used: [],
+      photos: [],
+      files: [],
+      created_at: now,
+      notes: args.notes,
+
+      type_id: typeId,
+      category,
+      company_id: args.companyId,
+      facility_id: args.facilityId,
+      crop_phase: args.cropPhase,
+      zone_id: args.zoneId,
+      status: "completed",
+      priority: args.priority || "routine",
+      completed_at: now,
+      title,
+      observations: args.observations,
+      activity_metadata: Object.keys(envData).length > 0 ? envData : undefined,
+    });
+
+    // 2. Create child activities (one per batch)
+    const childActivityIds: Id<"activities">[] = [];
+
+    for (let i = 0; i < batchIds.length; i++) {
+      const batchId = batchIds[i];
+      const batch = await ctx.db.get(batchId);
+
+      // Determine resources for this child
+      let childResources = resources;
+      if (distribution === "split_proportional" && batchIds.length > 0) {
+        childResources = resources.map((r) => ({
+          ...r,
+          quantity: r.quantity / batchIds.length,
+        }));
+      }
+      // "identical" → same resources per child (default)
+
+      // Find matching scheduled activity for this batch (if group execution)
+      let scheduledActivityIdForChild: Id<"scheduled_activities"> | undefined;
+      if (args.groupId && groupActivities.length > 0) {
+        const match = groupActivities.find(
+          (sa) => sa.entity_id === (batchId as string)
+        );
+        if (match) scheduledActivityIdForChild = match._id;
+      }
+
+      const childId = await createSingleActivity({
+        entityType: "batch",
+        entityId: batchId,
+        batchId,
+        facilityId: batch?.facility_id ?? args.facilityId,
+        companyId: batch?.company_id ?? args.companyId,
+        cropPhase: batch?.current_phase ?? args.cropPhase,
+        parentActivityId,
+        scheduledActivityId: scheduledActivityIdForChild,
+        activityResources: childResources,
+      });
+
+      childActivityIds.push(childId);
+    }
+
+    // 3. Mark scheduled activities as completed
+    if (args.groupId && groupActivities.length > 0) {
+      for (const sa of groupActivities) {
+        await markScheduledCompleted(sa._id);
+      }
+    } else if (args.scheduledActivityId) {
+      await markScheduledCompleted(args.scheduledActivityId);
+    }
+
+    return { activityId: parentActivityId, childActivityIds };
   },
 });
 
