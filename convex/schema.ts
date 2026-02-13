@@ -1340,7 +1340,10 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_scheduled_date", ["scheduled_date"])
     .index("by_schedule", ["schedule_id"])
-    .index("by_group", ["group_id"]),
+    .index("by_group", ["group_id"])
+    .index("by_company_date", ["company_id", "scheduled_date"])
+    .index("by_company_status", ["company_id", "status", "scheduled_date"])
+    .index("by_order_date", ["production_order_id", "scheduled_date"]),
 
   mother_plants: defineTable({
     qr_code: v.string(), // Unique
