@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { Progress } from '@/components/ui/progress';
+import { BatchStatsBar } from '@/components/batches/batch-stats-bar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { PlantsTab } from '@/components/plants';
@@ -139,12 +139,6 @@ export default function BatchDetailPage({ params }: PageProps) {
     }
   };
 
-  // Calculate survival rate
-  const survivalRate =
-    batch.initial_quantity > 0
-      ? Math.round((batch.current_quantity / batch.initial_quantity) * 100)
-      : 100;
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -170,43 +164,21 @@ export default function BatchDetailPage({ params }: PageProps) {
         }
       />
 
-      {/* Status and Progress */}
-      <Card>
-        <CardContent className="py-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-600 flex items-center justify-center gap-2">
-                <Leaf className="h-6 w-6" />
-                {batch.current_quantity}
-              </p>
-              <p className="text-sm text-gray-500">Plantas Actuales</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-semibold">{batch.initial_quantity}</p>
-              <p className="text-sm text-gray-500">Iniciales</p>
-            </div>
-            <div className="text-center">
-              <p className={`text-xl font-semibold ${batch.lost_quantity > 0 ? 'text-red-600' : ''}`}>
-                {batch.lost_quantity}
-              </p>
-              <p className="text-sm text-gray-500">Perdidas</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-semibold">{batch.daysInProduction}d</p>
-              <p className="text-sm text-gray-500">En Produccion</p>
-            </div>
-          </div>
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Supervivencia</span>
-              <span className={`font-medium ${survivalRate < 90 ? 'text-amber-600' : 'text-green-600'}`}>
-                {survivalRate}%
-              </span>
-            </div>
-            <Progress value={survivalRate} className="h-2" />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Status badges */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <StatusBadge
+          status={getStatusBadgeStatus()}
+          label={statusLabels[batch.status]}
+        />
+        <BatchStatsBar
+          currentPhase={batch.current_phase}
+          currentQuantity={batch.current_quantity}
+          initialQuantity={batch.initial_quantity}
+          lostQuantity={batch.lost_quantity}
+          daysInProduction={batch.daysInProduction}
+          currentPhaseInfo={batch.currentPhaseInfo}
+        />
+      </div>
 
       {/* Tabs */}
       <Tabs defaultValue="detail" className="w-full">

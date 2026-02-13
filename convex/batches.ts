@@ -201,6 +201,43 @@ export const getById = query({
       (Date.now() - batch.created_date) / (1000 * 60 * 60 * 24)
     );
 
+    // Enrich with current phase info from order_phases
+    let currentPhaseInfo: {
+      phaseName: string;
+      plannedStartDate: number;
+      plannedEndDate: number;
+      actualStartDate?: number;
+      status: string;
+      phaseOrder: number;
+      totalPhases: number;
+    } | null = null;
+
+    if (batch.production_order_id && batch.current_phase) {
+      const phases = await ctx.db
+        .query("order_phases")
+        .withIndex("by_order", (q) =>
+          q.eq("order_id", batch.production_order_id!)
+        )
+        .collect();
+
+      if (phases.length > 0) {
+        const matchingPhase = phases.find(
+          (p) => p.phase_name.toLowerCase() === batch.current_phase?.toLowerCase()
+        );
+        if (matchingPhase) {
+          currentPhaseInfo = {
+            phaseName: matchingPhase.phase_name,
+            plannedStartDate: matchingPhase.planned_start_date,
+            plannedEndDate: matchingPhase.planned_end_date,
+            actualStartDate: matchingPhase.actual_start_date,
+            status: matchingPhase.status,
+            phaseOrder: matchingPhase.phase_order,
+            totalPhases: phases.length,
+          };
+        }
+      }
+    }
+
     return {
       ...batch,
       areaName: area?.name || null,
@@ -212,6 +249,7 @@ export const getById = query({
       templateName: template?.name || null,
       parentBatchCode: parentBatch?.batch_code || null,
       daysInProduction,
+      currentPhaseInfo,
       plants,
       plantsCount: plants.length,
       movements: movements.sort((a, b) => b.movement_date - a.movement_date),
