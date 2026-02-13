@@ -11,23 +11,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ActivityReportSheet } from '@/components/activities/activity-report-sheet';
+import { ActivityExecutionSheet } from '@/components/activities/activity-execution-sheet';
+import { ScheduleActivityDialog } from '@/components/activities/schedule-activity-dialog';
 import { useFacility } from '@/components/providers/facility-provider';
 import { getPhaseLabel } from '@/lib/constants/phases';
 import { ACTIVITY_CATEGORIES } from '@/lib/constants/activity-types';
-import { Activity, Plus } from 'lucide-react';
+import { Activity, Plus, CalendarPlus } from 'lucide-react';
 
 interface AreaHistoryTabProps {
   areaId: Id<'areas'>;
@@ -114,30 +109,16 @@ export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
   const { currentCompanyId } = useFacility();
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  // Report sheet state
-  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
-  const [reportSheetOpen, setReportSheetOpen] = useState(false);
-  const [reportTemplateId, setReportTemplateId] = useState<Id<'activity_templates'> | null>(null);
+  // Execution sheet + schedule dialog state
+  const [executionSheetOpen, setExecutionSheetOpen] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
   const activities = useQuery(api.activities.listByArea, {
     areaId,
     category: categoryFilter !== 'all' ? categoryFilter : undefined,
   });
 
-  const activityTemplates = useQuery(
-    api.activityTemplates.list,
-    currentCompanyId
-      ? { companyId: currentCompanyId, isActive: true }
-      : ('skip' as any)
-  );
-
   const data = useMemo(() => activities ?? [], [activities]);
-
-  const handleTemplateSelected = (templateId: string) => {
-    setReportTemplateId(templateId as Id<'activity_templates'>);
-    setTemplatePickerOpen(false);
-    setReportSheetOpen(true);
-  };
 
   if (activities === undefined) {
     return (
@@ -151,11 +132,19 @@ export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
   if (activities.length === 0 && categoryFilter === 'all') {
     return (
       <>
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end mb-4 gap-2">
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setTemplatePickerOpen(true)}
+            onClick={() => setScheduleDialogOpen(true)}
+          >
+            <CalendarPlus className="h-3.5 w-3.5 mr-1" />
+            Programar
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setExecutionSheetOpen(true)}
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
             Registrar actividad
@@ -166,16 +155,20 @@ export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
           title="Sin actividades registradas"
           description="Las actividades realizadas en los lotes de esta area apareceran aqui."
         />
-        <TemplatePickerAndSheet
-          templatePickerOpen={templatePickerOpen}
-          setTemplatePickerOpen={setTemplatePickerOpen}
-          activityTemplates={activityTemplates}
-          handleTemplateSelected={handleTemplateSelected}
-          reportSheetOpen={reportSheetOpen}
-          setReportSheetOpen={setReportSheetOpen}
-          reportTemplateId={reportTemplateId}
-          setReportTemplateId={setReportTemplateId}
+        <ActivityExecutionSheet
+          open={executionSheetOpen}
+          onOpenChange={setExecutionSheetOpen}
+          entityType="area"
+          entityId={areaId}
           areaId={areaId}
+          onCompleted={() => setExecutionSheetOpen(false)}
+        />
+
+        <ScheduleActivityDialog
+          open={scheduleDialogOpen}
+          onOpenChange={setScheduleDialogOpen}
+          fromAreaId={areaId}
+          onScheduled={() => setScheduleDialogOpen(false)}
         />
       </>
     );
@@ -183,7 +176,7 @@ export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
 
   return (
     <div className="space-y-4">
-      {/* Filters + action */}
+      {/* Filters + actions */}
       <div className="flex items-center justify-between gap-3">
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-[200px]">
@@ -199,14 +192,24 @@ export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
           </SelectContent>
         </Select>
 
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setTemplatePickerOpen(true)}
-        >
-          <Plus className="h-3.5 w-3.5 mr-1" />
-          Registrar actividad
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setScheduleDialogOpen(true)}
+          >
+            <CalendarPlus className="h-3.5 w-3.5 mr-1" />
+            Programar
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setExecutionSheetOpen(true)}
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Registrar actividad
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -219,84 +222,21 @@ export function AreaHistoryTab({ areaId }: AreaHistoryTabProps) {
         loading={activities === undefined}
       />
 
-      <TemplatePickerAndSheet
-        templatePickerOpen={templatePickerOpen}
-        setTemplatePickerOpen={setTemplatePickerOpen}
-        activityTemplates={activityTemplates}
-        handleTemplateSelected={handleTemplateSelected}
-        reportSheetOpen={reportSheetOpen}
-        setReportSheetOpen={setReportSheetOpen}
-        reportTemplateId={reportTemplateId}
-        setReportTemplateId={setReportTemplateId}
+      <ActivityExecutionSheet
+        open={executionSheetOpen}
+        onOpenChange={setExecutionSheetOpen}
+        entityType="area"
+        entityId={areaId}
         areaId={areaId}
+        onCompleted={() => setExecutionSheetOpen(false)}
+      />
+
+      <ScheduleActivityDialog
+        open={scheduleDialogOpen}
+        onOpenChange={setScheduleDialogOpen}
+        fromAreaId={areaId}
+        onScheduled={() => setScheduleDialogOpen(false)}
       />
     </div>
-  );
-}
-
-/** Reusable template picker dialog + report sheet pair */
-function TemplatePickerAndSheet({
-  templatePickerOpen,
-  setTemplatePickerOpen,
-  activityTemplates,
-  handleTemplateSelected,
-  reportSheetOpen,
-  setReportSheetOpen,
-  reportTemplateId,
-  setReportTemplateId,
-  areaId,
-}: {
-  templatePickerOpen: boolean;
-  setTemplatePickerOpen: (v: boolean) => void;
-  activityTemplates: any[] | undefined;
-  handleTemplateSelected: (id: string) => void;
-  reportSheetOpen: boolean;
-  setReportSheetOpen: (v: boolean) => void;
-  reportTemplateId: Id<'activity_templates'> | null;
-  setReportTemplateId: (v: Id<'activity_templates'> | null) => void;
-  areaId: Id<'areas'>;
-}) {
-  return (
-    <>
-      <Dialog open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Seleccionar template de actividad</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Selecciona el template para registrar una actividad en esta area.
-            </p>
-            <Select onValueChange={handleTemplateSelected}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar template..." />
-              </SelectTrigger>
-              <SelectContent>
-                {activityTemplates?.map((t) => (
-                  <SelectItem key={t._id} value={t._id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {reportTemplateId && (
-        <ActivityReportSheet
-          open={reportSheetOpen}
-          onOpenChange={setReportSheetOpen}
-          activityTemplateId={reportTemplateId}
-          entityType="area"
-          entityId={areaId}
-          areaId={areaId}
-          onCompleted={() => {
-            setReportSheetOpen(false);
-            setReportTemplateId(null);
-          }}
-        />
-      )}
-    </>
   );
 }

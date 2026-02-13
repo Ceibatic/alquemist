@@ -31,7 +31,8 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useFacility } from '@/components/providers/facility-provider';
-import { ActivityReportSheet } from '@/components/activities/activity-report-sheet';
+import { ActivityExecutionSheet } from '@/components/activities/activity-execution-sheet';
+import { ScheduleActivityDialog } from '@/components/activities/schedule-activity-dialog';
 import { toast } from 'sonner';
 import {
   CalendarCheck,
@@ -53,19 +54,23 @@ export default function ScheduledActivitiesPage() {
   const [isSkipping, setIsSkipping] = useState(false);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
 
-  // Report sheet state
-  const [reportSheetOpen, setReportSheetOpen] = useState(false);
-  const [reportTemplateId, setReportTemplateId] = useState<Id<'activity_templates'> | null>(null);
-  const [reportContext, setReportContext] = useState<{
-    entityType: 'batch' | 'plant' | 'area';
-    entityId: string;
-    phase?: string;
+  // Execution sheet state
+  const [executionSheetOpen, setExecutionSheetOpen] = useState(false);
+  const [executionContext, setExecutionContext] = useState<{
+    templateId?: Id<'activity_templates'>;
     scheduledActivityId?: Id<'scheduled_activities'>;
+    groupId?: string;
+    entityType?: string;
+    entityId?: string;
+    phase?: string;
+    batchIds?: string[];
   } | null>(null);
 
-  // Template picker dialog
-  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
-  const [pendingReportActivity, setPendingReportActivity] = useState<any>(null);
+  // Schedule dialog state
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+
+  // Ad-hoc execution (no scheduled activity)
+  const [adhocSheetOpen, setAdhocSheetOpen] = useState(false);
 
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
@@ -109,14 +114,6 @@ export default function ScheduledActivitiesPage() {
           beforeDate: startOfDay.getTime(),
         }
       : 'skip' as any
-  );
-
-  // Activity templates for template picker
-  const activityTemplates = useQuery(
-    api.activityTemplates.list,
-    currentCompanyId
-      ? { companyId: currentCompanyId, isActive: true }
-      : ('skip' as any)
   );
 
   const skipMutation = useMutation(api.cultivationSchedules.skipScheduledActivity);
@@ -163,24 +160,16 @@ export default function ScheduledActivitiesPage() {
   };
 
   const handleReport = (activity: any) => {
-    setPendingReportActivity(activity);
-    setTemplatePickerOpen(true);
-  };
-
-  const handleTemplateSelected = (templateId: string) => {
-    if (!pendingReportActivity) return;
-    const a = pendingReportActivity;
-
-    setReportTemplateId(templateId as Id<'activity_templates'>);
-    setReportContext({
-      entityType: (a.entity_type ?? 'batch') as 'batch' | 'plant' | 'area',
-      entityId: a.entity_id,
-      phase: a.crop_phase ?? undefined,
-      scheduledActivityId: a._id as Id<'scheduled_activities'>,
+    setExecutionContext({
+      templateId: activity.template_id ?? undefined,
+      scheduledActivityId: activity._id as Id<'scheduled_activities'>,
+      groupId: activity.group_id ?? undefined,
+      entityType: activity.entity_type ?? 'batch',
+      entityId: activity.entity_id,
+      phase: activity.crop_phase ?? undefined,
+      batchIds: activity.entity_type === 'batch' ? [activity.entity_id] : undefined,
     });
-    setTemplatePickerOpen(false);
-    setPendingReportActivity(null);
-    setReportSheetOpen(true);
+    setExecutionSheetOpen(true);
   };
 
   if (facilityLoading || !currentCompanyId) {
@@ -194,15 +183,35 @@ export default function ScheduledActivitiesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Actividades Programadas"
-        icon={CalendarCheck}
-        breadcrumbs={[
-          { label: 'Inicio', href: '/dashboard' },
-          { label: 'Actividades Programadas' },
-        ]}
-        description="Actividades pendientes de hoy y proximos dias"
-      />
+      <div className="flex items-start justify-between">
+        <PageHeader
+          title="Actividades Programadas"
+          icon={CalendarCheck}
+          breadcrumbs={[
+            { label: 'Inicio', href: '/dashboard' },
+            { label: 'Actividades Programadas' },
+          ]}
+          description="Actividades pendientes de hoy y proximos dias"
+        />
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setScheduleDialogOpen(true)}
+          >
+            <CalendarCheck className="h-3.5 w-3.5 mr-1" />
+            Programar Actividad
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setAdhocSheetOpen(true)}
+          >
+            <ClipboardList className="h-3.5 w-3.5 mr-1" />
+            Reportar Ad-hoc
+          </Button>
+        </div>
+      </div>
 
       {/* Stats header */}
       <div className="grid grid-cols-3 gap-4">
@@ -381,52 +390,38 @@ export default function ScheduledActivitiesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Template picker dialog */}
-      <Dialog open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Seleccionar template de actividad</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Selecciona el template para reportar esta actividad.
-              {pendingReportActivity?.templateName && (
-                <> Actividad: <strong>{pendingReportActivity.templateName}</strong></>
-              )}
-            </p>
-            <Select onValueChange={handleTemplateSelected}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar template..." />
-              </SelectTrigger>
-              <SelectContent>
-                {activityTemplates?.map((t) => (
-                  <SelectItem key={t._id} value={t._id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Activity report sheet */}
-      {reportTemplateId && reportContext && (
-        <ActivityReportSheet
-          open={reportSheetOpen}
-          onOpenChange={setReportSheetOpen}
-          activityTemplateId={reportTemplateId}
-          entityType={reportContext.entityType}
-          entityId={reportContext.entityId}
-          phase={reportContext.phase}
-          scheduledActivityId={reportContext.scheduledActivityId}
+      {/* Execution sheet — from scheduled activity */}
+      {executionContext && (
+        <ActivityExecutionSheet
+          open={executionSheetOpen}
+          onOpenChange={setExecutionSheetOpen}
+          templateId={executionContext.templateId}
+          scheduledActivityId={executionContext.scheduledActivityId}
+          groupId={executionContext.groupId}
+          entityType={executionContext.entityType}
+          entityId={executionContext.entityId}
+          phase={executionContext.phase}
+          batchIds={executionContext.batchIds}
           onCompleted={() => {
-            setReportSheetOpen(false);
-            setReportTemplateId(null);
-            setReportContext(null);
+            setExecutionSheetOpen(false);
+            setExecutionContext(null);
           }}
         />
       )}
+
+      {/* Ad-hoc execution sheet */}
+      <ActivityExecutionSheet
+        open={adhocSheetOpen}
+        onOpenChange={setAdhocSheetOpen}
+        onCompleted={() => setAdhocSheetOpen(false)}
+      />
+
+      {/* Schedule dialog */}
+      <ScheduleActivityDialog
+        open={scheduleDialogOpen}
+        onOpenChange={setScheduleDialogOpen}
+        onScheduled={() => setScheduleDialogOpen(false)}
+      />
     </div>
   );
 }
