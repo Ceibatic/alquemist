@@ -19,6 +19,8 @@ import {
 export type ExecutionMode = 'template' | 'scheduled' | 'multi_batch' | 'adhoc';
 
 export interface UseActivityExecutionOptions {
+  companyId?: Id<'companies'>;
+  facilityId?: Id<'facilities'>;
   templateId?: Id<'activity_templates'>;
   scheduledActivityId?: Id<'scheduled_activities'>;
   groupId?: string;
@@ -36,6 +38,8 @@ export interface UseActivityExecutionOptions {
 
 export function useActivityExecution(options: UseActivityExecutionOptions) {
   const {
+    companyId,
+    facilityId,
     templateId,
     scheduledActivityId,
     groupId,
@@ -223,6 +227,8 @@ export function useActivityExecution(options: UseActivityExecutionOptions) {
   async function handleSubmit(values: ActivityExecutionInput) {
     try {
       const result = await executeActivity({
+        companyId,
+        facilityId,
         scheduledActivityId: scheduledActivityId,
         groupId: groupId,
         typeId: values.typeId

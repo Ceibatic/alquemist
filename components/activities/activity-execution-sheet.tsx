@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 import {
   Sheet,
@@ -78,23 +76,9 @@ export function ActivityExecutionSheet({
   const [step, setStep] = useState<1 | 2>(1);
   const [activityCreated, setActivityCreated] = useState(false);
 
-  // Resolve templateId from scheduled activity if needed
-  const scheduledActivity = useQuery(
-    api.scheduledActivities.listByEntity,
-    // We can't query by ID directly — but the component should work
-    // with the hook that handles this internally
-    'skip',
-  );
-
-  // For scheduled mode, resolve template from scheduled activity
-  const scheduledRecord = useQuery(
-    api.scheduledActivities.getGroup,
-    // If we have scheduledActivityId but no templateId, we need to look up template
-    // This is handled by the parent passing templateId from the scheduled activity
-    'skip',
-  );
-
   const hookOptions: UseActivityExecutionOptions = {
+    companyId: currentCompanyId ?? undefined,
+    facilityId: currentFacilityId ?? undefined,
     templateId,
     scheduledActivityId,
     groupId,
