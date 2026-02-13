@@ -23,6 +23,13 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -30,6 +37,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useFacility } from '@/components/providers/facility-provider';
 import { ActivityExecutionSheet } from '@/components/activities/activity-execution-sheet';
+import { ScheduleActivityDialog } from '@/components/activities/schedule-activity-dialog';
 import { toast } from 'sonner';
 import {
   Clock,
@@ -42,6 +50,8 @@ import {
   MoreHorizontal,
   CalendarClock,
   Loader2,
+  Plus,
+  Filter,
 } from 'lucide-react';
 
 // ── Types ──
@@ -85,9 +95,11 @@ type EnrichedActivity = {
   areaName: string | null;
 };
 
+type DateRangePreset = 'today' | 'week' | 'month' | 'all';
+
 // ── Helpers ──
 
-function getDateRange(range: 'today' | 'week' | 'month' | 'all') {
+function getDateRange(range: DateRangePreset) {
   const now = new Date();
   const startOfDay = new Date(now);
   startOfDay.setHours(0, 0, 0, 0);
@@ -189,15 +201,32 @@ function groupByDate(activities: EnrichedActivity[]): DateGroup[] {
   return result;
 }
 
+const DATE_RANGE_LABELS: Record<DateRangePreset, string> = {
+  today: 'Hoy',
+  week: 'Esta semana',
+  month: 'Este mes',
+  all: 'Todas',
+};
+
 // ── Component ──
 
 export function ActivitySchedule({
   scope,
   compact = false,
   defaultDateRange = 'week',
+  showFilters: showFiltersProp,
   maxItems = 50,
 }: ActivityScheduleProps) {
   const { currentCompanyId } = useFacility();
+  const showFilters = showFiltersProp ?? !compact;
+
+  // Filter state
+  const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>(defaultDateRange);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+
+  // Schedule dialog state
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
   // Action state
   const [executionSheetOpen, setExecutionSheetOpen] = useState(false);
@@ -217,12 +246,18 @@ export function ActivitySchedule({
   const [rescheduleTarget, setRescheduleTarget] = useState<Id<'scheduled_activities'> | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [isRescheduling, setIsRescheduling] = useState(false);
-  const [reschedulePopoverOpen, setReschedulePopoverOpen] = useState(false);
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
 
   const skipMutation = useMutation(api.cultivationSchedules.skipScheduledActivity);
   const rescheduleMutation = useMutation(api.cultivationSchedules.rescheduleActivity);
 
-  const dateRange = getDateRange(defaultDateRange);
+  // Activity types for filter
+  const activityTypes = useQuery(
+    api.activityTypes.list,
+    currentCompanyId ? { companyId: currentCompanyId } : 'skip'
+  );
+
+  const dateRange = getDateRange(dateRangePreset);
 
   const activities = useQuery(
     api.scheduledActivities.listForSchedule,
@@ -232,6 +267,8 @@ export function ActivitySchedule({
           scope,
           dateStart: dateRange.dateStart,
           dateEnd: dateRange.dateEnd,
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          typeId: typeFilter !== 'all' ? (typeFilter as Id<'activity_types'>) : undefined,
           limit: maxItems,
         }
       : 'skip'
@@ -267,6 +304,22 @@ export function ActivitySchedule({
       completed: activities.filter((a) => a.status === 'completed').length,
     };
   }, [activities]);
+
+  // Derive schedule dialog context from scope
+  const scheduleDialogContext = useMemo(() => {
+    switch (scope.type) {
+      case 'area':
+        return { fromAreaId: scope.areaId };
+      case 'batch':
+        return { fromBatchId: scope.batchId };
+      case 'order':
+        return { fromOrderId: scope.orderId };
+      case 'phase':
+        return { fromAreaId: scope.areaId, fromPhase: scope.phase };
+      default:
+        return {};
+    }
+  }, [scope]);
 
   // Action handlers
   const handleReport = (activity: EnrichedActivity) => {
@@ -310,7 +363,7 @@ export function ActivitySchedule({
   const handleRescheduleRequest = (activityId: Id<'scheduled_activities'>) => {
     setRescheduleTarget(activityId);
     setRescheduleDate('');
-    setReschedulePopoverOpen(true);
+    setRescheduleDialogOpen(true);
   };
 
   const handleRescheduleConfirm = async () => {
@@ -327,7 +380,7 @@ export function ActivitySchedule({
         newDate: newDate.getTime(),
       });
       toast.success('Actividad reprogramada');
-      setReschedulePopoverOpen(false);
+      setRescheduleDialogOpen(false);
       setRescheduleTarget(null);
       setRescheduleDate('');
     } catch (err) {
@@ -337,33 +390,123 @@ export function ActivitySchedule({
     }
   };
 
+  // Filter controls component
+  const filterControls = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Select value={dateRangePreset} onValueChange={(v) => setDateRangePreset(v as DateRangePreset)}>
+        <SelectTrigger className="h-8 w-[130px] text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {(Object.entries(DATE_RANGE_LABELS) as [DateRangePreset, string][]).map(([key, label]) => (
+            <SelectItem key={key} value={key} className="text-xs">{label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <SelectTrigger className="h-8 w-[130px] text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all" className="text-xs">Todos los estados</SelectItem>
+          <SelectItem value="pending" className="text-xs">Pendientes</SelectItem>
+          <SelectItem value="completed" className="text-xs">Completadas</SelectItem>
+          <SelectItem value="skipped" className="text-xs">Saltadas</SelectItem>
+        </SelectContent>
+      </Select>
+
+      {activityTypes && activityTypes.length > 0 && (
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="h-8 w-[150px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">Todos los tipos</SelectItem>
+            {activityTypes.map((t) => (
+              <SelectItem key={t._id} value={t._id} className="text-xs">
+                {t.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
+
   // Loading
   if (activities === undefined) {
     return <ScheduleSkeleton compact={compact} />;
   }
 
-  // Empty
-  if (activities.length === 0) {
-    return <ScheduleEmpty />;
-  }
-
   return (
     <div className="space-y-3">
-      {/* Header with stats */}
-      <ScheduleHeader stats={stats} compact={compact} />
+      {/* Header — compact: single line with stats + actions */}
+      {compact ? (
+        <div className="flex items-center justify-between gap-2">
+          <ScheduleHeader stats={stats} compact />
+          <div className="flex items-center gap-1 shrink-0">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-7 px-2">
+                  <Filter className="h-3 w-3 mr-1" />
+                  Filtrar
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-3" align="end">
+                <div className="space-y-2">
+                  {filterControls}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 px-2"
+              onClick={() => setScheduleDialogOpen(true)}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Programar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Full mode: stats + schedule button */}
+          <div className="flex items-center justify-between gap-2">
+            <ScheduleHeader stats={stats} compact={false} />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setScheduleDialogOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Programar
+            </Button>
+          </div>
+          {/* Full mode: filter toolbar */}
+          {showFilters && filterControls}
+        </>
+      )}
 
-      {/* Date groups */}
-      {dateGroups.map((group) => (
-        <ScheduleDateGroup
-          key={group.key}
-          group={group}
-          compact={compact}
-          scope={scope}
-          onReport={handleReport}
-          onSkip={handleSkipRequest}
-          onReschedule={handleRescheduleRequest}
-        />
-      ))}
+      {/* Content area — with max-height scroll in compact mode */}
+      {activities.length === 0 ? (
+        <ScheduleEmpty />
+      ) : (
+        <div className={compact ? 'max-h-[400px] overflow-y-auto space-y-3' : 'space-y-3'}>
+          {dateGroups.map((group) => (
+            <ScheduleDateGroup
+              key={group.key}
+              group={group}
+              compact={compact}
+              scope={scope}
+              onReport={handleReport}
+              onSkip={handleSkipRequest}
+              onReschedule={handleRescheduleRequest}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Skip dialog */}
       <Dialog open={skipDialogOpen} onOpenChange={setSkipDialogOpen}>
@@ -399,8 +542,8 @@ export function ActivitySchedule({
         </DialogContent>
       </Dialog>
 
-      {/* Reschedule popover — rendered as dialog for simplicity */}
-      <Dialog open={reschedulePopoverOpen} onOpenChange={setReschedulePopoverOpen}>
+      {/* Reschedule dialog */}
+      <Dialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
             <DialogTitle>Reprogramar actividad</DialogTitle>
@@ -416,7 +559,7 @@ export function ActivitySchedule({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setReschedulePopoverOpen(false)}>
+            <Button variant="outline" onClick={() => setRescheduleDialogOpen(false)}>
               Cancelar
             </Button>
             <Button
@@ -449,6 +592,14 @@ export function ActivitySchedule({
           }}
         />
       )}
+
+      {/* Schedule activity dialog */}
+      <ScheduleActivityDialog
+        open={scheduleDialogOpen}
+        onOpenChange={setScheduleDialogOpen}
+        {...scheduleDialogContext}
+        onScheduled={() => setScheduleDialogOpen(false)}
+      />
     </div>
   );
 }
@@ -463,7 +614,7 @@ function ScheduleHeader({
   compact: boolean;
 }) {
   return (
-    <div className={`flex items-center gap-2 ${compact ? '' : 'mb-1'}`}>
+    <div className={`flex items-center gap-2 flex-wrap ${compact ? '' : 'mb-1'}`}>
       {stats.overdue > 0 && (
         <Badge variant="destructive" className="text-xs">
           <AlertTriangle className="h-3 w-3 mr-1" />
