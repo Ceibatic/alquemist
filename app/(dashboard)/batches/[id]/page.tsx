@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -11,38 +11,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { BatchStatsBar } from '@/components/batches/batch-stats-bar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { PlantsTab } from '@/components/plants';
-import { useToast } from '@/hooks/use-toast';
 import { PHASE_LABELS } from '@/lib/constants/phases';
 import { useRouter } from 'next/navigation';
-import {
-  BatchActivitiesTab,
-  BatchQualityChecksTab,
-  BatchGenealogyTab,
-  BatchNotesTab,
-  BatchCostSummary,
-} from '@/components/batches';
 import { ActivityExecutionSheet } from '@/components/activities/activity-execution-sheet';
-import { CultivationTimeline } from '@/components/cultivation/cultivation-timeline';
-import { ActiveIssuesDashboard } from '@/components/observations/active-issues-dashboard';
-import { Badge } from '@/components/ui/badge';
 import {
   Layers,
-  Leaf,
   MapPin,
   Calendar,
   Info,
   AlertTriangle,
   TrendingDown,
-  ArrowRight,
-  History,
   Activity,
-  ClipboardCheck,
-  GitBranch,
-  FileText,
-  DollarSign,
-  Eye,
 } from 'lucide-react';
 
 interface PageProps {
@@ -52,32 +31,11 @@ interface PageProps {
 export default function BatchDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const batchId = resolvedParams.id as Id<'batches'>;
-  const { toast } = useToast();
   const router = useRouter();
-  const [userId, setUserId] = useState<Id<'users'> | null>(null);
-
   // Execution sheet state
   const [executionSheetOpen, setExecutionSheetOpen] = useState(false);
 
-  // Get user ID from cookies
-  useEffect(() => {
-    const userDataCookie = document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('user_data='));
-    if (userDataCookie) {
-      try {
-        const userData = JSON.parse(
-          decodeURIComponent(userDataCookie.split('=')[1])
-        );
-        setUserId(userData.userId as Id<'users'>);
-      } catch {
-        // Ignore parsing errors
-      }
-    }
-  }, []);
-
   const batch = useQuery(api.batches.getById, { batchId });
-  const unresolvedObsCount = useQuery(api.activityObservations.countUnresolvedByBatch, { batchId });
 
   const formatDate = (timestamp?: number) => {
     if (!timestamp) return '-';
@@ -182,102 +140,29 @@ export default function BatchDetailPage({ params }: PageProps) {
 
       {/* Tabs */}
       <Tabs defaultValue="detail" className="w-full">
-        <ScrollArea className="w-full">
-          <TabsList className="inline-flex h-auto p-1 bg-gray-100 rounded-lg">
-            <TabsTrigger
-              value="detail"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <Info className="h-4 w-4" />
-              Detalle
-            </TabsTrigger>
-            {batch.enable_individual_tracking && (
-              <TabsTrigger
-                value="plants"
-                className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-              >
-                <Leaf className="h-4 w-4" />
-                Plantas ({batch.plantsCount || 0})
-              </TabsTrigger>
-            )}
-            <TabsTrigger
-              value="activities"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <Activity className="h-4 w-4" />
-              Actividades
-            </TabsTrigger>
-            <TabsTrigger
-              value="cultivation-plan"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <Calendar className="h-4 w-4" />
-              Plan de Cultivo
-            </TabsTrigger>
-            <TabsTrigger
-              value="quality"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <ClipboardCheck className="h-4 w-4" />
-              Calidad
-            </TabsTrigger>
-            <TabsTrigger
-              value="observations"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <Eye className="h-4 w-4" />
-              Observaciones
-              {(unresolvedObsCount ?? 0) > 0 && (
-                <Badge className="ml-1 bg-red-100 text-red-700 border-red-300 text-xs px-1.5 py-0">
-                  {unresolvedObsCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger
-              value="genealogy"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <GitBranch className="h-4 w-4" />
-              Genealogia
-            </TabsTrigger>
-            <TabsTrigger
-              value="notes"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <FileText className="h-4 w-4" />
-              Notas
-            </TabsTrigger>
-            <TabsTrigger
-              value="costs"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <DollarSign className="h-4 w-4" />
-              Costos
-            </TabsTrigger>
-            <TabsTrigger
-              value="movements"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <ArrowRight className="h-4 w-4" />
-              Movimientos
-            </TabsTrigger>
-            <TabsTrigger
-              value="losses"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <TrendingDown className="h-4 w-4" />
-              Perdidas
-            </TabsTrigger>
-            <TabsTrigger
-              value="history"
-              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
-            >
-              <History className="h-4 w-4" />
-              Historial
-            </TabsTrigger>
-          </TabsList>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        <TabsList className="inline-flex h-auto p-1 bg-gray-100 rounded-lg">
+          <TabsTrigger
+            value="detail"
+            className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+          >
+            <Info className="h-4 w-4" />
+            Detalle
+          </TabsTrigger>
+          <TabsTrigger
+            value="activities"
+            className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+          >
+            <Activity className="h-4 w-4" />
+            Actividades
+          </TabsTrigger>
+          <TabsTrigger
+            value="analytics"
+            className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+          >
+            <TrendingDown className="h-4 w-4" />
+            Analytics
+          </TabsTrigger>
+        </TabsList>
 
         {/* Detail Tab */}
         <TabsContent value="detail" className="mt-6">
@@ -415,175 +300,22 @@ export default function BatchDetailPage({ params }: PageProps) {
           )}
         </TabsContent>
 
-        {/* Plants Tab */}
-        {batch.enable_individual_tracking && userId && (
-          <TabsContent value="plants" className="mt-6">
-            <PlantsTab batchId={batchId} userId={userId} />
-          </TabsContent>
-        )}
-
-        {/* Activities Tab */}
+        {/* Activities Tab — placeholder, implemented in US-LOT.4 */}
         <TabsContent value="activities" className="mt-6">
-          <BatchActivitiesTab batchId={batchId} companyId={batch.company_id} />
-        </TabsContent>
-
-        {/* Cultivation Plan Tab */}
-        <TabsContent value="cultivation-plan" className="mt-6">
-          <CultivationTimeline
-            batchId={batchId}
-            companyId={batch.company_id}
-            cropTypeId={batch.crop_type_id}
-          />
-        </TabsContent>
-
-        {/* Quality Checks Tab */}
-        <TabsContent value="quality" className="mt-6">
-          <BatchQualityChecksTab batchId={batchId} />
-        </TabsContent>
-
-        {/* Observations Tab */}
-        <TabsContent value="observations" className="mt-6">
-          <ActiveIssuesDashboard companyId={batch.company_id} />
-        </TabsContent>
-
-        {/* Genealogy Tab */}
-        <TabsContent value="genealogy" className="mt-6">
-          <BatchGenealogyTab
-            batch={{
-              _id: batchId,
-              parent_batch_id: batch.parent_batch_id,
-              merged_into_batch_id: batch.merged_into_batch_id,
-              batch_code: batch.batch_code,
-              company_id: batch.company_id,
-            }}
-          />
-        </TabsContent>
-
-        {/* Notes Tab */}
-        <TabsContent value="notes" className="mt-6">
-          <BatchNotesTab
-            batch={{
-              _id: batchId,
-              notes: batch.notes,
-              batch_code: batch.batch_code,
-            }}
-          />
-        </TabsContent>
-
-        {/* Costs Tab */}
-        <TabsContent value="costs" className="mt-6">
-          <BatchCostSummary batchId={batchId} />
-        </TabsContent>
-
-        {/* Movements Tab */}
-        <TabsContent value="movements" className="mt-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Historial de Movimientos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {batch.movements && batch.movements.length > 0 ? (
-                <div className="space-y-3">
-                  {batch.movements.map((movement: any) => (
-                    <div key={movement._id} className="p-3 border rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <ArrowRight className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium">{movement.reason}</span>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {formatDate(movement.movement_date)}
-                        </span>
-                      </div>
-                      {movement.notes && (
-                        <p className="text-sm text-gray-600 mt-1">{movement.notes}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <ArrowRight className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p>No hay movimientos registrados</p>
-                </div>
-              )}
+            <CardContent className="py-12 text-center text-gray-500">
+              <Activity className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+              <p>Tabla de actividades (en desarrollo)</p>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Losses Tab */}
-        <TabsContent value="losses" className="mt-6">
+        {/* Analytics Tab — placeholder, implemented in US-LOT.5 */}
+        <TabsContent value="analytics" className="mt-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Registro de Perdidas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {batch.losses && batch.losses.length > 0 ? (
-                <div className="space-y-3">
-                  {batch.losses.map((loss: any) => (
-                    <div key={loss._id} className="p-3 border border-red-200 bg-red-50 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="h-4 w-4 text-red-500" />
-                          <span className="font-medium text-red-700">
-                            {loss.quantity} plantas - {loss.reason}
-                          </span>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {formatDate(loss.detection_date)}
-                        </span>
-                      </div>
-                      {loss.description && (
-                        <p className="text-sm text-gray-600 mt-1">{loss.description}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <TrendingDown className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p>No hay perdidas registradas</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* History Tab */}
-        <TabsContent value="history" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Historial de Cosechas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {batch.harvests && batch.harvests.length > 0 ? (
-                <div className="space-y-3">
-                  {batch.harvests.map((harvest: any) => (
-                    <div key={harvest._id} className="p-3 border border-green-200 bg-green-50 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="font-medium text-green-700">
-                            {harvest.total_weight} {harvest.weight_unit}
-                          </span>
-                          <span className="mx-2 text-gray-400">|</span>
-                          <span className="text-sm">Calidad: {harvest.quality_grade}</span>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {formatDate(harvest.harvest_date)}
-                        </span>
-                      </div>
-                      {harvest.notes && (
-                        <p className="text-sm text-gray-600 mt-1">{harvest.notes}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <History className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p>No hay cosechas registradas</p>
-                </div>
-              )}
+            <CardContent className="py-12 text-center text-gray-500">
+              <TrendingDown className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+              <p>Analytics (en desarrollo)</p>
             </CardContent>
           </Card>
         </TabsContent>
