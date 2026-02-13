@@ -1,12 +1,36 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useQuery } from 'convex/react';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useFacility } from '@/components/providers/facility-provider';
+import { ActivityExecutionSheet } from '@/components/activities/activity-execution-sheet';
+import { toast } from 'sonner';
 import {
   Clock,
   AlertTriangle,
@@ -14,6 +38,10 @@ import {
   SkipForward,
   CalendarCheck,
   CalendarOff,
+  ClipboardList,
+  MoreHorizontal,
+  CalendarClock,
+  Loader2,
 } from 'lucide-react';
 
 // ── Types ──
@@ -171,6 +199,29 @@ export function ActivitySchedule({
 }: ActivityScheduleProps) {
   const { currentCompanyId } = useFacility();
 
+  // Action state
+  const [executionSheetOpen, setExecutionSheetOpen] = useState(false);
+  const [executionContext, setExecutionContext] = useState<{
+    templateId?: Id<'activity_templates'>;
+    scheduledActivityId?: Id<'scheduled_activities'>;
+    groupId?: string;
+    entityType?: string;
+    entityId?: string;
+    phase?: string;
+    batchIds?: string[];
+  } | null>(null);
+  const [skipDialogOpen, setSkipDialogOpen] = useState(false);
+  const [activityToSkip, setActivityToSkip] = useState<Id<'scheduled_activities'> | null>(null);
+  const [skipReason, setSkipReason] = useState('');
+  const [isSkipping, setIsSkipping] = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState<Id<'scheduled_activities'> | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [isRescheduling, setIsRescheduling] = useState(false);
+  const [reschedulePopoverOpen, setReschedulePopoverOpen] = useState(false);
+
+  const skipMutation = useMutation(api.cultivationSchedules.skipScheduledActivity);
+  const rescheduleMutation = useMutation(api.cultivationSchedules.rescheduleActivity);
+
   const dateRange = getDateRange(defaultDateRange);
 
   const activities = useQuery(
@@ -217,6 +268,75 @@ export function ActivitySchedule({
     };
   }, [activities]);
 
+  // Action handlers
+  const handleReport = (activity: EnrichedActivity) => {
+    setExecutionContext({
+      templateId: activity.template_id ?? undefined,
+      scheduledActivityId: activity._id,
+      groupId: activity.group_id ?? undefined,
+      entityType: activity.entity_type ?? 'batch',
+      entityId: activity.entity_id,
+      phase: activity.crop_phase ?? undefined,
+      batchIds: activity.entity_type === 'batch' ? [activity.entity_id] : undefined,
+    });
+    setExecutionSheetOpen(true);
+  };
+
+  const handleSkipRequest = (activityId: Id<'scheduled_activities'>) => {
+    setActivityToSkip(activityId);
+    setSkipReason('');
+    setSkipDialogOpen(true);
+  };
+
+  const handleSkipConfirm = async () => {
+    if (!activityToSkip || !skipReason.trim()) {
+      toast.error('Ingresa una razon para saltar la actividad');
+      return;
+    }
+    try {
+      setIsSkipping(true);
+      await skipMutation({ scheduledActivityId: activityToSkip, reason: skipReason.trim() });
+      toast.success('Actividad saltada');
+      setSkipDialogOpen(false);
+      setActivityToSkip(null);
+      setSkipReason('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al saltar');
+    } finally {
+      setIsSkipping(false);
+    }
+  };
+
+  const handleRescheduleRequest = (activityId: Id<'scheduled_activities'>) => {
+    setRescheduleTarget(activityId);
+    setRescheduleDate('');
+    setReschedulePopoverOpen(true);
+  };
+
+  const handleRescheduleConfirm = async () => {
+    if (!rescheduleTarget || !rescheduleDate) {
+      toast.error('Selecciona una fecha');
+      return;
+    }
+    try {
+      setIsRescheduling(true);
+      const newDate = new Date(rescheduleDate);
+      newDate.setHours(8, 0, 0, 0);
+      await rescheduleMutation({
+        scheduledActivityId: rescheduleTarget,
+        newDate: newDate.getTime(),
+      });
+      toast.success('Actividad reprogramada');
+      setReschedulePopoverOpen(false);
+      setRescheduleTarget(null);
+      setRescheduleDate('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al reprogramar');
+    } finally {
+      setIsRescheduling(false);
+    }
+  };
+
   // Loading
   if (activities === undefined) {
     return <ScheduleSkeleton compact={compact} />;
@@ -239,8 +359,96 @@ export function ActivitySchedule({
           group={group}
           compact={compact}
           scope={scope}
+          onReport={handleReport}
+          onSkip={handleSkipRequest}
+          onReschedule={handleRescheduleRequest}
         />
       ))}
+
+      {/* Skip dialog */}
+      <Dialog open={skipDialogOpen} onOpenChange={setSkipDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Saltar actividad</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Razon *</Label>
+              <Textarea
+                value={skipReason}
+                onChange={(e) => setSkipReason(e.target.value)}
+                placeholder="Ej: Condiciones climaticas no permiten la aplicacion"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSkipDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSkipConfirm}
+              disabled={isSkipping || !skipReason.trim()}
+              className="bg-yellow-500 hover:bg-yellow-600"
+            >
+              {isSkipping && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <SkipForward className="mr-1 h-4 w-4" />
+              Saltar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule popover — rendered as dialog for simplicity */}
+      <Dialog open={reschedulePopoverOpen} onOpenChange={setReschedulePopoverOpen}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Reprogramar actividad</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nueva fecha *</Label>
+              <Input
+                type="date"
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReschedulePopoverOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleRescheduleConfirm}
+              disabled={isRescheduling || !rescheduleDate}
+            >
+              {isRescheduling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <CalendarClock className="mr-1 h-4 w-4" />
+              Reprogramar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Execution sheet */}
+      {executionContext && (
+        <ActivityExecutionSheet
+          open={executionSheetOpen}
+          onOpenChange={setExecutionSheetOpen}
+          templateId={executionContext.templateId}
+          scheduledActivityId={executionContext.scheduledActivityId}
+          groupId={executionContext.groupId}
+          entityType={executionContext.entityType}
+          entityId={executionContext.entityId}
+          phase={executionContext.phase}
+          batchIds={executionContext.batchIds}
+          onCompleted={() => {
+            setExecutionSheetOpen(false);
+            setExecutionContext(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -288,10 +496,16 @@ function ScheduleDateGroup({
   group,
   compact,
   scope,
+  onReport,
+  onSkip,
+  onReschedule,
 }: {
   group: DateGroup;
   compact: boolean;
   scope: ScheduleScope;
+  onReport: (activity: EnrichedActivity) => void;
+  onSkip: (activityId: Id<'scheduled_activities'>) => void;
+  onReschedule: (activityId: Id<'scheduled_activities'>) => void;
 }) {
   return (
     <div
@@ -325,6 +539,9 @@ function ScheduleDateGroup({
             isOverdue={group.isOverdue}
             compact={compact}
             scope={scope}
+            onReport={onReport}
+            onSkip={onSkip}
+            onReschedule={onReschedule}
           />
         ))}
       </div>
@@ -337,17 +554,24 @@ function ScheduleActivityRow({
   isOverdue,
   compact,
   scope,
+  onReport,
+  onSkip,
+  onReschedule,
 }: {
   activity: EnrichedActivity;
   isOverdue: boolean;
   compact: boolean;
   scope: ScheduleScope;
+  onReport: (activity: EnrichedActivity) => void;
+  onSkip: (activityId: Id<'scheduled_activities'>) => void;
+  onReschedule: (activityId: Id<'scheduled_activities'>) => void;
 }) {
   const displayName =
     activity.templateName ?? activity.activityTypeName ?? activity.activity_type;
   const date = new Date(activity.scheduled_date);
   const isCompleted = activity.status === 'completed';
   const isSkipped = activity.status === 'skipped';
+  const isActionable = activity.status === 'pending' || activity.status === 'in_progress';
 
   const StatusIcon = isCompleted
     ? CheckCircle
@@ -365,8 +589,6 @@ function ScheduleActivityRow({
         ? 'text-red-600'
         : 'text-amber-600';
 
-  const iconColor = activity.activityTypeColor ?? statusColor;
-
   // Show batch column unless scope is batch (redundant)
   const showBatch = scope.type !== 'batch';
   // Show area for global and order scopes
@@ -382,7 +604,6 @@ function ScheduleActivityRow({
 
       <div className="flex-1 min-w-0">
         {compact ? (
-          // Compact: single line
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium truncate">{displayName}</span>
             {showBatch && activity.batchCode && (
@@ -392,7 +613,6 @@ function ScheduleActivityRow({
             )}
           </div>
         ) : (
-          // Full: two lines
           <>
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium truncate">{displayName}</span>
@@ -427,6 +647,39 @@ function ScheduleActivityRow({
           </>
         )}
       </div>
+
+      {/* Actions for pending/overdue activities */}
+      {isActionable && (
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onReport(activity)}
+            className="text-amber-600 hover:text-amber-700 h-7 px-2"
+          >
+            <ClipboardList className="h-3 w-3 mr-1" />
+            {!compact && 'Reportar'}
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onSkip(activity._id)}>
+                <SkipForward className="h-4 w-4 mr-2" />
+                Saltar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onReschedule(activity._id)}>
+                <CalendarClock className="h-4 w-4 mr-2" />
+                Reprogramar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
     </div>
   );
 }
