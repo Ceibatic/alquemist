@@ -2104,7 +2104,7 @@ export default defineSchema({
   })
     .index("by_template", ["template_id"]),
 
-  // Checklist steps for a template — verified during execution
+  // DEPRECATED — dead code, no se renderiza en ejecucion. Tabla conservada por datos existentes.
   activity_template_checklist: defineTable({
     template_id: v.id("activity_templates"),
     step_number: v.number(),

@@ -20,7 +20,6 @@ const VALID_QUANTITY_BASIS = [
 
 const VALID_DIRECTIONS = ["consumed", "applied", "produced"];
 
-const VALID_VALUE_TYPES = ["text", "number", "boolean", "select"];
 
 // ============================================================================
 // QUERIES
@@ -63,7 +62,7 @@ export const list = query({
 });
 
 /**
- * Get a single activity template by ID, with its resources and checklist counts.
+ * Get a single activity template by ID, with its resources.
  */
 export const getById = query({
   args: {
@@ -75,11 +74,6 @@ export const getById = query({
 
     const resources = await ctx.db
       .query("activity_template_resources")
-      .withIndex("by_template", (q) => q.eq("template_id", templateId))
-      .collect();
-
-    const checklist = await ctx.db
-      .query("activity_template_checklist")
       .withIndex("by_template", (q) => q.eq("template_id", templateId))
       .collect();
 
@@ -98,9 +92,7 @@ export const getById = query({
     return {
       ...template,
       resources: enrichedResources,
-      checklist: checklist.sort((a, b) => a.step_number - b.step_number),
       resourceCount: resources.length,
-      checklistCount: checklist.length,
     };
   },
 });
@@ -633,159 +625,3 @@ export const reorderResources = mutation({
   },
 });
 
-// ============================================================================
-// MUTATIONS — Checklist
-// ============================================================================
-
-/**
- * Get checklist items for a template, ordered by step_number.
- */
-export const getChecklist = query({
-  args: {
-    templateId: v.id("activity_templates"),
-  },
-  handler: async (ctx, { templateId }) => {
-    const items = await ctx.db
-      .query("activity_template_checklist")
-      .withIndex("by_template", (q) => q.eq("template_id", templateId))
-      .collect();
-
-    return items.sort((a, b) => a.step_number - b.step_number);
-  },
-});
-
-/**
- * Add a checklist item to a template.
- * Auto-assigns step_number at the end.
- */
-export const addChecklistItem = mutation({
-  args: {
-    templateId: v.id("activity_templates"),
-    title: v.string(),
-    description: v.optional(v.string()),
-    isRequired: v.boolean(),
-    requiresPhoto: v.boolean(),
-    requiresValue: v.boolean(),
-    valueType: v.optional(v.string()),
-    valueOptions: v.optional(v.array(v.string())),
-    valueMin: v.optional(v.number()),
-    valueMax: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const template = await ctx.db.get(args.templateId);
-    if (!template) {
-      throw new Error(`Template no encontrado: ${args.templateId}`);
-    }
-
-    if (args.valueType && !VALID_VALUE_TYPES.includes(args.valueType)) {
-      throw new Error(
-        `Tipo de valor invalido: "${args.valueType}". Valores validos: ${VALID_VALUE_TYPES.join(", ")}`
-      );
-    }
-
-    // Auto-assign step_number at the end
-    const existing = await ctx.db
-      .query("activity_template_checklist")
-      .withIndex("by_template", (q) => q.eq("template_id", args.templateId))
-      .collect();
-    const maxStep = existing.reduce((max, item) => Math.max(max, item.step_number), 0);
-
-    return await ctx.db.insert("activity_template_checklist", {
-      template_id: args.templateId,
-      step_number: maxStep + 1,
-      title: args.title,
-      description: args.description,
-      is_required: args.isRequired,
-      requires_photo: args.requiresPhoto,
-      requires_value: args.requiresValue,
-      value_type: args.valueType,
-      value_options: args.valueOptions,
-      value_min: args.valueMin,
-      value_max: args.valueMax,
-      created_at: Date.now(),
-    });
-  },
-});
-
-/**
- * Update a checklist item.
- */
-export const updateChecklistItem = mutation({
-  args: {
-    itemId: v.id("activity_template_checklist"),
-    title: v.optional(v.string()),
-    description: v.optional(v.string()),
-    isRequired: v.optional(v.boolean()),
-    requiresPhoto: v.optional(v.boolean()),
-    requiresValue: v.optional(v.boolean()),
-    valueType: v.optional(v.string()),
-    valueOptions: v.optional(v.array(v.string())),
-    valueMin: v.optional(v.number()),
-    valueMax: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const item = await ctx.db.get(args.itemId);
-    if (!item) {
-      throw new Error(`Item de checklist no encontrado: ${args.itemId}`);
-    }
-
-    if (args.valueType && !VALID_VALUE_TYPES.includes(args.valueType)) {
-      throw new Error(
-        `Tipo de valor invalido: "${args.valueType}". Valores validos: ${VALID_VALUE_TYPES.join(", ")}`
-      );
-    }
-
-    const patch: Record<string, unknown> = {};
-    if (args.title !== undefined) patch.title = args.title;
-    if (args.description !== undefined) patch.description = args.description;
-    if (args.isRequired !== undefined) patch.is_required = args.isRequired;
-    if (args.requiresPhoto !== undefined) patch.requires_photo = args.requiresPhoto;
-    if (args.requiresValue !== undefined) patch.requires_value = args.requiresValue;
-    if (args.valueType !== undefined) patch.value_type = args.valueType;
-    if (args.valueOptions !== undefined) patch.value_options = args.valueOptions;
-    if (args.valueMin !== undefined) patch.value_min = args.valueMin;
-    if (args.valueMax !== undefined) patch.value_max = args.valueMax;
-
-    await ctx.db.patch(args.itemId, patch);
-    return args.itemId;
-  },
-});
-
-/**
- * Remove a checklist item.
- */
-export const removeChecklistItem = mutation({
-  args: {
-    itemId: v.id("activity_template_checklist"),
-  },
-  handler: async (ctx, { itemId }) => {
-    const item = await ctx.db.get(itemId);
-    if (!item) {
-      throw new Error(`Item de checklist no encontrado: ${itemId}`);
-    }
-    await ctx.db.delete(itemId);
-    return itemId;
-  },
-});
-
-/**
- * Reorder checklist items within a template.
- */
-export const reorderChecklist = mutation({
-  args: {
-    templateId: v.id("activity_templates"),
-    itemIds: v.array(v.id("activity_template_checklist")),
-  },
-  handler: async (ctx, { templateId, itemIds }) => {
-    const template = await ctx.db.get(templateId);
-    if (!template) {
-      throw new Error(`Template no encontrado: ${templateId}`);
-    }
-
-    for (let i = 0; i < itemIds.length; i++) {
-      await ctx.db.patch(itemIds[i], { step_number: i + 1 });
-    }
-
-    return { reordered: itemIds.length };
-  },
-});
