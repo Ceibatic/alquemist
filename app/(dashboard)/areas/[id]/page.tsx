@@ -30,9 +30,11 @@ import {
   Activity,
   Box,
   Building2,
+  CalendarCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AreaStructuresTab } from '@/components/areas/area-structures-tab';
+import { ActivitySchedule } from '@/components/activities/activity-schedule';
 
 const areaTypeLabels: Record<string, string> = {
   propagation: 'Propagacion',
@@ -172,6 +174,13 @@ export default function AreaDetailPage() {
               Historial
             </TabsTrigger>
             <TabsTrigger
+              value="cronograma"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <CalendarCheck className="h-4 w-4" />
+              Cronograma
+            </TabsTrigger>
+            <TabsTrigger
               value="detalle"
               className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
             >
@@ -195,6 +204,14 @@ export default function AreaDetailPage() {
         {/* Historial Tab */}
         <TabsContent value="historial" className="mt-6">
           <AreaHistoryTab areaId={areaId} />
+        </TabsContent>
+
+        {/* Cronograma Tab */}
+        <TabsContent value="cronograma" className="mt-6">
+          <ActivitySchedule
+            scope={{ type: 'area', areaId }}
+            compact
+          />
         </TabsContent>
 
         {/* Detalle Tab */}

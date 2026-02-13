@@ -12,18 +12,16 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { OrderBatchSummary } from '@/components/production-orders/order-batch-summary';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/providers/user-provider';
 import { ActivityExecutionSheet } from '@/components/activities/activity-execution-sheet';
-import { ScheduleActivityDialog } from '@/components/activities/schedule-activity-dialog';
+import { ActivitySchedule } from '@/components/activities/activity-schedule';
 import {
   ClipboardList,
   Play,
   Calendar,
-  CalendarPlus,
   CheckCircle,
   Clock,
   Info,
@@ -44,20 +42,12 @@ export default function ProductionOrderDetailPage({ params }: PageProps) {
   const { userId } = useUser();
 
   const order = useQuery(api.productionOrders.getById, { orderId });
-  const scheduledActivities = useQuery(api.productionOrders.getActivities, { orderId });
   const orderActivities = useQuery(api.activities.listByOrder, { orderId, limit: 50 });
 
   const activateOrder = useMutation(api.productionOrders.activate);
   const completePhase = useMutation(api.productionOrders.completePhase);
-  // Execution sheet + schedule dialog state
+  // Ad-hoc execution sheet state
   const [executionSheetOpen, setExecutionSheetOpen] = useState(false);
-  const [executionContext, setExecutionContext] = useState<{
-    scheduledActivityId?: Id<'scheduled_activities'>;
-    entityType?: string;
-    entityId?: string;
-    batchIds?: string[];
-  } | null>(null);
-  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
   const formatDate = (timestamp?: number) => {
     if (!timestamp) return '-';
@@ -102,16 +92,6 @@ export default function ProductionOrderDetailPage({ params }: PageProps) {
         variant: 'destructive',
       });
     }
-  };
-
-  const handleReport = (activity: any) => {
-    setExecutionContext({
-      scheduledActivityId: activity._id as Id<'scheduled_activities'>,
-      entityType: activity.entity_type ?? 'batch',
-      entityId: activity.entity_id,
-      batchIds: activity.entity_type === 'batch' ? [activity.entity_id] : undefined,
-    });
-    setExecutionSheetOpen(true);
   };
 
   if (order === undefined) {
@@ -415,134 +395,28 @@ export default function ProductionOrderDetailPage({ params }: PageProps) {
 
         {/* Activities Tab */}
         <TabsContent value="activities" className="mt-6 space-y-6">
-          {/* Action buttons */}
-          <div className="flex justify-end gap-2">
+          {/* Action button */}
+          <div className="flex justify-end">
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setScheduleDialogOpen(true)}
-            >
-              <CalendarPlus className="h-3.5 w-3.5 mr-1" />
-              Programar
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setExecutionContext(null);
-                setExecutionSheetOpen(true);
-              }}
+              onClick={() => setExecutionSheetOpen(true)}
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
               Reportar Ad-hoc
             </Button>
           </div>
 
-          {/* Scheduled Activities */}
+          {/* Scheduled Activities — uses ActivitySchedule component */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Actividades Programadas</CardTitle>
             </CardHeader>
             <CardContent>
-              {scheduledActivities === undefined ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-16 w-full" />
-                  <Skeleton className="h-16 w-full" />
-                </div>
-              ) : scheduledActivities && scheduledActivities.length > 0 ? (
-                <div className="space-y-3">
-                  {scheduledActivities.map((activity: any) => {
-                    const isPast = activity.scheduled_date < Date.now();
-                    const isOverdue = isPast && activity.status === 'pending';
-                    return (
-                      <div
-                        key={activity._id}
-                        className={`p-4 border rounded-lg ${
-                          activity.status === 'completed'
-                            ? 'bg-gray-50 border-gray-200'
-                            : isOverdue
-                            ? 'bg-red-50 border-red-200'
-                            : 'bg-white border-gray-200'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                activity.status === 'completed'
-                                  ? 'bg-green-100 text-green-600'
-                                  : isOverdue
-                                  ? 'bg-red-100 text-red-600'
-                                  : 'bg-blue-100 text-blue-600'
-                              }`}
-                            >
-                              {activity.status === 'completed' ? (
-                                <CheckCircle className="h-5 w-5" />
-                              ) : (
-                                <Activity className="h-5 w-5" />
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-medium capitalize">
-                                {activity.activity_type.replace(/_/g, ' ')}
-                              </p>
-                              <p className="text-xs text-gray-500 flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {formatDate(activity.scheduled_date)}
-                                {activity.estimated_duration_minutes && (
-                                  <span className="ml-2">
-                                    ({activity.estimated_duration_minutes} min)
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {activity.status === 'pending' && (
-                              <Button
-                                size="sm"
-                                variant={isOverdue ? 'destructive' : 'default'}
-                                onClick={() => handleReport(activity)}
-                              >
-                                <ClipboardList className="h-4 w-4 mr-1" />
-                                Reportar
-                              </Button>
-                            )}
-                            <Badge
-                              variant={
-                                activity.status === 'completed'
-                                  ? 'secondary'
-                                  : isOverdue
-                                  ? 'destructive'
-                                  : 'default'
-                              }
-                            >
-                              {activity.status === 'completed'
-                                ? 'Completada'
-                                : isOverdue
-                                ? 'Atrasada'
-                                : 'Pendiente'}
-                            </Badge>
-                          </div>
-                        </div>
-                        {activity.instructions && (
-                          <p className="mt-2 text-sm text-gray-600 pl-13">
-                            {activity.instructions}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Activity className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p>No hay actividades programadas</p>
-                  <p className="text-sm">
-                    Las actividades se generan al crear la orden con un template
-                  </p>
-                </div>
-              )}
+              <ActivitySchedule
+                scope={{ type: 'order', orderId }}
+                compact
+              />
             </CardContent>
           </Card>
 
@@ -608,26 +482,11 @@ export default function ProductionOrderDetailPage({ params }: PageProps) {
         </TabsContent>
       </Tabs>
 
-      {/* Execution sheet */}
+      {/* Ad-hoc execution sheet */}
       <ActivityExecutionSheet
         open={executionSheetOpen}
         onOpenChange={setExecutionSheetOpen}
-        scheduledActivityId={executionContext?.scheduledActivityId}
-        entityType={executionContext?.entityType}
-        entityId={executionContext?.entityId}
-        batchIds={executionContext?.batchIds}
-        onCompleted={() => {
-          setExecutionSheetOpen(false);
-          setExecutionContext(null);
-        }}
-      />
-
-      {/* Schedule dialog */}
-      <ScheduleActivityDialog
-        open={scheduleDialogOpen}
-        onOpenChange={setScheduleDialogOpen}
-        fromOrderId={orderId}
-        onScheduled={() => setScheduleDialogOpen(false)}
+        onCompleted={() => setExecutionSheetOpen(false)}
       />
     </div>
   );

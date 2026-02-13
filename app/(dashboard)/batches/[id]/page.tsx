@@ -16,10 +16,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PHASE_LABELS } from '@/lib/constants/phases';
 import { useRouter } from 'next/navigation';
 import { ActivityExecutionSheet } from '@/components/activities/activity-execution-sheet';
+import { ActivitySchedule } from '@/components/activities/activity-schedule';
 import {
   Layers,
   MapPin,
   Calendar,
+  CalendarCheck,
   Info,
   AlertTriangle,
   TrendingDown,
@@ -149,6 +151,13 @@ export default function BatchDetailPage({ params }: PageProps) {
           >
             <Info className="h-4 w-4" />
             Detalle
+          </TabsTrigger>
+          <TabsTrigger
+            value="scheduled"
+            className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+          >
+            <CalendarCheck className="h-4 w-4" />
+            Programadas
           </TabsTrigger>
           <TabsTrigger
             value="activities"
@@ -300,6 +309,14 @@ export default function BatchDetailPage({ params }: PageProps) {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        {/* Scheduled Activities Tab */}
+        <TabsContent value="scheduled" className="mt-6">
+          <ActivitySchedule
+            scope={{ type: 'batch', batchId }}
+            compact
+          />
         </TabsContent>
 
         {/* Activities Tab */}
