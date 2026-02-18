@@ -1,31 +1,58 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useQuery } from 'convex/react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { PageHeader } from '@/components/layout/page-header';
 import { CompactStats, CompactStat } from '@/components/ui/compact-stats';
 import { TemplateList } from '@/components/templates/template-list';
+import { ActivityTemplateList } from '@/components/activity-templates/activity-template-list';
+import { QualityTemplateList } from '@/components/quality-checks/quality-template-list';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFacility } from '@/components/providers/facility-provider';
-import { LayoutTemplate, Layers, BarChart3, CheckCircle } from 'lucide-react';
+import {
+  LayoutTemplate,
+  Layers,
+  BarChart3,
+  CheckCircle,
+  ClipboardList,
+  ClipboardCheck,
+  Repeat,
+  Link2,
+} from 'lucide-react';
 
-export default function TemplatesPage() {
-  const { currentCompanyId, isLoading: facilityLoading } = useFacility();
+type TabValue = 'production' | 'activities' | 'quality';
 
-  // Fetch templates for stats
+const TAB_CONFIG: Record<TabValue, { title: string; description: string }> = {
+  production: {
+    title: 'Templates',
+    description: 'Crea y gestiona plantillas reutilizables para tus procesos de produccion',
+  },
+  activities: {
+    title: 'Templates',
+    description: 'Plantillas de actividades estandarizadas para operaciones de cultivo',
+  },
+  quality: {
+    title: 'Templates',
+    description: 'Plantillas de control de calidad para inspecciones y chequeos',
+  },
+};
+
+function ProductionStats({ companyId }: { companyId: Id<'companies'> }) {
   const templates = useQuery(
     api.productionTemplates.list,
-    currentCompanyId ? { companyId: currentCompanyId, status: 'active' } : 'skip' as any
+    { companyId, status: 'active' }
   );
 
-  // Calculate stats
-  const compactStats = useMemo<CompactStat[]>(() => {
+  const stats = useMemo<CompactStat[]>(() => {
     if (!templates) {
       return [
-        { label: 'Total', value: 0, icon: LayoutTemplate, color: 'default' },
+        { label: 'Templates', value: 0, icon: LayoutTemplate, color: 'default' },
         { label: 'Fases', value: 0, icon: Layers, color: 'default' },
-        { label: 'En Uso', value: 0, icon: BarChart3, color: 'default' },
+        { label: 'Usos', value: 0, icon: BarChart3, color: 'default' },
         { label: 'Exito', value: '-', icon: CheckCircle, color: 'green' },
       ];
     }
@@ -34,7 +61,6 @@ export default function TemplatesPage() {
     const totalPhases = templates.reduce((sum, t) => sum + (t.phasesCount || 0), 0);
     const totalUsage = templates.reduce((sum, t) => sum + (t.usage_count || 0), 0);
 
-    // Calculate average success rate
     const templatesWithSuccess = templates.filter(
       (t) => t.average_success_rate !== undefined && t.average_success_rate !== null
     );
@@ -60,6 +86,114 @@ export default function TemplatesPage() {
     ];
   }, [templates]);
 
+  return <CompactStats stats={stats} />;
+}
+
+function ActivityStats({ companyId }: { companyId: Id<'companies'> }) {
+  const templates = useQuery(
+    api.activityTemplates.list,
+    { companyId, isActive: true }
+  );
+
+  const stats = useMemo<CompactStat[]>(() => {
+    if (!templates) {
+      return [
+        { label: 'Templates', value: 0, icon: ClipboardList, color: 'default' },
+        { label: 'Tipos', value: 0, icon: Layers, color: 'default' },
+        { label: 'Recurrentes', value: 0, icon: Repeat, color: 'default' },
+        { label: 'Con QC', value: 0, icon: Link2, color: 'blue' },
+      ];
+    }
+
+    const totalTemplates = templates.length;
+    const uniqueTypes = new Set(templates.map((t) => t.type_id)).size;
+    const recurring = templates.filter(
+      (t) => t.frequency_type && t.frequency_type !== 'once' && t.frequency_type !== 'on_demand'
+    ).length;
+    const withQC = templates.filter((t) => t.quality_check_template_id).length;
+
+    return [
+      { label: 'Templates', value: totalTemplates, icon: ClipboardList, color: 'default' },
+      { label: 'Tipos', value: uniqueTypes, icon: Layers, color: 'default' },
+      { label: 'Recurrentes', value: recurring, icon: Repeat, color: 'default' },
+      { label: 'Con QC', value: withQC, icon: Link2, color: 'blue' },
+    ];
+  }, [templates]);
+
+  return <CompactStats stats={stats} />;
+}
+
+function QualityStats({ companyId }: { companyId: Id<'companies'> }) {
+  const templates = useQuery(
+    api.qualityCheckTemplates.list,
+    { companyId, status: 'active' }
+  );
+
+  const stats = useMemo<CompactStat[]>(() => {
+    if (!templates) {
+      return [
+        { label: 'Templates', value: 0, icon: ClipboardCheck, color: 'default' },
+        { label: 'Procedimientos', value: 0, icon: Layers, color: 'default' },
+        { label: 'Inspecciones', value: 0, icon: BarChart3, color: 'default' },
+        { label: 'Tiempo Prom.', value: '-', icon: CheckCircle, color: 'default' },
+      ];
+    }
+
+    const totalTemplates = templates.length;
+    const uniqueProcedures = new Set(
+      templates.map((t) => t.procedure_type).filter(Boolean)
+    ).size;
+    const totalInspections = templates.reduce((sum, t) => sum + (t.usage_count || 0), 0);
+
+    const templatesWithTime = templates.filter(
+      (t) => t.average_completion_time_minutes != null
+    );
+    const avgTime =
+      templatesWithTime.length > 0
+        ? Math.round(
+            templatesWithTime.reduce(
+              (sum, t) => sum + (t.average_completion_time_minutes || 0),
+              0
+            ) / templatesWithTime.length
+          )
+        : null;
+
+    return [
+      { label: 'Templates', value: totalTemplates, icon: ClipboardCheck, color: 'default' },
+      { label: 'Procedimientos', value: uniqueProcedures, icon: Layers, color: 'default' },
+      { label: 'Inspecciones', value: totalInspections, icon: BarChart3, color: 'default' },
+      {
+        label: 'Tiempo Prom.',
+        value: avgTime !== null ? `${avgTime} min` : '-',
+        icon: CheckCircle,
+        color: 'default',
+      },
+    ];
+  }, [templates]);
+
+  return <CompactStats stats={stats} />;
+}
+
+export default function TemplatesPage() {
+  const { currentCompanyId, isLoading: facilityLoading } = useFacility();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const activeTab = (searchParams.get('tab') as TabValue) || 'production';
+  const config = TAB_CONFIG[activeTab] || TAB_CONFIG.production;
+
+  const handleTabChange = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams();
+      if (value !== 'production') {
+        params.set('tab', value);
+      }
+      const query = params.toString();
+      router.replace(`/templates${query ? `?${query}` : ''}`, { scroll: false });
+    },
+    [router]
+  );
+
   // Loading state
   if (facilityLoading || !currentCompanyId) {
     return (
@@ -84,17 +218,35 @@ export default function TemplatesPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <PageHeader
-        title="Templates de Produccion"
+        title={config.title}
         icon={LayoutTemplate}
         breadcrumbs={[{ label: 'Inicio', href: '/dashboard' }, { label: 'Templates' }]}
-        description="Crea y gestiona plantillas reutilizables para tus procesos de produccion"
+        description={config.description}
       />
 
-      {/* Compact Stats */}
-      <CompactStats stats={compactStats} />
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList>
+          <TabsTrigger value="production">Produccion</TabsTrigger>
+          <TabsTrigger value="activities">Actividades</TabsTrigger>
+          <TabsTrigger value="quality">Calidad</TabsTrigger>
+        </TabsList>
 
-      {/* Template List - handles its own filters, search, and create modal */}
-      <TemplateList companyId={currentCompanyId} />
+        <TabsContent value="production" className="space-y-6">
+          <ProductionStats companyId={currentCompanyId} />
+          <TemplateList companyId={currentCompanyId} />
+        </TabsContent>
+
+        <TabsContent value="activities" className="space-y-6">
+          <ActivityStats companyId={currentCompanyId} />
+          <ActivityTemplateList companyId={currentCompanyId} />
+        </TabsContent>
+
+        <TabsContent value="quality" className="space-y-6">
+          <QualityStats companyId={currentCompanyId} />
+          <QualityTemplateList companyId={currentCompanyId} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
