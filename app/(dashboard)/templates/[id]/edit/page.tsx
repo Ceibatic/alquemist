@@ -16,10 +16,13 @@ import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ACTIVITY_CATEGORIES } from '@/lib/constants/activity-types';
 import {
   Popover,
   PopoverContent,
@@ -75,21 +78,6 @@ const areaTypes = [
   { value: 'processing', label: 'Procesamiento' },
 ];
 
-const activityTypes = [
-  { value: 'watering', label: 'Riego' },
-  { value: 'feeding', label: 'Fertilizacion' },
-  { value: 'pruning', label: 'Poda' },
-  { value: 'transplanting', label: 'Trasplante' },
-  { value: 'inspection', label: 'Inspeccion' },
-  { value: 'treatment', label: 'Tratamiento' },
-  { value: 'harvest', label: 'Cosecha' },
-  { value: 'drying', label: 'Secado' },
-  { value: 'curing', label: 'Curado' },
-  { value: 'quality_check', label: 'Control Calidad' },
-  { value: 'movement', label: 'Movimiento' },
-  { value: 'planting', label: 'Siembra' },
-];
-
 export default function TemplateEditPage() {
   const params = useParams();
   const router = useRouter();
@@ -110,6 +98,30 @@ export default function TemplateEditPage() {
   const updateActivity = useMutation(api.templateActivities.update);
   const removeActivity = useMutation(api.templateActivities.remove);
 
+  // Fetch activity types dynamically from DB
+  const dynamicActivityTypes = useQuery(
+    api.activityTypes.list,
+    template?.company_id
+      ? { companyId: template.company_id as Id<'companies'>, status: 'active' }
+      : 'skip'
+  );
+
+  // Group activity types by category for the dropdown
+  const groupedActivityTypes = useMemo(() => {
+    if (!dynamicActivityTypes) return [];
+    return ACTIVITY_CATEGORIES
+      .map((cat) => ({
+        ...cat,
+        types: dynamicActivityTypes.filter((t: any) => t.category === cat.value),
+      }))
+      .filter((cat) => cat.types.length > 0);
+  }, [dynamicActivityTypes]);
+
+  // Helper to resolve activity type code to display name
+  const getActivityTypeName = (code: string) => {
+    return dynamicActivityTypes?.find((t: any) => t.code === code)?.name ?? code;
+  };
+
   // Local state
   const [isSaving, setIsSaving] = useState(false);
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
@@ -127,7 +139,7 @@ export default function TemplateEditPage() {
   const [editingActivity, setEditingActivity] = useState<any>(null);
   const [activityPhaseId, setActivityPhaseId] = useState<string>('');
   const [activityName, setActivityName] = useState('');
-  const [activityType, setActivityType] = useState('watering');
+  const [activityType, setActivityType] = useState('irrigation');
   const [activityDuration, setActivityDuration] = useState('30');
   const [activityRecurring, setActivityRecurring] = useState(false);
   const [activityQC, setActivityQC] = useState(false);
@@ -274,7 +286,7 @@ export default function TemplateEditPage() {
     setEditingActivity(null);
     setActivityPhaseId(phaseId);
     setActivityName('');
-    setActivityType('watering');
+    setActivityType('irrigation');
     setActivityDuration('30');
     setActivityRecurring(false);
     setActivityQC(false);
@@ -516,7 +528,7 @@ export default function TemplateEditPage() {
                               >
                                 <span className="flex-1 text-sm">{activity.activity_name}</span>
                                 <Badge variant="outline" className="text-xs">
-                                  {activityTypes.find((t) => t.value === activity.activity_type)?.label || activity.activity_type}
+                                  {getActivityTypeName(activity.activity_type)}
                                 </Badge>
                                 {activity.is_recurring && (
                                   <Badge variant="outline" className="text-xs gap-1">
@@ -742,13 +754,18 @@ export default function TemplateEditPage() {
                 <Label>Tipo</Label>
                 <Select value={activityType} onValueChange={setActivityType}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Seleccionar tipo..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {activityTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
+                    {groupedActivityTypes.map((group) => (
+                      <SelectGroup key={group.value}>
+                        <SelectLabel>{group.label}</SelectLabel>
+                        {group.types.map((type: any) => (
+                          <SelectItem key={type.code} value={type.code}>
+                            {type.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     ))}
                   </SelectContent>
                 </Select>
