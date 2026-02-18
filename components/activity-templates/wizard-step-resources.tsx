@@ -27,7 +27,7 @@ import {
   ChevronUp,
   Package,
 } from 'lucide-react';
-import type { WizardFormData, ResourceItem } from './activity-template-wizard';
+import type { WizardFormData, ResourceItem, ProductListItem } from './activity-template-wizard';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -47,6 +47,31 @@ const DIRECTION_OPTIONS = [
   { value: 'produced', label: 'Producido' },
 ];
 
+const CATEGORY_LABELS: Record<string, string> = {
+  seed: 'Semillas',
+  nutrient: 'Nutrientes',
+  pesticide: 'Pesticidas',
+  equipment: 'Equipos',
+  substrate: 'Sustratos',
+  container: 'Contenedores',
+  tool: 'Herramientas',
+  clone: 'Esquejes',
+  seedling: 'Plantulas',
+  mother_plant: 'Plantas Madre',
+  plant_material: 'Material Vegetal',
+  other: 'Otros',
+};
+
+function formatPrice(price: number, currency?: string) {
+  const curr = currency ?? 'COP';
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: curr,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(price);
+}
+
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
@@ -54,7 +79,7 @@ const DIRECTION_OPTIONS = [
 interface WizardStepResourcesProps {
   formData: WizardFormData;
   updateField: <K extends keyof WizardFormData>(field: K, value: WizardFormData[K]) => void;
-  productList: Array<{ _id: string; name: string; code?: string }>;
+  productList: ProductListItem[];
 }
 
 // ---------------------------------------------------------------------------
@@ -67,6 +92,7 @@ export function WizardStepResources({
   productList,
 }: WizardStepResourcesProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   const resources = formData.resources;
@@ -74,25 +100,47 @@ export function WizardStepResources({
   // IDs already in cart
   const cartProductIds = new Set(resources.map((r) => r.productId));
 
-  // Filtered search results
-  const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const q = searchQuery.toLowerCase();
-    return productList
-      .filter(
-        (p) =>
-          (p.name.toLowerCase().includes(q) ||
-            (p.code && p.code.toLowerCase().includes(q))) &&
-          !cartProductIds.has(p._id)
-      )
-      .slice(0, 8);
-  }, [searchQuery, productList, cartProductIds]);
+  // Available categories from actual products
+  const availableCategories = useMemo(() => {
+    const cats = new Set<string>();
+    for (const p of productList) {
+      if (p.category) cats.add(p.category);
+    }
+    return Array.from(cats).sort();
+  }, [productList]);
 
-  const addProduct = (product: { _id: string; name: string; code?: string }) => {
+  // Filtered products: by category first, then by search text
+  const filteredProducts = useMemo(() => {
+    let filtered = productList.filter((p) => !cartProductIds.has(p._id));
+
+    if (selectedCategory) {
+      filtered = filtered.filter((p) => p.category === selectedCategory);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.code && p.code.toLowerCase().includes(q))
+      );
+    }
+
+    return filtered.slice(0, 20);
+  }, [searchQuery, selectedCategory, productList, cartProductIds]);
+
+  const showProductList = searchQuery.trim() || selectedCategory;
+
+  const addProduct = (product: ProductListItem) => {
     const newResource: ResourceItem = {
       productId: product._id,
       productName: product.name,
       productCode: product.code,
+      productCategory: product.category,
+      productUnit: product.defaultUnit,
+      productPrice: product.defaultPrice,
+      productCurrency: product.priceCurrency,
+      productSupplier: product.supplierName,
       quantity: 1,
       quantityBasis: 'fixed',
       direction: 'consumed',
@@ -129,32 +177,83 @@ export function WizardStepResources({
         <CardHeader>
           <CardTitle className="text-base">Buscar productos</CardTitle>
           <CardDescription>
-            Busca productos por nombre o codigo y agregalos al template.
+            Filtra por categoria o busca por nombre/codigo para agregar productos al template.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nombre o codigo..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            {/* Category filter */}
+            <Select
+              value={selectedCategory ?? 'all'}
+              onValueChange={(v) => setSelectedCategory(v === 'all' ? null : v)}
+            >
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las categorias</SelectItem>
+                {availableCategories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {CATEGORY_LABELS[cat] || cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Search input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre o codigo..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </div>
 
-          {searchResults.length > 0 && (
-            <div className="border rounded-lg divide-y max-h-[240px] overflow-auto">
-              {searchResults.map((product) => (
+          {/* Product results */}
+          {showProductList && filteredProducts.length > 0 && (
+            <div className="border rounded-lg divide-y max-h-[300px] overflow-auto">
+              {filteredProducts.map((product) => (
                 <div
                   key={product._id}
                   className="flex items-center justify-between px-3 py-2 hover:bg-gray-50"
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{product.name}</p>
-                    {product.code && (
-                      <p className="text-xs text-muted-foreground font-mono">{product.code}</p>
-                    )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium truncate">{product.name}</p>
+                      {product.category && (
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {CATEGORY_LABELS[product.category] || product.category}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                      {product.code && (
+                        <span className="font-mono">{product.code}</span>
+                      )}
+                      {product.defaultUnit && (
+                        <>
+                          <span>·</span>
+                          <span>{product.defaultUnit}</span>
+                        </>
+                      )}
+                      {product.defaultPrice != null && (
+                        <>
+                          <span>·</span>
+                          <span className="text-green-600 font-medium">
+                            {formatPrice(product.defaultPrice, product.priceCurrency)}
+                          </span>
+                        </>
+                      )}
+                      {product.supplierName && (
+                        <>
+                          <span>·</span>
+                          <span>{product.supplierName}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                   <Button
                     size="sm"
@@ -170,7 +269,7 @@ export function WizardStepResources({
             </div>
           )}
 
-          {searchQuery.trim() && searchResults.length === 0 && (
+          {showProductList && filteredProducts.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-2">
               No se encontraron productos
             </p>
@@ -216,11 +315,31 @@ export function WizardStepResources({
                               <Badge variant="outline" className="text-xs">Opcional</Badge>
                             )}
                           </div>
-                          {res.productCode && (
-                            <span className="text-xs text-muted-foreground font-mono">
-                              {res.productCode}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                            {res.productCode && (
+                              <span className="font-mono">{res.productCode}</span>
+                            )}
+                            {res.productUnit && (
+                              <>
+                                <span>·</span>
+                                <span>{res.productUnit}</span>
+                              </>
+                            )}
+                            {res.productPrice != null && (
+                              <>
+                                <span>·</span>
+                                <span className="text-green-600 font-medium">
+                                  {formatPrice(res.productPrice, res.productCurrency)}
+                                </span>
+                              </>
+                            )}
+                            {res.productSupplier && (
+                              <>
+                                <span>·</span>
+                                <span>{res.productSupplier}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
 
                         {/* Quantity */}

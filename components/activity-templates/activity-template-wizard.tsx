@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -34,6 +34,11 @@ export interface ResourceItem {
   productId: string;
   productName: string;
   productCode?: string;
+  productCategory?: string;
+  productUnit?: string;
+  productPrice?: number;
+  productCurrency?: string;
+  productSupplier?: string;
   quantity: number;
   quantityBasis: string;
   direction: string;
@@ -41,6 +46,17 @@ export interface ResourceItem {
   applicationMethod: string;
   isRequired: boolean;
   notes: string;
+}
+
+export interface ProductListItem {
+  _id: string;
+  name: string;
+  code?: string;
+  category?: string;
+  defaultUnit?: string;
+  defaultPrice?: number;
+  priceCurrency?: string;
+  supplierName?: string;
 }
 
 export interface WizardFormData {
@@ -157,23 +173,54 @@ export function ActivityTemplateWizard({
   const addResourceMutation = useMutation(api.activityTemplates.addResource);
   const removeResourceMutation = useMutation(api.activityTemplates.removeResource);
 
-  // Normalize product list (api.products.list may return { products: [] } or array)
-  const productList: Array<{ _id: string; name: string; code?: string }> =
-    products && 'products' in products
+  const suppliers = useQuery(
+    api.suppliers.list,
+    { companyId }
+  );
+
+  // Normalize product list with enriched data
+  const productList = useMemo(() => {
+    const raw = products && 'products' in products
       ? (products as any).products
       : (products as any) ?? [];
+
+    const supplierMap = new Map<string, string>();
+    if (suppliers) {
+      for (const s of suppliers) {
+        supplierMap.set(s._id, s.name ?? s.primary_contact_name ?? 'Proveedor');
+      }
+    }
+
+    return raw.map((p: any) => ({
+      _id: p._id as string,
+      name: p.name as string,
+      code: (p.sku ?? p.code) as string | undefined,
+      category: p.category as string | undefined,
+      defaultUnit: p.default_unit as string | undefined,
+      defaultPrice: p.default_price as number | undefined,
+      priceCurrency: p.price_currency as string | undefined,
+      supplierName: p.preferred_supplier_id
+        ? supplierMap.get(p.preferred_supplier_id) ?? undefined
+        : undefined,
+    }));
+  }, [products, suppliers]);
 
   // Load template data in edit mode
   useEffect(() => {
     if (template && !loaded) {
       // Map existing resources to local ResourceItem format
       const existingResources: ResourceItem[] = (template.resources ?? []).map((r: any) => {
-        const product = productList.find((p) => p._id === r.product_id);
+        const product = productList.find((p: ProductListItem) => p._id === r.product_id);
         return {
           _id: r._id,
           productId: r.product_id,
           productName: product?.name ?? 'Producto desconocido',
           productCode: product?.code,
+          productCategory: product?.category,
+          productUnit: product?.defaultUnit,
+          productPrice: product?.defaultPrice,
+          productCurrency: product?.priceCurrency,
+          productSupplier: product?.supplierName,
           quantity: r.quantity,
           quantityBasis: r.quantity_basis ?? 'fixed',
           direction: r.direction ?? 'consumed',
@@ -369,8 +416,9 @@ export function ActivityTemplateWizard({
         // Add resources for new template
         await syncResources(savedTemplateId);
         toast.success('Template creado');
-        router.push(`/activity-templates/${savedTemplateId}`);
       }
+
+      router.push('/templates?tab=activities');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al guardar');
     } finally {

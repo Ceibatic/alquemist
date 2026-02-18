@@ -29,7 +29,6 @@ import {
   Repeat,
   ChevronDown,
   Link2,
-  ShieldCheck,
 } from 'lucide-react';
 import type { WizardFormData } from './activity-template-wizard';
 
@@ -256,7 +255,7 @@ export function WizardStepConfig({
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Link2 className="h-4 w-4" />
-                  Dependencias y regulacion
+                  Dependencias
                 </CardTitle>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </div>
@@ -302,25 +301,6 @@ export function WizardStepConfig({
                 </div>
               )}
 
-              <Separator />
-
-              <div className="space-y-2">
-                <Label>Referencia regulatoria</Label>
-                <Input
-                  value={formData.regulatoryReference}
-                  onChange={(e) => updateField('regulatoryReference', e.target.value)}
-                  placeholder="Ej: SOP-CUL-014"
-                />
-              </div>
-
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                <Switch
-                  checked={formData.requiresVerification}
-                  onCheckedChange={(v) => updateField('requiresVerification', v)}
-                />
-                <Label className="cursor-pointer">Requiere verificacion de supervisor</Label>
-              </div>
             </CardContent>
           </CollapsibleContent>
         </Card>

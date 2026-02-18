@@ -187,28 +187,33 @@ export function WizardStepBasic({
           )}
 
           {/* Day range */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="dayStart">Dia inicio de fase (opcional)</Label>
-              <Input
-                id="dayStart"
-                type="number"
-                value={formData.phaseDayStart}
-                onChange={(e) => updateField('phaseDayStart', e.target.value)}
-                placeholder="Ej: 1"
-                min={0}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="dayEnd">Dia fin de fase (opcional)</Label>
-              <Input
-                id="dayEnd"
-                type="number"
-                value={formData.phaseDayEnd}
-                onChange={(e) => updateField('phaseDayEnd', e.target.value)}
-                placeholder="Ej: 14"
-                min={0}
-              />
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Define en que rango de dias dentro de la fase aplica esta actividad (ej: dia 1 al 14 de vegetativo). Se usa para programacion automatica.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dayStart">Dia inicio (opcional)</Label>
+                <Input
+                  id="dayStart"
+                  type="number"
+                  value={formData.phaseDayStart}
+                  onChange={(e) => updateField('phaseDayStart', e.target.value)}
+                  placeholder="Ej: 1"
+                  min={0}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dayEnd">Dia fin (opcional)</Label>
+                <Input
+                  id="dayEnd"
+                  type="number"
+                  value={formData.phaseDayEnd}
+                  onChange={(e) => updateField('phaseDayEnd', e.target.value)}
+                  placeholder="Ej: 14"
+                  min={0}
+                />
+              </div>
             </div>
           </div>
         </CardContent>
