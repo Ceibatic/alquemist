@@ -16,6 +16,7 @@ import {
   Pencil,
   Copy,
   Archive,
+  RotateCcw,
   Leaf,
   ClipboardCheck,
   Brain,
@@ -44,6 +45,7 @@ interface QCTemplateCardProps {
   onEdit?: () => void;
   onDuplicate?: () => void;
   onArchive?: () => void;
+  onRestore?: () => void;
 }
 
 const procedureLabels: Record<string, string> = {
@@ -77,6 +79,7 @@ export function QCTemplateCard({
   onEdit,
   onDuplicate,
   onArchive,
+  onRestore,
 }: QCTemplateCardProps) {
   return (
     <Card
@@ -123,16 +126,26 @@ export function QCTemplateCard({
                   Duplicar
                 </DropdownMenuItem>
               )}
-              {onArchive && (
+              {(onArchive || onRestore) && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={(e) => { e.stopPropagation(); onArchive(); }}
-                    className="text-red-600"
-                  >
-                    <Archive className="mr-2 h-4 w-4" />
-                    Archivar
-                  </DropdownMenuItem>
+                  {onArchive && (
+                    <DropdownMenuItem
+                      onClick={(e) => { e.stopPropagation(); onArchive(); }}
+                      className="text-red-600"
+                    >
+                      <Archive className="mr-2 h-4 w-4" />
+                      Archivar
+                    </DropdownMenuItem>
+                  )}
+                  {onRestore && (
+                    <DropdownMenuItem
+                      onClick={(e) => { e.stopPropagation(); onRestore(); }}
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Restaurar
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>

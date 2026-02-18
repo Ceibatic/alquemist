@@ -49,6 +49,7 @@ export function QualityTemplateList({ companyId }: QualityTemplateListProps) {
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCropType, setSelectedCropType] = useState<string | null>(null);
   const [selectedProcedure, setSelectedProcedure] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
 
@@ -61,8 +62,11 @@ export function QualityTemplateList({ companyId }: QualityTemplateListProps) {
   const templates = useQuery(api.qualityCheckTemplates.list, {
     companyId,
     status: showArchived ? 'archived' : 'active',
+    cropTypeId: selectedCropType ? (selectedCropType as Id<'crop_types'>) : undefined,
     procedureType: selectedProcedure ?? undefined,
   });
+
+  const cropTypes = useQuery(api.crops.getCropTypes, {});
 
   // Mutations
   const duplicateMutation = useMutation(api.qualityCheckTemplates.duplicate);
@@ -153,6 +157,24 @@ export function QualityTemplateList({ companyId }: QualityTemplateListProps) {
           )}
         </div>
 
+        {/* Crop type filter */}
+        <Select
+          value={selectedCropType ?? 'all'}
+          onValueChange={(v) => setSelectedCropType(v === 'all' ? null : v)}
+        >
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Cultivo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los cultivos</SelectItem>
+            {cropTypes?.map((ct) => (
+              <SelectItem key={ct._id} value={ct._id}>
+                {ct.display_name_es ?? ct.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         {/* Procedure type filter */}
         <Select
           value={selectedProcedure ?? 'all'}
@@ -198,18 +220,18 @@ export function QualityTemplateList({ companyId }: QualityTemplateListProps) {
         <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-lg">
           <ClipboardCheck className="h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-1">
-            {searchQuery || selectedProcedure
+            {searchQuery || selectedProcedure || selectedCropType
               ? 'Sin resultados'
               : showArchived
                 ? 'No hay templates archivados'
                 : 'No hay templates de calidad'}
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            {searchQuery || selectedProcedure
+            {searchQuery || selectedProcedure || selectedCropType
               ? 'Intenta con otros filtros'
               : 'Crea tu primer template de control de calidad para estandarizar inspecciones'}
           </p>
-          {!searchQuery && !selectedProcedure && !showArchived && (
+          {!searchQuery && !selectedProcedure && !selectedCropType && !showArchived && (
             <Button
               onClick={() => router.push('/quality-checks/templates/new')}
               className="bg-amber-500 hover:bg-amber-600"
@@ -242,6 +264,11 @@ export function QualityTemplateList({ companyId }: QualityTemplateListProps) {
                       setTemplateToArchive(template._id);
                       setArchiveDialogOpen(true);
                     }
+              }
+              onRestore={
+                showArchived
+                  ? () => handleRestore(template._id)
+                  : undefined
               }
             />
           ))}

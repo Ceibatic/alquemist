@@ -27,7 +27,7 @@ Grid de cards (`md:grid-cols-2 lg:grid-cols-3`) con cada template mostrando:
 |------|---------|
 | Templates | Total de activity templates |
 | Tipos | Cantidad de tipos de actividad distintos usados |
-| Con Recursos | Templates que tienen recursos asignados |
+| Recurrentes | Templates con frecuencia recurrente (no once/on_demand) |
 | Con QC | Templates vinculados a un QC template |
 
 ## Acciones

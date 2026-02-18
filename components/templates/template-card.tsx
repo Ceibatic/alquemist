@@ -16,6 +16,7 @@ import {
   Pencil,
   Copy,
   Archive,
+  RotateCcw,
   Calendar,
   Layers,
   BarChart3,
@@ -47,6 +48,7 @@ interface TemplateCardProps {
   onEdit?: () => void;
   onDuplicate?: () => void;
   onArchive?: () => void;
+  onRestore?: () => void;
 }
 
 const categoryLabels: Record<string, string> = {
@@ -79,6 +81,7 @@ export function TemplateCard({
   onEdit,
   onDuplicate,
   onArchive,
+  onRestore,
 }: TemplateCardProps) {
   const difficulty = template.difficulty_level
     ? difficultyConfig[template.difficulty_level]
@@ -135,16 +138,26 @@ export function TemplateCard({
                   Duplicar
                 </DropdownMenuItem>
               )}
-              {onArchive && (
+              {(onArchive || onRestore) && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={(e) => { e.stopPropagation(); onArchive(); }}
-                    className="text-red-600"
-                  >
-                    <Archive className="mr-2 h-4 w-4" />
-                    Archivar
-                  </DropdownMenuItem>
+                  {onArchive && (
+                    <DropdownMenuItem
+                      onClick={(e) => { e.stopPropagation(); onArchive(); }}
+                      className="text-red-600"
+                    >
+                      <Archive className="mr-2 h-4 w-4" />
+                      Archivar
+                    </DropdownMenuItem>
+                  )}
+                  {onRestore && (
+                    <DropdownMenuItem
+                      onClick={(e) => { e.stopPropagation(); onRestore(); }}
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Restaurar
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>

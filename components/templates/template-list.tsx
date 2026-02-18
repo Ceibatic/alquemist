@@ -79,6 +79,7 @@ export function TemplateList({ companyId }: TemplateListProps) {
 
   // Mutations
   const archiveTemplate = useMutation(api.productionTemplates.archive);
+  const restoreTemplate = useMutation(api.productionTemplates.restore);
   const duplicateTemplate = useMutation(api.productionTemplates.duplicate);
 
   // Filter templates
@@ -205,6 +206,25 @@ export function TemplateList({ companyId }: TemplateListProps) {
       });
     } finally {
       setIsArchiving(false);
+    }
+  };
+
+  const handleRestoreTemplate = async (template: any) => {
+    try {
+      await restoreTemplate({
+        templateId: template._id as Id<'production_templates'>,
+      });
+      toast({
+        title: 'Template restaurado',
+        description: `"${template.name}" ha sido restaurado.`,
+      });
+    } catch (error) {
+      console.error('Error restoring template:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo restaurar el template. Intenta de nuevo.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -461,7 +481,8 @@ export function TemplateList({ companyId }: TemplateListProps) {
               onView={() => handleViewTemplate(template)}
               onEdit={() => handleEditTemplate(template)}
               onDuplicate={() => handleDuplicateTemplate(template)}
-              onArchive={() => handleArchiveTemplate(template)}
+              onArchive={showArchived ? undefined : () => handleArchiveTemplate(template)}
+              onRestore={showArchived ? () => handleRestoreTemplate(template) : undefined}
             />
           ))}
         </div>

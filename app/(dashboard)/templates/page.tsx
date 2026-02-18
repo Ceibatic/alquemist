@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, Suspense } from 'react';
 import { useQuery } from 'convex/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { api } from '@/convex/_generated/api';
@@ -174,7 +174,7 @@ function QualityStats({ companyId }: { companyId: Id<'companies'> }) {
   return <CompactStats stats={stats} />;
 }
 
-export default function TemplatesPage() {
+function TemplatesPageContent() {
   const { currentCompanyId, isLoading: facilityLoading } = useFacility();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -248,5 +248,20 @@ export default function TemplatesPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function TemplatesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-10 w-80" />
+        </div>
+      }
+    >
+      <TemplatesPageContent />
+    </Suspense>
   );
 }
