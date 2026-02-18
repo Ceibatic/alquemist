@@ -129,11 +129,11 @@ export function ProductList() {
 
   // Handlers
   const handleRowClick = (product: any) => {
-    router.push(`/products/${product._id}`);
+    router.push(`/resources/products/${product._id}`);
   };
 
   const handleEdit = (product: any) => {
-    router.push(`/products/${product._id}/edit`);
+    router.push(`/resources/products/${product._id}/edit`);
   };
 
   const handleDelete = (product: any) => {

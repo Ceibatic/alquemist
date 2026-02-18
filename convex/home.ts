@@ -390,7 +390,7 @@ async function generateAdminAlerts(
       type: "inventory_alert",
       severity: "warning",
       message: `${lowStockItems.length} producto(s) con stock bajo`,
-      actionUrl: "/inventory",
+      actionUrl: "/resources",
     });
   }
 

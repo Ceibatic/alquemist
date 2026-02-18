@@ -37,7 +37,7 @@ export function QuickActions() {
             asChild
             className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-gray-900 sm:flex-initial"
           >
-            <Link href="/inventory">
+            <Link href="/resources">
               <Plus className="mr-2 h-4 w-4" />
               Agregar Inventario
             </Link>

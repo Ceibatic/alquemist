@@ -7,13 +7,11 @@ import {
   LayoutDashboard,
   Map,
   Leaf,
-  Package,
-  ClipboardList,
+  Boxes,
   Users,
   Settings,
   Building2,
   LayoutTemplate,
-  ShoppingCart,
   Factory,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -37,19 +35,9 @@ const navigationItems = [
     icon: Leaf,
   },
   {
-    name: 'Proveedores',
-    href: '/suppliers' as const,
-    icon: Package,
-  },
-  {
-    name: 'Productos',
-    href: '/products' as const,
-    icon: ShoppingCart,
-  },
-  {
-    name: 'Inventario',
-    href: '/inventory' as const,
-    icon: ClipboardList,
+    name: 'Recursos',
+    href: '/resources' as const,
+    icon: Boxes,
   },
   {
     name: 'Produccion',

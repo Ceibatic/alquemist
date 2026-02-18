@@ -8,8 +8,7 @@ import {
   LayoutDashboard,
   Map,
   Leaf,
-  Package,
-  ClipboardList,
+  Boxes,
   Users,
   Settings,
   LogOut,
@@ -45,14 +44,9 @@ const navigationItems = [
     icon: Leaf,
   },
   {
-    name: 'Proveedores',
-    href: '/suppliers',
-    icon: Package,
-  },
-  {
-    name: 'Inventario',
-    href: '/inventory',
-    icon: ClipboardList,
+    name: 'Recursos',
+    href: '/resources',
+    icon: Boxes,
   },
   {
     name: 'Produccion',

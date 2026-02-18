@@ -70,7 +70,7 @@ export function ProductCreateModal({ open, onOpenChange }: ProductCreateModalPro
       });
 
       onOpenChange(false);
-      router.push(`/products/${productId}`);
+      router.push(`/resources/products/${productId}`);
     } catch (error: any) {
       console.error('Error creating product:', error);
       toast.error('Error al crear producto', {

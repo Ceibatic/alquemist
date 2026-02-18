@@ -189,7 +189,7 @@ export function SupplierTable({
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
-                    router.push(`/suppliers/${supplier._id}`);
+                    router.push(`/resources/suppliers/${supplier._id}`);
                   }}
                 >
                   <Eye className="mr-2 h-4 w-4" />
@@ -198,7 +198,7 @@ export function SupplierTable({
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
-                    router.push(`/suppliers/${supplier._id}/edit`);
+                    router.push(`/resources/suppliers/${supplier._id}/edit`);
                   }}
                 >
                   <Pencil className="mr-2 h-4 w-4" />
@@ -241,7 +241,7 @@ export function SupplierTable({
     <DataTable
       columns={columns}
       data={supplierData}
-      onRowClick={(supplier) => router.push(`/suppliers/${supplier._id}`)}
+      onRowClick={(supplier) => router.push(`/resources/suppliers/${supplier._id}`)}
       loading={loading}
     />
   );
