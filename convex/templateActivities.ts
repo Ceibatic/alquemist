@@ -120,6 +120,85 @@ export const create = mutation({
 });
 
 /**
+ * Create a template activity pre-filled from an activity template.
+ * Copies data from the activity template and stores the reference for traceability.
+ */
+export const createFromActivityTemplate = mutation({
+  args: {
+    phaseId: v.id("template_phases"),
+    activityTemplateId: v.id("activity_templates"),
+    // Optional overrides (user may edit pre-filled values before saving)
+    activityName: v.optional(v.string()),
+    activityType: v.optional(v.string()),
+    estimatedDurationMinutes: v.optional(v.number()),
+    isRecurring: v.optional(v.boolean()),
+    isQualityCheck: v.optional(v.boolean()),
+    instructions: v.optional(v.string()),
+    safetyNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const phase = await ctx.db.get(args.phaseId);
+    if (!phase) {
+      throw new Error("Phase not found");
+    }
+
+    const activityTemplate = await ctx.db.get(args.activityTemplateId);
+    if (!activityTemplate) {
+      throw new Error("Activity template not found");
+    }
+
+    // Resolve activity type code from activity_types table
+    const activityTypeRecord = await ctx.db.get(activityTemplate.type_id);
+    const resolvedActivityType = activityTypeRecord?.code ?? "inspection";
+
+    // Derive is_recurring from frequency_type
+    const isRecurringFromTemplate =
+      activityTemplate.frequency_type !== "once" &&
+      activityTemplate.frequency_type !== "on_demand";
+
+    // Derive is_quality_check from quality_check_template_id
+    const isQCFromTemplate = !!activityTemplate.quality_check_template_id;
+
+    // Determine next activity_order
+    const existingActivities = await ctx.db
+      .query("template_activities")
+      .withIndex("by_phase", (q) => q.eq("phase_id", args.phaseId))
+      .collect();
+
+    const maxOrder = existingActivities.reduce(
+      (max, a) => Math.max(max, a.activity_order),
+      0
+    );
+
+    const activityId = await ctx.db.insert("template_activities", {
+      phase_id: args.phaseId,
+      activity_name: args.activityName ?? activityTemplate.name,
+      activity_order: maxOrder + 1,
+      activity_type: args.activityType ?? resolvedActivityType,
+      is_recurring: args.isRecurring ?? isRecurringFromTemplate,
+      is_quality_check: args.isQualityCheck ?? isQCFromTemplate,
+      timing_configuration: {
+        days_from_phase_start: activityTemplate.phase_day_start ?? 0,
+        time_of_day: "08:00",
+      },
+      required_materials: [],
+      estimated_duration_minutes:
+        args.estimatedDurationMinutes ??
+        activityTemplate.estimated_duration_minutes,
+      quality_check_template_id: activityTemplate.quality_check_template_id,
+      instructions: args.instructions ?? activityTemplate.description,
+      safety_notes: args.safetyNotes,
+      activity_template_id: args.activityTemplateId,
+      created_at: now,
+    });
+
+    return activityId;
+  },
+});
+
+/**
  * Update an activity
  */
 export const update = mutation({

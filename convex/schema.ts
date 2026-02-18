@@ -1008,6 +1008,9 @@ export default defineSchema({
     instructions: v.optional(v.string()),
     safety_notes: v.optional(v.string()),
 
+    // Traceability: which activity template was this created from
+    activity_template_id: v.optional(v.id("activity_templates")),
+
     created_at: v.number(),
   })
     .index("by_phase", ["phase_id"])

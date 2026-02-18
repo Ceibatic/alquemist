@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -38,7 +45,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
   LayoutTemplate,
   Save,
@@ -53,6 +60,9 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  ChevronsUpDown,
+  Search,
+  FileDown,
 } from 'lucide-react';
 
 const areaTypes = [
@@ -83,7 +93,6 @@ const activityTypes = [
 export default function TemplateEditPage() {
   const params = useParams();
   const router = useRouter();
-  const { toast } = useToast();
   const templateId = params.id as string;
 
   // Fetch template with phases and activities
@@ -97,6 +106,7 @@ export default function TemplateEditPage() {
   const updatePhase = useMutation(api.templatePhases.update);
   const removePhase = useMutation(api.templatePhases.remove);
   const createActivity = useMutation(api.templateActivities.create);
+  const createFromActivityTemplate = useMutation(api.templateActivities.createFromActivityTemplate);
   const updateActivity = useMutation(api.templateActivities.update);
   const removeActivity = useMutation(api.templateActivities.remove);
 
@@ -122,6 +132,43 @@ export default function TemplateEditPage() {
   const [activityRecurring, setActivityRecurring] = useState(false);
   const [activityQC, setActivityQC] = useState(false);
   const [activityInstructions, setActivityInstructions] = useState('');
+
+  // Activity template picker state
+  const [selectedActivityTemplateId, setSelectedActivityTemplateId] = useState('');
+  const [templateSearchQuery, setTemplateSearchQuery] = useState('');
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+
+  // Get the current phase's area_type for filtering activity templates
+  const currentPhaseAreaType = useMemo(() => {
+    if (!activityPhaseId || !template?.phases) return undefined;
+    const phase = (template.phases as any[]).find((p: any) => p._id === activityPhaseId);
+    return phase?.area_type as string | undefined;
+  }, [activityPhaseId, template?.phases]);
+
+  // Fetch activity templates filtered by the current phase
+  const activityTemplatesForPhase = useQuery(
+    api.activityTemplates.list,
+    template?.company_id && currentPhaseAreaType
+      ? {
+          companyId: template.company_id as Id<'companies'>,
+          phase: currentPhaseAreaType,
+          isActive: true,
+        }
+      : 'skip'
+  );
+
+  // Filter activity templates by search query
+  const filteredActivityTemplates = useMemo(() => {
+    if (!activityTemplatesForPhase) return [];
+    if (!templateSearchQuery) return activityTemplatesForPhase;
+    const q = templateSearchQuery.toLowerCase();
+    return activityTemplatesForPhase.filter(
+      (t: any) =>
+        t.name.toLowerCase().includes(q) ||
+        (t.description && t.description.toLowerCase().includes(q)) ||
+        (t.code && t.code.toLowerCase().includes(q))
+    );
+  }, [activityTemplatesForPhase, templateSearchQuery]);
 
   // Delete confirmation state
   const [deletePhaseId, setDeletePhaseId] = useState<string | null>(null);
@@ -161,7 +208,7 @@ export default function TemplateEditPage() {
 
   const handleSavePhase = async () => {
     if (!phaseName.trim()) {
-      toast({ title: 'Error', description: 'El nombre es requerido', variant: 'destructive' });
+      toast.error('El nombre es requerido');
       return;
     }
 
@@ -175,7 +222,7 @@ export default function TemplateEditPage() {
           areaType: phaseAreaType,
           description: phaseDescription.trim() || undefined,
         });
-        toast({ title: 'Fase actualizada' });
+        toast.success('Fase actualizada');
       } else {
         await createPhase({
           templateId: templateId as Id<'production_templates'>,
@@ -184,11 +231,11 @@ export default function TemplateEditPage() {
           areaType: phaseAreaType,
           description: phaseDescription.trim() || undefined,
         });
-        toast({ title: 'Fase creada' });
+        toast.success('Fase creada');
       }
       setPhaseModalOpen(false);
     } catch (error) {
-      toast({ title: 'Error', description: 'No se pudo guardar la fase', variant: 'destructive' });
+      toast.error('No se pudo guardar la fase');
     } finally {
       setIsSaving(false);
     }
@@ -199,13 +246,27 @@ export default function TemplateEditPage() {
     setIsSaving(true);
     try {
       await removePhase({ phaseId: deletePhaseId as Id<'template_phases'> });
-      toast({ title: 'Fase eliminada' });
+      toast.success('Fase eliminada');
       setDeletePhaseId(null);
     } catch (error) {
-      toast({ title: 'Error', description: 'No se pudo eliminar la fase', variant: 'destructive' });
+      toast.error('No se pudo eliminar la fase');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Activity template selection handler
+  const handleActivityTemplateSelect = (actTemplate: any) => {
+    setSelectedActivityTemplateId(actTemplate._id);
+    setActivityName(actTemplate.name);
+    setActivityDuration(String(actTemplate.estimated_duration_minutes || 30));
+    setActivityRecurring(
+      actTemplate.frequency_type !== 'once' && actTemplate.frequency_type !== 'on_demand'
+    );
+    setActivityQC(!!actTemplate.quality_check_template_id);
+    setActivityInstructions(actTemplate.description || '');
+    setTemplatePickerOpen(false);
+    setTemplateSearchQuery('');
   };
 
   // Activity handlers
@@ -218,6 +279,8 @@ export default function TemplateEditPage() {
     setActivityRecurring(false);
     setActivityQC(false);
     setActivityInstructions('');
+    setSelectedActivityTemplateId('');
+    setTemplateSearchQuery('');
     setActivityModalOpen(true);
   };
 
@@ -235,7 +298,7 @@ export default function TemplateEditPage() {
 
   const handleSaveActivity = async () => {
     if (!activityName.trim()) {
-      toast({ title: 'Error', description: 'El nombre es requerido', variant: 'destructive' });
+      toast.error('El nombre es requerido');
       return;
     }
 
@@ -251,7 +314,19 @@ export default function TemplateEditPage() {
           isQualityCheck: activityQC,
           instructions: activityInstructions.trim() || undefined,
         });
-        toast({ title: 'Actividad actualizada' });
+        toast.success('Actividad actualizada');
+      } else if (selectedActivityTemplateId) {
+        await createFromActivityTemplate({
+          phaseId: activityPhaseId as Id<'template_phases'>,
+          activityTemplateId: selectedActivityTemplateId as Id<'activity_templates'>,
+          activityName: activityName.trim(),
+          activityType,
+          estimatedDurationMinutes: parseInt(activityDuration) || 30,
+          isRecurring: activityRecurring,
+          isQualityCheck: activityQC,
+          instructions: activityInstructions.trim() || undefined,
+        });
+        toast.success('Actividad creada desde plantilla');
       } else {
         await createActivity({
           phaseId: activityPhaseId as Id<'template_phases'>,
@@ -262,11 +337,11 @@ export default function TemplateEditPage() {
           isQualityCheck: activityQC,
           instructions: activityInstructions.trim() || undefined,
         });
-        toast({ title: 'Actividad creada' });
+        toast.success('Actividad creada');
       }
       setActivityModalOpen(false);
     } catch (error) {
-      toast({ title: 'Error', description: 'No se pudo guardar la actividad', variant: 'destructive' });
+      toast.error('No se pudo guardar la actividad');
     } finally {
       setIsSaving(false);
     }
@@ -277,10 +352,10 @@ export default function TemplateEditPage() {
     setIsSaving(true);
     try {
       await removeActivity({ activityId: deleteActivityId as Id<'template_activities'> });
-      toast({ title: 'Actividad eliminada' });
+      toast.success('Actividad eliminada');
       setDeleteActivityId(null);
     } catch (error) {
-      toast({ title: 'Error', description: 'No se pudo eliminar la actividad', variant: 'destructive' });
+      toast.error('No se pudo eliminar la actividad');
     } finally {
       setIsSaving(false);
     }
@@ -453,6 +528,12 @@ export default function TemplateEditPage() {
                                     <CheckCircle className="h-3 w-3" />
                                   </Badge>
                                 )}
+                                {activity.activity_template_id && (
+                                  <Badge variant="outline" className="text-xs gap-1 text-purple-600">
+                                    <FileDown className="h-3 w-3" />
+                                    Plantilla
+                                  </Badge>
+                                )}
                                 {activity.estimated_duration_minutes && (
                                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                                     <Clock className="h-3 w-3" />
@@ -561,6 +642,93 @@ export default function TemplateEditPage() {
             <DialogTitle>{editingActivity ? 'Editar Actividad' : 'Nueva Actividad'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {/* Activity Template Picker — only shown when creating new */}
+            {!editingActivity && (
+              <div className="border rounded-lg p-3 bg-blue-50/50">
+                <Label className="text-sm font-medium flex items-center gap-2 mb-2">
+                  <FileDown className="h-4 w-4" />
+                  Importar desde plantilla (opcional)
+                </Label>
+                <Popover open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-between font-normal"
+                    >
+                      {selectedActivityTemplateId
+                        ? activityTemplatesForPhase?.find(
+                            (t: any) => t._id === selectedActivityTemplateId
+                          )?.name || 'Plantilla seleccionada'
+                        : 'Seleccionar plantilla de actividad...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <div className="flex items-center border-b px-3">
+                      <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                      <Input
+                        placeholder="Buscar plantilla..."
+                        value={templateSearchQuery}
+                        onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                        className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                      />
+                    </div>
+                    <ScrollArea className="h-[200px]">
+                      {selectedActivityTemplateId && (
+                        <div
+                          className="flex cursor-pointer items-center gap-2 border-b px-3 py-2 hover:bg-gray-50 text-sm text-muted-foreground"
+                          onClick={() => {
+                            setSelectedActivityTemplateId('');
+                            setActivityName('');
+                            setActivityDuration('30');
+                            setActivityRecurring(false);
+                            setActivityQC(false);
+                            setActivityInstructions('');
+                            setTemplatePickerOpen(false);
+                            setTemplateSearchQuery('');
+                          }}
+                        >
+                          Crear manualmente (sin plantilla)
+                        </div>
+                      )}
+                      {filteredActivityTemplates.length === 0 ? (
+                        <div className="py-4 text-center text-sm text-muted-foreground">
+                          {templateSearchQuery
+                            ? 'No se encontraron plantillas'
+                            : 'No hay plantillas para esta fase'}
+                        </div>
+                      ) : (
+                        filteredActivityTemplates.map((t: any) => (
+                          <div
+                            key={t._id}
+                            className={cn(
+                              'flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-gray-50',
+                              selectedActivityTemplateId === t._id && 'bg-blue-50'
+                            )}
+                            onClick={() => handleActivityTemplateSelect(t)}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm">{t.name}</div>
+                              {t.description && (
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {t.description}
+                                </div>
+                              )}
+                            </div>
+                            {t.estimated_duration_minutes && (
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                {t.estimated_duration_minutes}min
+                              </span>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+
             <div className="grid gap-2">
               <Label>Nombre *</Label>
               <Input
