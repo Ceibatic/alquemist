@@ -2053,6 +2053,8 @@ export default defineSchema({
 
     // Time estimates
     estimated_duration_minutes: v.optional(v.number()),
+    duration_type: v.optional(v.string()),  // "hours" | "days" (default: "hours")
+    duration_value: v.optional(v.number()), // numeric value for the duration_type
     labor_hours_per_1000_plants: v.optional(v.number()),
 
     // Recurrence

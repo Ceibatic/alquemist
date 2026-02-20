@@ -134,6 +134,8 @@ export const create = mutation({
     phaseDayStart: v.optional(v.number()),
     phaseDayEnd: v.optional(v.number()),
     estimatedDurationMinutes: v.optional(v.number()),
+    durationType: v.optional(v.string()),  // "hours" | "days"
+    durationValue: v.optional(v.number()),
     laborHoursPer1000Plants: v.optional(v.number()),
     frequencyType: v.string(),
     frequencyIntervalDays: v.optional(v.number()),
@@ -203,6 +205,8 @@ export const create = mutation({
       phase_day_start: args.phaseDayStart,
       phase_day_end: args.phaseDayEnd,
       estimated_duration_minutes: args.estimatedDurationMinutes,
+      duration_type: args.durationType,
+      duration_value: args.durationValue,
       labor_hours_per_1000_plants: args.laborHoursPer1000Plants,
       frequency_type: args.frequencyType,
       frequency_interval_days: args.frequencyIntervalDays,
@@ -242,6 +246,8 @@ export const update = mutation({
     phaseDayStart: v.optional(v.number()),
     phaseDayEnd: v.optional(v.number()),
     estimatedDurationMinutes: v.optional(v.number()),
+    durationType: v.optional(v.string()),
+    durationValue: v.optional(v.number()),
     laborHoursPer1000Plants: v.optional(v.number()),
     frequencyType: v.optional(v.string()),
     frequencyIntervalDays: v.optional(v.number()),
@@ -311,6 +317,8 @@ export const update = mutation({
     if (args.phaseDayStart !== undefined) patch.phase_day_start = args.phaseDayStart;
     if (args.phaseDayEnd !== undefined) patch.phase_day_end = args.phaseDayEnd;
     if (args.estimatedDurationMinutes !== undefined) patch.estimated_duration_minutes = args.estimatedDurationMinutes;
+    if (args.durationType !== undefined) patch.duration_type = args.durationType;
+    if (args.durationValue !== undefined) patch.duration_value = args.durationValue;
     if (args.laborHoursPer1000Plants !== undefined) patch.labor_hours_per_1000_plants = args.laborHoursPer1000Plants;
     if (args.frequencyType !== undefined) patch.frequency_type = args.frequencyType;
     if (args.frequencyIntervalDays !== undefined) patch.frequency_interval_days = args.frequencyIntervalDays;
@@ -401,6 +409,8 @@ export const duplicate = mutation({
       phase_day_start: template.phase_day_start,
       phase_day_end: template.phase_day_end,
       estimated_duration_minutes: template.estimated_duration_minutes,
+      duration_type: template.duration_type,
+      duration_value: template.duration_value,
       labor_hours_per_1000_plants: template.labor_hours_per_1000_plants,
       frequency_type: template.frequency_type,
       frequency_interval_days: template.frequency_interval_days,
