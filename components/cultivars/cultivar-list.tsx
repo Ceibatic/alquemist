@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { CreateCustomCultivarInput } from '@/lib/validations/cultivar';
+import type { PhaseProductConfig } from './cultivar-form';
 
 interface CultivarListProps {
   facilityId?: Id<'facilities'>;
@@ -79,6 +80,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
 
   // Mutations
   const createCultivar = useMutation(api.cultivars.create);
+  const createProduct = useMutation(api.products.create);
   const deleteCultivar = useMutation(api.cultivars.remove);
   // TODO: Implement reactivate mutation in backend
   // const reactivateCultivar = useMutation(api.cultivars.reactivate);
@@ -230,6 +232,68 @@ export function CultivarList({ facilityId }: CultivarListProps) {
     }
   };
 
+  const handleCreateCultivarWithProducts = async (
+    data: CreateCustomCultivarInput,
+    products: PhaseProductConfig[]
+  ) => {
+    if (!currentCompanyId) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo determinar la empresa actual.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // 1. Create cultivar
+      const cultivarId = await createCultivar({
+        companyId: currentCompanyId,
+        name: data.name,
+        cropTypeId: data.crop_type_id as Id<'crop_types'>,
+        varietyType: data.variety_type,
+        geneticLineage: data.genetic_lineage,
+        floweringTimeDays: data.flowering_time_days,
+        supplierId: data.supplier_id ? (data.supplier_id as Id<'suppliers'>) : undefined,
+        thcMin: data.thc_min,
+        thcMax: data.thc_max,
+        cbdMin: data.cbd_min,
+        cbdMax: data.cbd_max,
+        notes: data.notes,
+      });
+
+      // 2. Create products for enabled phases (sequentially for auto-chain)
+      let productCount = 0;
+      for (const product of products) {
+        await createProduct({
+          companyId: currentCompanyId as Id<'companies'>,
+          name: product.name,
+          sku: product.sku,
+          category: product.category as any,
+          cultivar_id: cultivarId,
+          crop_phase: product.phase,
+        });
+        productCount++;
+      }
+
+      setCreateModalOpen(false);
+      toast({
+        title: 'Cultivar creado',
+        description: productCount > 0
+          ? `${data.name} creado con ${productCount} producto${productCount === 1 ? '' : 's'} de fase.`
+          : `${data.name} ha sido creado correctamente.`,
+      });
+    } catch (error) {
+      console.error('Error creating cultivar with products:', error);
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el cultivar. Intenta de nuevo.';
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Loading state
   if (!currentCompanyId || cultivars === undefined || cropTypes === undefined) {
     return (
@@ -286,6 +350,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
           onOpenChange={setCreateModalOpen}
           cropTypes={cropTypes}
           onSubmit={handleCreateCultivar}
+          onSubmitWithProducts={handleCreateCultivarWithProducts}
         />
       </div>
     );

@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { CultivarForm } from './cultivar-form';
+import type { PhaseProductConfig } from './cultivar-form';
 import { Leaf } from 'lucide-react';
 import type { CreateCustomCultivarInput } from '@/lib/validations/cultivar';
 
@@ -15,6 +16,7 @@ interface CropType {
   _id: string;
   name: string;
   display_name_es: string;
+  default_phases?: Array<{ name: string; duration_days: number }>;
 }
 
 interface Supplier {
@@ -28,6 +30,7 @@ interface CultivarCreateModalProps {
   cropTypes: CropType[];
   suppliers?: Supplier[];
   onSubmit: (data: CreateCustomCultivarInput) => Promise<void>;
+  onSubmitWithProducts?: (data: CreateCustomCultivarInput, products: PhaseProductConfig[]) => Promise<void>;
   isSubmitting?: boolean;
 }
 
@@ -37,10 +40,23 @@ export function CultivarCreateModal({
   cropTypes,
   suppliers,
   onSubmit,
+  onSubmitWithProducts,
   isSubmitting,
 }: CultivarCreateModalProps) {
   const handleSubmit = async (data: CreateCustomCultivarInput) => {
     await onSubmit(data);
+    onOpenChange(false);
+  };
+
+  const handleSubmitWithProducts = async (
+    data: CreateCustomCultivarInput,
+    products: PhaseProductConfig[]
+  ) => {
+    if (onSubmitWithProducts) {
+      await onSubmitWithProducts(data, products);
+    } else {
+      await onSubmit(data);
+    }
     onOpenChange(false);
   };
 
@@ -68,6 +84,8 @@ export function CultivarCreateModal({
           onSubmit={handleSubmit}
           onCancel={() => onOpenChange(false)}
           isSubmitting={isSubmitting}
+          showPhaseProducts
+          onSubmitWithProducts={handleSubmitWithProducts}
         />
       </DialogContent>
     </Dialog>
