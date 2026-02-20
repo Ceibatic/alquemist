@@ -159,6 +159,10 @@ export const create = mutation({
     transformation_produces_id: v.optional(v.id("products")),
     default_yield_pct: v.optional(v.number()),
 
+    // Cultivar Link (Derived Products)
+    cultivar_id: v.optional(v.id("cultivars")),
+    crop_phase: v.optional(v.string()),
+
     // Depreciation (equipment only - COGS System)
     acquisition_value: v.optional(v.number()),
     useful_life_months: v.optional(v.number()),
@@ -248,10 +252,41 @@ export const create = mutation({
       salvage_value: args.salvage_value,
       depreciation_method: args.acquisition_value ? "straight_line" : undefined,
 
+      // Cultivar link
+      cultivar_id: args.cultivar_id,
+      crop_phase: args.crop_phase,
+
       status: "active",
       created_at: now,
       updated_at: now,
     });
+
+    // Auto-configure transformation chain: link previous phase product → this one
+    if (args.cultivar_id && args.crop_phase) {
+      const cultivar = await ctx.db.get(args.cultivar_id);
+      if (cultivar) {
+        const cropType = await ctx.db.get(cultivar.crop_type_id);
+        if (cropType && cropType.default_phases) {
+          const phases = cropType.default_phases as Array<{ name: string; duration_days: number }>;
+          const currentPhaseIndex = phases.findIndex((p) => p.name === args.crop_phase);
+          if (currentPhaseIndex > 0) {
+            const previousPhase = phases[currentPhaseIndex - 1];
+            // Find the product for the previous phase of the same cultivar
+            const previousProduct = await ctx.db
+              .query("products")
+              .withIndex("by_cultivar_phase", (q) =>
+                q.eq("cultivar_id", args.cultivar_id!).eq("crop_phase", previousPhase.name)
+              )
+              .first();
+            if (previousProduct && !previousProduct.transformation_produces_id) {
+              await ctx.db.patch(previousProduct._id, {
+                transformation_produces_id: productId,
+              });
+            }
+          }
+        }
+      }
+    }
 
     return productId;
   },
@@ -787,5 +822,40 @@ export const getPriceChangeCategories = query({
       { value: "new_contract", label: "Nuevo contrato" },
       { value: "other", label: "Otro" },
     ];
+  },
+});
+
+/**
+ * Get products linked to a specific cultivar
+ */
+export const getByCultivar = query({
+  args: {
+    cultivarId: v.id("cultivars"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("products")
+      .withIndex("by_cultivar", (q) => q.eq("cultivar_id", args.cultivarId))
+      .collect();
+  },
+});
+
+/**
+ * Get the product for a specific cultivar + crop phase combo.
+ * Used for auto-selecting the target product during phase transitions.
+ * Returns null if no product is configured for that phase.
+ */
+export const getByCultivarPhase = query({
+  args: {
+    cultivarId: v.id("cultivars"),
+    cropPhase: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("products")
+      .withIndex("by_cultivar_phase", (q) =>
+        q.eq("cultivar_id", args.cultivarId).eq("crop_phase", args.cropPhase)
+      )
+      .first();
   },
 });
