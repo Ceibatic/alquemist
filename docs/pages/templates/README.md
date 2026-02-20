@@ -37,8 +37,10 @@ Una sola entrada "Templates" apunta a `/templates`. Las entradas antiguas de act
 
 | Ruta | Proposito |
 |------|-----------|
-| `/templates/[id]` | Detalle de template de produccion |
+| `/templates/new` | Wizard de creacion de template de produccion (2 pasos) |
+| `/templates/[id]` | Detalle de template de produccion (info + fases) |
 | `/templates/[id]/edit` | Editar template de produccion |
+| `/templates/[id]/phases/[phaseId]` | Detalle de fase con cronograma dia a dia |
 | `/activity-templates/[id]` | Wizard de activity template (crear/editar) |
 | `/activity-templates/new` | Wizard para nuevo activity template |
 | `/quality-checks/templates/[id]` | Detalle de QC template |
@@ -51,9 +53,17 @@ Ver [subpaginas.md](./subpaginas.md) para detalle de cada subpagina.
 | Archivo | Rol |
 |---------|-----|
 | `app/(dashboard)/templates/page.tsx` | Pagina principal con tabs |
+| `app/(dashboard)/templates/new/page.tsx` | Wizard de creacion |
+| `app/(dashboard)/templates/[id]/page.tsx` | Detalle de template |
+| `app/(dashboard)/templates/[id]/phases/[phaseId]/page.tsx` | Detalle de fase |
 | `components/templates/template-list.tsx` | Lista de templates de produccion |
+| `components/templates/template-create-wizard.tsx` | Wizard 2 pasos |
+| `components/templates/phase-detail-view.tsx` | Vista de fase con cronograma |
+| `components/templates/add-activity-dialog.tsx` | Dialog para agregar actividad a dia |
 | `components/activity-templates/activity-template-list.tsx` | Lista de activity templates |
 | `components/quality-checks/quality-template-list.tsx` | Lista de QC templates |
 | `convex/productionTemplates.ts` | Backend produccion |
-| `convex/activityTemplates.ts` | Backend actividades |
+| `convex/templatePhases.ts` | Backend fases |
+| `convex/templateActivities.ts` | Backend actividades de fase |
+| `convex/activityTemplates.ts` | Backend activity templates |
 | `convex/qualityCheckTemplates.ts` | Backend calidad |
