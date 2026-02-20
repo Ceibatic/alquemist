@@ -6,7 +6,10 @@ import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { CultivarProductsTab } from '@/components/cultivars/cultivar-products-tab';
+import { Pencil, ArrowLeft, CheckCircle, Info, Package } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { Id } from '@/convex/_generated/dataModel';
 
@@ -85,224 +88,257 @@ export default function CultivarDetailPage() {
         }
       />
 
-      {/* Status Badge */}
-      <div className="flex gap-2">
-        <Badge className="flex items-center gap-1 bg-green-100 text-green-800">
-          <CheckCircle className="h-3 w-3" />
-          Cultivar Personalizado
-        </Badge>
-        <Badge
-          className={
-            cultivar.status === 'active'
-              ? 'bg-green-100 text-green-800'
-              : 'bg-gray-100 text-gray-800'
-          }
-        >
-          {cultivar.status === 'active' ? 'Activo' : 'Discontinuado'}
-        </Badge>
-      </div>
+      {/* Tabs */}
+      <Tabs defaultValue="info" className="w-full">
+        <ScrollArea className="w-full">
+          <TabsList className="inline-flex h-auto p-1 bg-gray-100 rounded-lg">
+            <TabsTrigger
+              value="info"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <Info className="h-4 w-4" />
+              Información
+            </TabsTrigger>
+            <TabsTrigger
+              value="productos"
+              className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+            >
+              <Package className="h-4 w-4" />
+              Productos
+            </TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
-      {/* Main Information */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Información Básica</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-gray-600">
-                Tipo de Cultivo
-              </p>
-              <p className="text-base text-gray-900">
-                {cropType.display_name_es}
-              </p>
+        {/* Info Tab */}
+        <TabsContent value="info" className="mt-6">
+          <div className="space-y-6">
+            {/* Status Badge */}
+            <div className="flex gap-2">
+              <Badge className="flex items-center gap-1 bg-green-100 text-green-800">
+                <CheckCircle className="h-3 w-3" />
+                Cultivar Personalizado
+              </Badge>
+              <Badge
+                className={
+                  cultivar.status === 'active'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-800'
+                }
+              >
+                {cultivar.status === 'active' ? 'Activo' : 'Discontinuado'}
+              </Badge>
             </div>
 
-            {cultivar.variety_type && (
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Tipo de Variedad
-                </p>
-                <p className="text-base text-gray-900">
-                  {formatVarietyType(cultivar.variety_type)}
-                </p>
-              </div>
+            {/* Main Information */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Basic Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Información Básica</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      Tipo de Cultivo
+                    </p>
+                    <p className="text-base text-gray-900">
+                      {cropType.display_name_es}
+                    </p>
+                  </div>
+
+                  {cultivar.variety_type && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Tipo de Variedad
+                      </p>
+                      <p className="text-base text-gray-900">
+                        {formatVarietyType(cultivar.variety_type)}
+                      </p>
+                    </div>
+                  )}
+
+                  {cultivar.genetic_lineage && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">
+                        Linaje Genético
+                      </p>
+                      <p className="text-base text-gray-900">
+                        {cultivar.genetic_lineage}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Characteristics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Características</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      Tiempo de Floración
+                    </p>
+                    <p className="text-base text-gray-900">
+                      {getFloweringTimeDisplay()}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Cannabinoids (Cannabis only) */}
+            {cropType.name === 'Cannabis' &&
+              (cultivar.thc_min !== undefined ||
+                cultivar.thc_max !== undefined ||
+                cultivar.cbd_min !== undefined ||
+                cultivar.cbd_max !== undefined) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Perfil de Cannabinoides</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {(cultivar.thc_min !== undefined ||
+                        cultivar.thc_max !== undefined) && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-600 mb-2">
+                            Rango de THC
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-purple-100 text-purple-800">
+                              {cultivar.thc_min !== undefined
+                                ? `${cultivar.thc_min}%`
+                                : '0%'}{' '}
+                              -{' '}
+                              {cultivar.thc_max !== undefined
+                                ? `${cultivar.thc_max}%`
+                                : 'N/A'}
+                            </Badge>
+                          </div>
+                          {/* Visual bar */}
+                          <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden mt-2">
+                            <div
+                              className="absolute h-full bg-purple-600 rounded-full"
+                              style={{
+                                left: `${cultivar.thc_min || 0}%`,
+                                right: `${100 - (cultivar.thc_max || 100)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {(cultivar.cbd_min !== undefined ||
+                        cultivar.cbd_max !== undefined) && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-600 mb-2">
+                            Rango de CBD
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-green-100 text-green-800">
+                              {cultivar.cbd_min !== undefined
+                                ? `${cultivar.cbd_min}%`
+                                : '0%'}{' '}
+                              -{' '}
+                              {cultivar.cbd_max !== undefined
+                                ? `${cultivar.cbd_max}%`
+                                : 'N/A'}
+                            </Badge>
+                          </div>
+                          {/* Visual bar */}
+                          <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden mt-2">
+                            <div
+                              className="absolute h-full bg-green-600 rounded-full"
+                              style={{
+                                left: `${cultivar.cbd_min || 0}%`,
+                                right: `${100 - (cultivar.cbd_max || 100)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+            {/* Notes */}
+            {cultivar.notes && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Notas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {cultivar.notes}
+                  </p>
+                </CardContent>
+              </Card>
             )}
 
-            {cultivar.genetic_lineage && (
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Linaje Genético
-                </p>
-                <p className="text-base text-gray-900">
-                  {cultivar.genetic_lineage}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Characteristics */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Características</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-gray-600">
-                Tiempo de Floración
-              </p>
-              <p className="text-base text-gray-900">
-                {getFloweringTimeDisplay()}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Cannabinoids (Cannabis only) */}
-      {cropType.name === 'Cannabis' &&
-        (cultivar.thc_min !== undefined ||
-          cultivar.thc_max !== undefined ||
-          cultivar.cbd_min !== undefined ||
-          cultivar.cbd_max !== undefined) && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Perfil de Cannabinoides</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                {(cultivar.thc_min !== undefined ||
-                  cultivar.thc_max !== undefined) && (
+            {/* Performance Metrics */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Métricas de Rendimiento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 mb-2">
-                      Rango de THC
+                    <p className="text-sm font-medium text-gray-600">
+                      Lotes Totales
                     </p>
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-purple-100 text-purple-800">
-                        {cultivar.thc_min !== undefined
-                          ? `${cultivar.thc_min}%`
-                          : '0%'}{' '}
-                        -{' '}
-                        {cultivar.thc_max !== undefined
-                          ? `${cultivar.thc_max}%`
-                          : 'N/A'}
-                      </Badge>
-                    </div>
-                    {/* Visual bar */}
-                    <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden mt-2">
-                      <div
-                        className="absolute h-full bg-purple-600 rounded-full"
-                        style={{
-                          left: `${cultivar.thc_min || 0}%`,
-                          right: `${100 - (cultivar.thc_max || 100)}%`,
-                        }}
-                      />
-                    </div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {metrics?.total_batches || 0}
+                    </p>
                   </div>
-                )}
-
-                {(cultivar.cbd_min !== undefined ||
-                  cultivar.cbd_max !== undefined) && (
                   <div>
-                    <p className="text-sm font-medium text-gray-600 mb-2">
-                      Rango de CBD
+                    <p className="text-sm font-medium text-gray-600">
+                      Rendimiento Promedio
                     </p>
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-green-100 text-green-800">
-                        {cultivar.cbd_min !== undefined
-                          ? `${cultivar.cbd_min}%`
-                          : '0%'}{' '}
-                        -{' '}
-                        {cultivar.cbd_max !== undefined
-                          ? `${cultivar.cbd_max}%`
-                          : 'N/A'}
-                      </Badge>
-                    </div>
-                    {/* Visual bar */}
-                    <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden mt-2">
-                      <div
-                        className="absolute h-full bg-green-600 rounded-full"
-                        style={{
-                          left: `${cultivar.cbd_min || 0}%`,
-                          right: `${100 - (cultivar.cbd_max || 100)}%`,
-                        }}
-                      />
-                    </div>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {metrics?.average_yield
+                        ? `${metrics.average_yield}g`
+                        : 'N/A'}
+                    </p>
                   </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Tasa de Éxito</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {metrics?.success_rate
+                        ? `${metrics.success_rate}%`
+                        : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      Calificación de Calidad
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {metrics?.quality_rating
+                        ? `${metrics.quality_rating}/5`
+                        : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+                {!metrics?.total_batches && (
+                  <p className="text-sm text-gray-500 mt-4">
+                    Las métricas se generarán automáticamente a medida que se
+                    completen lotes con este cultivar.
+                  </p>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-      {/* Notes */}
-      {cultivar.notes && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Notas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-700 whitespace-pre-wrap">
-              {cultivar.notes}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Performance Metrics */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Métricas de Rendimiento</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <p className="text-sm font-medium text-gray-600">
-                Lotes Totales
-              </p>
-              <p className="text-2xl font-bold text-gray-900">
-                {metrics?.total_batches || 0}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">
-                Rendimiento Promedio
-              </p>
-              <p className="text-2xl font-bold text-gray-900">
-                {metrics?.average_yield
-                  ? `${metrics.average_yield}g`
-                  : 'N/A'}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Tasa de Éxito</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {metrics?.success_rate
-                  ? `${metrics.success_rate}%`
-                  : 'N/A'}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">
-                Calificación de Calidad
-              </p>
-              <p className="text-2xl font-bold text-gray-900">
-                {metrics?.quality_rating
-                  ? `${metrics.quality_rating}/5`
-                  : 'N/A'}
-              </p>
-            </div>
+              </CardContent>
+            </Card>
           </div>
-          {!metrics?.total_batches && (
-            <p className="text-sm text-gray-500 mt-4">
-              Las métricas se generarán automáticamente a medida que se
-              completen lotes con este cultivar.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        </TabsContent>
+
+        {/* Productos Tab */}
+        <TabsContent value="productos" className="mt-6">
+          <CultivarProductsTab cultivarId={cultivarId} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
