@@ -1011,6 +1011,9 @@ export default defineSchema({
     // Traceability: which activity template was this created from
     activity_template_id: v.optional(v.id("activity_templates")),
 
+    // FK to activity_types (source of truth for type)
+    type_id: v.optional(v.id("activity_types")),
+
     created_at: v.number(),
   })
     .index("by_phase", ["phase_id"])

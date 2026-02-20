@@ -184,6 +184,7 @@ export const createFromActivityTemplate = mutation({
       activity_name: args.activityName ?? activityTemplate.name,
       activity_order: maxOrder + 1,
       activity_type: args.activityType ?? resolvedActivityType,
+      type_id: activityTemplate.type_id,
       is_recurring: args.isRecurring ?? isRecurringFromTemplate,
       is_quality_check: args.isQualityCheck ?? isQCFromTemplate,
       timing_configuration: {
@@ -415,6 +416,7 @@ export const duplicate = mutation({
       activity_name: `${activity.activity_name} (copia)`,
       activity_order: maxOrder + 1,
       activity_type: activity.activity_type,
+      type_id: activity.type_id,
       is_recurring: activity.is_recurring,
       is_quality_check: activity.is_quality_check,
       timing_configuration: activity.timing_configuration,

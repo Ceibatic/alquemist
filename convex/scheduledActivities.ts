@@ -72,7 +72,7 @@ export const createManual = mutation({
       const id = await ctx.db.insert("scheduled_activities", {
         entity_type: "batch",
         entity_id: batchId,
-        activity_type: templateName ?? activityType.name,
+        activity_type: activityType.code,
         scheduled_date: args.scheduledDate,
         estimated_duration_minutes:
           args.estimatedDurationMinutes ?? templateDuration,

@@ -34,52 +34,29 @@ const AREA_TYPE_LABELS: Record<string, string> = {
   processing: 'Procesamiento',
 };
 
-const ACTIVITY_TYPE_COLORS: Record<string, string> = {
-  watering: 'border-blue-400 bg-blue-50',
-  feeding: 'border-green-400 bg-green-50',
-  pruning: 'border-orange-400 bg-orange-50',
-  transplanting: 'border-purple-400 bg-purple-50',
-  inspection: 'border-cyan-400 bg-cyan-50',
-  treatment: 'border-red-400 bg-red-50',
-  harvest: 'border-amber-400 bg-amber-50',
-  drying: 'border-yellow-400 bg-yellow-50',
-  curing: 'border-teal-400 bg-teal-50',
-  quality_check: 'border-indigo-400 bg-indigo-50',
-  monitoring: 'border-sky-400 bg-sky-50',
-  planting: 'border-lime-400 bg-lime-50',
-};
-
-const ACTIVITY_TYPE_BADGE_COLORS: Record<string, string> = {
-  watering: 'bg-blue-100 text-blue-700',
-  feeding: 'bg-green-100 text-green-700',
-  pruning: 'bg-orange-100 text-orange-700',
-  transplanting: 'bg-purple-100 text-purple-700',
-  inspection: 'bg-cyan-100 text-cyan-700',
-  treatment: 'bg-red-100 text-red-700',
-  harvest: 'bg-amber-100 text-amber-700',
-  drying: 'bg-yellow-100 text-yellow-700',
-  curing: 'bg-teal-100 text-teal-700',
-  quality_check: 'bg-indigo-100 text-indigo-700',
-  monitoring: 'bg-sky-100 text-sky-700',
-  planting: 'bg-lime-100 text-lime-700',
-};
-
-const ACTIVITY_TYPE_LABELS: Record<string, string> = {
-  watering: 'Riego',
-  feeding: 'Fertilización',
-  pruning: 'Poda',
-  transplanting: 'Trasplante',
-  inspection: 'Inspección',
-  treatment: 'Tratamiento',
-  harvest: 'Cosecha',
-  drying: 'Secado',
-  curing: 'Curado',
-  quality_check: 'Control Calidad',
-  monitoring: 'Monitoreo',
-  planting: 'Siembra',
+// Category-based color map (fallback when activity_type_info has no custom color)
+const CATEGORY_COLORS: Record<string, { border: string; badge: string }> = {
+  cultivation: { border: 'border-green-400 bg-green-50', badge: 'bg-green-100 text-green-700' },
+  monitoring: { border: 'border-amber-400 bg-amber-50', badge: 'bg-amber-100 text-amber-700' },
+  transformation: { border: 'border-violet-400 bg-violet-50', badge: 'bg-violet-100 text-violet-700' },
+  application: { border: 'border-red-400 bg-red-50', badge: 'bg-red-100 text-red-700' },
+  movement: { border: 'border-cyan-400 bg-cyan-50', badge: 'bg-cyan-100 text-cyan-700' },
+  maintenance: { border: 'border-slate-400 bg-slate-50', badge: 'bg-slate-100 text-slate-700' },
+  quality: { border: 'border-rose-400 bg-rose-50', badge: 'bg-rose-100 text-rose-700' },
+  harvest: { border: 'border-pink-400 bg-pink-50', badge: 'bg-pink-100 text-pink-700' },
+  post_harvest: { border: 'border-orange-400 bg-orange-50', badge: 'bg-orange-100 text-orange-700' },
+  administrative: { border: 'border-gray-400 bg-gray-50', badge: 'bg-gray-100 text-gray-700' },
 };
 
 // ── Types ───────────────────────────────────────────────────────────────────
+
+interface ActivityTypeInfo {
+  code: string;
+  name: string;
+  category: string;
+  icon?: string;
+  color?: string;
+}
 
 interface ActivityData {
   _id: string;
@@ -96,6 +73,7 @@ interface ActivityData {
   duration_type?: string;
   duration_value?: number;
   resource_count: number;
+  activity_type_info?: ActivityTypeInfo | null;
 }
 
 // ── Activity Card ────────────────────────────────────────────────────────────
@@ -114,14 +92,15 @@ function ActivityCard({
     activity.duration_value > 1 &&
     currentDay > startDay;
 
-  const borderBg =
-    ACTIVITY_TYPE_COLORS[activity.activity_type] ??
-    'border-gray-300 bg-gray-50';
-  const badgeColor =
-    ACTIVITY_TYPE_BADGE_COLORS[activity.activity_type] ??
-    'bg-gray-100 text-gray-700';
-  const typeLabel =
-    ACTIVITY_TYPE_LABELS[activity.activity_type] ?? activity.activity_type;
+  // Derive colors from activity_type_info (backend) → category fallback → gray default
+  const info = activity.activity_type_info;
+  const categoryColors = info ? CATEGORY_COLORS[info.category] : undefined;
+  const defaultColors = { border: 'border-gray-300 bg-gray-50', badge: 'bg-gray-100 text-gray-700' };
+  const colors = categoryColors ?? defaultColors;
+
+  const borderBg = colors.border;
+  const badgeColor = colors.badge;
+  const typeLabel = info?.name ?? activity.activity_type;
 
   // Duration display
   let durationText: string | null = null;

@@ -366,6 +366,17 @@ export const generateFromSchedule = mutation({
       return hasPhaseOverlap;
     });
 
+    // ── Pre-fetch activity type codes for applicable templates ──
+    const activityTypeCodeMap = new Map<string, string>();
+    for (const t of applicableTemplates) {
+      if (t.type_id && !activityTypeCodeMap.has(t.type_id)) {
+        const actType = await ctx.db.get(t.type_id);
+        if (actType) {
+          activityTypeCodeMap.set(t.type_id, actType.code);
+        }
+      }
+    }
+
     // ── Resolve materialization context (batch + area) ──
     const batch = await ctx.db.get(schedule.batch_id);
     const area = batch?.area_id ? await ctx.db.get(batch.area_id) : null;
@@ -478,7 +489,7 @@ export const generateFromSchedule = mutation({
             // Legacy fields (required)
             entity_type: "batch",
             entity_id: schedule.batch_id,
-            activity_type: template.name,
+            activity_type: (template.type_id ? activityTypeCodeMap.get(template.type_id) : undefined) ?? template.name,
             scheduled_date: scheduledDate,
             is_recurring: recurrenceTotal > 1,
             assigned_team: [],

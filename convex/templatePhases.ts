@@ -68,8 +68,7 @@ export const getById = query({
       (a, b) => a.activity_order - b.activity_order
     );
 
-    // Enrich each activity with duration info and resource count from its
-    // source activity template (if linked via activity_template_id)
+    // Enrich each activity with duration info, resource count, and activity type data
     const enrichedActivities = await Promise.all(
       sortedActivities.map(async (activity) => {
         let durationTypeFromTemplate: string | undefined;
@@ -93,11 +92,34 @@ export const getById = query({
           resourceCount = resources.length;
         }
 
+        // Resolve activity type from FK (source of truth for display)
+        let activityTypeInfo: {
+          code: string;
+          name: string;
+          category: string;
+          icon?: string;
+          color?: string;
+        } | null = null;
+
+        if (activity.type_id) {
+          const actType = await ctx.db.get(activity.type_id);
+          if (actType) {
+            activityTypeInfo = {
+              code: actType.code,
+              name: actType.name,
+              category: actType.category,
+              icon: actType.icon,
+              color: actType.color,
+            };
+          }
+        }
+
         return {
           ...activity,
           duration_type: durationTypeFromTemplate,
           duration_value: durationValueFromTemplate,
           resource_count: resourceCount,
+          activity_type_info: activityTypeInfo,
         };
       })
     );
