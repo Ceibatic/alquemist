@@ -2116,6 +2116,42 @@ export default defineSchema({
   })
     .index("by_template", ["template_id"]),
 
+  // Resources materialized from activity templates into scheduled activities.
+  // Snapshot of template resources with calculated quantities based on batch/area context.
+  scheduled_activity_resources: defineTable({
+    scheduled_activity_id: v.id("scheduled_activities"),
+    template_resource_id: v.id("activity_template_resources"),
+    product_id: v.id("products"),
+
+    // From template (snapshot)
+    direction: v.string(), // consumed/applied/produced
+    quantity_basis: v.string(), // fixed/per_plant/per_m2/per_zone/per_L_solution
+    template_quantity: v.number(), // Original per-unit quantity from template
+
+    // Materialized
+    materialized_quantity: v.optional(v.number()), // Calculated total (null if basis requires runtime input)
+    materialization_context: v.optional(v.any()), // { plant_count: 100, area_m2: 50 }
+
+    // Override (user-set, takes precedence over materialized)
+    quantity_override: v.optional(v.number()),
+
+    // Application (from template)
+    unit_id: v.optional(v.id("units_of_measure")),
+    application_rate: v.optional(v.string()),
+    application_method: v.optional(v.string()),
+
+    // Substitutes
+    is_required: v.boolean(),
+    alternative_product_ids: v.optional(v.array(v.id("products"))),
+
+    // Order
+    sequence: v.number(),
+    notes: v.optional(v.string()),
+    created_at: v.number(),
+  })
+    .index("by_scheduled_activity", ["scheduled_activity_id"])
+    .index("by_product", ["product_id"]),
+
   // DEPRECATED — dead code, no se renderiza en ejecucion. Tabla conservada por datos existentes.
   activity_template_checklist: defineTable({
     template_id: v.id("activity_templates"),

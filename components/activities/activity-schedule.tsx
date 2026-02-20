@@ -52,6 +52,7 @@ import {
   Loader2,
   Plus,
   Filter,
+  Package,
 } from 'lucide-react';
 
 // ── Types ──
@@ -93,6 +94,7 @@ type EnrichedActivity = {
   templateName: string | null;
   assignedToName: string | null;
   areaName: string | null;
+  resourceCount: number;
 };
 
 type DateRangePreset = 'today' | 'week' | 'month' | 'all';
@@ -792,6 +794,15 @@ function ScheduleActivityRow({
                 <>
                   <span>·</span>
                   <span className="capitalize">{activity.crop_phase}</span>
+                </>
+              )}
+              {activity.resourceCount > 0 && (
+                <>
+                  <span>·</span>
+                  <span className="inline-flex items-center gap-0.5">
+                    <Package className="h-3 w-3" />
+                    {activity.resourceCount}
+                  </span>
                 </>
               )}
             </div>

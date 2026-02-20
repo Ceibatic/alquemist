@@ -10,6 +10,10 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import {
+  materializeQuantity,
+  MaterializationContext,
+} from "./lib/materializeQuantity";
 
 // ============================================================================
 // QUERIES
@@ -314,6 +318,16 @@ export const generateFromSchedule = mutation({
       (a) => a.status === "pending" || a.status === "cancelled"
     );
     for (const act of pendingToDelete) {
+      // Delete associated materialized resources first
+      const resources = await ctx.db
+        .query("scheduled_activity_resources")
+        .withIndex("by_scheduled_activity", (q) =>
+          q.eq("scheduled_activity_id", act._id)
+        )
+        .collect();
+      for (const r of resources) {
+        await ctx.db.delete(r._id);
+      }
       await ctx.db.delete(act._id);
     }
 
@@ -351,6 +365,42 @@ export const generateFromSchedule = mutation({
       );
       return hasPhaseOverlap;
     });
+
+    // ── Resolve materialization context (batch + area) ──
+    const batch = await ctx.db.get(schedule.batch_id);
+    const area = batch?.area_id ? await ctx.db.get(batch.area_id) : null;
+    const matContext: MaterializationContext = {
+      plantCount: batch?.current_quantity ?? 0,
+      areaM2: (area as any)?.usable_area_m2 ?? (area as any)?.total_area_m2 ?? 0,
+    };
+
+    // ── Cache template resources (one query per template, not per activity) ──
+    const templateResourcesCache = new Map<
+      string,
+      Array<{
+        _id: Id<"activity_template_resources">;
+        product_id: Id<"products">;
+        quantity: number;
+        quantity_basis: string;
+        direction: string;
+        unit_id?: Id<"units_of_measure">;
+        application_rate?: string;
+        application_method?: string;
+        is_required: boolean;
+        alternative_product_ids?: Id<"products">[];
+        sequence: number;
+        notes?: string;
+      }>
+    >();
+    for (const t of applicableTemplates) {
+      const resources = await ctx.db
+        .query("activity_template_resources")
+        .withIndex("by_template", (q) => q.eq("template_id", t._id))
+        .collect();
+      if (resources.length > 0) {
+        templateResourcesCache.set(t._id, resources);
+      }
+    }
 
     // Build dependency map (template_id → last scheduled date)
     const dependencyMap = new Map<string, number>();
@@ -424,7 +474,7 @@ export const generateFromSchedule = mutation({
           const scheduledDate =
             schedule.planned_start_date + absoluteDay * 24 * 60 * 60 * 1000;
 
-          await ctx.db.insert("scheduled_activities", {
+          const scheduledActivityId = await ctx.db.insert("scheduled_activities", {
             // Legacy fields (required)
             entity_type: "batch",
             entity_id: schedule.batch_id,
@@ -449,6 +499,38 @@ export const generateFromSchedule = mutation({
             recurrence_index: recurrenceTotal > 1 ? idx + 1 : undefined,
             recurrence_total: recurrenceTotal > 1 ? recurrenceTotal : undefined,
           });
+
+          // ── Materialize template resources ──
+          const templateResources = templateResourcesCache.get(template._id);
+          if (templateResources) {
+            for (const res of templateResources) {
+              const { quantity, context } = materializeQuantity(
+                res.quantity,
+                res.quantity_basis,
+                matContext
+              );
+
+              await ctx.db.insert("scheduled_activity_resources", {
+                scheduled_activity_id: scheduledActivityId,
+                template_resource_id: res._id,
+                product_id: res.product_id,
+                direction: res.direction,
+                quantity_basis: res.quantity_basis,
+                template_quantity: res.quantity,
+                materialized_quantity: quantity ?? undefined,
+                materialization_context:
+                  Object.keys(context).length > 0 ? context : undefined,
+                unit_id: res.unit_id,
+                application_rate: res.application_rate,
+                application_method: res.application_method,
+                is_required: res.is_required,
+                alternative_product_ids: res.alternative_product_ids,
+                sequence: res.sequence,
+                notes: res.notes,
+                created_at: now,
+              });
+            }
+          }
 
           // Track last date for dependency resolution
           dependencyMap.set(template._id, scheduledDate);

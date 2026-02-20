@@ -310,6 +310,20 @@ export const listForSchedule = query({
         ).then((entries) => new Map(entries))
       : new Map<string, null>();
 
+    // ── Step 4: Resource counts (batch query) ──
+    const resourceCountMap = new Map<string, number>();
+    await Promise.all(
+      activities.map(async (a) => {
+        const resources = await ctx.db
+          .query("scheduled_activity_resources")
+          .withIndex("by_scheduled_activity", (q) =>
+            q.eq("scheduled_activity_id", a._id)
+          )
+          .collect();
+        resourceCountMap.set(a._id as string, resources.length);
+      })
+    );
+
     return activities.map((a) => {
       const batch = a.entity_type === "batch" && a.entity_id
         ? batchMap.get(a.entity_id as string) ?? null
@@ -337,7 +351,50 @@ export const listForSchedule = query({
         templateName: template?.name ?? null,
         assignedToName: assignedUser?.name ?? null,
         areaName: area?.name ?? null,
+        resourceCount: resourceCountMap.get(a._id as string) ?? 0,
       };
     });
+  },
+});
+
+// ============================================================================
+// QUERIES — Materialized resources
+// ============================================================================
+
+/**
+ * Get materialized resources for a specific scheduled activity.
+ * Returns enriched resources with product names, unit symbols, and effective quantity.
+ */
+export const getResourcesForActivity = query({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+  },
+  handler: async (ctx, { scheduledActivityId }) => {
+    const resources = await ctx.db
+      .query("scheduled_activity_resources")
+      .withIndex("by_scheduled_activity", (q) =>
+        q.eq("scheduled_activity_id", scheduledActivityId)
+      )
+      .collect();
+
+    const enriched = await Promise.all(
+      resources
+        .sort((a, b) => a.sequence - b.sequence)
+        .map(async (r) => {
+          const product = await ctx.db.get(r.product_id);
+          const unit = r.unit_id ? await ctx.db.get(r.unit_id) : null;
+          return {
+            ...r,
+            productName: product?.name ?? "Producto desconocido",
+            productCode: (product as any)?.code ?? null,
+            unitName: unit?.name ?? null,
+            unitSymbol: unit?.symbol ?? null,
+            effectiveQuantity:
+              r.quantity_override ?? r.materialized_quantity ?? r.template_quantity,
+          };
+        })
+    );
+
+    return enriched;
   },
 });

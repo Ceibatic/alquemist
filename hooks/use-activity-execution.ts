@@ -82,11 +82,13 @@ export function useActivityExecution(options: UseActivityExecutionOptions) {
     groupId ? { groupId } : 'skip',
   );
 
-  const currentUser = useQuery(api.users.getCurrentUser, {});
+  // For scheduled activities: load materialized resources
+  const materializedResources = useQuery(
+    api.scheduledActivities.getResourcesForActivity,
+    scheduledActivityId ? { scheduledActivityId } : 'skip',
+  );
 
-  // If we have a scheduled activity ID, we need to load the template from it.
-  // The scheduled_activities table has template_id. The parent component should
-  // resolve this and pass templateId if available.
+  const currentUser = useQuery(api.users.getCurrentUser, {});
 
   // ── Form ─────────────────────────────────────────────────────────
   const today = new Date().toISOString().slice(0, 10);
@@ -120,38 +122,55 @@ export function useActivityExecution(options: UseActivityExecutionOptions) {
     }
   }, [currentUser, form]);
 
-  // ── Pre-fill from template ───────────────────────────────────────
+  // ── Pre-fill from materialized resources (preferred) or template (fallback) ──
+  useEffect(() => {
+    // Prefer materialized resources from scheduled activity
+    if (materializedResources && materializedResources.length > 0) {
+      const currentResources = form.getValues('resources');
+      if (!currentResources || currentResources.length === 0) {
+        form.setValue(
+          'resources',
+          materializedResources.map((r) => ({
+            productId: r.product_id as string,
+            direction: r.direction,
+            quantity: r.effectiveQuantity,
+            quantityUnit: r.unitSymbol ?? r.quantity_basis,
+            unitId: r.unit_id as string | undefined,
+            applicationRate: r.application_rate ?? undefined,
+            applicationMethod: r.application_method ?? undefined,
+          })),
+        );
+      }
+    } else if (template?.resources && template.resources.length > 0) {
+      // Fallback to template resources (no materialized data)
+      const currentResources = form.getValues('resources');
+      if (!currentResources || currentResources.length === 0) {
+        form.setValue(
+          'resources',
+          template.resources.map((r) => ({
+            productId: r.product_id as string,
+            direction: r.direction,
+            quantity: r.quantity,
+            quantityUnit: r.quantity_basis ?? '',
+            unitId: r.unit_id as string | undefined,
+            applicationRate: r.application_rate ?? undefined,
+            applicationMethod: r.application_method ?? undefined,
+          })),
+        );
+      }
+    }
+  }, [materializedResources, template, form]);
+
+  // ── Pre-fill type and duration from template ──
   useEffect(() => {
     if (template) {
-      // Set type from template
       if (template.type_id) {
         form.setValue('typeId', template.type_id as string);
       }
-
-      // Pre-fill duration
       if (template.estimated_duration_minutes) {
         const current = form.getValues('durationMinutes');
         if (!current) {
           form.setValue('durationMinutes', template.estimated_duration_minutes);
-        }
-      }
-
-      // Pre-fill resources from template
-      if (template.resources && template.resources.length > 0) {
-        const currentResources = form.getValues('resources');
-        if (!currentResources || currentResources.length === 0) {
-          form.setValue(
-            'resources',
-            template.resources.map((r) => ({
-              productId: r.product_id as string,
-              direction: r.direction,
-              quantity: r.quantity,
-              quantityUnit: r.quantity_basis ?? '',
-              unitId: r.unit_id as string | undefined,
-              applicationRate: r.application_rate ?? undefined,
-              applicationMethod: r.application_method ?? undefined,
-            })),
-          );
         }
       }
     }
