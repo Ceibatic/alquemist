@@ -70,7 +70,7 @@ Lista de Dia 1, Dia 2, ..., Dia N (segun `estimated_duration_days`):
 - Cada dia muestra actividades que inician o estan en curso ese dia
 - **Actividades de un dia**: aparecen en su dia de inicio (`timing_configuration.days_from_phase_start`)
 - **Actividades multi-dia**: si `duration_type === "days"` y `duration_value > 1`, aparecen tambien en los dias siguientes con badge "Dia X/N"
-- Cada actividad muestra nombre, badge tipo (con color), duracion, count de recursos, icono recurrente
+- Cada actividad muestra nombre, badge tipo (color por categoría desde `activity_types`), duracion, count de recursos, icono recurrente
 - **Boton "+" por dia**: abre dialog para agregar actividad en ese dia
 
 ### Add Activity Dialog
@@ -78,11 +78,11 @@ Lista de Dia 1, Dia 2, ..., Dia N (segun `estimated_duration_days`):
 2. Seleccionar activity template (filtrado por tipo + fase)
 3. Preview: nombre editable, duracion readonly, descripcion truncada
 4. Dia de inicio editable
-5. Guardar via `templateActivities.createFromActivityTemplate` con `startDay`
+5. Guardar via `templateActivities.createFromActivityTemplate` con `startDay` y `type_id` (FK a `activity_types`)
 
 **Breadcrumbs**: Inicio > Templates > [nombre template] > [nombre fase]
 
-**Query**: `api.templatePhases.getById` — retorna fase con actividades enriquecidas (duration_type, duration_value, resource_count)
+**Query**: `api.templatePhases.getById` — retorna fase con actividades enriquecidas (duration_type, duration_value, resource_count, activity_type_info)
 
 **Componentes**:
 - `components/templates/phase-detail-view.tsx` — vista principal

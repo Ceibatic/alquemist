@@ -65,5 +65,5 @@ Cuando no hay templates: icono, mensaje descriptivo, boton CTA "Crear template" 
 - `components/templates/phase-detail-view.tsx` — vista de fase con cronograma
 - `components/templates/add-activity-dialog.tsx` — dialog agregar actividad a dia
 - Query: `api.productionTemplates.list`, `api.productionTemplates.getById`
-- Query: `api.templatePhases.getById` (fase con actividades enriquecidas)
+- Query: `api.templatePhases.getById` (fase con actividades enriquecidas + activity_type_info)
 - Mutation: `api.templateActivities.createFromActivityTemplate` (con `startDay`)
