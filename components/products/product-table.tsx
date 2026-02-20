@@ -46,6 +46,7 @@ interface Product {
   manufacturer?: string;
   status: string;
   preferredSupplierName?: string | null;
+  cultivarName?: string | null;
 }
 
 interface ProductTableProps {
@@ -122,7 +123,16 @@ export function ProductTable({
               onClick={() => onRowClick?.(product)}
             >
               <TableCell className="font-mono text-sm">{product.sku}</TableCell>
-              <TableCell className="font-medium">{product.name}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{product.name}</span>
+                  {product.cultivarName && (
+                    <Badge variant="outline" className="text-xs border-green-200 text-green-700 bg-green-50">
+                      {product.cultivarName}
+                    </Badge>
+                  )}
+                </div>
+              </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
                   <CategoryIcon className="h-4 w-4 text-gray-500" />

@@ -55,9 +55,19 @@ export const list = query({
     // Apply pagination
     const offset = args.offset || 0;
     const limit = args.limit || 50;
+    const paged = filteredProducts.slice(offset, offset + limit);
+
+    // Enrich with cultivar name for products linked to a cultivar
+    const enriched = await Promise.all(
+      paged.map(async (p) => {
+        if (!p.cultivar_id) return { ...p, cultivarName: null };
+        const cultivar = await ctx.db.get(p.cultivar_id);
+        return { ...p, cultivarName: cultivar?.name ?? null };
+      })
+    );
 
     return {
-      products: filteredProducts.slice(offset, offset + limit),
+      products: enriched,
       total: filteredProducts.length,
     };
   },
@@ -81,9 +91,15 @@ export const getById = query({
       ? await ctx.db.get(product.preferred_supplier_id)
       : null;
 
+    // Get cultivar if linked
+    const cultivar = product.cultivar_id
+      ? await ctx.db.get(product.cultivar_id)
+      : null;
+
     return {
       ...product,
       preferredSupplierName: preferredSupplier?.name || null,
+      cultivarName: cultivar?.name ?? null,
     };
   },
 });
