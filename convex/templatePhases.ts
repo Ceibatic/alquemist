@@ -55,6 +55,9 @@ export const getById = query({
       return null;
     }
 
+    // Get parent template for breadcrumb context
+    const template = await ctx.db.get(phase.template_id);
+
     // Get activities
     const activities = await ctx.db
       .query("template_activities")
@@ -65,9 +68,45 @@ export const getById = query({
       (a, b) => a.activity_order - b.activity_order
     );
 
+    // Enrich each activity with duration info and resource count from its
+    // source activity template (if linked via activity_template_id)
+    const enrichedActivities = await Promise.all(
+      sortedActivities.map(async (activity) => {
+        let durationTypeFromTemplate: string | undefined;
+        let durationValueFromTemplate: number | undefined;
+        let resourceCount = 0;
+
+        if (activity.activity_template_id) {
+          const actTemplate = await ctx.db.get(activity.activity_template_id);
+          if (actTemplate) {
+            durationTypeFromTemplate = actTemplate.duration_type;
+            durationValueFromTemplate = actTemplate.duration_value;
+          }
+
+          // Count resources from the activity template
+          const resources = await ctx.db
+            .query("activity_template_resources")
+            .withIndex("by_template", (q) =>
+              q.eq("template_id", activity.activity_template_id!)
+            )
+            .collect();
+          resourceCount = resources.length;
+        }
+
+        return {
+          ...activity,
+          duration_type: durationTypeFromTemplate,
+          duration_value: durationValueFromTemplate,
+          resource_count: resourceCount,
+        };
+      })
+    );
+
     return {
       ...phase,
-      activities: sortedActivities,
+      templateName: template?.name ?? null,
+      templateId: phase.template_id,
+      activities: enrichedActivities,
     };
   },
 });

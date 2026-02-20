@@ -127,6 +127,8 @@ export const createFromActivityTemplate = mutation({
   args: {
     phaseId: v.id("template_phases"),
     activityTemplateId: v.id("activity_templates"),
+    // Day within the phase where the activity starts (1-based)
+    startDay: v.optional(v.number()),
     // Optional overrides (user may edit pre-filled values before saving)
     activityName: v.optional(v.string()),
     activityType: v.optional(v.string()),
@@ -172,6 +174,11 @@ export const createFromActivityTemplate = mutation({
       0
     );
 
+    // Use startDay if provided, otherwise fall back to template's phase_day_start
+    const daysFromStart = args.startDay != null
+      ? args.startDay - 1  // Convert 1-based day to 0-based offset
+      : (activityTemplate.phase_day_start ?? 0);
+
     const activityId = await ctx.db.insert("template_activities", {
       phase_id: args.phaseId,
       activity_name: args.activityName ?? activityTemplate.name,
@@ -180,7 +187,7 @@ export const createFromActivityTemplate = mutation({
       is_recurring: args.isRecurring ?? isRecurringFromTemplate,
       is_quality_check: args.isQualityCheck ?? isQCFromTemplate,
       timing_configuration: {
-        days_from_phase_start: activityTemplate.phase_day_start ?? 0,
+        days_from_phase_start: daysFromStart,
         time_of_day: "08:00",
       },
       required_materials: [],
