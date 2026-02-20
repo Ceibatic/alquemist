@@ -5,7 +5,6 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { TemplateCard } from './template-card';
-import { TemplateCreateModal } from './template-create-modal';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -55,7 +54,7 @@ export function TemplateList({ companyId }: TemplateListProps) {
   // Filter states
   const [selectedCropType, setSelectedCropType] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [createModalOpen, setCreateModalOpen] = useState(false);
+  // createModalOpen state removed — wizard page handles creation now
   const [categoryFilters, setCategoryFilters] = useState<CategoryFilter[]>([
     'seed-to-harvest',
     'propagation',
@@ -228,13 +227,9 @@ export function TemplateList({ companyId }: TemplateListProps) {
     }
   };
 
-  const handleCreateSuccess = (templateId: string) => {
-    setCreateModalOpen(false);
-    toast({
-      title: 'Template creado',
-      description: 'El template ha sido creado correctamente.',
-    });
-    router.push(`/templates/${templateId}/edit`);
+  const handleCreateSuccess = (_templateId: string) => {
+    // Navigation handled by wizard page
+    router.push(`/templates/new`);
   };
 
   // Loading state
@@ -261,7 +256,7 @@ export function TemplateList({ companyId }: TemplateListProps) {
       <div className="space-y-6">
         <div className="flex justify-end">
           <Button
-            onClick={() => setCreateModalOpen(true)}
+            onClick={() => router.push('/templates/new')}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -280,7 +275,7 @@ export function TemplateList({ companyId }: TemplateListProps) {
               y automatizar la programacion de actividades.
             </p>
             <Button
-              onClick={() => setCreateModalOpen(true)}
+              onClick={() => router.push('/templates/new')}
               className="bg-green-600 hover:bg-green-700 text-white"
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -289,13 +284,6 @@ export function TemplateList({ companyId }: TemplateListProps) {
           </CardContent>
         </Card>
 
-        <TemplateCreateModal
-          open={createModalOpen}
-          onOpenChange={setCreateModalOpen}
-          companyId={companyId}
-          cropTypes={cropTypes}
-          onSuccess={handleCreateSuccess}
-        />
       </div>
     );
   }
@@ -445,7 +433,7 @@ export function TemplateList({ companyId }: TemplateListProps) {
 
         {/* Right: Create Button */}
         <Button
-          onClick={() => setCreateModalOpen(true)}
+          onClick={() => router.push('/templates/new')}
           className="bg-green-600 hover:bg-green-700 text-white shrink-0"
         >
           <Plus className="h-4 w-4 sm:mr-2" />
@@ -487,15 +475,6 @@ export function TemplateList({ companyId }: TemplateListProps) {
           ))}
         </div>
       )}
-
-      {/* Create Modal */}
-      <TemplateCreateModal
-        open={createModalOpen}
-        onOpenChange={setCreateModalOpen}
-        companyId={companyId}
-        cropTypes={cropTypes}
-        onSuccess={handleCreateSuccess}
-      />
 
       {/* Archive Confirmation Dialog */}
       <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
