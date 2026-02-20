@@ -138,20 +138,12 @@ export {
 
 // Phase 2 - Settings validations
 export {
-  workdaySchema,
-  facilitySettingsSchema,
   accountSettingsSchema,
   userProfileSettingsSchema,
-  notificationPreferencesSchema,
   changePasswordSchema,
-  alertThresholdSettingsSchema,
-  type FacilitySettingsInput,
   type AccountSettingsInput,
   type UserProfileSettingsInput,
-  type NotificationPreferencesInput,
   type ChangePasswordInput,
-  type AlertThresholdSettingsInput,
-  type Workday,
 } from './settings';
 
 // Validation helpers

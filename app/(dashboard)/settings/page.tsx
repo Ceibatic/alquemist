@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2, User, ChevronRight, Settings2, CreditCard } from 'lucide-react';
+import { Building2, User, ChevronRight, CreditCard } from 'lucide-react';
 
 export default function SettingsPage() {
   return (
@@ -48,14 +48,6 @@ export default function SettingsPage() {
                 <ChevronRight className="h-4 w-4 flex-shrink-0" />
                 <span>Licencias y permisos regulatorios</span>
               </li>
-              <li className="flex items-center space-x-2">
-                <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                <span>Configuración de operaciones</span>
-              </li>
-              <li className="flex items-center space-x-2">
-                <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                <span>Preferencias de notificaciones</span>
-              </li>
             </ul>
 
             <Link href="/settings/facility" className="block">
@@ -88,71 +80,17 @@ export default function SettingsPage() {
               </li>
               <li className="flex items-center space-x-2">
                 <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                <span>Preferencias de idioma y formato</span>
-              </li>
-              <li className="flex items-center space-x-2">
-                <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                <span>Notificaciones personales</span>
+                <span>Tema y preferencias</span>
               </li>
               <li className="flex items-center space-x-2">
                 <ChevronRight className="h-4 w-4 flex-shrink-0" />
                 <span>Contraseña y seguridad</span>
-              </li>
-              <li className="flex items-center space-x-2">
-                <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                <span>Autenticación de dos factores</span>
               </li>
             </ul>
 
             <Link href="/settings/account" className="block">
               <Button className="w-full" variant="outline">
                 Configurar Cuenta
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {/* System Settings Card */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex items-center space-x-3 mb-2">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Settings2 className="h-6 w-6 text-purple-600" />
-              </div>
-              <CardTitle className="text-xl">Sistema e Integraciones</CardTitle>
-            </div>
-            <CardDescription className="text-base">
-              Configura integraciones, IA y preferencias del sistema
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li className="flex items-center space-x-2">
-                <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                <span>Estado de integraciones (IA, Email)</span>
-              </li>
-              <li className="flex items-center space-x-2">
-                <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                <span>Funciones de inteligencia artificial</span>
-              </li>
-              <li className="flex items-center space-x-2">
-                <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                <span>Cumplimiento y regulacion</span>
-              </li>
-              <li className="flex items-center space-x-2">
-                <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                <span>Notificaciones automaticas</span>
-              </li>
-              <li className="flex items-center space-x-2">
-                <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                <span>Valores predeterminados</span>
-              </li>
-            </ul>
-
-            <Link href="/settings/system" className="block">
-              <Button className="w-full" variant="outline">
-                Configurar Sistema
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

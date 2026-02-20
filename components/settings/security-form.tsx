@@ -8,11 +8,9 @@ import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/shared/password-input';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Loader2, ShieldCheck, ShieldAlert, Info } from 'lucide-react';
+import { Loader2, Info } from 'lucide-react';
 import { changePasswordSchema, type ChangePasswordInput } from '@/lib/validations/settings';
 
 interface SecurityFormProps {
@@ -113,7 +111,6 @@ export function SecurityForm({ userId, user, onDirtyChange }: SecurityFormProps)
 
   return (
     <div className="space-y-8">
-      {/* Change Password Section */}
       <div>
         <h3 className="text-lg font-semibold mb-4">Cambiar Contraseña</h3>
         <p className="text-sm text-muted-foreground mb-6">
@@ -210,64 +207,6 @@ export function SecurityForm({ userId, user, onDirtyChange }: SecurityFormProps)
             </Button>
           </div>
         </form>
-      </div>
-
-      <Separator />
-
-      {/* Two-Factor Authentication Section */}
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Autenticación de Dos Factores</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          Agrega una capa extra de seguridad a tu cuenta
-        </p>
-
-        <div className="rounded-lg border p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <ShieldAlert className="h-8 w-8 text-muted-foreground" />
-              <div>
-                <p className="font-medium">Estado: No configurado</p>
-                <p className="text-sm text-muted-foreground">
-                  La autenticación de dos factores no está activada
-                </p>
-              </div>
-            </div>
-            <Badge variant="outline">Desactivado</Badge>
-          </div>
-
-          <Button variant="outline" disabled className="w-full">
-            Configurar 2FA (Próximamente)
-          </Button>
-        </div>
-      </div>
-
-      <Separator />
-
-      {/* Active Sessions Section */}
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Sesiones Activas</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          Administra dónde has iniciado sesión
-        </p>
-
-        <div className="rounded-lg border p-6 space-y-4">
-          <div className="flex items-center space-x-3">
-            <ShieldCheck className="h-8 w-8 text-green-600" />
-            <div>
-              <p className="font-medium">Sesión Actual</p>
-              <p className="text-sm text-muted-foreground">
-                Esta es tu sesión actual en este dispositivo
-              </p>
-            </div>
-          </div>
-
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription className="text-sm">
-              La gestión de sesiones múltiples estará disponible en versiones futuras
-            </AlertDescription>
-          </Alert>
-        </div>
       </div>
     </div>
   );

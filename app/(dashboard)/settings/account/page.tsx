@@ -18,7 +18,6 @@ export default function AccountSettingsPage() {
   const [isDirtyMap, setIsDirtyMap] = React.useState({
     profile: false,
     preferences: false,
-    notifications: false,
     security: false,
   });
 

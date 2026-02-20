@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ProfileForm } from './profile-form';
 import { PreferencesForm } from './preferences-form';
-import { UserNotificationsForm } from './user-notifications-form';
 import { SecurityForm } from './security-form';
 import { Id } from '@/convex/_generated/dataModel';
 
@@ -25,7 +24,6 @@ interface AccountSettingsTabsProps {
   isDirtyMap: {
     profile: boolean;
     preferences: boolean;
-    notifications: boolean;
     security: boolean;
   };
   onDirtyChange: (tab: string, isDirty: boolean) => void;
@@ -67,7 +65,7 @@ export function AccountSettingsTabs({ userId, user, isDirtyMap, onDirtyChange }:
   return (
     <>
       <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-8">
+        <TabsList className="grid w-full grid-cols-3 mb-8">
           <TabsTrigger value="profile" className="relative">
             Perfil
             {isDirtyMap.profile && (
@@ -77,12 +75,6 @@ export function AccountSettingsTabs({ userId, user, isDirtyMap, onDirtyChange }:
           <TabsTrigger value="preferences" className="relative">
             Preferencias
             {isDirtyMap.preferences && (
-              <span className="ml-1 text-amber-500 font-bold">●</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="relative">
-            Notificaciones
-            {isDirtyMap.notifications && (
               <span className="ml-1 text-amber-500 font-bold">●</span>
             )}
           </TabsTrigger>
@@ -107,14 +99,6 @@ export function AccountSettingsTabs({ userId, user, isDirtyMap, onDirtyChange }:
             userId={userId}
             user={user}
             onDirtyChange={(isDirty) => onDirtyChange('preferences', isDirty)}
-          />
-        </TabsContent>
-
-        <TabsContent value="notifications" className="space-y-4">
-          <UserNotificationsForm
-            userId={userId}
-            user={user}
-            onDirtyChange={(isDirty) => onDirtyChange('notifications', isDirty)}
           />
         </TabsContent>
 

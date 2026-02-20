@@ -1,65 +1,10 @@
 /**
  * Settings Validation Schemas
  *
- * Zod schemas for facility settings, account settings, and notification preferences
+ * Zod schemas for account settings, user profile, and password change
  */
 
 import { z } from 'zod';
-
-// ============================================================================
-// FACILITY SETTINGS SCHEMA
-// ============================================================================
-
-export const workdaySchema = z.enum(
-  ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-  {
-    errorMap: () => ({ message: 'Día de la semana inválido' }),
-  }
-);
-
-// Time format validation (HH:MM in 24-hour format)
-const timeSchema = z
-  .string()
-  .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Formato de hora inválido (HH:MM)');
-
-export const facilitySettingsSchema = z
-  .object({
-    timezone: z
-      .string()
-      .min(1, 'Zona horaria es requerida')
-      .default('America/Bogota'),
-    workday_start: timeSchema.default('08:00'),
-    workday_end: timeSchema.default('17:00'),
-    workdays: z
-      .array(workdaySchema)
-      .min(1, 'Debes seleccionar al menos un día laboral')
-      .max(7, 'No puedes seleccionar más de 7 días')
-      .default(['monday', 'tuesday', 'wednesday', 'thursday', 'friday']),
-    default_activity_duration: z
-      .number()
-      .int('Duración debe ser un número entero')
-      .min(5, 'Duración mínima es 5 minutos')
-      .max(480, 'Duración máxima es 480 minutos (8 horas)')
-      .default(60),
-    auto_scheduling: z.boolean().default(false),
-    notifications_enabled: z.boolean().default(true),
-    low_stock_alert_enabled: z.boolean().default(true),
-    overdue_activity_alert_enabled: z.boolean().default(true),
-  })
-  .refine(
-    (data) => {
-      // Validate workday_end is after workday_start
-      const [startHour, startMinute] = data.workday_start.split(':').map(Number);
-      const [endHour, endMinute] = data.workday_end.split(':').map(Number);
-      const startTime = startHour * 60 + startMinute;
-      const endTime = endHour * 60 + endMinute;
-      return endTime > startTime;
-    },
-    {
-      message: 'Hora de fin debe ser posterior a hora de inicio',
-      path: ['workday_end'],
-    }
-  );
 
 // ============================================================================
 // ACCOUNT SETTINGS SCHEMA
@@ -189,43 +134,6 @@ export const userProfileSettingsSchema = z.object({
 });
 
 // ============================================================================
-// NOTIFICATION PREFERENCES SCHEMA
-// ============================================================================
-
-export const notificationPreferencesSchema = z.object({
-  // Global toggles
-  email_notifications: z.boolean().default(true),
-  sms_notifications: z.boolean().default(false),
-
-  // Specific notification types
-  notification_types: z.object({
-    low_stock: z.boolean().default(true),
-    overdue_activities: z.boolean().default(true),
-    compliance_alerts: z.boolean().default(true),
-    system_updates: z.boolean().default(true),
-    team_mentions: z.boolean().default(true),
-    batch_status_changes: z.boolean().default(true),
-    quality_check_reminders: z.boolean().default(true),
-    harvest_reminders: z.boolean().default(true),
-    license_expiration: z.boolean().default(true),
-    pest_disease_alerts: z.boolean().default(true),
-  }),
-
-  // Notification delivery preferences
-  notification_delivery: z.object({
-    immediate: z.boolean().default(true),
-    daily_digest: z.boolean().default(false),
-    weekly_digest: z.boolean().default(false),
-    digest_time: timeSchema.default('08:00'), // Time to send digests
-  }),
-
-  // Quiet hours
-  quiet_hours_enabled: z.boolean().default(false),
-  quiet_hours_start: timeSchema.default('20:00'),
-  quiet_hours_end: timeSchema.default('08:00'),
-});
-
-// ============================================================================
 // PASSWORD CHANGE SCHEMA
 // ============================================================================
 
@@ -257,58 +165,9 @@ export const changePasswordSchema = z
   });
 
 // ============================================================================
-// ALERT THRESHOLD SETTINGS SCHEMA
-// ============================================================================
-
-export const alertThresholdSettingsSchema = z.object({
-  low_stock_threshold_percent: z
-    .number()
-    .int('Porcentaje debe ser un número entero')
-    .min(1, 'Porcentaje mínimo es 1%')
-    .max(50, 'Porcentaje máximo es 50%')
-    .default(20),
-  critical_stock_threshold_percent: z
-    .number()
-    .int('Porcentaje debe ser un número entero')
-    .min(1, 'Porcentaje mínimo es 1%')
-    .max(25, 'Porcentaje máximo es 25%')
-    .default(10),
-  expiring_soon_days: z
-    .number()
-    .int('Días debe ser un número entero')
-    .min(1, 'Mínimo 1 día')
-    .max(90, 'Máximo 90 días')
-    .default(30),
-  license_expiration_warning_days: z
-    .number()
-    .int('Días debe ser un número entero')
-    .min(1, 'Mínimo 1 día')
-    .max(365, 'Máximo 365 días')
-    .default(90),
-  overdue_activity_hours: z
-    .number()
-    .int('Horas debe ser un número entero')
-    .min(1, 'Mínimo 1 hora')
-    .max(168, 'Máximo 168 horas (7 días)')
-    .default(24),
-}).refine(
-  (data) => {
-    return data.critical_stock_threshold_percent < data.low_stock_threshold_percent;
-  },
-  {
-    message: 'Umbral crítico debe ser menor que umbral bajo',
-    path: ['critical_stock_threshold_percent'],
-  }
-);
-
-// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 
-export type FacilitySettingsInput = z.infer<typeof facilitySettingsSchema>;
 export type AccountSettingsInput = z.infer<typeof accountSettingsSchema>;
 export type UserProfileSettingsInput = z.infer<typeof userProfileSettingsSchema>;
-export type NotificationPreferencesInput = z.infer<typeof notificationPreferencesSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
-export type AlertThresholdSettingsInput = z.infer<typeof alertThresholdSettingsSchema>;
-export type Workday = z.infer<typeof workdaySchema>;
