@@ -202,6 +202,12 @@ export const getById = query({
         : null,
       phases: enrichedPhases,
       batches: enrichedBatches,
+      activities: activities.map((a) => ({
+        _id: a._id,
+        activity_type: a.activity_type,
+        scheduled_date: a.scheduled_date,
+        status: a.status,
+      })),
       activitiesCount: activities.length,
       pendingActivitiesCount: activities.filter(
         (a) => a.status === "pending"
