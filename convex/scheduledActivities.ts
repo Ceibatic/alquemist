@@ -511,3 +511,86 @@ export const getResourcesForActivity = query({
     return enriched;
   },
 });
+
+/**
+ * Create a scheduled activity for a production order (from phase detail page)
+ */
+export const createForOrder = mutation({
+  args: {
+    orderId: v.id("production_orders"),
+    typeId: v.id("activity_types"),
+    activityTemplateId: v.optional(v.id("activity_templates")),
+    scheduledDate: v.number(),
+    estimatedDurationMinutes: v.optional(v.number()),
+    instructions: v.optional(v.string()),
+    activityName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Validate order exists
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    // Resolve activity type code from type_id
+    const actType = await ctx.db.get(args.typeId);
+    if (!actType) {
+      throw new Error("Activity type not found");
+    }
+
+    const activityId = await ctx.db.insert("scheduled_activities", {
+      entity_type: "production_order",
+      entity_id: args.orderId,
+      activity_type: actType.code,
+      production_order_id: args.orderId,
+      type_id: args.typeId,
+      template_id: args.activityTemplateId,
+      scheduled_date: args.scheduledDate,
+      estimated_duration_minutes: args.estimatedDurationMinutes,
+      instructions: args.instructions,
+      source: "manual",
+      status: "pending",
+      is_recurring: false,
+      assigned_team: [],
+      required_materials: [],
+      required_equipment: [],
+      company_id: order.company_id,
+      created_at: now,
+      updated_at: now,
+    });
+
+    // If activity template provided, materialize its resources
+    if (args.activityTemplateId) {
+      const templateResources = await ctx.db
+        .query("activity_template_resources")
+        .withIndex("by_template", (q) =>
+          q.eq("template_id", args.activityTemplateId!)
+        )
+        .collect();
+
+      for (let seq = 0; seq < templateResources.length; seq++) {
+        const res = templateResources[seq];
+        await ctx.db.insert("scheduled_activity_resources", {
+          scheduled_activity_id: activityId,
+          template_resource_id: res._id,
+          product_id: res.product_id,
+          direction: res.direction,
+          quantity_basis: res.quantity_basis,
+          template_quantity: res.quantity,
+          quantity_override: res.quantity,
+          unit_id: res.unit_id,
+          application_rate: res.application_rate,
+          application_method: res.application_method,
+          is_required: res.is_required,
+          sequence: seq,
+          notes: res.notes,
+          created_at: now,
+        });
+      }
+    }
+
+    return activityId;
+  },
+});
