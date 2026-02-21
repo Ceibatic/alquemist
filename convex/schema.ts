@@ -2131,7 +2131,7 @@ export default defineSchema({
   // Snapshot of template resources with calculated quantities based on batch/area context.
   scheduled_activity_resources: defineTable({
     scheduled_activity_id: v.id("scheduled_activities"),
-    template_resource_id: v.id("activity_template_resources"),
+    template_resource_id: v.optional(v.id("activity_template_resources")),
     product_id: v.id("products"),
 
     // From template (snapshot)

@@ -18,11 +18,6 @@ const nextConfig: NextConfig = {
         destination: '/production/orders/:id',
         permanent: false,
       },
-      {
-        source: '/scheduled-activities',
-        destination: '/dashboard',
-        permanent: false,
-      },
     ];
   },
 };

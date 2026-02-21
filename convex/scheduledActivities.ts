@@ -23,6 +23,22 @@ export const createManual = mutation({
     assignedTo: v.optional(v.id("users")),
     instructions: v.optional(v.string()),
     priority: v.optional(v.string()), // routine/urgent/critical
+    resources: v.optional(
+      v.array(
+        v.object({
+          productId: v.id("products"),
+          templateResourceId: v.optional(v.id("activity_template_resources")),
+          quantity: v.number(),
+          unitId: v.optional(v.id("units_of_measure")),
+          quantityBasis: v.string(),
+          direction: v.string(),
+          applicationRate: v.optional(v.string()),
+          applicationMethod: v.optional(v.string()),
+          isRequired: v.boolean(),
+          notes: v.optional(v.string()),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     if (args.batchIds.length === 0) {
@@ -96,6 +112,29 @@ export const createManual = mutation({
         group_id: groupId,
         source: "manual",
       });
+
+      // Materialize resources for this scheduled activity
+      if (args.resources && args.resources.length > 0) {
+        for (let seq = 0; seq < args.resources.length; seq++) {
+          const res = args.resources[seq];
+          await ctx.db.insert("scheduled_activity_resources", {
+            scheduled_activity_id: id,
+            template_resource_id: res.templateResourceId,
+            product_id: res.productId,
+            direction: res.direction,
+            quantity_basis: res.quantityBasis,
+            template_quantity: res.quantity,
+            quantity_override: res.quantity, // User-edited quantity goes to override
+            unit_id: res.unitId,
+            application_rate: res.applicationRate,
+            application_method: res.applicationMethod,
+            is_required: res.isRequired,
+            sequence: seq,
+            notes: res.notes,
+            created_at: now,
+          });
+        }
+      }
 
       createdIds.push(id);
     }
@@ -354,6 +393,80 @@ export const listForSchedule = query({
         resourceCount: resourceCountMap.get(a._id as string) ?? 0,
       };
     });
+  },
+});
+
+/**
+ * Get a single scheduled activity by ID, with full enrichment.
+ */
+export const getById = query({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+  },
+  handler: async (ctx, { scheduledActivityId }) => {
+    const activity = await ctx.db.get(scheduledActivityId);
+    if (!activity) return null;
+
+    const [batch, activityType, template, assignedUser] = await Promise.all([
+      activity.entity_type === "batch" && activity.entity_id
+        ? ctx.db.get(activity.entity_id as Id<"batches">)
+        : null,
+      activity.type_id ? ctx.db.get(activity.type_id) : null,
+      activity.template_id ? ctx.db.get(activity.template_id) : null,
+      activity.assigned_to ? ctx.db.get(activity.assigned_to) : null,
+    ]);
+
+    const area = batch?.area_id ? await ctx.db.get(batch.area_id) : null;
+
+    return {
+      ...activity,
+      batchCode: batch?.batch_code ?? null,
+      batchId: batch?._id ?? null,
+      batchPhase: batch?.current_phase ?? null,
+      areaName: area?.name ?? null,
+      areaId: area?._id ?? null,
+      activityTypeName: activityType?.name ?? null,
+      activityTypeIcon: activityType?.icon ?? null,
+      activityTypeColor: activityType?.color ?? null,
+      activityTypeCategory: activityType?.category ?? null,
+      templateName: template?.name ?? null,
+      assignedToName: assignedUser?.name ?? null,
+    };
+  },
+});
+
+/**
+ * Update a scheduled activity (only pending or in_progress).
+ */
+export const update = mutation({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+    scheduledDate: v.optional(v.number()),
+    assignedTo: v.optional(v.id("users")),
+    instructions: v.optional(v.string()),
+    estimatedDurationMinutes: v.optional(v.number()),
+    priority: v.optional(v.string()),
+  },
+  handler: async (ctx, { scheduledActivityId, ...updates }) => {
+    const activity = await ctx.db.get(scheduledActivityId);
+    if (!activity) throw new Error("Actividad no encontrada");
+    if (activity.status === "completed" || activity.status === "skipped") {
+      throw new Error("No se puede editar una actividad completada o saltada");
+    }
+
+    const patch: Record<string, unknown> = { updated_at: Date.now() };
+    if (updates.scheduledDate !== undefined) patch.scheduled_date = updates.scheduledDate;
+    if (updates.assignedTo !== undefined) patch.assigned_to = updates.assignedTo;
+    if (updates.instructions !== undefined) patch.instructions = updates.instructions;
+    if (updates.estimatedDurationMinutes !== undefined)
+      patch.estimated_duration_minutes = updates.estimatedDurationMinutes;
+    if (updates.priority !== undefined) patch.activity_metadata = {
+      ...(activity.activity_metadata as Record<string, unknown> ?? {}),
+      priority: updates.priority,
+    };
+
+    await ctx.db.patch(scheduledActivityId, patch);
+    return scheduledActivityId;
   },
 });
 
