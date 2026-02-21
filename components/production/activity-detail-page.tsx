@@ -26,7 +26,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { ActivityExecutionSheet } from '@/components/activities/activity-execution-sheet';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -101,7 +100,6 @@ interface ActivityDetailPageProps {
 
 export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPageProps) {
   const router = useRouter();
-  const [executionSheetOpen, setExecutionSheetOpen] = useState(false);
   const [skipDialogOpen, setSkipDialogOpen] = useState(false);
   const [skipReason, setSkipReason] = useState('');
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
@@ -207,7 +205,7 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
             <Button
               size="sm"
               className="bg-amber-500 hover:bg-amber-600 text-white"
-              onClick={() => setExecutionSheetOpen(true)}
+              onClick={() => router.push(`/production/activities/${scheduledActivityId}/report`)}
             >
               <ClipboardCheck className="h-3.5 w-3.5 mr-1" />
               Reportar
@@ -467,13 +465,6 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
         </DialogContent>
       </Dialog>
 
-      {/* Execution sheet */}
-      <ActivityExecutionSheet
-        open={executionSheetOpen}
-        onOpenChange={setExecutionSheetOpen}
-        scheduledActivityId={scheduledActivityId}
-        onCompleted={() => setExecutionSheetOpen(false)}
-      />
     </div>
   );
 }
