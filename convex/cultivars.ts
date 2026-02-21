@@ -596,3 +596,70 @@ export const deleteOrphanedCultivars = mutation({
     };
   },
 });
+
+/**
+ * Get products linked to a cultivar, grouped by phase
+ * Returns the crop type phases with their associated products (if any)
+ */
+export const getProductsByPhase = query({
+  args: {
+    cultivarId: v.id("cultivars"),
+  },
+  handler: async (ctx, args) => {
+    const cultivar = await ctx.db.get(args.cultivarId);
+    if (!cultivar) return null;
+
+    const cropType = await ctx.db.get(cultivar.crop_type_id);
+    if (!cropType) return null;
+
+    // Get all products linked to this cultivar
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_cultivar", (q) => q.eq("cultivar_id", args.cultivarId))
+      .collect();
+
+    // Get phases from crop type
+    const phases = (cropType.default_phases as Array<{ name: string; duration_days: number }>) || [];
+
+    // Group products by phase
+    const phaseProducts = phases.map((phase) => {
+      const phaseProduct = products.find((p) => p.crop_phase === phase.name);
+      return {
+        phase: phase.name,
+        duration_days: phase.duration_days,
+        product: phaseProduct
+          ? {
+              _id: phaseProduct._id,
+              name: phaseProduct.name,
+              sku: phaseProduct.sku,
+              category: phaseProduct.category,
+              status: phaseProduct.status,
+              default_unit: phaseProduct.default_unit,
+              transformation_produces_id: phaseProduct.transformation_produces_id,
+            }
+          : null,
+      };
+    });
+
+    // Include products not assigned to any phase (orphaned)
+    const assignedPhaseNames = new Set(phases.map((p) => p.name));
+    const orphanedProducts = products.filter(
+      (p) => !p.crop_phase || !assignedPhaseNames.has(p.crop_phase)
+    );
+
+    return {
+      cropTypeName: cropType.display_name_es || cropType.name,
+      cultivarName: cultivar.name,
+      phases: phaseProducts,
+      orphanedProducts: orphanedProducts.map((p) => ({
+        _id: p._id,
+        name: p.name,
+        sku: p.sku,
+        category: p.category,
+        status: p.status,
+        crop_phase: p.crop_phase,
+      })),
+      totalProducts: products.length,
+    };
+  },
+});

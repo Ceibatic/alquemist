@@ -712,6 +712,10 @@ export default defineSchema({
     salvage_value: v.optional(v.number()), // Valor residual
     depreciation_method: v.optional(v.string()), // straight_line (default)
 
+    // Cultivar Link (Derived Products)
+    cultivar_id: v.optional(v.id("cultivars")),
+    crop_phase: v.optional(v.string()), // Phase this product represents for the cultivar
+
     // Metadata
     status: v.string(), // active/discontinued
     created_at: v.number(),
@@ -722,7 +726,9 @@ export default defineSchema({
     .index("by_category", ["category"])
     .index("by_regulatory_registered", ["regulatory_registered"])
     .index("by_status", ["status"])
-    .index("by_company_status", ["company_id", "status"]),
+    .index("by_company_status", ["company_id", "status"])
+    .index("by_cultivar", ["cultivar_id"])
+    .index("by_cultivar_phase", ["cultivar_id", "crop_phase"]),
 
   // Product Price History - Audit trail for price changes
   product_price_history: defineTable({

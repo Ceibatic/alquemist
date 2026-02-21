@@ -5,7 +5,6 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { CultivarCard } from './cultivar-card';
-import { CultivarCreateModal } from './cultivar-create-modal';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,8 +40,6 @@ import {
   LayoutGrid,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import type { CreateCustomCultivarInput } from '@/lib/validations/cultivar';
-import type { PhaseProductConfig } from './cultivar-form';
 
 interface CultivarListProps {
   facilityId?: Id<'facilities'>;
@@ -57,7 +54,6 @@ export function CultivarList({ facilityId }: CultivarListProps) {
   const [selectedCropType, setSelectedCropType] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDiscontinued, setShowDiscontinued] = useState(false);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -79,8 +75,6 @@ export function CultivarList({ facilityId }: CultivarListProps) {
   const cropTypes = useQuery(api.crops.getCropTypes, {});
 
   // Mutations
-  const createCultivar = useMutation(api.cultivars.create);
-  const createProduct = useMutation(api.products.create);
   const deleteCultivar = useMutation(api.cultivars.remove);
   // TODO: Implement reactivate mutation in backend
   // const reactivateCultivar = useMutation(api.cultivars.reactivate);
@@ -191,109 +185,6 @@ export function CultivarList({ facilityId }: CultivarListProps) {
     }
   };
 
-  const handleCreateCultivar = async (data: CreateCustomCultivarInput) => {
-    if (!currentCompanyId) {
-      toast({
-        title: 'Error',
-        description: 'No se pudo determinar la empresa actual.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      await createCultivar({
-        companyId: currentCompanyId,
-        name: data.name,
-        cropTypeId: data.crop_type_id as Id<'crop_types'>,
-        varietyType: data.variety_type,
-        geneticLineage: data.genetic_lineage,
-        floweringTimeDays: data.flowering_time_days,
-        supplierId: data.supplier_id ? (data.supplier_id as Id<'suppliers'>) : undefined,
-        thcMin: data.thc_min,
-        thcMax: data.thc_max,
-        cbdMin: data.cbd_min,
-        cbdMax: data.cbd_max,
-        notes: data.notes,
-      });
-      setCreateModalOpen(false);
-      toast({
-        title: 'Cultivar creado',
-        description: `${data.name} ha sido creado correctamente.`,
-      });
-    } catch (error) {
-      console.error('Error creating cultivar:', error);
-      const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el cultivar. Intenta de nuevo.';
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleCreateCultivarWithProducts = async (
-    data: CreateCustomCultivarInput,
-    products: PhaseProductConfig[]
-  ) => {
-    if (!currentCompanyId) {
-      toast({
-        title: 'Error',
-        description: 'No se pudo determinar la empresa actual.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      // 1. Create cultivar
-      const cultivarId = await createCultivar({
-        companyId: currentCompanyId,
-        name: data.name,
-        cropTypeId: data.crop_type_id as Id<'crop_types'>,
-        varietyType: data.variety_type,
-        geneticLineage: data.genetic_lineage,
-        floweringTimeDays: data.flowering_time_days,
-        supplierId: data.supplier_id ? (data.supplier_id as Id<'suppliers'>) : undefined,
-        thcMin: data.thc_min,
-        thcMax: data.thc_max,
-        cbdMin: data.cbd_min,
-        cbdMax: data.cbd_max,
-        notes: data.notes,
-      });
-
-      // 2. Create products for enabled phases (sequentially for auto-chain)
-      let productCount = 0;
-      for (const product of products) {
-        await createProduct({
-          companyId: currentCompanyId as Id<'companies'>,
-          name: product.name,
-          sku: product.sku,
-          category: product.category as any,
-          cultivar_id: cultivarId,
-          crop_phase: product.phase,
-        });
-        productCount++;
-      }
-
-      setCreateModalOpen(false);
-      toast({
-        title: 'Cultivar creado',
-        description: productCount > 0
-          ? `${data.name} creado con ${productCount} producto${productCount === 1 ? '' : 's'} de fase.`
-          : `${data.name} ha sido creado correctamente.`,
-      });
-    } catch (error) {
-      console.error('Error creating cultivar with products:', error);
-      const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el cultivar. Intenta de nuevo.';
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    }
-  };
-
   // Loading state
   if (!currentCompanyId || cultivars === undefined || cropTypes === undefined) {
     return (
@@ -318,7 +209,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
       <div className="space-y-6">
         <div className="flex justify-end">
           <Button
-            onClick={() => setCreateModalOpen(true)}
+            onClick={() => router.push('/cultivars/new')}
             className="bg-amber-500 hover:bg-amber-600 text-white"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -336,7 +227,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
               Comienza creando tu primer cultivar personalizado.
             </p>
             <Button
-              onClick={() => setCreateModalOpen(true)}
+              onClick={() => router.push('/cultivars/new')}
               className="bg-amber-500 hover:bg-amber-600 text-white"
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -344,14 +235,6 @@ export function CultivarList({ facilityId }: CultivarListProps) {
             </Button>
           </CardContent>
         </Card>
-
-        <CultivarCreateModal
-          open={createModalOpen}
-          onOpenChange={setCreateModalOpen}
-          cropTypes={cropTypes}
-          onSubmit={handleCreateCultivar}
-          onSubmitWithProducts={handleCreateCultivarWithProducts}
-        />
       </div>
     );
   }
@@ -414,7 +297,7 @@ export function CultivarList({ facilityId }: CultivarListProps) {
 
           {/* Right: Create Button */}
           <Button
-            onClick={() => setCreateModalOpen(true)}
+            onClick={() => router.push('/cultivars/new')}
             className="bg-amber-500 hover:bg-amber-600 text-white shrink-0"
           >
             <Plus className="h-4 w-4 sm:mr-2" />
@@ -482,14 +365,6 @@ export function CultivarList({ facilityId }: CultivarListProps) {
           ))}
         </div>
       )}
-
-      {/* Create Modal */}
-      <CultivarCreateModal
-        open={createModalOpen}
-        onOpenChange={setCreateModalOpen}
-        cropTypes={cropTypes}
-        onSubmit={handleCreateCultivar}
-      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

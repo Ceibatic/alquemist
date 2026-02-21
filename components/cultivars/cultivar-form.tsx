@@ -23,13 +23,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { CannabinoidRangeInput } from './cannabinoid-range-input';
-import { getPhaseLabel, getPhaseColors } from '@/lib/constants/phases';
-import { productCategoryLabels } from '@/lib/validations/product';
-import { Loader2, Info, Leaf, FlaskConical, StickyNote, Package } from 'lucide-react';
-import { useState, useCallback } from 'react';
+import { Loader2, Info, Leaf, FlaskConical, StickyNote } from 'lucide-react';
+import { useState } from 'react';
 
 interface CropType {
   _id: string;
@@ -43,28 +39,6 @@ interface Supplier {
   name: string;
 }
 
-export interface PhaseProductConfig {
-  phase: string;
-  enabled: boolean;
-  name: string;
-  category: string;
-  sku: string;
-}
-
-/** Plant-material related categories for phase products */
-const PHASE_PRODUCT_CATEGORIES = [
-  'seed',
-  'clone',
-  'seedling',
-  'mother_plant',
-  'plant_material',
-  'plant_vegetative',
-  'plant_flowering',
-  'harvest_wet',
-  'harvest_dry',
-  'processed_plant',
-] as const;
-
 interface CultivarFormProps {
   cropTypes: CropType[];
   suppliers?: Supplier[];
@@ -72,8 +46,6 @@ interface CultivarFormProps {
   onCancel?: () => void;
   isSubmitting?: boolean;
   defaultValues?: Partial<CreateCustomCultivarInput>;
-  showPhaseProducts?: boolean;
-  onSubmitWithProducts?: (data: CreateCustomCultivarInput, products: PhaseProductConfig[]) => Promise<void>;
 }
 
 export function CultivarForm({
@@ -83,13 +55,10 @@ export function CultivarForm({
   onCancel,
   isSubmitting = false,
   defaultValues,
-  showPhaseProducts = false,
-  onSubmitWithProducts,
 }: CultivarFormProps) {
   const [selectedCropType, setSelectedCropType] = useState<string | undefined>(
     defaultValues?.crop_type_id
   );
-  const [phaseProducts, setPhaseProducts] = useState<PhaseProductConfig[]>([]);
 
   const form = useForm<CreateCustomCultivarInput>({
     resolver: zodResolver(createCustomCultivarSchema),
@@ -108,59 +77,6 @@ export function CultivarForm({
     },
   });
 
-  const cultivarName = form.watch('name');
-
-  /** Generate a SKU from cultivar name + phase */
-  const generateSku = useCallback((name: string, phase: string) => {
-    const prefix = name
-      .replace(/[^a-zA-Z0-9]/g, '')
-      .substring(0, 6)
-      .toUpperCase();
-    const phaseSuffix = phase.substring(0, 4).toUpperCase();
-    return `${prefix}-${phaseSuffix}`;
-  }, []);
-
-  /** Initialize phase products when crop type changes */
-  const initPhaseProducts = useCallback(
-    (cropTypeId: string) => {
-      const ct = cropTypes.find((c) => c._id === cropTypeId);
-      if (!ct?.default_phases) {
-        setPhaseProducts([]);
-        return;
-      }
-      const currentName = form.getValues('name') || '';
-      setPhaseProducts(
-        ct.default_phases.map((phase) => ({
-          phase: phase.name,
-          enabled: false,
-          name: `${currentName} - ${getPhaseLabel(phase.name)}`.trim().replace(/^- /, ''),
-          category: 'plant_material',
-          sku: generateSku(currentName || 'PROD', phase.name),
-        }))
-      );
-    },
-    [cropTypes, form, generateSku]
-  );
-
-  /** Update a single phase product config */
-  const updatePhaseProduct = useCallback(
-    (index: number, update: Partial<PhaseProductConfig>) => {
-      setPhaseProducts((prev) =>
-        prev.map((p, i) => (i === index ? { ...p, ...update } : p))
-      );
-    },
-    []
-  );
-
-  const handleSubmit = async (data: CreateCustomCultivarInput) => {
-    if (showPhaseProducts && onSubmitWithProducts) {
-      const enabledProducts = phaseProducts.filter((p) => p.enabled);
-      await onSubmitWithProducts(data, enabledProducts);
-    } else {
-      await onSubmit(data);
-    }
-  };
-
   // Check if selected crop is Cannabis
   const isCannabis =
     selectedCropType &&
@@ -168,7 +84,7 @@ export function CultivarForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* Two-column layout */}
         <div className="grid gap-6 md:grid-cols-2">
           {/* Left Column - Basic Information */}
@@ -211,7 +127,6 @@ export function CultivarForm({
                     onValueChange={(value) => {
                       field.onChange(value);
                       setSelectedCropType(value);
-                      if (showPhaseProducts) initPhaseProducts(value);
                     }}
                     value={field.value}
                     disabled={isSubmitting}
@@ -411,87 +326,6 @@ export function CultivarForm({
             </div>
           </div>
         </div>
-
-        {/* Phase Products Section (create mode only) */}
-        {showPhaseProducts && phaseProducts.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b">
-              <Package className="h-4 w-4 text-amber-600" />
-              <h3 className="font-semibold text-gray-900">Productos por Fase</h3>
-            </div>
-            <p className="text-sm text-gray-500">
-              Activa las fases para crear productos de catalogo automaticamente. Podras editarlos despues desde el detalle del cultivar.
-            </p>
-            <div className="space-y-3">
-              {phaseProducts.map((pp, index) => {
-                const colors = getPhaseColors(pp.phase);
-                return (
-                  <div
-                    key={pp.phase}
-                    className={`rounded-lg border p-3 transition-colors ${
-                      pp.enabled ? 'border-amber-200 bg-amber-50/50' : 'border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        checked={pp.enabled}
-                        onCheckedChange={(checked) =>
-                          updatePhaseProduct(index, {
-                            enabled: checked,
-                            // Refresh name/sku with current cultivar name
-                            ...(checked
-                              ? {
-                                  name: `${cultivarName || ''} - ${getPhaseLabel(pp.phase)}`.trim().replace(/^- /, ''),
-                                  sku: generateSku(cultivarName || 'PROD', pp.phase),
-                                }
-                              : {}),
-                          })
-                        }
-                        disabled={isSubmitting}
-                      />
-                      <Badge
-                        className={`${colors.bg} ${colors.text} ${colors.border} border text-xs`}
-                      >
-                        {getPhaseLabel(pp.phase)}
-                      </Badge>
-                      {pp.enabled && (
-                        <div className="flex flex-1 gap-2 min-w-0">
-                          <Input
-                            value={pp.name}
-                            onChange={(e) =>
-                              updatePhaseProduct(index, { name: e.target.value })
-                            }
-                            placeholder="Nombre del producto"
-                            className="text-sm h-8"
-                            disabled={isSubmitting}
-                          />
-                          <Select
-                            value={pp.category}
-                            onValueChange={(val) =>
-                              updatePhaseProduct(index, { category: val })
-                            }
-                            disabled={isSubmitting}
-                          >
-                            <SelectTrigger className="w-[180px] h-8 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {PHASE_PRODUCT_CATEGORIES.map((cat) => (
-                                <SelectItem key={cat} value={cat}>
-                                  {productCategoryLabels[cat]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Form Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t">
