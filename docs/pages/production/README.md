@@ -31,11 +31,13 @@ Una sola entrada "Produccion" apunta a `/production`.
 | `/production/activities/new` | Wizard de nueva actividad no planeada (4 pasos) |
 | `/production/activities/[id]` | Detalle de actividad programada |
 | `/production/activities/[id]/edit` | Wizard de edicion de actividad programada |
-| `/production/orders/[id]` | Detalle de orden de produccion (existente) |
-| `/production/phases/[phase]` | Drill-down de fase (existente) |
+| `/production/orders/new` | Wizard de creacion de orden (2 pasos) |
+| `/production/orders/[id]` | Detalle de orden (estilo template: info + fases + timeline) |
+| `/production/orders/[id]/phases/[phaseId]` | Detalle de fase con schedule de actividades por dia |
 
 Ver [subpaginas.md](./subpaginas.md) para detalle de cada subpagina.
 Ver [tab-actividades.md](./tab-actividades.md) para detalle del tab de actividades.
+Ver [tab-ordenes.md](./tab-ordenes.md) para detalle del tab de ordenes.
 
 ## Archivos Clave
 
@@ -55,5 +57,15 @@ Ver [tab-actividades.md](./tab-actividades.md) para detalle del tab de actividad
 | `components/production/activity-detail-page.tsx` | Contenido del detalle |
 | `components/production/schedule-activity-wizard.tsx` | Wizard 4 pasos nueva actividad |
 | `components/production/edit-activity-wizard.tsx` | Wizard 2 pasos edicion |
+| `components/production/orders-tab.tsx` | Container del tab ordenes |
+| `components/production-orders/production-order-list.tsx` | Listado de ordenes con filtros |
+| `components/production-orders/production-order-card.tsx` | Card de orden individual |
+| `components/production-orders/order-phase-detail-view.tsx` | Detalle de fase con schedule por dia |
+| `components/production-orders/add-order-activity-dialog.tsx` | Dialog para agregar actividad a fase |
+| `components/production-orders/order-create-wizard.tsx` | Wizard 2 pasos creacion de orden |
+| `components/production-orders/order-wizard-step-basic.tsx` | Paso 1: datos basicos |
+| `components/production-orders/order-wizard-step-phases.tsx` | Paso 2: fases (template o manual) |
 | `convex/scheduledActivities.ts` | Backend actividades programadas |
+| `convex/orderPhases.ts` | Backend fases de orden (getById, create) |
+| `convex/productionOrders.ts` | Backend ordenes de produccion |
 | `convex/activities.ts` | Backend actividades ejecutadas |

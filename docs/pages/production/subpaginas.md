@@ -126,3 +126,118 @@ Llama a `scheduledActivities.update` (nuevo mutation) y redirige al detalle.
 **Componentes**:
 - `app/(dashboard)/production/activities/[id]/edit/page.tsx`
 - `components/production/edit-activity-wizard.tsx`
+
+---
+
+## `/production/orders/[id]` — Detalle de Orden de Produccion
+
+Detalle completo de una orden con layout estilo template: info card + timeline + phase cards clickables.
+
+### Header
+- Breadcrumbs: Inicio > Produccion > Ordenes > [order_number]
+- Acciones: boton "Activar" (green, solo planning) + dropdown menu (Cancelar)
+
+### Card Estado + Progreso
+- StatusBadge con colores por status (planning=amber, active=blue, completed=green, cancelled=red)
+- Progress bar con porcentaje de completitud
+
+### Card Informacion (grid 4 cols, InfoRow)
+- Tipo Cultivo, Cultivar, Template (link), Instalacion
+- Tipo Orden, Fuente, Prioridad
+- Fecha Inicio, Fecha Est. Fin, Fecha Entrega
+- Plantas Planificadas, Plantas Actuales, Lotes
+- Notas
+
+### Seccion Lotes
+Reutiliza `OrderBatchSummary` existente.
+
+### Seccion Fases
+- Header "Fases ({count})" con timeline bar visual
+- Phase cards clickables con: badge numerico (amber) o check (completada), nombre, fechas concretas ("01 Mar — 15 Mar"), area, activity type badges, status badge, boton "Completar" inline si `in_progress`
+- Click en fase → `/production/orders/[id]/phases/[phaseId]`
+
+**Query principal**: `productionOrders.getById`
+
+**Componentes**:
+- `app/(dashboard)/production/orders/[id]/page.tsx`
+
+---
+
+## `/production/orders/[id]/phases/[phaseId]` — Detalle de Fase de Orden
+
+Detalle de una fase con schedule de actividades organizadas por dia. Sigue el patron de `templates/phase-detail-view.tsx`.
+
+### Header
+- Breadcrumbs: Inicio > Produccion > [order_number] > [phase_name]
+
+### Card Info (grid 4 cols)
+- Fase, Duracion (dias calculados), Fechas (start — end), Estado (badge), Area
+
+### Schedule por Dia
+Cada dia del rango `planned_start_date → planned_end_date` muestra:
+- Label del dia ("Lun 01 Mar") con highlight amber si es hoy
+- Grid de activity cards con borde izquierdo coloreado por categoria (CATEGORY_COLORS)
+- Cada card: nombre, badge de tipo, duracion estimada, badge de status
+- Boton "+" para agregar actividad → abre `AddOrderActivityDialog`
+
+### Dialog Agregar Actividad
+- Select tipo de actividad (`activityTypes.list`)
+- Select activity template filtrado por tipo (`activityTemplates.list`, opcional)
+- Preview: nombre editable, duracion, descripcion
+- Fecha programada (date input, restringido al rango de la fase)
+- Guardar → `scheduledActivities.createForOrder`
+
+**Query principal**: `orderPhases.getById`
+
+**Componentes**:
+- `app/(dashboard)/production/orders/[id]/phases/[phaseId]/page.tsx`
+- `components/production-orders/order-phase-detail-view.tsx`
+- `components/production-orders/add-order-activity-dialog.tsx`
+
+---
+
+## `/production/orders/new` — Wizard Creacion de Orden
+
+Wizard de 2 pasos para crear una orden de produccion, con o sin template.
+
+### Indicador de progreso
+Pills con iconos (FileText, Layers), amber-500 activo, amber-100 completado con check.
+
+### Paso 1 — Datos Basicos
+
+4 Cards:
+
+**Card Template (opcional)**:
+- Select de production templates. Al seleccionar, pre-llena crop type + cultivar + batch size.
+
+**Card Informacion del Cultivo**:
+- Crop Type (requerido), Cultivar, Order Type, Source Type
+
+**Card Cantidades**:
+- Requested Quantity, Batch Size, Fecha inicio planificada (date input)
+
+**Card Configuracion**:
+- Prioridad, Notas
+
+### Paso 2 — Fases
+
+**Con template seleccionado:**
+- Preview read-only de fases del template con fechas auto-calculadas desde fecha de inicio
+- El usuario puede ver y confirmar las fases
+
+**Sin template:**
+- Lista editable de fases con drag-and-drop (`@dnd-kit/sortable`)
+- Boton "Agregar fase" abre dialog con nombre + duracion en dias
+- Fechas se calculan automaticamente desde la fecha de inicio
+
+### Al guardar
+- Con template: llama `productionOrders.create` con `templateId` (backend crea fases + activities)
+- Sin template: llama `productionOrders.create` sin template, luego loop `orderPhases.create` por cada fase
+
+**Breadcrumbs**: Inicio > Produccion > Nueva Orden
+
+**Componentes**:
+- `app/(dashboard)/production/orders/new/page.tsx`
+- `components/production-orders/order-create-wizard.tsx`
+- `components/production-orders/order-wizard-step-basic.tsx`
+- `components/production-orders/order-wizard-step-phases.tsx`
