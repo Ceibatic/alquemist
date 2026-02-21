@@ -5,7 +5,6 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { ProductionOrderCard } from './production-order-card';
-import { ProductionOrderCreateModal } from './production-order-create-modal';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -46,7 +45,6 @@ export function ProductionOrderList({ companyId, facilityId }: ProductionOrderLi
   // Filter states
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [statusFilters, setStatusFilters] = useState<StatusFilter[]>([
     'planning',
     'active',
@@ -123,11 +121,6 @@ export function ProductionOrderList({ companyId, facilityId }: ProductionOrderLi
     router.push(`/production/orders/${order._id}`);
   };
 
-  const handleCreateSuccess = (orderId: string) => {
-    setCreateModalOpen(false);
-    router.push(`/production/orders/${orderId}`);
-  };
-
   // Loading state
   if (orders === undefined) {
     return (
@@ -152,7 +145,7 @@ export function ProductionOrderList({ companyId, facilityId }: ProductionOrderLi
       <div className="space-y-6">
         <div className="flex justify-end">
           <Button
-            onClick={() => setCreateModalOpen(true)}
+            onClick={() => router.push('/production/orders/new')}
             className="bg-amber-500 hover:bg-amber-600 text-white"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -170,7 +163,7 @@ export function ProductionOrderList({ companyId, facilityId }: ProductionOrderLi
               Crea tu primera orden de produccion para comenzar a gestionar tus cultivos.
             </p>
             <Button
-              onClick={() => setCreateModalOpen(true)}
+              onClick={() => router.push('/production/orders/new')}
               className="bg-amber-500 hover:bg-amber-600 text-white"
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -179,13 +172,6 @@ export function ProductionOrderList({ companyId, facilityId }: ProductionOrderLi
           </CardContent>
         </Card>
 
-        <ProductionOrderCreateModal
-          open={createModalOpen}
-          onOpenChange={setCreateModalOpen}
-          companyId={companyId}
-          facilityId={facilityId}
-          onSuccess={handleCreateSuccess}
-        />
       </div>
     );
   }
@@ -333,7 +319,7 @@ export function ProductionOrderList({ companyId, facilityId }: ProductionOrderLi
 
         {/* Right: Create Button */}
         <Button
-          onClick={() => setCreateModalOpen(true)}
+          onClick={() => router.push('/production/orders/new')}
           className="bg-amber-500 hover:bg-amber-600 text-white shrink-0"
         >
           <Plus className="h-4 w-4 sm:mr-2" />
@@ -372,14 +358,6 @@ export function ProductionOrderList({ companyId, facilityId }: ProductionOrderLi
         </div>
       )}
 
-      {/* Create Modal */}
-      <ProductionOrderCreateModal
-        open={createModalOpen}
-        onOpenChange={setCreateModalOpen}
-        companyId={companyId}
-        facilityId={facilityId}
-        onSuccess={handleCreateSuccess}
-      />
     </div>
   );
 }

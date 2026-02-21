@@ -8,7 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { useFacility } from '@/components/providers/facility-provider';
 import { ActivitiesTab } from '@/components/production/activities-tab';
-import { Factory, Package, BarChart3 } from 'lucide-react';
+import { OrdersTab } from '@/components/production/orders-tab';
+import { Factory, BarChart3 } from 'lucide-react';
 
 const VALID_TABS = ['actividades', 'ordenes', 'analiticas'] as const;
 type ProductionTab = (typeof VALID_TABS)[number];
@@ -74,13 +75,10 @@ function ProductionPageContent() {
         </TabsContent>
 
         <TabsContent value="ordenes">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <Package className="h-12 w-12 mb-4 opacity-40" />
-              <p className="text-lg font-medium">Ordenes de Produccion</p>
-              <p className="text-sm">Proximamente</p>
-            </CardContent>
-          </Card>
+          <OrdersTab
+            companyId={currentCompanyId}
+            facilityId={currentFacilityId}
+          />
         </TabsContent>
 
         <TabsContent value="analiticas">
