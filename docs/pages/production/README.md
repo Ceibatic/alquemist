@@ -31,6 +31,7 @@ Una sola entrada "Produccion" apunta a `/production`.
 | `/production/activities/new` | Wizard de nueva actividad no planeada (4 pasos) |
 | `/production/activities/[id]` | Detalle de actividad programada |
 | `/production/activities/[id]/edit` | Wizard de edicion de actividad programada |
+| `/production/activities/[id]/report` | Wizard de reporte/ejecucion (1-3 pasos dinamicos) |
 | `/production/orders/new` | Wizard de creacion de orden (2 pasos) |
 | `/production/orders/[id]` | Detalle de orden (estilo template: info + fases + timeline) |
 | `/production/orders/[id]/phases/[phaseId]` | Detalle de fase con schedule de actividades por dia |
@@ -57,6 +58,10 @@ Ver [tab-ordenes.md](./tab-ordenes.md) para detalle del tab de ordenes.
 | `components/production/activity-detail-page.tsx` | Contenido del detalle |
 | `components/production/schedule-activity-wizard.tsx` | Wizard 4 pasos nueva actividad |
 | `components/production/edit-activity-wizard.tsx` | Wizard 2 pasos edicion |
+| `components/production/report-activity-wizard.tsx` | Wizard 1-3 pasos reporte de actividad |
+| `components/production/report-step-execution.tsx` | Paso 1: datos de ejecucion |
+| `components/production/report-step-resources.tsx` | Paso 2: recursos editables |
+| `components/production/report-step-quality.tsx` | Paso 3: control de calidad |
 | `components/production/orders-tab.tsx` | Container del tab ordenes |
 | `components/production-orders/production-order-list.tsx` | Listado de ordenes con filtros |
 | `components/production-orders/production-order-card.tsx` | Card de orden individual |
