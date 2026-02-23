@@ -515,10 +515,44 @@ export const create = mutation({
               completion_notes: undefined,
               execution_results: undefined,
               execution_variance: undefined,
+              company_id: args.companyId,
+              source: "template",
+              type_id: templateActivity.type_id,
+              template_id: templateActivity.activity_template_id,
               created_at: now,
               updated_at: now,
             });
             createdActivityIds.push(activityId);
+
+            // Materialize resources from the activity template
+            if (templateActivity.activity_template_id) {
+              const templateResources = await ctx.db
+                .query("activity_template_resources")
+                .withIndex("by_template", (q) =>
+                  q.eq("template_id", templateActivity.activity_template_id!)
+                )
+                .collect();
+
+              for (let seq = 0; seq < templateResources.length; seq++) {
+                const res = templateResources[seq];
+                await ctx.db.insert("scheduled_activity_resources", {
+                  scheduled_activity_id: activityId,
+                  template_resource_id: res._id,
+                  product_id: res.product_id,
+                  direction: res.direction,
+                  quantity_basis: res.quantity_basis,
+                  template_quantity: res.quantity,
+                  quantity_override: res.quantity,
+                  unit_id: res.unit_id,
+                  application_rate: res.application_rate,
+                  application_method: res.application_method,
+                  is_required: res.is_required,
+                  sequence: seq,
+                  notes: res.notes,
+                  created_at: now,
+                });
+              }
+            }
           }
 
           scheduledActivityMap.set(templateActivity._id, createdActivityIds);
@@ -736,6 +770,7 @@ export const activate = mutation({
         await ctx.db.patch(activity._id, {
           entity_type: "batch",
           entity_id: createdBatchIds[0], // Link to first batch
+          company_id: order.company_id, // Backfill in case it was missing
           updated_at: now,
         });
       }
@@ -826,11 +861,29 @@ export const completePhase = mutation({
     );
 
     if (nextPhase) {
-      // Start next phase
+      // Start next phase — inherit area from completed phase
       await ctx.db.patch(nextPhase._id, {
         status: "in_progress",
         actual_start_date: now,
+        area_id: phase.area_id ?? order.target_area_id,
       });
+
+      // Update all active batches to reflect the new phase
+      const orderBatches = await ctx.db
+        .query("batches")
+        .withIndex("by_production_order", (q) =>
+          q.eq("production_order_id", args.orderId)
+        )
+        .collect();
+
+      for (const batch of orderBatches) {
+        if (batch.status === "active") {
+          await ctx.db.patch(batch._id, {
+            current_phase: nextPhase.phase_name,
+            updated_at: now,
+          });
+        }
+      }
 
       await ctx.db.patch(args.orderId, {
         current_phase_id: nextPhase._id,
