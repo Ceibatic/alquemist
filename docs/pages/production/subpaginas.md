@@ -198,7 +198,19 @@ Detalle completo de una orden con layout estilo template: info card + timeline +
 
 ### Header
 - Breadcrumbs: Inicio > Produccion > Ordenes > [order_number]
-- Acciones: boton "Activar" (green, solo planning) + dropdown menu (Cancelar)
+- Acciones: boton "Activar Orden" (green, solo planning) + dropdown menu (Cancelar)
+
+### Dialog Activar Orden
+Al hacer click en "Activar Orden" se abre un dialogo de confirmacion con:
+- Resumen: numero de lotes a crear y plantas por lote
+- **Select area de destino** (requerido): areas activas de la instalacion via `areas.getByFacility`
+- Boton "Confirmar Activacion" (deshabilitado sin area seleccionada)
+
+Al confirmar, el backend (`productionOrders.activate`):
+1. Crea N lotes segun `batch_size` / `requested_quantity`, asignados al area seleccionada
+2. Activa la primera fase (`in_progress`) con `area_id`
+3. Re-linkea `scheduled_activities` de `entity_type: "production_order"` a `entity_type: "batch"`
+4. Las actividades aparecen en el calendario de produccion, listas para reportar
 
 ### Card Estado + Progreso
 - StatusBadge con colores por status (planning=amber, active=blue, completed=green, cancelled=red)

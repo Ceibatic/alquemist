@@ -12,6 +12,21 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Progress } from '@/components/ui/progress';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { OrderBatchSummary } from '@/components/production-orders/order-batch-summary';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/providers/user-provider';
@@ -300,21 +315,39 @@ export default function OrderDetailPage({ params }: PageProps) {
   const cancelOrder = useMutation(api.productionOrders.cancel);
 
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [activateDialogOpen, setActivateDialogOpen] = useState(false);
+  const [selectedAreaId, setSelectedAreaId] = useState<string>('');
+  const [isActivating, setIsActivating] = useState(false);
+
+  // Query areas for the activation dialog
+  const areas = useQuery(
+    api.areas.getByFacility,
+    order?.target_facility_id
+      ? { facilityId: order.target_facility_id }
+      : 'skip',
+  );
+  const activeAreas = areas?.filter((a) => a.status === 'active') ?? [];
 
   const handleActivate = async () => {
-    if (!userId) return;
+    if (!userId || !selectedAreaId) return;
+    setIsActivating(true);
     try {
       await activateOrder({
         orderId,
         approvedBy: userId as Id<'users'>,
+        targetAreaId: selectedAreaId as Id<'areas'>,
       });
       toast.success('Orden activada', {
-        description: 'La orden ha sido activada correctamente.',
+        description: 'Lotes creados y primera fase activada.',
       });
+      setActivateDialogOpen(false);
+      setSelectedAreaId('');
     } catch {
       toast.error('Error', {
         description: 'No se pudo activar la orden.',
       });
+    } finally {
+      setIsActivating(false);
     }
   };
 
@@ -489,7 +522,7 @@ export default function OrderDetailPage({ params }: PageProps) {
           <div className="flex gap-2">
             {order.status === 'planning' && (
               <Button
-                onClick={handleActivate}
+                onClick={() => setActivateDialogOpen(true)}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
                 <Play className="mr-2 h-4 w-4" />
@@ -628,6 +661,69 @@ export default function OrderDetailPage({ params }: PageProps) {
           </>
         )}
       </div>
+
+      {/* ── Activate Order Dialog ───────────────────────────────────── */}
+      <Dialog open={activateDialogOpen} onOpenChange={setActivateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Activar Orden</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Al activar esta orden se crearán{' '}
+              <strong>
+                {order.batch_size && order.requested_quantity
+                  ? Math.ceil(order.requested_quantity / order.batch_size)
+                  : 1}{' '}
+                lote(s)
+              </strong>{' '}
+              de {order.batch_size ?? order.requested_quantity ?? '?'} plantas y
+              se activará la primera fase.
+            </p>
+            <div className="space-y-2">
+              <Label>Área de destino *</Label>
+              <Select
+                value={selectedAreaId}
+                onValueChange={setSelectedAreaId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar área" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeAreas.map((area) => (
+                    <SelectItem key={area._id} value={area._id}>
+                      {area.name} ({area.area_type})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {activeAreas.length === 0 && areas !== undefined && (
+                <p className="text-xs text-destructive">
+                  No hay áreas activas en esta instalación.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setActivateDialogOpen(false);
+                setSelectedAreaId('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleActivate}
+              disabled={!selectedAreaId || isActivating}
+            >
+              {isActivating ? 'Activando...' : 'Confirmar Activación'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
