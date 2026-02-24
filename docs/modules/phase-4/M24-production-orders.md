@@ -33,12 +33,14 @@ El modulo de Ordenes de Produccion permite crear y gestionar ordenes de trabajo 
 | `revertPhaseCompletion` | Revierte fase completada a in_progress |
 | `cancel` | Cancela orden y activities pendientes |
 | `updatePhaseArea` | Reasigna area de una fase con movimiento de lotes y occupancy |
+| `updateCriterionStatus` | Toggle estado de criterio de completitud (completed/pending/failed) |
 
 **Archivo**: `convex/scheduledActivities.ts` (actividades individuales)
 
 | Funcion | Descripcion |
 |---------|-------------|
 | `cancel` | Cancela actividad pending con phase_role guard + group cancel |
+| `reassignPhase` | Mueve actividad pending a otra fase (valida no entry/exit, ajusta fecha) |
 
 ### Flujo de Creacion de Orden
 
@@ -129,6 +131,38 @@ Las actividades de produccion pueden tener un `phase_role` que controla las tran
 **Auto-creacion**: `ensurePhaseRoleActivities()` en `convex/productionOrders.ts` crea entry/exit genericas si template no las define
 **Cancel guard**: No se puede cancelar la unica actividad entry o exit de una fase (validado en `scheduledActivities.cancel`)
 
+### Phase Completion Criteria
+
+Las fases de produccion pueden definir criterios de completitud que deben cumplirse antes de la transicion:
+
+| Type | Comportamiento |
+|------|---------------|
+| `manual_check` | Checkbox que el operador marca manualmente |
+| `metric_range` | Se autocompleta si la medicion esta dentro de rango |
+| `activity_completed` | Se marca automaticamente al ejecutar actividad especifica |
+
+**Schema**: `template_phases.completion_criteria` (array de criterios) → propagado a `order_phases.completion_criteria` + `order_phases.criteria_status` (estado por criterio)
+
+**Validacion en exit activity**: `handlePhaseExitExecution` verifica que todos los criterios `is_required` estan `completed` antes de permitir la transicion. Rechaza con listado de criterios pendientes.
+
+**Admin override**: `completePhase` permite bypass con log de warning para criterios incompletos.
+
+**UI Template**: `PhaseCriteriaEditor` en detalle de fase del template para agregar/editar/eliminar criterios
+**UI Orden**: `PhaseCriteriaChecklist` en phase card del detalle de orden, toggle interactivo para `manual_check`
+**Mutation**: `productionOrders.updateCriterionStatus(orderId, phaseId, criterionId, status, performedBy)`
+
+### Activity Phase Reassignment
+
+Actividades pendientes pueden reasignarse entre fases via drag & drop:
+
+**Mutation**: `scheduledActivities.reassignPhase(activityId, newPhaseId, moveGroup?)`
+- Solo actividades con status `pending`
+- Actividades entry/exit rechazadas (ligadas a su fase)
+- `scheduled_date` se ajusta si cae fuera del rango de la fase destino
+- `moveGroup: true` mueve todas las del mismo `group_id`
+
+**UI**: `PhaseActivityTimeline` con `@dnd-kit/core` — fases como drop zones, actividades draggables con grip handle, entry/exit con lock icon
+
 ### Phase Transition Audit Log
 
 Tabla `phase_transition_log` (append-only) registra cada cambio de estado de fase:
@@ -169,6 +203,8 @@ Tabla `phase_transition_log` (append-only) registra cada cambio de estado de fas
 - Boton "Revertir" en la fase mas recientemente completada (ordenes active/completed)
 - Status `awaiting_entry` con badge amber "Esperando Inicio" y borde amber
 - **Seccion "Historial de Fases"**: timeline vertical con transiciones (`PhaseTransitionTimeline`)
+- **Seccion "Reasignar Actividades"**: drag & drop entre fases (`PhaseActivityTimeline`, ordenes activas con 2+ fases)
+- **Checklist de criterios en phase cards** (`PhaseCriteriaChecklist`): toggle interactivo para manual_check, progreso X/N
 - **Dialog "Activar Orden"**: selector de area + resumen de lotes a crear
 - **Dialog "Cancelar Orden"**: confirmacion
 - **Dialog "Revertir Fase"**: razon requerida + warning inventario + warning actividades huerfanas
@@ -436,7 +472,9 @@ Tabla `phase_transition_log` (append-only) registra cada cambio de estado de fas
 | `planned_end_date` | `number` | Fin planificado |
 | `actual_end_date` | `number?` | Fin real |
 | `area_id` | `id("areas")?` | Area asignada |
-| `status` | `string` | pending/in_progress/completed/skipped |
+| `status` | `string` | pending/awaiting_entry/in_progress/completed/skipped |
+| `completion_criteria` | `array?` | Criterios de completitud (propagados desde template) |
+| `criteria_status` | `array?` | Estado por criterio (criterion_id, status, completed_at, completed_by) |
 | `completion_notes` | `string?` | Notas de completitud |
 | `created_at` | `number` | Timestamp |
 
@@ -533,7 +571,9 @@ Tabla `phase_transition_log` (append-only) registra cada cambio de estado de fas
 | `completePhase` | `orderId, phaseId, completionNotes?` | status=active, fase in_progress/awaiting_entry |
 | `revertPhaseCompletion` | `orderId, phaseId, reason` | status=active/completed, fase completed, mas reciente |
 | `cancel` | `orderId, reason, archiveBatches?` | status!=completed |
+| `updateCriterionStatus` | `orderId, phaseId, criterionId, status, performedBy` | valid criterion, valid phase |
 | `scheduledActivities.cancel` | `scheduledActivityId, reason, cancelGroup?` | status=pending, phase_role guard |
+| `scheduledActivities.reassignPhase` | `activityId, newPhaseId, moveGroup?` | status=pending, not entry/exit |
 
 ---
 

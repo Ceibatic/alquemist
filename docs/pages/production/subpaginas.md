@@ -239,6 +239,7 @@ Reutiliza `OrderBatchSummary` existente.
 - Status `awaiting_entry` → badge amber "Esperando Inicio" + borde amber en card
 - Icono lapiz junto al nombre del area (solo fases no completadas en ordenes activas) → abre Dialog Cambiar Area
 - Lista de lotes por fase (`PhaseBatchList`): solo visible con multiples lotes en ordenes activas. Muestra codigo lote, plantas, progreso actividades (completadas/total), badge rojo "Atrasada" si hay pendientes vencidas. Click navega a detalle del lote
+- Checklist de criterios (`PhaseCriteriaChecklist`): solo visible si la fase tiene `completion_criteria` y orden no esta en `planning`. Muestra progreso "{completados}/{total} criterios", checkboxes interactivos para `manual_check`, badge "Requerido" en criterios obligatorios pendientes. Read-only para fases completadas.
 - Click en fase → `/production/orders/[id]/phases/[phaseId]`
 
 ### Dialog Cambiar Area de Fase
@@ -267,6 +268,17 @@ Al confirmar, `productionOrders.revertPhaseCompletion`:
 4. Si orden estaba completed → reactiva a `active`
 5. Toast: "Fase '{name}' revertida a En Progreso"
 
+### Seccion Reasignar Actividades
+Solo visible si orden esta activa y tiene 2+ fases. Header "Reasignar Actividades" con icono ArrowLeftRight.
+- Grid de fases como drop zones (`PhaseActivityTimeline`)
+- Cada fase muestra sus actividades no-canceladas
+- Actividades pending sin phase_role son draggables (grip handle)
+- Actividades entry/exit y no-pending muestran lock icon (no draggable)
+- Al soltar actividad en otra fase: `scheduledActivities.reassignPhase`
+- Toast: "Actividad movida a fase '{phaseName}'"
+- Badges: "E" verde para entry, "S" amber para exit
+- Status badges: "OK" verde (completed), "P" gris (pending)
+
 ### Seccion Historial de Fases
 Solo visible si orden no esta en `planning`. Header "Historial de Fases" con icono History.
 - Timeline vertical (`PhaseTransitionTimeline`) mostrando cada transicion de fase
@@ -279,6 +291,8 @@ Solo visible si orden no esta en `planning`. Header "Historial de Fases" con ico
 - `app/(dashboard)/production/orders/[id]/page.tsx`
 - `components/production/phase-transition-timeline.tsx`
 - `components/production/phase-batch-list.tsx`
+- `components/production/phase-criteria-checklist.tsx`
+- `components/production/phase-activity-timeline.tsx`
 
 ---
 
