@@ -1024,6 +1024,115 @@ export const activate = mutation({
 });
 
 /**
+ * Update the area assigned to a phase.
+ * Moves batches if the phase is in_progress or awaiting_entry.
+ */
+export const updatePhaseArea = mutation({
+  args: {
+    orderId: v.id("production_orders"),
+    phaseId: v.id("order_phases"),
+    newAreaId: v.id("areas"),
+    performedBy: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("Order not found");
+
+    const phase = await ctx.db.get(args.phaseId);
+    if (!phase) throw new Error("Phase not found");
+    if (phase.order_id !== args.orderId) throw new Error("Phase does not belong to this order");
+
+    if (phase.status === "completed") {
+      throw new Error("Cannot change area of a completed phase");
+    }
+
+    // Validate new area belongs to same facility
+    const newArea = await ctx.db.get(args.newAreaId);
+    if (!newArea) throw new Error("Area not found");
+    if (newArea.facility_id !== order.target_facility_id) {
+      throw new Error("Area must belong to the same facility as the order");
+    }
+
+    const oldAreaId = phase.area_id;
+
+    // For active phases, validate capacity and move batches
+    const isActive = phase.status === "in_progress" || phase.status === "awaiting_entry";
+    if (isActive) {
+      // Get order batches
+      const batches = await ctx.db
+        .query("batches")
+        .withIndex("by_production_order", (q) => q.eq("production_order_id", args.orderId))
+        .filter((q) => q.eq(q.field("status"), "active"))
+        .collect();
+
+      // Check capacity
+      const totalPlants = batches.reduce((sum, b) => sum + (b.current_quantity || 0), 0);
+      const config = newArea.capacity_configurations as any;
+      const maxCapacity = config?.max_capacity || 0;
+      if (maxCapacity > 0) {
+        const available = maxCapacity - newArea.current_occupancy;
+        if (totalPlants > available) {
+          throw new Error(
+            `Area '${newArea.name}' only has ${available} positions available out of ${totalPlants} needed`
+          );
+        }
+      }
+
+      // Move each batch
+      for (const batch of batches) {
+        // Only move batches that are in the old area (or have no area)
+        if (batch.area_id === oldAreaId || !batch.area_id) {
+          await ctx.db.insert("batch_movements", {
+            batch_id: batch._id,
+            from_area_id: oldAreaId,
+            to_area_id: args.newAreaId,
+            movement_date: now,
+            reason: "phase_change",
+            notes: `Phase area reassignment: ${phase.phase_name}`,
+            performed_by: args.performedBy,
+            created_at: now,
+          });
+
+          await ctx.db.patch(batch._id, {
+            area_id: args.newAreaId,
+            updated_at: now,
+          });
+        }
+      }
+
+      // Update occupancy: decrease source, increase destination
+      if (oldAreaId) {
+        const oldArea = await ctx.db.get(oldAreaId);
+        if (oldArea) {
+          await ctx.db.patch(oldAreaId, {
+            current_occupancy: Math.max(0, oldArea.current_occupancy - totalPlants),
+            updated_at: now,
+          });
+        }
+      }
+      await ctx.db.patch(args.newAreaId, {
+        current_occupancy: newArea.current_occupancy + totalPlants,
+        updated_at: now,
+      });
+    }
+
+    // Update phase area
+    await ctx.db.patch(args.phaseId, {
+      area_id: args.newAreaId,
+    });
+
+    return {
+      success: true,
+      phaseName: phase.phase_name,
+      areaName: newArea.name,
+      batchesMoved: isActive,
+    };
+  },
+});
+
+/**
  * Complete a phase and move to the next
  */
 export const completePhase = mutation({
