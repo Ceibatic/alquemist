@@ -168,15 +168,22 @@ Actualmente las actividades programadas son inmutables post-creacion (no hay mut
 
 ---
 
-## Implementacion (llenado por /implement-feature)
-
-_Esta seccion se completa automaticamente al implementar la feature._
+## Implementacion
 
 ### Commits
--
+- `cef95c1` — feat(production): US-LIFE.1 cancel scheduled activity with phase_role guard
+- `71ac353` — feat(production): US-LIFE.2 revert phase completion with warnings
+- `1a259e6` — feat(production): US-LIFE.3 phase transition audit log with timeline
 
 ### Archivos Modificados
--
+- `convex/schema.ts` — new phase_transition_log table
+- `convex/helpers.ts` — logPhaseTransition shared helper
+- `convex/scheduledActivities.ts` — cancel mutation, calendar filter
+- `convex/productionOrders.ts` — revertPhaseCompletion mutation, getPhaseTransitionLog query, transition logging
+- `convex/activities.ts` — transition logging in exit/entry handlers
+- `components/production/activity-detail-page.tsx` — cancel dialog, cancellation reason display
+- `components/production/phase-transition-timeline.tsx` — new timeline component
+- `app/(dashboard)/production/orders/[id]/page.tsx` — revert button/dialog, timeline section
 
 ### Fecha de Completado
--
+2026-02-23
