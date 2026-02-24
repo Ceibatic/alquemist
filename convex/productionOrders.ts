@@ -4,8 +4,9 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { getActivityTypeByCode } from "./helpers";
 
 /**
  * Generate order number in format ORD-YYYY-XXXX
@@ -29,6 +30,94 @@ async function generateOrderNumber(
 
   const sequence = (ordersThisYear.length + 1).toString().padStart(4, "0");
   return `ORD-${year}-${sequence}`;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Ensure each phase has at least one entry and one exit activity.
+ * If a template doesn't define them, auto-create generic phase_transition activities.
+ */
+async function ensurePhaseRoleActivities(
+  ctx: MutationCtx,
+  orderId: Id<"production_orders">,
+  phases: Array<{
+    _id: Id<"order_phases">;
+    phase_name: string;
+    planned_start_date: number;
+    planned_end_date: number;
+  }>,
+  companyId: Id<"companies">
+) {
+  const now = Date.now();
+
+  // Look up phase_transition activity type
+  const phaseTransitionType = await getActivityTypeByCode(
+    ctx,
+    companyId,
+    "phase_transition"
+  );
+
+  for (const phase of phases) {
+    // Check existing entry/exit for this phase
+    const phaseActivities = await ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_phase_role", (q) => q.eq("order_phase_id", phase._id))
+      .collect();
+
+    const hasEntry = phaseActivities.some((a) => a.phase_role === "entry");
+    const hasExit = phaseActivities.some((a) => a.phase_role === "exit");
+
+    if (!hasEntry) {
+      await ctx.db.insert("scheduled_activities", {
+        entity_type: "production_order",
+        entity_id: orderId,
+        activity_type: "phase_transition",
+        production_order_id: orderId,
+        scheduled_date: phase.planned_start_date,
+        is_recurring: false,
+        assigned_team: [],
+        required_materials: [],
+        required_equipment: [],
+        activity_metadata: { activity_name: `Inicio: ${phase.phase_name}` },
+        status: "pending",
+        company_id: companyId,
+        source: "auto",
+        type_id: phaseTransitionType?._id,
+        phase_role: "entry",
+        order_phase_id: phase._id,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    if (!hasExit) {
+      const exitDate = Math.max(
+        phase.planned_start_date,
+        phase.planned_end_date - DAY_MS
+      );
+      await ctx.db.insert("scheduled_activities", {
+        entity_type: "production_order",
+        entity_id: orderId,
+        activity_type: "phase_transition",
+        production_order_id: orderId,
+        scheduled_date: exitDate,
+        is_recurring: false,
+        assigned_team: [],
+        required_materials: [],
+        required_equipment: [],
+        activity_metadata: { activity_name: `Cierre: ${phase.phase_name}` },
+        status: "pending",
+        company_id: companyId,
+        source: "auto",
+        type_id: phaseTransitionType?._id,
+        phase_role: "exit",
+        order_phase_id: phase._id,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+  }
 }
 
 /**
@@ -424,7 +513,6 @@ export const create = mutation({
 
       // Second pass: create scheduled activities from template activities
       const scheduledActivityMap: Map<string, Id<"scheduled_activities">[]> = new Map();
-      const DAY_MS = 24 * 60 * 60 * 1000;
 
       for (const templatePhase of sortedPhases) {
         const phaseStart = phaseStartDates.get(templatePhase._id) || plannedStart;
@@ -564,6 +652,13 @@ export const create = mutation({
           scheduledActivityMap.set(templateActivity._id, createdActivityIds);
         }
       }
+
+      // Ensure each phase has entry/exit activities (auto-create if template lacks them)
+      const createdPhases = await ctx.db
+        .query("order_phases")
+        .withIndex("by_order", (q) => q.eq("order_id", orderId))
+        .collect();
+      await ensurePhaseRoleActivities(ctx, orderId, createdPhases, args.companyId);
 
       // Update template usage count
       const template = await ctx.db.get(args.templateId);
