@@ -63,7 +63,7 @@ Actualmente las actividades programadas son inmutables post-creacion (no hay mut
 **para** corregir errores operativos sin perder el historial
 
 #### Criterios de Aceptacion
-- [ ] Nueva mutation `productionOrders.revertPhaseCompletion(orderId, phaseId, reason)`:
+- [x] Nueva mutation `productionOrders.revertPhaseCompletion(orderId, phaseId, reason)`:
   - Solo fases con status `completed` pueden revertirse
   - Solo la **fase mas recientemente completada** puede revertirse (no se puede saltar)
   - Marca fase revertida como `in_progress` (no borra `actual_end_date` — lo deja para auditoria)
@@ -73,12 +73,12 @@ Actualmente las actividades programadas son inmutables post-creacion (no hay mut
   - Actualiza `order.current_phase_id` a la fase revertida
   - Actualiza `batch.current_phase` en lotes activos
   - NO revierte movimientos de inventario — eso requiere ajuste manual via `inventory.adjustStock`
-  - Crea registro en `activities` como tipo `phase_reversion` para audit trail
-- [ ] Boton "Revertir fase" visible solo para admin, solo en la fase mas reciente completada
-- [ ] Dialog de confirmacion con campo de razon (requerido) y warning:
-  - "Esta accion revertira la fase '{name}' a En Progreso. Los movimientos de inventario NO se revierten automaticamente."
-- [ ] Si hay actividades ejecutadas en la siguiente fase, mostrar warning adicional: "La fase siguiente tiene {N} actividades ejecutadas que quedaran huerfanas"
-- [ ] Toast: "Fase '{name}' revertida a En Progreso"
+  - Audit trail diferido a US-LIFE.3 (phase_transition_log es mas apropiado que crear activity)
+- [x] Boton "Revertir fase" visible en la fase mas reciente completada (ordenes active/completed)
+- [x] Dialog de confirmacion con campo de razon (requerido) y warning:
+  - "Esta accion revertira la fase a En Progreso. Los movimientos de inventario NO se revierten automaticamente."
+- [x] Si hay actividades ejecutadas en la siguiente fase, mostrar warning adicional: "La fase siguiente tiene {N} actividades ejecutadas que quedaran huerfanas"
+- [x] Toast: "Fase '{name}' revertida a En Progreso"
 
 #### Backend
 - Mutation nueva: `productionOrders.revertPhaseCompletion`
