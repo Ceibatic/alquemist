@@ -696,3 +696,67 @@ export const cancel = mutation({
     return { success: true, cancelledCount };
   },
 });
+
+/**
+ * Reassign a scheduled activity to a different phase.
+ * Only pending activities without phase_role (entry/exit) can be moved.
+ * Optionally moves the entire group.
+ */
+export const reassignPhase = mutation({
+  args: {
+    activityId: v.id("scheduled_activities"),
+    newPhaseId: v.id("order_phases"),
+    moveGroup: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const activity = await ctx.db.get(args.activityId);
+    if (!activity) throw new Error("Activity not found");
+
+    if (activity.status !== "pending") {
+      throw new Error("Only pending activities can be reassigned");
+    }
+
+    if (activity.phase_role === "entry" || activity.phase_role === "exit") {
+      throw new Error("Entry/exit activities cannot be reassigned to another phase");
+    }
+
+    const newPhase = await ctx.db.get(args.newPhaseId);
+    if (!newPhase) throw new Error("Target phase not found");
+
+    const now = Date.now();
+
+    // Collect activities to move
+    const activitiesToMove: Doc<"scheduled_activities">[] = [activity];
+
+    if (args.moveGroup && activity.group_id) {
+      const groupActivities = await ctx.db
+        .query("scheduled_activities")
+        .withIndex("by_group", (q) => q.eq("group_id", activity.group_id!))
+        .filter((q) => q.eq(q.field("status"), "pending"))
+        .collect();
+      activitiesToMove.push(
+        ...groupActivities.filter((a) => a._id !== activity._id)
+      );
+    }
+
+    for (const act of activitiesToMove) {
+      // Adjust scheduled_date if it falls outside the new phase's date range
+      let newDate = act.scheduled_date;
+      if (newDate < newPhase.planned_start_date || newDate >= newPhase.planned_end_date) {
+        newDate = newPhase.planned_start_date;
+      }
+
+      await ctx.db.patch(act._id, {
+        order_phase_id: args.newPhaseId,
+        scheduled_date: newDate,
+        updated_at: now,
+      });
+    }
+
+    return {
+      success: true,
+      movedCount: activitiesToMove.length,
+      phaseName: newPhase.phase_name,
+    };
+  },
+});
