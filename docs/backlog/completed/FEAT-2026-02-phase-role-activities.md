@@ -415,15 +415,31 @@ Baja prioridad (planificado):
 
 ---
 
-## Implementacion (llenado por /implement-feature)
-
-_Esta seccion se completa automaticamente al implementar la feature._
+## Implementacion
 
 ### Commits
--
+- `68c31c7` — feat(production): US-FEAT.1 schema and propagation of phase_role
+- `34eb699` — feat(production): US-FEAT.2 auto-create entry/exit activities
+- `a6fdb27` — feat(production): US-FEAT.5 produced resources create inventory_items
+- `438fb28` — feat(production): US-FEAT.3 exit activity auto-completes phase and advances
+- `3933b90` — feat(production): US-FEAT.4 entry activity gates phase start
+- `98fe260` — feat(templates): US-FEAT.6 template editor entry/exit support
+- `cbabdff` — feat(production): US-FEAT.7 frontend UX for phase transitions
+- `fd30a6f` — docs(production): US-FEAT.8 update M24 module doc and daily log
 
 ### Archivos Modificados
--
+- `convex/schema.ts` — phase_role + order_phase_id fields, by_phase_role index
+- `convex/productionOrders.ts` — phaseIdMap propagation, ensurePhaseRoleActivities, activate awaiting_entry, completePhase guard
+- `convex/activities.ts` — handleInventoryTransformation, handlePhaseExitExecution, handlePhaseEntryExecution, phase gate validation
+- `convex/scheduledActivities.ts` — phaseId/phaseRole args in createForOrder
+- `convex/templateActivities.ts` — phaseRole in create/update/createFromTemplate with validation
+- `components/templates/phase-detail-view.tsx` — entry/exit badges
+- `components/templates/add-activity-dialog.tsx` — phase role selector
+- `components/production/calendar-activity-pill.tsx` — E/S badges
+- `components/production/activity-detail-page.tsx` — phase_role badge + context banners
+- `components/production/report-activity-wizard.tsx` — entry/exit context + special toasts
+- `app/(dashboard)/production/orders/[id]/page.tsx` — awaiting_entry styling, hide Completar button
+- `docs/modules/phase-4/M24-production-orders.md` — Phase Roles section, resolved limitations
 
 ### Fecha de Completado
--
+2026-02-23
