@@ -980,7 +980,13 @@ export default defineSchema({
 
     // Requirements
     required_conditions: v.optional(v.object({})),
-    completion_criteria: v.optional(v.object({})),
+    completion_criteria: v.optional(v.array(v.object({
+      id: v.string(),
+      label: v.string(),
+      type: v.string(), // "manual_check" | "metric_range" | "activity_completed"
+      config: v.optional(v.any()), // type-specific config
+      is_required: v.boolean(),
+    }))),
     required_equipment: v.array(v.any()), // Default: []
     required_materials: v.array(v.any()), // Default: []
 
@@ -1134,6 +1140,21 @@ export default defineSchema({
     // Status
     status: v.string(), // pending/awaiting_entry/in_progress/completed/skipped
     completion_notes: v.optional(v.string()),
+
+    // Completion criteria (propagated from template)
+    completion_criteria: v.optional(v.array(v.object({
+      id: v.string(),
+      label: v.string(),
+      type: v.string(),
+      config: v.optional(v.any()),
+      is_required: v.boolean(),
+    }))),
+    criteria_status: v.optional(v.array(v.object({
+      criterion_id: v.string(),
+      status: v.string(), // "pending" | "completed" | "failed"
+      completed_at: v.optional(v.number()),
+      completed_by: v.optional(v.id("users")),
+    }))),
 
     created_at: v.number(),
   })

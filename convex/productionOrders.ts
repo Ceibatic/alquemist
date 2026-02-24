@@ -493,6 +493,13 @@ export const create = mutation({
           phaseStartDate +
           templatePhase.estimated_duration_days * 24 * 60 * 60 * 1000;
 
+        // Propagate completion criteria from template phase
+        const criteria = templatePhase.completion_criteria as any[] | undefined;
+        const criteriaStatus = criteria?.map((c: any) => ({
+          criterion_id: c.id,
+          status: "pending" as const,
+        }));
+
         const orderPhaseId = await ctx.db.insert("order_phases", {
           order_id: orderId,
           template_phase_id: templatePhase._id,
@@ -505,6 +512,8 @@ export const create = mutation({
           area_id: undefined,
           status: "pending",
           completion_notes: undefined,
+          completion_criteria: criteria,
+          criteria_status: criteriaStatus,
           created_at: now,
         });
 
