@@ -28,7 +28,7 @@ El campo `completion_criteria` ya existe en `template_phases` (schema.ts) pero n
 **para** asegurar calidad y consistencia en las transiciones de fase
 
 #### Criterios de Aceptacion
-- [ ] Definir estructura de `completion_criteria` en `template_phases`:
+- [x] Definir estructura de `completion_criteria` en `template_phases`:
   ```
   completion_criteria: v.optional(v.array(v.object({
     id: v.string(),           // UUID
@@ -38,15 +38,15 @@ El campo `completion_criteria` ya existe en `template_phases` (schema.ts) pero n
     is_required: v.boolean(), // si es obligatorio para completar fase
   })))
   ```
-- [ ] Tipo `manual_check`: checkbox simple que el operador marca manualmente
-- [ ] Tipo `metric_range`: se autocompleta si la ultima medicion del batch esta dentro de rango (ej: pH 5.8-6.2)
-- [ ] Tipo `activity_completed`: se autocompleta cuando una actividad especifica se ejecuta
-- [ ] UI en template editor: seccion "Criterios de completitud" en detalle de fase
+- [x] Tipo `manual_check`: checkbox simple que el operador marca manualmente
+- [x] Tipo `metric_range`: se autocompleta si la ultima medicion del batch esta dentro de rango (ej: pH 5.8-6.2)
+- [x] Tipo `activity_completed`: se autocompleta cuando una actividad especifica se ejecuta
+- [x] UI en template editor: seccion "Criterios de completitud" en detalle de fase
   - Lista editable de criterios con label, tipo y configuracion
   - Boton "Agregar criterio" con selector de tipo
   - Drag handle para reordenar
-- [ ] Criterios se propagan a `order_phases.completion_criteria` al crear orden desde template
-- [ ] `npx next build` pasa sin errores
+- [x] Criterios se propagan a `order_phases.completion_criteria` al crear orden desde template
+- [x] `npx next build` pasa sin errores
 
 #### Backend
 - Schema: definir estructura de `template_phases.completion_criteria` (ya existe como `v.any()`)
@@ -70,20 +70,20 @@ El campo `completion_criteria` ya existe en `template_phases` (schema.ts) pero n
 **para** prevenir transiciones prematuras que comprometan la calidad
 
 #### Criterios de Aceptacion
-- [ ] Al ejecutar exit activity (FEAT phase-role-activities US-FEAT.3):
+- [x] Al ejecutar exit activity (FEAT phase-role-activities US-FEAT.3):
   - Verificar `order_phases.criteria_status` — todos los criterios `is_required` deben estar `completed`
   - Si hay criterios pendientes: rechazar con error listando cuales faltan
   - Criterios no-required pueden estar pendientes sin bloquear
-- [ ] En detalle de orden, phase card muestra:
+- [x] En detalle de orden, phase card muestra:
   - Checklist visual con estado de cada criterio (check verde / pendiente gris / fallido rojo)
   - Progreso: "{completados}/{total} criterios"
   - Criterios `metric_range` muestran valor actual vs rango esperado
-- [ ] Mutation `productionOrders.updateCriterionStatus(orderId, phaseId, criterionId, status)`:
+- [x] Mutation `productionOrders.updateCriterionStatus(orderId, phaseId, criterionId, status)`:
   - Para `manual_check`: toggle completado/pendiente
   - Para `metric_range`: se calcula automaticamente al registrar medicion
   - Para `activity_completed`: se marca automaticamente al ejecutar la actividad
-- [ ] `completePhase` (admin override) puede saltarse criterios con warning
-- [ ] Exit activity con criterios pendientes muestra warning en wizard: "Hay {N} criterios pendientes. Complete los criterios antes de reportar esta actividad."
+- [x] `completePhase` (admin override) puede saltarse criterios con warning
+- [x] Exit activity con criterios pendientes muestra warning en wizard: "Hay {N} criterios pendientes. Complete los criterios antes de reportar esta actividad."
 
 #### Backend
 - Mutation nueva: `productionOrders.updateCriterionStatus`
@@ -108,19 +108,19 @@ El campo `completion_criteria` ya existe en `template_phases` (schema.ts) pero n
 **para** ajustar el plan cuando las circunstancias cambian
 
 #### Criterios de Aceptacion
-- [ ] En detalle de orden, vista de timeline de fases:
+- [x] En detalle de orden, vista de timeline de fases:
   - Actividades regulares son draggable entre fases
   - Actividades con `phase_role: "entry"` o `"exit"` NO son draggable (estan ligadas a su fase)
   - Drop zone visual en cada fase que acepta actividades
-- [ ] Al mover actividad:
+- [x] Al mover actividad:
   - Mutation `scheduledActivities.reassignPhase(activityId, newPhaseId)`:
     - Actualizar `order_phase_id` al nuevo phase
     - Actualizar `scheduled_date` si cae fuera del rango de la nueva fase
     - Solo actividades con status `pending` pueden moverse
   - Toast: "Actividad '{name}' movida a fase '{phaseName}'"
-- [ ] Validacion: actividades `completed`, `in_progress` o `skipped` no pueden moverse
-- [ ] Actividades con `group_id`: ofrecer "Mover solo esta" o "Mover grupo completo"
-- [ ] Historial: registrar el movimiento en la actividad (`previous_phase_id` o similar)
+- [x] Validacion: actividades `completed`, `in_progress` o `skipped` no pueden moverse
+- [x] Actividades con `group_id`: ofrecer "Mover solo esta" o "Mover grupo completo"
+- [x] Historial: registrar el movimiento en la actividad (`previous_phase_id` o similar)
 
 #### Backend
 - Mutation nueva: `scheduledActivities.reassignPhase`
@@ -159,15 +159,25 @@ El campo `completion_criteria` ya existe en `template_phases` (schema.ts) pero n
 
 ---
 
-## Implementacion (llenado por /implement-feature)
-
-_Esta seccion se completa automaticamente al implementar la feature._
+## Implementacion
 
 ### Commits
--
+- `08c97bf` — feat(production): US-CRIT.1 define completion criteria in template phases
+- `5394d5f` — feat(production): US-CRIT.2 validate criteria before phase completion
+- `9298e0f` — feat(production): US-CRIT.3 reassign activities between phases via drag & drop
 
 ### Archivos Modificados
--
+- `convex/schema.ts` — structured `completion_criteria` array, `criteria_status` on order_phases
+- `convex/productionOrders.ts` — propagate criteria on create, `updateCriterionStatus` mutation, admin override warning in `completePhase`
+- `convex/productionTemplates.ts` — `updatePhaseCompletionCriteria` mutation
+- `convex/activities.ts` — criteria validation in `handlePhaseExitExecution`
+- `convex/scheduledActivities.ts` — `reassignPhase` mutation
+- `convex/seedOnboardingData.ts` — fix seed data for new array type
+- `components/templates/phase-criteria-editor.tsx` — criteria editor in template phase detail
+- `components/templates/phase-detail-view.tsx` — integrated criteria editor
+- `components/production/phase-criteria-checklist.tsx` — interactive checklist in order phase card
+- `components/production/phase-activity-timeline.tsx` — drag & drop between phases
+- `app/(dashboard)/production/orders/[id]/page.tsx` — criteria checklist + activity timeline integration
 
 ### Fecha de Completado
--
+2026-02-23
