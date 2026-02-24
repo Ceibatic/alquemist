@@ -1136,6 +1136,24 @@ export default defineSchema({
     .index("by_order_phase_order", ["order_id", "phase_order"])
     .index("by_status", ["status"]),
 
+  // Phase 4: Phase transition audit log
+  phase_transition_log: defineTable({
+    order_id: v.id("production_orders"),
+    phase_id: v.id("order_phases"),
+    phase_name: v.string(),
+    transition_type: v.string(), // started/completed/reverted/entry_executed/exit_executed
+    from_status: v.string(),
+    to_status: v.string(),
+    triggered_by: v.string(), // manual/exit_activity/entry_activity/admin_override/activation
+    activity_id: v.optional(v.id("activities")),
+    scheduled_activity_id: v.optional(v.id("scheduled_activities")),
+    performed_by: v.optional(v.id("users")),
+    reason: v.optional(v.string()),
+    timestamp: v.number(),
+  })
+    .index("by_order", ["order_id", "timestamp"])
+    .index("by_phase", ["phase_id", "timestamp"]),
+
   // Phase 4: Batch movements - track batch location changes
   batch_movements: defineTable({
     batch_id: v.id("batches"),

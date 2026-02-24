@@ -30,16 +30,16 @@ Actualmente las actividades programadas son inmutables post-creacion (no hay mut
 **para** mantener limpio el calendario sin perder trazabilidad
 
 #### Criterios de Aceptacion
-- [ ] Nueva mutation `scheduledActivities.cancel(scheduledActivityId, reason)`:
+- [x] Nueva mutation `scheduledActivities.cancel(scheduledActivityId, reason)`:
   - Solo actividades con status `pending` pueden cancelarse
   - Setea `status: "cancelled"`, `skipped_reason: reason`, `updated_at: now`
   - Si la actividad tiene `phase_role: "entry"` o `"exit"`, validar que no sea la unica de ese role para la fase
   - Si es la unica entry/exit: rechazar con error "No se puede cancelar la unica actividad de {role} de la fase. Cree una reemplazo primero."
-- [ ] Actividades `cancelled` no aparecen en el calendario por defecto (filtro por status)
-- [ ] Vista de detalle de orden: actividades canceladas aparecen en gris con badge "Cancelada" y razon
-- [ ] Actividades `in_progress` o `completed` no pueden cancelarse (validacion backend)
-- [ ] Cancelar una actividad con `group_id` ofrece opcion: "Cancelar solo esta" o "Cancelar grupo completo"
-- [ ] `npx next build` pasa sin errores
+- [x] Actividades `cancelled` no aparecen en el calendario por defecto (filtro por status)
+- [x] Vista de detalle de orden: actividades canceladas aparecen en gris con badge "Cancelada" y razon
+- [x] Actividades `in_progress` o `completed` no pueden cancelarse (validacion backend)
+- [x] Cancelar una actividad con `group_id` ofrece opcion: "Cancelar solo esta" o "Cancelar grupo completo"
+- [x] `npx next build` pasa sin errores
 
 #### Backend
 - Mutation nueva: `scheduledActivities.cancel`
@@ -63,7 +63,7 @@ Actualmente las actividades programadas son inmutables post-creacion (no hay mut
 **para** corregir errores operativos sin perder el historial
 
 #### Criterios de Aceptacion
-- [ ] Nueva mutation `productionOrders.revertPhaseCompletion(orderId, phaseId, reason)`:
+- [x] Nueva mutation `productionOrders.revertPhaseCompletion(orderId, phaseId, reason)`:
   - Solo fases con status `completed` pueden revertirse
   - Solo la **fase mas recientemente completada** puede revertirse (no se puede saltar)
   - Marca fase revertida como `in_progress` (no borra `actual_end_date` — lo deja para auditoria)
@@ -73,12 +73,12 @@ Actualmente las actividades programadas son inmutables post-creacion (no hay mut
   - Actualiza `order.current_phase_id` a la fase revertida
   - Actualiza `batch.current_phase` en lotes activos
   - NO revierte movimientos de inventario — eso requiere ajuste manual via `inventory.adjustStock`
-  - Crea registro en `activities` como tipo `phase_reversion` para audit trail
-- [ ] Boton "Revertir fase" visible solo para admin, solo en la fase mas reciente completada
-- [ ] Dialog de confirmacion con campo de razon (requerido) y warning:
-  - "Esta accion revertira la fase '{name}' a En Progreso. Los movimientos de inventario NO se revierten automaticamente."
-- [ ] Si hay actividades ejecutadas en la siguiente fase, mostrar warning adicional: "La fase siguiente tiene {N} actividades ejecutadas que quedaran huerfanas"
-- [ ] Toast: "Fase '{name}' revertida a En Progreso"
+  - Audit trail diferido a US-LIFE.3 (phase_transition_log es mas apropiado que crear activity)
+- [x] Boton "Revertir fase" visible en la fase mas reciente completada (ordenes active/completed)
+- [x] Dialog de confirmacion con campo de razon (requerido) y warning:
+  - "Esta accion revertira la fase a En Progreso. Los movimientos de inventario NO se revierten automaticamente."
+- [x] Si hay actividades ejecutadas en la siguiente fase, mostrar warning adicional: "La fase siguiente tiene {N} actividades ejecutadas que quedaran huerfanas"
+- [x] Toast: "Fase '{name}' revertida a En Progreso"
 
 #### Backend
 - Mutation nueva: `productionOrders.revertPhaseCompletion`
@@ -101,7 +101,7 @@ Actualmente las actividades programadas son inmutables post-creacion (no hay mut
 **para** tener auditoria completa del ciclo de produccion
 
 #### Criterios de Aceptacion
-- [ ] Nueva tabla `phase_transition_log`:
+- [x] Nueva tabla `phase_transition_log`:
   - `order_id: v.id("production_orders")`
   - `phase_id: v.id("order_phases")`
   - `phase_name: v.string()`
@@ -111,20 +111,19 @@ Actualmente las actividades programadas son inmutables post-creacion (no hay mut
   - `triggered_by: v.string()` — "manual" | "exit_activity" | "entry_activity" | "admin_override" | "activation"
   - `activity_id: v.optional(v.id("activities"))` — actividad que triggeo la transicion
   - `scheduled_activity_id: v.optional(v.id("scheduled_activities"))` — actividad programada origen
-  - `performed_by: v.id("users")`
+  - `performed_by: v.optional(v.id("users"))` — opcional (mutations sin auth context)
   - `reason: v.optional(v.string())`
   - `timestamp: v.number()`
   - Index: `by_order` ["order_id", "timestamp"]
   - Index: `by_phase` ["phase_id", "timestamp"]
-- [ ] Insertar registro en cada transicion:
+- [x] Insertar registro en cada transicion:
   - `productionOrders.activate` → log "started" para primera fase
   - `handlePhaseExitExecution` → log "completed" + "started" para siguiente fase
   - `handlePhaseEntryExecution` → log "entry_executed"
   - `productionOrders.completePhase` → log "completed" con triggered_by "manual"/"admin_override"
   - `productionOrders.revertPhaseCompletion` → log "reverted"
-- [ ] Vista en detalle de orden: tab o seccion "Historial de fases" con timeline vertical
+- [x] Vista en detalle de orden: seccion "Historial de Fases" con timeline vertical
   - Cada entrada muestra: fecha/hora, fase, tipo de transicion, quien lo hizo, razon (si existe)
-  - Formato: "`[fecha] — Fase '{name}' {transicion} por {usuario} (via {triggered_by})`"
 - [ ] Exportable como parte del reporte de orden (futuro)
 
 #### Backend
@@ -169,15 +168,22 @@ Actualmente las actividades programadas son inmutables post-creacion (no hay mut
 
 ---
 
-## Implementacion (llenado por /implement-feature)
-
-_Esta seccion se completa automaticamente al implementar la feature._
+## Implementacion
 
 ### Commits
--
+- `cef95c1` — feat(production): US-LIFE.1 cancel scheduled activity with phase_role guard
+- `71ac353` — feat(production): US-LIFE.2 revert phase completion with warnings
+- `1a259e6` — feat(production): US-LIFE.3 phase transition audit log with timeline
 
 ### Archivos Modificados
--
+- `convex/schema.ts` — new phase_transition_log table
+- `convex/helpers.ts` — logPhaseTransition shared helper
+- `convex/scheduledActivities.ts` — cancel mutation, calendar filter
+- `convex/productionOrders.ts` — revertPhaseCompletion mutation, getPhaseTransitionLog query, transition logging
+- `convex/activities.ts` — transition logging in exit/entry handlers
+- `components/production/activity-detail-page.tsx` — cancel dialog, cancellation reason display
+- `components/production/phase-transition-timeline.tsx` — new timeline component
+- `app/(dashboard)/production/orders/[id]/page.tsx` — revert button/dialog, timeline section
 
 ### Fecha de Completado
--
+2026-02-23

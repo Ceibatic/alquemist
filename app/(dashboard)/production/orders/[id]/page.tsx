@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -46,7 +47,10 @@ import {
   XCircle,
   MapPin,
   AlertTriangle,
+  Undo2,
+  History,
 } from 'lucide-react';
+import { PhaseTransitionTimeline } from '@/components/production/phase-transition-timeline';
 
 // ── Label maps ─────────────────────────────────────────────────────────────
 
@@ -185,7 +189,8 @@ function getActivitiesForPhase(
   const phaseActivities = activities.filter(
     (a) =>
       a.scheduled_date >= phase.planned_start_date &&
-      a.scheduled_date < phase.planned_end_date
+      a.scheduled_date < phase.planned_end_date &&
+      a.status !== 'cancelled'
   );
   return phaseActivities.reduce<Record<string, number>>((acc, a) => {
     acc[a.activity_type] = (acc[a.activity_type] ?? 0) + 1;
@@ -211,8 +216,10 @@ function OrderPhaseCard({
   orderId,
   orderStatus,
   hasPhaseRoleActivities,
+  canRevert,
   onClick,
   onComplete,
+  onRevert,
 }: {
   phase: Phase;
   index: number;
@@ -220,8 +227,10 @@ function OrderPhaseCard({
   orderId: string;
   orderStatus: string;
   hasPhaseRoleActivities: boolean;
+  canRevert: boolean;
   onClick: () => void;
   onComplete: () => void;
+  onRevert: () => void;
 }) {
   const typeCounts = getActivitiesForPhase(activities, phase);
   const isCompleted = phase.status === 'completed';
@@ -299,6 +308,21 @@ function OrderPhaseCard({
             Completar
           </Button>
         )}
+
+        {canRevert && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-amber-700 border-amber-300 hover:bg-amber-50"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRevert();
+            }}
+          >
+            <Undo2 className="h-3.5 w-3.5 mr-1" />
+            Revertir
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -320,11 +344,16 @@ export default function OrderDetailPage({ params }: PageProps) {
   const activateOrder = useMutation(api.productionOrders.activate);
   const completePhase = useMutation(api.productionOrders.completePhase);
   const cancelOrder = useMutation(api.productionOrders.cancel);
+  const revertPhase = useMutation(api.productionOrders.revertPhaseCompletion);
 
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [activateDialogOpen, setActivateDialogOpen] = useState(false);
   const [selectedAreaId, setSelectedAreaId] = useState<string>('');
   const [isActivating, setIsActivating] = useState(false);
+  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
+  const [revertPhaseId, setRevertPhaseId] = useState<Id<'order_phases'> | null>(null);
+  const [revertReason, setRevertReason] = useState('');
+  const [isReverting, setIsReverting] = useState(false);
 
   // Query areas for the activation dialog
   const areas = useQuery(
@@ -383,6 +412,32 @@ export default function OrderDetailPage({ params }: PageProps) {
     }
   };
 
+  const handleRevertPhase = async () => {
+    if (!revertPhaseId || !revertReason.trim()) return;
+    setIsReverting(true);
+    try {
+      const result = await revertPhase({
+        orderId,
+        phaseId: revertPhaseId,
+        reason: revertReason.trim(),
+      });
+      toast.success(`Fase '${result.phaseName}' revertida a En Progreso`, {
+        description: result.wasOrderCompleted
+          ? 'La orden fue reactivada.'
+          : undefined,
+      });
+      setRevertDialogOpen(false);
+      setRevertPhaseId(null);
+      setRevertReason('');
+    } catch {
+      toast.error('Error', {
+        description: 'No se pudo revertir la fase.',
+      });
+    } finally {
+      setIsReverting(false);
+    }
+  };
+
   // Loading state
   if (order === undefined) {
     return (
@@ -414,6 +469,12 @@ export default function OrderDetailPage({ params }: PageProps) {
   const phases: Phase[] = order.phases ?? [];
   const activities: ActivitySummary[] = order.activities ?? [];
   const hasPhaseRoleActivities = activities.some((a) => a.phase_role === 'entry' || a.phase_role === 'exit');
+
+  // Find the most recently completed phase (highest phase_order among completed)
+  const completedPhases = phases.filter((p) => p.status === 'completed');
+  const mostRecentCompletedId = completedPhases.length > 0
+    ? completedPhases[completedPhases.length - 1]._id
+    : null;
 
   // Calculate total timeline span for the bar
   const totalMs =
@@ -656,6 +717,10 @@ export default function OrderDetailPage({ params }: PageProps) {
                   orderId={orderId}
                   orderStatus={order.status}
                   hasPhaseRoleActivities={hasPhaseRoleActivities}
+                  canRevert={
+                    phase._id === mostRecentCompletedId &&
+                    (order.status === 'active' || order.status === 'completed')
+                  }
                   onClick={() =>
                     router.push(
                       `/production/orders/${orderId}/phases/${phase._id}`
@@ -664,12 +729,31 @@ export default function OrderDetailPage({ params }: PageProps) {
                   onComplete={() =>
                     handleCompletePhase(phase._id as Id<'order_phases'>)
                   }
+                  onRevert={() => {
+                    setRevertPhaseId(phase._id as Id<'order_phases'>);
+                    setRevertDialogOpen(true);
+                  }}
                 />
               ))}
             </div>
           </>
         )}
       </div>
+
+      {/* ── Phase Transition History ──────────────────────────────── */}
+      {order.status !== 'planning' && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <History className="h-5 w-5 text-muted-foreground" />
+            Historial de Fases
+          </h2>
+          <Card>
+            <CardContent className="pt-4">
+              <PhaseTransitionTimeline orderId={orderId} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* ── Activate Order Dialog ───────────────────────────────────── */}
       <Dialog open={activateDialogOpen} onOpenChange={setActivateDialogOpen}>
@@ -729,6 +813,84 @@ export default function OrderDetailPage({ params }: PageProps) {
               disabled={!selectedAreaId || isActivating}
             >
               {isActivating ? 'Activando...' : 'Confirmar Activación'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Revert Phase Dialog ──────────────────────────────────── */}
+      <Dialog
+        open={revertDialogOpen}
+        onOpenChange={(open) => {
+          setRevertDialogOpen(open);
+          if (!open) {
+            setRevertPhaseId(null);
+            setRevertReason('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revertir Fase</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <div className="flex gap-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium">Esta accion revertira la fase a En Progreso.</p>
+                  <p className="mt-1">Los movimientos de inventario NO se revierten automaticamente.</p>
+                </div>
+              </div>
+            </div>
+            {(() => {
+              if (!revertPhaseId) return null;
+              const phaseIndex = phases.findIndex((p) => p._id === revertPhaseId);
+              const nextPhase = phases[phaseIndex + 1];
+              if (!nextPhase) return null;
+              const executedCount = activities.filter(
+                (a) => a.order_phase_id === nextPhase._id && a.status === 'completed'
+              ).length;
+              if (executedCount === 0) return null;
+              return (
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                  <div className="flex gap-2">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <p>
+                      La fase siguiente tiene <strong>{executedCount}</strong> actividad(es)
+                      ejecutada(s) que quedaran huerfanas.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+            <div className="space-y-2">
+              <Label>Razon de la reversion *</Label>
+              <Textarea
+                value={revertReason}
+                onChange={(e) => setRevertReason(e.target.value)}
+                placeholder="Explica por que se revierte esta fase..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRevertDialogOpen(false);
+                setRevertPhaseId(null);
+                setRevertReason('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-amber-500 text-white hover:bg-amber-600"
+              onClick={handleRevertPhase}
+              disabled={!revertReason.trim() || isReverting}
+            >
+              {isReverting ? 'Revirtiendo...' : 'Confirmar Reversion'}
             </Button>
           </DialogFooter>
         </DialogContent>

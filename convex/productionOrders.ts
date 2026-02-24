@@ -6,7 +6,7 @@
 import { v } from "convex/values";
 import { mutation, query, MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { getActivityTypeByCode } from "./helpers";
+import { getActivityTypeByCode, logPhaseTransition } from "./helpers";
 
 /**
  * Generate order number in format ORD-YYYY-XXXX
@@ -902,10 +902,22 @@ export const activate = mutation({
 
       const hasEntry = entryActivities.length > 0;
 
+      const newStatus = hasEntry ? "awaiting_entry" : "in_progress";
       await ctx.db.patch(firstPhase._id, {
-        status: hasEntry ? "awaiting_entry" : "in_progress",
+        status: newStatus,
         actual_start_date: hasEntry ? undefined : now,
         area_id: targetAreaId,
+      });
+
+      await logPhaseTransition(ctx, {
+        orderId: args.orderId,
+        phaseId: firstPhase._id,
+        phaseName: firstPhase.phase_name,
+        transitionType: "started",
+        fromStatus: "pending",
+        toStatus: newStatus,
+        triggeredBy: "activation",
+        performedBy: args.approvedBy,
       });
     }
 
@@ -963,11 +975,24 @@ export const completePhase = mutation({
       );
     }
 
+    const prevStatus = phase.status;
+
     // Complete current phase
     await ctx.db.patch(args.phaseId, {
       status: "completed",
       actual_end_date: now,
       completion_notes: args.completionNotes,
+    });
+
+    const triggeredBy = pendingExitActivities.length > 0 ? "admin_override" : "manual";
+    await logPhaseTransition(ctx, {
+      orderId: args.orderId,
+      phaseId: args.phaseId,
+      phaseName: phase.phase_name,
+      transitionType: "completed",
+      fromStatus: prevStatus,
+      toStatus: "completed",
+      triggeredBy,
     });
 
     // Get all phases to find next one
@@ -994,6 +1019,16 @@ export const completePhase = mutation({
         status: "in_progress",
         actual_start_date: now,
         area_id: phase.area_id ?? order.target_area_id,
+      });
+
+      await logPhaseTransition(ctx, {
+        orderId: args.orderId,
+        phaseId: nextPhase._id,
+        phaseName: nextPhase.phase_name,
+        transitionType: "started",
+        fromStatus: nextPhase.status,
+        toStatus: "in_progress",
+        triggeredBy,
       });
 
       // Update all active batches to reflect the new phase
@@ -1035,6 +1070,164 @@ export const completePhase = mutation({
         ? "Phase completed, next phase started"
         : "All phases completed, order finished",
       isOrderComplete: !nextPhase,
+    };
+  },
+});
+
+/**
+ * Revert a completed phase back to in_progress.
+ * Only the most recently completed phase can be reverted.
+ * Does NOT revert inventory movements — those must be adjusted manually.
+ */
+export const revertPhaseCompletion = mutation({
+  args: {
+    orderId: v.id("production_orders"),
+    phaseId: v.id("order_phases"),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    // Allow revert on active or completed orders
+    if (order.status !== "active" && order.status !== "completed") {
+      throw new Error("Only active or completed orders can have phases reverted");
+    }
+
+    const phase = await ctx.db.get(args.phaseId);
+    if (!phase || phase.order_id !== args.orderId) {
+      throw new Error("Phase not found or does not belong to order");
+    }
+
+    if (phase.status !== "completed") {
+      throw new Error("Only completed phases can be reverted");
+    }
+
+    // Get all phases sorted to verify this is the most recently completed
+    const phases = await ctx.db
+      .query("order_phases")
+      .withIndex("by_order", (q) => q.eq("order_id", args.orderId))
+      .collect();
+    const sortedPhases = phases.sort((a, b) => a.phase_order - b.phase_order);
+
+    // Find the most recently completed phase (highest phase_order among completed)
+    const completedPhases = sortedPhases.filter((p) => p.status === "completed");
+    const mostRecentCompleted = completedPhases[completedPhases.length - 1];
+
+    if (!mostRecentCompleted || mostRecentCompleted._id !== args.phaseId) {
+      throw new Error(
+        "Solo se puede revertir la fase más recientemente completada"
+      );
+    }
+
+    // Revert this phase to in_progress (keep actual_end_date for audit)
+    await ctx.db.patch(args.phaseId, {
+      status: "in_progress",
+    });
+
+    await logPhaseTransition(ctx, {
+      orderId: args.orderId,
+      phaseId: args.phaseId,
+      phaseName: phase.phase_name,
+      transitionType: "reverted",
+      fromStatus: "completed",
+      toStatus: "in_progress",
+      triggeredBy: "manual",
+      reason: args.reason,
+    });
+
+    // Find the next phase (if any) and reset it
+    const currentIndex = sortedPhases.findIndex((p) => p._id === args.phaseId);
+    const nextPhase = sortedPhases[currentIndex + 1];
+
+    if (nextPhase && (nextPhase.status === "awaiting_entry" || nextPhase.status === "in_progress")) {
+      // Reset next phase to pending
+      await ctx.db.patch(nextPhase._id, {
+        status: "pending",
+        actual_start_date: undefined,
+      });
+
+      // Cancel pending entry/exit activities for the next phase
+      const nextPhaseActivities = await ctx.db
+        .query("scheduled_activities")
+        .withIndex("by_phase_role", (q) =>
+          q.eq("order_phase_id", nextPhase._id)
+        )
+        .collect();
+
+      for (const activity of nextPhaseActivities) {
+        if (activity.status === "pending") {
+          await ctx.db.patch(activity._id, {
+            status: "cancelled",
+            skipped_reason: `Fase revertida: ${args.reason}`,
+            updated_at: now,
+          });
+        }
+      }
+    }
+
+    // Update order: point current_phase back to reverted phase
+    const updatePatch: Record<string, unknown> = {
+      current_phase_id: args.phaseId,
+      updated_at: now,
+    };
+
+    // If order was completed, revert to active
+    if (order.status === "completed") {
+      updatePatch.status = "active";
+      updatePatch.actual_completion_date = undefined;
+    }
+
+    // Recalculate completion percentage
+    const newCompletedCount = completedPhases.length - 1; // minus the one we just reverted
+    updatePatch.completion_percentage = Math.round(
+      (newCompletedCount / sortedPhases.length) * 100
+    );
+
+    await ctx.db.patch(args.orderId, updatePatch);
+
+    // Update active batches to reflect the reverted phase
+    const orderBatches = await ctx.db
+      .query("batches")
+      .withIndex("by_production_order", (q) =>
+        q.eq("production_order_id", args.orderId)
+      )
+      .collect();
+
+    for (const batch of orderBatches) {
+      if (batch.status === "active") {
+        await ctx.db.patch(batch._id, {
+          current_phase: phase.phase_name,
+          updated_at: now,
+        });
+      }
+    }
+
+    // Count executed activities in next phase (for warning context)
+    let nextPhaseExecutedCount = 0;
+    if (nextPhase) {
+      const nextPhaseAllActivities = await ctx.db
+        .query("scheduled_activities")
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("production_order_id"), args.orderId),
+            q.eq(q.field("order_phase_id"), nextPhase._id),
+            q.eq(q.field("status"), "completed")
+          )
+        )
+        .collect();
+      nextPhaseExecutedCount = nextPhaseAllActivities.length;
+    }
+
+    return {
+      success: true,
+      phaseName: phase.phase_name,
+      wasOrderCompleted: order.status === "completed",
+      nextPhaseExecutedCount,
     };
   },
 });
@@ -1170,5 +1363,41 @@ export const getActivities = query({
 
     // Sort by scheduled date
     return activities.sort((a, b) => a.scheduled_date - b.scheduled_date);
+  },
+});
+
+/**
+ * Get phase transition log for an order
+ */
+export const getPhaseTransitionLog = query({
+  args: {
+    orderId: v.id("production_orders"),
+  },
+  handler: async (ctx, args) => {
+    const logs = await ctx.db
+      .query("phase_transition_log")
+      .withIndex("by_order", (q) => q.eq("order_id", args.orderId))
+      .collect();
+
+    // Enrich with user names
+    const userIds = new Set<string>();
+    for (const log of logs) {
+      if (log.performed_by) userIds.add(log.performed_by as string);
+    }
+
+    const userMap: Record<string, string> = {};
+    for (const userId of userIds) {
+      const user = await ctx.db.get(userId as Id<"users">);
+      if (user) {
+        userMap[userId] = user.name || user.email || "Usuario";
+      }
+    }
+
+    return logs.map((log) => ({
+      ...log,
+      performedByName: log.performed_by
+        ? userMap[log.performed_by as string] ?? "Usuario"
+        : undefined,
+    }));
   },
 });

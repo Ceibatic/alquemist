@@ -277,6 +277,11 @@ export const listForSchedule = query({
     }
     if (status) {
       activities = activities.filter((a) => a.status === status);
+    } else {
+      // By default, exclude cancelled/skipped activities from calendar
+      activities = activities.filter(
+        (a) => a.status !== "cancelled" && a.status !== "skipped"
+      );
     }
     if (typeId) {
       activities = activities.filter((a) => a.type_id === typeId);
@@ -596,5 +601,98 @@ export const createForOrder = mutation({
     }
 
     return activityId;
+  },
+});
+
+// ============================================================================
+// Cancel scheduled activity
+// ============================================================================
+
+/**
+ * Cancel a pending scheduled activity. Validates that phase_role activities
+ * are not the only one of their kind for the phase.
+ */
+export const cancel = mutation({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+    reason: v.string(),
+    cancelGroup: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const activity = await ctx.db.get(args.scheduledActivityId);
+    if (!activity) {
+      throw new Error("Actividad no encontrada");
+    }
+
+    if (activity.status !== "pending") {
+      throw new Error("Solo actividades pendientes pueden cancelarse");
+    }
+
+    // Phase role guard: don't allow cancelling the only entry/exit for a phase
+    if (activity.phase_role && activity.order_phase_id) {
+      const sameRoleActivities = await ctx.db
+        .query("scheduled_activities")
+        .withIndex("by_phase_role", (q) =>
+          q.eq("order_phase_id", activity.order_phase_id!).eq("phase_role", activity.phase_role!)
+        )
+        .filter((q) => q.neq(q.field("status"), "cancelled"))
+        .collect();
+
+      if (sameRoleActivities.length <= 1) {
+        const roleLabel = activity.phase_role === "entry" ? "entrada" : "salida";
+        throw new Error(
+          `No se puede cancelar la unica actividad de ${roleLabel} de la fase. Cree una reemplazo primero.`
+        );
+      }
+    }
+
+    // Cancel the activity
+    await ctx.db.patch(args.scheduledActivityId, {
+      status: "cancelled",
+      skipped_reason: args.reason,
+      updated_at: now,
+    });
+
+    // If cancelGroup, cancel all pending activities in the same group
+    let cancelledCount = 1;
+    if (args.cancelGroup && activity.group_id) {
+      const groupActivities = await ctx.db
+        .query("scheduled_activities")
+        .withIndex("by_group", (q) => q.eq("group_id", activity.group_id!))
+        .collect();
+
+      for (const ga of groupActivities) {
+        if (ga._id === args.scheduledActivityId) continue;
+        if (ga.status !== "pending") continue;
+
+        // Apply same phase_role guard per activity
+        if (ga.phase_role && ga.order_phase_id) {
+          const sameRole = await ctx.db
+            .query("scheduled_activities")
+            .withIndex("by_phase_role", (q) =>
+              q.eq("order_phase_id", ga.order_phase_id!).eq("phase_role", ga.phase_role!)
+            )
+            .filter((q) =>
+              q.and(
+                q.neq(q.field("status"), "cancelled"),
+                q.neq(q.field("_id"), ga._id)
+              )
+            )
+            .collect();
+
+          if (sameRole.length === 0) continue; // Skip — can't cancel the only one
+        }
+
+        await ctx.db.patch(ga._id, {
+          status: "cancelled",
+          skipped_reason: args.reason,
+          updated_at: now,
+        });
+        cancelledCount++;
+      }
+    }
+
+    return { success: true, cancelledCount };
   },
 });
