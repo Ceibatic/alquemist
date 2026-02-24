@@ -86,6 +86,9 @@ interface ActivityData {
   template_id?: string;
   activity_type_info?: ActivityTypeInfo | null;
   resource_count: number;
+  group_id?: string;
+  entity_id?: string;
+  phase_role?: string;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -137,7 +140,7 @@ function isSameDay(a: number, b: number): boolean {
 
 // ── Activity Card ───────────────────────────────────────────────────────────
 
-function OrderActivityCard({ activity }: { activity: ActivityData }) {
+function OrderActivityCard({ activity, allActivities }: { activity: ActivityData; allActivities: ActivityData[] }) {
   const info = activity.activity_type_info;
   const categoryColors = info ? CATEGORY_COLORS[info.category] : undefined;
   const defaultColors = {
@@ -151,6 +154,16 @@ function OrderActivityCard({ activity }: { activity: ActivityData }) {
   if (activity.estimated_duration_minutes != null) {
     const mins = activity.estimated_duration_minutes;
     durationText = mins >= 60 ? `${Math.round(mins / 60)}h` : `${mins}min`;
+  }
+
+  // Compute batch label for grouped activities
+  let batchLabel: string | null = null;
+  if (activity.group_id) {
+    const grouped = allActivities.filter((a) => a.group_id === activity.group_id);
+    if (grouped.length > 1) {
+      const idx = grouped.findIndex((a) => a._id === activity._id);
+      batchLabel = `Lote ${idx + 1} de ${grouped.length}`;
+    }
   }
 
   return (
@@ -189,6 +202,16 @@ function OrderActivityCard({ activity }: { activity: ActivityData }) {
         <Badge className={ACTIVITY_STATUS_COLORS[activity.status] ?? 'bg-gray-100 text-gray-600'}>
           {ACTIVITY_STATUS_LABELS[activity.status] ?? activity.status}
         </Badge>
+        {batchLabel && (
+          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+            {batchLabel}
+          </span>
+        )}
+        {activity.phase_role && (
+          <Badge className={activity.phase_role === 'entry' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}>
+            {activity.phase_role === 'entry' ? 'Entrada' : 'Salida'}
+          </Badge>
+        )}
       </div>
     </div>
   );
@@ -360,7 +383,7 @@ export function OrderPhaseDetailView() {
                   {dayActivities.length > 0 ? (
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                       {dayActivities.map((act) => (
-                        <OrderActivityCard key={act._id} activity={act} />
+                        <OrderActivityCard key={act._id} activity={act} allActivities={activities} />
                       ))}
                     </div>
                   ) : (

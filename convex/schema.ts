@@ -1025,6 +1025,11 @@ export default defineSchema({
       v.union(v.literal("entry"), v.literal("exit"))
     ),
 
+    // Distribution strategy for multi-batch orders
+    distribution_strategy: v.optional(
+      v.union(v.literal("per_batch"), v.literal("shared"))
+    ), // default: per_batch
+
     created_at: v.number(),
   })
     .index("by_phase", ["phase_id"])
@@ -1367,6 +1372,11 @@ export default defineSchema({
     // Multi-batch grouping (US-ACT3.3)
     group_id: v.optional(v.string()), // UUID shared across multi-batch scheduled activities
     source: v.optional(v.string()), // "template" | "manual" | "adhoc"
+
+    // Distribution strategy for multi-batch orders
+    distribution_strategy: v.optional(
+      v.union(v.literal("per_batch"), v.literal("shared"))
+    ), // default: per_batch
 
     // Phase role: marks if this activity is an entry/exit gate for its phase
     phase_role: v.optional(
