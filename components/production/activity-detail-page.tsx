@@ -26,7 +26,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { ActivityExecutionSheet } from '@/components/activities/activity-execution-sheet';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -101,7 +100,6 @@ interface ActivityDetailPageProps {
 
 export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPageProps) {
   const router = useRouter();
-  const [executionSheetOpen, setExecutionSheetOpen] = useState(false);
   const [skipDialogOpen, setSkipDialogOpen] = useState(false);
   const [skipReason, setSkipReason] = useState('');
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
@@ -207,7 +205,7 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
             <Button
               size="sm"
               className="bg-amber-500 hover:bg-amber-600 text-white"
-              onClick={() => setExecutionSheetOpen(true)}
+              onClick={() => router.push(`/production/activities/${scheduledActivityId}/report`)}
             >
               <ClipboardCheck className="h-3.5 w-3.5 mr-1" />
               Reportar
@@ -242,6 +240,18 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Phase role context banner */}
+      {activity.phase_role === 'exit' && activity.status !== 'completed' && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <strong>Actividad de salida de fase:</strong> Al completar esta actividad, la fase se completara automaticamente y se avanzara a la siguiente.
+        </div>
+      )}
+      {activity.phase_role === 'entry' && activity.status !== 'completed' && (
+        <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+          <strong>Actividad de entrada a fase:</strong> Al completar esta actividad, la fase se marcara como iniciada.
+        </div>
+      )}
 
       {/* Info card */}
       <Card>
@@ -306,6 +316,17 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
                 icon={<MapPin className="h-4 w-4" />}
                 label="Area"
                 value={activity.areaName}
+              />
+            )}
+            {activity.phase_role && (
+              <InfoItem
+                icon={<Layers className="h-4 w-4" />}
+                label="Rol en fase"
+                value={
+                  <Badge className={activity.phase_role === 'entry' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}>
+                    {activity.phase_role === 'entry' ? 'Entrada' : 'Salida'}
+                  </Badge>
+                }
               />
             )}
             {activity.batchPhase && (
@@ -467,13 +488,6 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
         </DialogContent>
       </Dialog>
 
-      {/* Execution sheet */}
-      <ActivityExecutionSheet
-        open={executionSheetOpen}
-        onOpenChange={setExecutionSheetOpen}
-        scheduledActivityId={scheduledActivityId}
-        onCompleted={() => setExecutionSheetOpen(false)}
-      />
     </div>
   );
 }

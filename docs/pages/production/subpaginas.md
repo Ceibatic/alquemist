@@ -38,7 +38,7 @@ Solo visible si status es `completed` o `in_progress`. Muestra datos de la activ
 - Notas
 
 ### Acciones inline
-- **Reportar**: abre `ActivityExecutionSheet` existente
+- **Reportar**: navega a `/production/activities/[id]/report` (wizard de ejecucion)
 - **Saltar**: dialog con textarea razon → `cultivationSchedules.skipScheduledActivity`
 - **Reprogramar**: dialog con date picker → `cultivationSchedules.rescheduleActivity`
 - **Editar**: navega a `/production/activities/[id]/edit`
@@ -48,6 +48,69 @@ Solo visible si status es `completed` o `in_progress`. Muestra datos de la activ
 **Componentes**:
 - `app/(dashboard)/production/activities/[id]/page.tsx`
 - `components/production/activity-detail-page.tsx`
+
+---
+
+## `/production/activities/[id]/report` — Wizard Reporte de Actividad
+
+Wizard de pagina completa con pasos dinamicos (1 a 3) para reportar/ejecutar una actividad programada. Reemplaza el Sheet lateral en el detalle de actividad.
+
+### Pasos dinamicos
+
+| Condicion | Pasos visibles |
+|-----------|---------------|
+| Sin recursos, sin QC | [Ejecucion] — 1 paso |
+| Con recursos, sin QC | [Ejecucion, Recursos] — 2 pasos |
+| Sin recursos, con QC | [Ejecucion, Calidad] — 2 pasos |
+| Con recursos y QC | [Ejecucion, Recursos, Calidad] — 3 pasos |
+
+### Indicador de progreso
+Circular badges con iconos (ClipboardCheck, Package, ShieldCheck), amber-500 activo, amber-100 completado con check. Solo visible si hay mas de 1 paso.
+
+### Paso 1 — Ejecucion
+
+**Card contexto (read-only):**
+- Tipo actividad, fecha programada, duracion estimada, lote, area, fase, template, fuente, instrucciones
+
+**Card datos de ejecucion (editable):**
+- Fecha (date, requerido, pre-llenado hoy)
+- Responsable (select usuarios, requerido, pre-llenado usuario actual)
+- Duracion (minutos, si visible en template)
+- Observaciones (textarea, si visible)
+- Datos ambientales: Temp, Humedad, pH, EC (si visible)
+- Costos: Estimado, Real (si visible)
+
+### Paso 2 — Recursos (condicional)
+
+Solo se muestra si hay recursos materializados en `scheduled_activity_resources`.
+
+- Lista de recursos con cantidades editables (reutiliza `ResourceEditorInline`)
+- Si multi-lote: selector de distribucion (identico / dividir proporcional)
+
+### Paso 3 — Calidad (condicional)
+
+Solo se muestra si el template tiene `quality_check_template_id`.
+
+- Formulario QC dinamico via `DynamicFormRenderer`
+- Resultado general: Aprobado / Condicional / Rechazado
+- Notas de calidad
+- Requiere seguimiento (checkbox + fecha)
+- Boton "Omitir Calidad" para saltar
+
+### Flujo de submit
+
+La actividad se crea ANTES del paso de calidad (QC necesita la entidad para linkear):
+- Sin QC: "Completar Actividad" → crear actividad → navegar a detalle
+- Con QC: "Siguiente: Calidad" → crear actividad → paso QC → "Completar con Calidad" → crear quality check
+
+**Hook principal**: `useActivityExecution` (reutilizado del `ActivityExecutionSheet`)
+
+**Componentes**:
+- `app/(dashboard)/production/activities/[id]/report/page.tsx`
+- `components/production/report-activity-wizard.tsx`
+- `components/production/report-step-execution.tsx`
+- `components/production/report-step-resources.tsx`
+- `components/production/report-step-quality.tsx`
 
 ---
 
@@ -135,7 +198,19 @@ Detalle completo de una orden con layout estilo template: info card + timeline +
 
 ### Header
 - Breadcrumbs: Inicio > Produccion > Ordenes > [order_number]
-- Acciones: boton "Activar" (green, solo planning) + dropdown menu (Cancelar)
+- Acciones: boton "Activar Orden" (green, solo planning) + dropdown menu (Cancelar)
+
+### Dialog Activar Orden
+Al hacer click en "Activar Orden" se abre un dialogo de confirmacion con:
+- Resumen: numero de lotes a crear y plantas por lote
+- **Select area de destino** (requerido): areas activas de la instalacion via `areas.getByFacility`
+- Boton "Confirmar Activacion" (deshabilitado sin area seleccionada)
+
+Al confirmar, el backend (`productionOrders.activate`):
+1. Crea N lotes segun `batch_size` / `requested_quantity`, asignados al area seleccionada
+2. Activa la primera fase (`in_progress`) con `area_id`
+3. Re-linkea `scheduled_activities` de `entity_type: "production_order"` a `entity_type: "batch"`
+4. Las actividades aparecen en el calendario de produccion, listas para reportar
 
 ### Card Estado + Progreso
 - StatusBadge con colores por status (planning=amber, active=blue, completed=green, cancelled=red)

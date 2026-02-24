@@ -15,6 +15,7 @@ export interface CalendarActivity {
   batchPhase: string | null;
   templateName: string | null;
   resourceCount: number;
+  phase_role?: 'entry' | 'exit';
 }
 
 interface CalendarActivityPillProps {
@@ -59,6 +60,12 @@ export function CalendarActivityPill({ activity, onClick, compact = false }: Cal
       )}
     >
       <span className={cn('h-2 w-2 rounded-full shrink-0', dotColor)} />
+      {activity.phase_role === 'entry' && (
+        <span className="shrink-0 text-[10px] font-semibold bg-green-100 text-green-700 rounded px-1">E</span>
+      )}
+      {activity.phase_role === 'exit' && (
+        <span className="shrink-0 text-[10px] font-semibold bg-amber-100 text-amber-700 rounded px-1">S</span>
+      )}
       <span className="truncate font-medium">{displayName}</span>
       {!compact && activity.batchCode && (
         <span className="shrink-0 text-[10px] text-muted-foreground bg-muted rounded px-1">

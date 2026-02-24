@@ -35,41 +35,86 @@ El modulo de Ordenes de Produccion permite crear y gestionar ordenes de trabajo 
 
 ```
 1. CREAR ORDEN (Admin)
-   └── productionOrders.create({templateId, facilityId, ...})
-       ├── Genera order_phases desde template_phases
+   └── productionOrders.create({companyId, facilityId, templateId?, ...})
+       ├── Genera order_phases desde template_phases (area_id: undefined)
        ├── Genera scheduled_activities con algoritmos de timing:
        │   ├── one_time: phaseStart + (phaseDay - 1) * DAY_MS
        │   ├── daily_range: instancia por cada dia del rango
        │   ├── specific_days: filtrado por dias de semana
        │   ├── every_n_days: intervalos regulares
        │   └── dependent: phaseStart + daysAfter * DAY_MS
+       ├── Cada activity incluye: company_id, source="template", type_id, template_id
+       ├── Materializa scheduled_activity_resources desde activity_template_resources
        └── Status: "planning"
 
-2. APROBAR ORDEN (Manager)
+2. ACTIVAR ORDEN (Manager) — requiere area de destino
    └── productionOrders.activate({orderId, approvedBy, targetAreaId})
        ├── Crea N batches: ceil(requested_quantity / batch_size)
-       ├── Actualiza scheduled_activities.entity_type: "batch"
-       ├── Activa primera fase
+       │   └── Cada batch: company_id, facility_id, area_id, current_phase=firstPhase
+       ├── Re-linkea scheduled_activities:
+       │   ├── entity_type: "production_order" → "batch"
+       │   ├── entity_id: orderId → batchIds[0] (primer lote)
+       │   └── company_id: backfill desde order (safety net)
+       ├── Activa primera fase con area_id = targetAreaId
        └── Status: "active"
 
 3. COMPLETAR FASES (Operador)
    └── productionOrders.completePhase({orderId, phaseId})
-       ├── Marca fase como completada
-       ├── Activa siguiente fase
+       ├── Marca fase como completada (actual_end_date)
+       ├── Activa siguiente fase:
+       │   ├── status: "in_progress"
+       │   └── area_id: hereda de fase completada (fallback: order.target_area_id)
+       ├── Actualiza batch.current_phase en todos los lotes activos
        └── Si es ultima fase: order.status = "completed"
 ```
 
+### Limitaciones Conocidas
+
+| Limitacion | Detalle | Estado |
+|-----------|---------|--------|
+| Actividades van al primer lote | Al activar, todas las scheduled_activities se linkean a `batchIds[0]`. Lotes 2..N no tienen actividades programadas. | By design (distribucion multi-lote es feature futura: FEAT-2026-02-multi-batch-distribution) |
+| ~~Transicion de fase es manual~~ | ~~`completePhase` no valida actividades pendientes ni requiere actividad de salida.~~ | **Resuelto**: sistema de phase_role (entry/exit activities) implementado. `completePhase` se mantiene como admin override. |
+| ~~Sin movimiento de inventario de plantas~~ | ~~`completePhase` no llama `logPhaseTransitionWithInventory`.~~ | **Resuelto**: `handleInventoryTransformation` helper extraido, recursos "produced" crean inventory_items via `executeActivity`. |
+| Sin re-asignacion de area por fase | Todas las fases heredan el area de la fase anterior. No hay UI para cambiar area entre fases. | Pendiente: FEAT-2026-02-multi-batch-distribution |
+
+### Sistema de Phase Roles
+
+Las actividades de produccion pueden tener un `phase_role` que controla las transiciones de fase:
+
+| Role | Efecto al ejecutar | UI |
+|------|-------------------|-----|
+| `entry` | Transiciona fase de `awaiting_entry` a `in_progress` | Badge verde "Entrada" / "E" |
+| `exit` | Completa fase y avanza a la siguiente (o completa orden) | Badge amber "Salida" / "S" |
+| (ninguno) | Sin efecto en la fase | Sin badge |
+
+**Flujo de estado de fase**: `pending` → `awaiting_entry` → `in_progress` → `completed`
+
+- Al activar orden: primera fase se marca `awaiting_entry` (si tiene entry activity) o `in_progress` (backward compat)
+- Al ejecutar entry: fase pasa a `in_progress`
+- Al ejecutar exit: fase pasa a `completed`, siguiente fase pasa a `awaiting_entry`/`in_progress`
+- Actividades regulares bloqueadas cuando fase esta en `awaiting_entry`
+- `completePhase` mantiene como admin override (oculto en UI para ordenes con phase_role)
+
+**Schema**: `scheduled_activities.phase_role` + `scheduled_activities.order_phase_id` + index `by_phase_role`
+**Helpers**: `handlePhaseExitExecution()`, `handlePhaseEntryExecution()` en `convex/activities.ts`
+**Auto-creacion**: `ensurePhaseRoleActivities()` en `convex/productionOrders.ts` crea entry/exit genericas si template no las define
+
 ### Frontend
 
-**Archivo**: `app/(dashboard)/production-orders/[id]/page.tsx`
+**Pagina principal**: `app/(dashboard)/production/page.tsx` (tab "Ordenes")
+**Detalle de orden**: `app/(dashboard)/production/orders/[id]/page.tsx`
+**Detalle de fase**: `app/(dashboard)/production/orders/[id]/phases/[phaseId]/page.tsx`
+**Crear orden**: `app/(dashboard)/production/orders/new/page.tsx`
 
-**Tabs implementados**:
-- **Detalle**: Info general, cantidades, fechas
-- **Fases**: Timeline de fases con boton "Completar"
-- **Batches**: Lista de lotes creados con navegacion
-- **Actividades**:
-  - Scheduled activities con boton "Completar"
-  - Historial de activities ejecutadas
+**Detalle de orden implementa**:
+- Info card (grid): template, cultivar, fechas, plantas, prioridad
+- Status + progress bar
+- Seccion batches (`OrderBatchSummary`)
+- Timeline bar visual de fases
+- Phase cards clickeables con activity type badges; boton "Completar" solo en ordenes legacy sin phase_role activities
+- Status `awaiting_entry` con badge amber "Esperando Inicio" y borde amber
+- **Dialog "Activar Orden"**: selector de area + resumen de lotes a crear
+- **Dialog "Cancelar Orden"**: confirmacion
 
 ---
 
@@ -418,30 +463,39 @@ El modulo de Ordenes de Produccion permite crear y gestionar ordenes de trabajo 
 ### Mutations
 | Funcion | Parametros | Validaciones |
 |---------|------------|--------------|
-| `create` | `templateId, facilityId, startDate, ...` | template existe, area compatible |
-| `activate` | `orderId` | status=planning, area disponible |
-| `completePhase` | `orderId, phaseId, data` | fase in_progress |
-| `cancel` | `orderId, reason` | status!=completed |
-| `scheduledActivities.complete` | `activityId, data` | status=pending/in_progress |
+| `create` | `companyId, facilityId, templateId?, cropTypeId, ...` | company/facility existen, template valido |
+| `update` | `orderId, ...campos opcionales` | status=planning |
+| `activate` | `orderId, approvedBy, targetAreaId?` | status=planning, targetAreaId requerido en logica |
+| `completePhase` | `orderId, phaseId, completionNotes?` | status=active, fase in_progress |
+| `cancel` | `orderId, reason, archiveBatches?` | status!=completed |
 
 ---
 
 ## Notas de Implementacion
 
 ### Generacion de Actividades
-- Al crear orden: generar actividades de fase 1
-- Al activar orden: calcular fechas reales basado en fecha inicio
-- Al completar fase: generar actividades de siguiente fase
-- Actividades recurrentes: generar todas las instancias al inicio de fase
+- Al crear orden con template: genera TODAS las actividades de TODAS las fases con fechas calculadas
+- Cada actividad incluye: `company_id`, `source: "template"`, `type_id`, `template_id`
+- Recursos se materializan en `scheduled_activity_resources` desde `activity_template_resources`
+- Al activar: re-linkea actividades de `entity_type: "production_order"` a `entity_type: "batch"`
+- Actividades creadas manualmente desde fase detail usan `scheduledActivities.createForOrder`
 
 ### Calculo de Progreso
 ```typescript
-progress = (diasTranscurridos / duracionTotalEstimada) * 100
-// Ajustado por fases completadas
+completionPercentage = Math.round((completedPhases / totalPhases) * 100)
 ```
 
-### Codigos de Orden
-```typescript
-// Formato: ORD-{YYYY}-{secuencial}
-// Ejemplo: ORD-2025-0042
+### Codigos
 ```
+Ordenes: ORD-{YYYY}-{XXXX}  (ej: ORD-2026-0042)
+Batches: {CULTIVAR}-{YYMMDD}-{XXX}  (ej: OG-260223-001)
+```
+
+### Tres Capas de Tracking de Plantas
+| Capa | Mecanismo | Actualizado por |
+|------|-----------|-----------------|
+| Batch state | `batch.current_quantity`, `current_phase`, `area_id` | `batches.move()`, `batches.recordLoss()`, `logPhaseTransitionWithInventory()` |
+| Activity audit | `activities` table | `executeActivity()` (Report Wizard) |
+| Inventory chain | `inventory_items` con `source_batch_id` | `logPhaseTransitionWithInventory()`, `logHarvest()` |
+
+**Nota:** El Report Activity Wizard (`executeActivity`) opera solo en la capa de audit — no modifica cantidades de plantas, fases, ni areas del lote. Las operaciones de estado del lote usan mutations dedicadas.

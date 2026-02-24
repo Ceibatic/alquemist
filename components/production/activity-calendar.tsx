@@ -98,6 +98,7 @@ export function ActivityCalendar({ companyId, currentDate, viewMode, onDateChang
     batchPhase: a.batchPhase,
     templateName: a.templateName,
     resourceCount: a.resourceCount,
+    phase_role: a.phase_role as CalendarActivity['phase_role'],
   }));
 
   // Filter activities within view range for the calendar views

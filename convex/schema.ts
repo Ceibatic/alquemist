@@ -1020,6 +1020,11 @@ export default defineSchema({
     // FK to activity_types (source of truth for type)
     type_id: v.optional(v.id("activity_types")),
 
+    // Phase role: marks if this activity is an entry/exit gate for its phase
+    phase_role: v.optional(
+      v.union(v.literal("entry"), v.literal("exit"))
+    ),
+
     created_at: v.number(),
   })
     .index("by_phase", ["phase_id"])
@@ -1122,7 +1127,7 @@ export default defineSchema({
     area_id: v.optional(v.id("areas")),
 
     // Status
-    status: v.string(), // pending/in_progress/completed/skipped
+    status: v.string(), // pending/awaiting_entry/in_progress/completed/skipped
     completion_notes: v.optional(v.string()),
 
     created_at: v.number(),
@@ -1345,6 +1350,13 @@ export default defineSchema({
     group_id: v.optional(v.string()), // UUID shared across multi-batch scheduled activities
     source: v.optional(v.string()), // "template" | "manual" | "adhoc"
 
+    // Phase role: marks if this activity is an entry/exit gate for its phase
+    phase_role: v.optional(
+      v.union(v.literal("entry"), v.literal("exit"))
+    ),
+    // Direct link to the order phase (previously only implicit via date range)
+    order_phase_id: v.optional(v.id("order_phases")),
+
     created_at: v.number(),
     updated_at: v.number(),
   })
@@ -1355,7 +1367,8 @@ export default defineSchema({
     .index("by_group", ["group_id"])
     .index("by_company_date", ["company_id", "scheduled_date"])
     .index("by_company_status", ["company_id", "status", "scheduled_date"])
-    .index("by_order_date", ["production_order_id", "scheduled_date"]),
+    .index("by_order_date", ["production_order_id", "scheduled_date"])
+    .index("by_phase_role", ["order_phase_id", "phase_role"]),
 
   mother_plants: defineTable({
     qr_code: v.string(), // Unique

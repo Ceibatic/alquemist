@@ -12,6 +12,21 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Progress } from '@/components/ui/progress';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { OrderBatchSummary } from '@/components/production-orders/order-batch-summary';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/providers/user-provider';
@@ -70,12 +85,14 @@ const STATUS_LABELS: Record<string, string> = {
 
 const PHASE_STATUS_COLORS: Record<string, string> = {
   pending: 'bg-gray-100 text-gray-700',
+  awaiting_entry: 'bg-amber-100 text-amber-700',
   in_progress: 'bg-blue-100 text-blue-700',
   completed: 'bg-green-100 text-green-700',
 };
 
 const PHASE_STATUS_LABELS: Record<string, string> = {
   pending: 'Pendiente',
+  awaiting_entry: 'Esperando Inicio',
   in_progress: 'En Progreso',
   completed: 'Completada',
 };
@@ -127,6 +144,8 @@ interface ActivitySummary {
   activity_type: string;
   scheduled_date: number;
   status: string;
+  phase_role?: 'entry' | 'exit';
+  order_phase_id?: string;
 }
 
 interface Phase {
@@ -191,6 +210,7 @@ function OrderPhaseCard({
   activities,
   orderId,
   orderStatus,
+  hasPhaseRoleActivities,
   onClick,
   onComplete,
 }: {
@@ -199,12 +219,14 @@ function OrderPhaseCard({
   activities: ActivitySummary[];
   orderId: string;
   orderStatus: string;
+  hasPhaseRoleActivities: boolean;
   onClick: () => void;
   onComplete: () => void;
 }) {
   const typeCounts = getActivitiesForPhase(activities, phase);
   const isCompleted = phase.status === 'completed';
   const isInProgress = phase.status === 'in_progress';
+  const isAwaitingEntry = phase.status === 'awaiting_entry';
 
   return (
     <div
@@ -213,7 +235,7 @@ function OrderPhaseCard({
       onClick={onClick}
       onKeyDown={(e) => e.key === 'Enter' && onClick()}
       className={`flex items-center gap-4 border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
-        isInProgress ? 'border-blue-300 bg-blue-50/30' : ''
+        isInProgress ? 'border-blue-300 bg-blue-50/30' : isAwaitingEntry ? 'border-amber-300 bg-amber-50/30' : ''
       }`}
     >
       {/* Phase number badge or check */}
@@ -264,7 +286,7 @@ function OrderPhaseCard({
           {PHASE_STATUS_LABELS[phase.status] ?? phase.status}
         </Badge>
 
-        {isInProgress && orderStatus === 'active' && (
+        {isInProgress && orderStatus === 'active' && !hasPhaseRoleActivities && (
           <Button
             size="sm"
             className="bg-green-600 hover:bg-green-700 text-white"
@@ -300,21 +322,39 @@ export default function OrderDetailPage({ params }: PageProps) {
   const cancelOrder = useMutation(api.productionOrders.cancel);
 
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [activateDialogOpen, setActivateDialogOpen] = useState(false);
+  const [selectedAreaId, setSelectedAreaId] = useState<string>('');
+  const [isActivating, setIsActivating] = useState(false);
+
+  // Query areas for the activation dialog
+  const areas = useQuery(
+    api.areas.getByFacility,
+    order?.target_facility_id
+      ? { facilityId: order.target_facility_id }
+      : 'skip',
+  );
+  const activeAreas = areas?.filter((a) => a.status === 'active') ?? [];
 
   const handleActivate = async () => {
-    if (!userId) return;
+    if (!userId || !selectedAreaId) return;
+    setIsActivating(true);
     try {
       await activateOrder({
         orderId,
         approvedBy: userId as Id<'users'>,
+        targetAreaId: selectedAreaId as Id<'areas'>,
       });
       toast.success('Orden activada', {
-        description: 'La orden ha sido activada correctamente.',
+        description: 'Lotes creados y primera fase activada.',
       });
+      setActivateDialogOpen(false);
+      setSelectedAreaId('');
     } catch {
       toast.error('Error', {
         description: 'No se pudo activar la orden.',
       });
+    } finally {
+      setIsActivating(false);
     }
   };
 
@@ -373,6 +413,7 @@ export default function OrderDetailPage({ params }: PageProps) {
 
   const phases: Phase[] = order.phases ?? [];
   const activities: ActivitySummary[] = order.activities ?? [];
+  const hasPhaseRoleActivities = activities.some((a) => a.phase_role === 'entry' || a.phase_role === 'exit');
 
   // Calculate total timeline span for the bar
   const totalMs =
@@ -489,7 +530,7 @@ export default function OrderDetailPage({ params }: PageProps) {
           <div className="flex gap-2">
             {order.status === 'planning' && (
               <Button
-                onClick={handleActivate}
+                onClick={() => setActivateDialogOpen(true)}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
                 <Play className="mr-2 h-4 w-4" />
@@ -614,6 +655,7 @@ export default function OrderDetailPage({ params }: PageProps) {
                   activities={activities}
                   orderId={orderId}
                   orderStatus={order.status}
+                  hasPhaseRoleActivities={hasPhaseRoleActivities}
                   onClick={() =>
                     router.push(
                       `/production/orders/${orderId}/phases/${phase._id}`
@@ -628,6 +670,69 @@ export default function OrderDetailPage({ params }: PageProps) {
           </>
         )}
       </div>
+
+      {/* ── Activate Order Dialog ───────────────────────────────────── */}
+      <Dialog open={activateDialogOpen} onOpenChange={setActivateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Activar Orden</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Al activar esta orden se crearán{' '}
+              <strong>
+                {order.batch_size && order.requested_quantity
+                  ? Math.ceil(order.requested_quantity / order.batch_size)
+                  : 1}{' '}
+                lote(s)
+              </strong>{' '}
+              de {order.batch_size ?? order.requested_quantity ?? '?'} plantas y
+              se activará la primera fase.
+            </p>
+            <div className="space-y-2">
+              <Label>Área de destino *</Label>
+              <Select
+                value={selectedAreaId}
+                onValueChange={setSelectedAreaId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar área" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeAreas.map((area) => (
+                    <SelectItem key={area._id} value={area._id}>
+                      {area.name} ({area.area_type})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {activeAreas.length === 0 && areas !== undefined && (
+                <p className="text-xs text-destructive">
+                  No hay áreas activas en esta instalación.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setActivateDialogOpen(false);
+                setSelectedAreaId('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleActivate}
+              disabled={!selectedAreaId || isActivating}
+            >
+              {isActivating ? 'Activando...' : 'Confirmar Activación'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

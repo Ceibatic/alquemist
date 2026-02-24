@@ -4,8 +4,9 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { getActivityTypeByCode } from "./helpers";
 
 /**
  * Generate order number in format ORD-YYYY-XXXX
@@ -29,6 +30,94 @@ async function generateOrderNumber(
 
   const sequence = (ordersThisYear.length + 1).toString().padStart(4, "0");
   return `ORD-${year}-${sequence}`;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Ensure each phase has at least one entry and one exit activity.
+ * If a template doesn't define them, auto-create generic phase_transition activities.
+ */
+async function ensurePhaseRoleActivities(
+  ctx: MutationCtx,
+  orderId: Id<"production_orders">,
+  phases: Array<{
+    _id: Id<"order_phases">;
+    phase_name: string;
+    planned_start_date: number;
+    planned_end_date: number;
+  }>,
+  companyId: Id<"companies">
+) {
+  const now = Date.now();
+
+  // Look up phase_transition activity type
+  const phaseTransitionType = await getActivityTypeByCode(
+    ctx,
+    companyId,
+    "phase_transition"
+  );
+
+  for (const phase of phases) {
+    // Check existing entry/exit for this phase
+    const phaseActivities = await ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_phase_role", (q) => q.eq("order_phase_id", phase._id))
+      .collect();
+
+    const hasEntry = phaseActivities.some((a) => a.phase_role === "entry");
+    const hasExit = phaseActivities.some((a) => a.phase_role === "exit");
+
+    if (!hasEntry) {
+      await ctx.db.insert("scheduled_activities", {
+        entity_type: "production_order",
+        entity_id: orderId,
+        activity_type: "phase_transition",
+        production_order_id: orderId,
+        scheduled_date: phase.planned_start_date,
+        is_recurring: false,
+        assigned_team: [],
+        required_materials: [],
+        required_equipment: [],
+        activity_metadata: { activity_name: `Inicio: ${phase.phase_name}` },
+        status: "pending",
+        company_id: companyId,
+        source: "auto",
+        type_id: phaseTransitionType?._id,
+        phase_role: "entry",
+        order_phase_id: phase._id,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    if (!hasExit) {
+      const exitDate = Math.max(
+        phase.planned_start_date,
+        phase.planned_end_date - DAY_MS
+      );
+      await ctx.db.insert("scheduled_activities", {
+        entity_type: "production_order",
+        entity_id: orderId,
+        activity_type: "phase_transition",
+        production_order_id: orderId,
+        scheduled_date: exitDate,
+        is_recurring: false,
+        assigned_team: [],
+        required_materials: [],
+        required_equipment: [],
+        activity_metadata: { activity_name: `Cierre: ${phase.phase_name}` },
+        status: "pending",
+        company_id: companyId,
+        source: "auto",
+        type_id: phaseTransitionType?._id,
+        phase_role: "exit",
+        order_phase_id: phase._id,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+  }
 }
 
 /**
@@ -207,6 +296,8 @@ export const getById = query({
         activity_type: a.activity_type,
         scheduled_date: a.scheduled_date,
         status: a.status,
+        phase_role: a.phase_role,
+        order_phase_id: a.order_phase_id,
       })),
       activitiesCount: activities.length,
       pendingActivitiesCount: activities.filter(
@@ -392,6 +483,8 @@ export const create = mutation({
       let phaseStartDate = plannedStart;
       const phaseStartDates: Map<string, number> = new Map();
       const phaseEndDates: Map<string, number> = new Map();
+      // Map template_phase_id → order_phase_id for linking scheduled_activities
+      const phaseIdMap: Map<string, Id<"order_phases">> = new Map();
 
       // First pass: create phases and calculate dates
       for (const templatePhase of sortedPhases) {
@@ -399,7 +492,7 @@ export const create = mutation({
           phaseStartDate +
           templatePhase.estimated_duration_days * 24 * 60 * 60 * 1000;
 
-        await ctx.db.insert("order_phases", {
+        const orderPhaseId = await ctx.db.insert("order_phases", {
           order_id: orderId,
           template_phase_id: templatePhase._id,
           phase_name: templatePhase.phase_name,
@@ -414,6 +507,7 @@ export const create = mutation({
           created_at: now,
         });
 
+        phaseIdMap.set(templatePhase._id, orderPhaseId);
         phaseStartDates.set(templatePhase._id, phaseStartDate);
         phaseEndDates.set(templatePhase._id, phaseEndDate);
         phaseStartDate = phaseEndDate;
@@ -421,7 +515,6 @@ export const create = mutation({
 
       // Second pass: create scheduled activities from template activities
       const scheduledActivityMap: Map<string, Id<"scheduled_activities">[]> = new Map();
-      const DAY_MS = 24 * 60 * 60 * 1000;
 
       for (const templatePhase of sortedPhases) {
         const phaseStart = phaseStartDates.get(templatePhase._id) || plannedStart;
@@ -515,15 +608,59 @@ export const create = mutation({
               completion_notes: undefined,
               execution_results: undefined,
               execution_variance: undefined,
+              company_id: args.companyId,
+              source: "template",
+              type_id: templateActivity.type_id,
+              template_id: templateActivity.activity_template_id,
+              // Phase role linking
+              phase_role: templateActivity.phase_role,
+              order_phase_id: phaseIdMap.get(templatePhase._id),
               created_at: now,
               updated_at: now,
             });
             createdActivityIds.push(activityId);
+
+            // Materialize resources from the activity template
+            if (templateActivity.activity_template_id) {
+              const templateResources = await ctx.db
+                .query("activity_template_resources")
+                .withIndex("by_template", (q) =>
+                  q.eq("template_id", templateActivity.activity_template_id!)
+                )
+                .collect();
+
+              for (let seq = 0; seq < templateResources.length; seq++) {
+                const res = templateResources[seq];
+                await ctx.db.insert("scheduled_activity_resources", {
+                  scheduled_activity_id: activityId,
+                  template_resource_id: res._id,
+                  product_id: res.product_id,
+                  direction: res.direction,
+                  quantity_basis: res.quantity_basis,
+                  template_quantity: res.quantity,
+                  quantity_override: res.quantity,
+                  unit_id: res.unit_id,
+                  application_rate: res.application_rate,
+                  application_method: res.application_method,
+                  is_required: res.is_required,
+                  sequence: seq,
+                  notes: res.notes,
+                  created_at: now,
+                });
+              }
+            }
           }
 
           scheduledActivityMap.set(templateActivity._id, createdActivityIds);
         }
       }
+
+      // Ensure each phase has entry/exit activities (auto-create if template lacks them)
+      const createdPhases = await ctx.db
+        .query("order_phases")
+        .withIndex("by_order", (q) => q.eq("order_id", orderId))
+        .collect();
+      await ensurePhaseRoleActivities(ctx, orderId, createdPhases, args.companyId);
 
       // Update template usage count
       const template = await ctx.db.get(args.templateId);
@@ -736,6 +873,7 @@ export const activate = mutation({
         await ctx.db.patch(activity._id, {
           entity_type: "batch",
           entity_id: createdBatchIds[0], // Link to first batch
+          company_id: order.company_id, // Backfill in case it was missing
           updated_at: now,
         });
       }
@@ -753,11 +891,20 @@ export const activate = mutation({
       updated_at: now,
     });
 
-    // Activate first phase
+    // Activate first phase — check if it has an entry activity
     if (firstPhase) {
+      const entryActivities = await ctx.db
+        .query("scheduled_activities")
+        .withIndex("by_phase_role", (q) =>
+          q.eq("order_phase_id", firstPhase._id).eq("phase_role", "entry")
+        )
+        .collect();
+
+      const hasEntry = entryActivities.length > 0;
+
       await ctx.db.patch(firstPhase._id, {
-        status: "in_progress",
-        actual_start_date: now,
+        status: hasEntry ? "awaiting_entry" : "in_progress",
+        actual_start_date: hasEntry ? undefined : now,
         area_id: targetAreaId,
       });
     }
@@ -796,8 +943,24 @@ export const completePhase = mutation({
       throw new Error("Phase not found or does not belong to order");
     }
 
-    if (phase.status !== "in_progress") {
-      throw new Error("Only in-progress phases can be completed");
+    if (phase.status !== "in_progress" && phase.status !== "awaiting_entry") {
+      throw new Error("Only in-progress or awaiting-entry phases can be completed");
+    }
+
+    // Guard: warn if phase has pending exit activity (admin override path)
+    const pendingExitActivities = await ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_phase_role", (q) =>
+        q.eq("order_phase_id", args.phaseId).eq("phase_role", "exit")
+      )
+      .filter((q) => q.neq(q.field("status"), "completed"))
+      .collect();
+
+    if (pendingExitActivities.length > 0) {
+      // Allow completion but log in metadata — this is an admin override
+      console.warn(
+        `Phase ${phase.phase_name} completed manually with ${pendingExitActivities.length} pending exit activity(ies). Admin override.`
+      );
     }
 
     // Complete current phase
@@ -826,11 +989,29 @@ export const completePhase = mutation({
     );
 
     if (nextPhase) {
-      // Start next phase
+      // Start next phase — inherit area from completed phase
       await ctx.db.patch(nextPhase._id, {
         status: "in_progress",
         actual_start_date: now,
+        area_id: phase.area_id ?? order.target_area_id,
       });
+
+      // Update all active batches to reflect the new phase
+      const orderBatches = await ctx.db
+        .query("batches")
+        .withIndex("by_production_order", (q) =>
+          q.eq("production_order_id", args.orderId)
+        )
+        .collect();
+
+      for (const batch of orderBatches) {
+        if (batch.status === "active") {
+          await ctx.db.patch(batch._id, {
+            current_phase: nextPhase.phase_name,
+            updated_at: now,
+          });
+        }
+      }
 
       await ctx.db.patch(args.orderId, {
         current_phase_id: nextPhase._id,

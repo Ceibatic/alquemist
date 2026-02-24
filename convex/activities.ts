@@ -4,9 +4,257 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, MutationCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
 import { generateInternalLotNumber, consumeFromInventoryFIFO, getActivityTypeByCode, createLaborCostEntry } from "./helpers";
+
+// ============================================================================
+// INVENTORY TRANSFORMATION HELPER
+// ============================================================================
+
+/**
+ * Create a new inventory_item from a "produced" resource, optionally marking
+ * a source item as transformed. Used by both executeActivity (for direction:"produced")
+ * and logPhaseTransitionWithInventory (backward compat wrapper).
+ *
+ * Returns the new inventory_item _id and generated batch number.
+ */
+async function handleInventoryTransformation(
+  ctx: MutationCtx,
+  params: {
+    targetProductId: Id<"products">;
+    targetQuantity: number;
+    targetQuantityUnit: string;
+    areaId: Id<"areas">;
+    facilityId?: Id<"facilities">;
+    companyId?: Id<"companies">;
+    batchId?: Id<"batches">;
+    activityId: Id<"activities">;
+    sourceInventoryItemId?: Id<"inventory_items">;
+    notes?: string;
+  }
+): Promise<{ transformedItemId: Id<"inventory_items">; batchNumber: string }> {
+  const now = Date.now();
+
+  const targetProduct = await ctx.db.get(params.targetProductId);
+  if (!targetProduct) {
+    throw new Error("Producto destino no encontrado");
+  }
+
+  // Generate lot number based on target product category
+  const batchNumber = await generateInternalLotNumber(ctx, targetProduct.category);
+
+  // Resolve cost from source item if available
+  let costPerUnit: number | undefined;
+  let expirationDate: number | undefined;
+  let purchasePrice: number | undefined;
+  let sourceNote = "";
+  if (params.sourceInventoryItemId) {
+    const sourceItem = await ctx.db.get(params.sourceInventoryItemId);
+    if (sourceItem) {
+      costPerUnit = sourceItem.cost_per_unit;
+      expirationDate = sourceItem.expiration_date;
+      purchasePrice = sourceItem.purchase_price;
+      sourceNote = ` (lote origen: ${sourceItem.batch_number || "N/A"})`;
+    }
+  }
+
+  // Create new inventory item
+  const transformedItemId = await ctx.db.insert("inventory_items", {
+    product_id: params.targetProductId,
+    area_id: params.areaId,
+    quantity_available: params.targetQuantity,
+    quantity_reserved: 0,
+    quantity_committed: 0,
+    quantity_unit: params.targetQuantityUnit,
+    batch_number: batchNumber,
+    serial_numbers: [],
+    received_date: now,
+    manufacturing_date: now,
+    expiration_date: expirationDate,
+    purchase_price: purchasePrice,
+    cost_per_unit: costPerUnit,
+    certificates: [],
+    source_type: "production",
+    source_batch_id: params.batchId,
+    lot_status: "available",
+    last_movement_date: now,
+    notes: (params.notes || "Transformacion de inventario") + sourceNote,
+    created_at: now,
+    updated_at: now,
+    created_by_activity_id: params.activityId,
+    transformation_status: "active",
+  });
+
+  // Mark source item as transformed if provided
+  if (params.sourceInventoryItemId) {
+    await ctx.db.patch(params.sourceInventoryItemId, {
+      quantity_available: 0,
+      last_movement_date: now,
+      updated_at: now,
+      transformation_status: "transformed",
+      transformed_to_item_id: transformedItemId,
+      transformed_by_activity_id: params.activityId,
+    });
+  }
+
+  return { transformedItemId, batchNumber };
+}
+
+// ============================================================================
+// PHASE EXIT/ENTRY EXECUTION HELPERS
+// ============================================================================
+
+/**
+ * When an exit activity is executed, automatically complete the phase
+ * and advance to the next one (or complete the order if last phase).
+ * Idempotent: if phase is already completed, returns early.
+ */
+async function handlePhaseExitExecution(
+  ctx: MutationCtx,
+  params: {
+    scheduledActivity: Doc<"scheduled_activities">;
+    activityId: Id<"activities">;
+    performedBy: Id<"users">;
+  }
+): Promise<{ phaseCompleted: boolean; nextPhaseName?: string; isOrderComplete?: boolean }> {
+  const { scheduledActivity } = params;
+
+  // Only process exit activities with a linked phase
+  if (scheduledActivity.phase_role !== "exit" || !scheduledActivity.order_phase_id) {
+    return { phaseCompleted: false };
+  }
+
+  const now = Date.now();
+  const phase = await ctx.db.get(scheduledActivity.order_phase_id);
+  if (!phase) {
+    return { phaseCompleted: false };
+  }
+
+  // Idempotent: if phase already completed, skip
+  if (phase.status === "completed") {
+    return { phaseCompleted: false };
+  }
+
+  const order = await ctx.db.get(phase.order_id);
+  if (!order || order.status !== "active") {
+    return { phaseCompleted: false };
+  }
+
+  // Complete current phase
+  await ctx.db.patch(phase._id, {
+    status: "completed",
+    actual_end_date: now,
+  });
+
+  // Get all phases to find next one
+  const phases = await ctx.db
+    .query("order_phases")
+    .withIndex("by_order", (q) => q.eq("order_id", phase.order_id))
+    .collect();
+
+  const sortedPhases = phases.sort((a, b) => a.phase_order - b.phase_order);
+  const currentIndex = sortedPhases.findIndex((p) => p._id === phase._id);
+  const nextPhase = sortedPhases[currentIndex + 1];
+
+  // Calculate completion percentage
+  const completedPhases = sortedPhases.filter(
+    (p) => p.status === "completed" || p._id === phase._id
+  ).length;
+  const completionPercentage = Math.round(
+    (completedPhases / sortedPhases.length) * 100
+  );
+
+  if (nextPhase) {
+    // Start next phase with "awaiting_entry" status (US-FEAT.4 will enforce entry gate)
+    // Check if next phase has an entry activity
+    const nextPhaseEntryActivities = await ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_phase_role", (q) =>
+        q.eq("order_phase_id", nextPhase._id).eq("phase_role", "entry")
+      )
+      .collect();
+
+    const nextStatus = nextPhaseEntryActivities.length > 0 ? "awaiting_entry" : "in_progress";
+
+    await ctx.db.patch(nextPhase._id, {
+      status: nextStatus,
+      actual_start_date: nextStatus === "in_progress" ? now : undefined,
+      area_id: phase.area_id ?? order.target_area_id,
+    });
+
+    // Update all active batches to reflect the new phase
+    const orderBatches = await ctx.db
+      .query("batches")
+      .withIndex("by_production_order", (q) =>
+        q.eq("production_order_id", phase.order_id)
+      )
+      .collect();
+
+    for (const batch of orderBatches) {
+      if (batch.status === "active") {
+        await ctx.db.patch(batch._id, {
+          current_phase: nextPhase.phase_name,
+          updated_at: now,
+        });
+      }
+    }
+
+    await ctx.db.patch(phase.order_id, {
+      current_phase_id: nextPhase._id,
+      completion_percentage: completionPercentage,
+      updated_at: now,
+    });
+
+    return { phaseCompleted: true, nextPhaseName: nextPhase.phase_name };
+  } else {
+    // All phases completed — mark order as completed
+    await ctx.db.patch(phase.order_id, {
+      status: "completed",
+      current_phase_id: undefined,
+      completion_percentage: 100,
+      actual_completion_date: now,
+      updated_at: now,
+    });
+
+    return { phaseCompleted: true, isOrderComplete: true };
+  }
+}
+
+/**
+ * When an entry activity is executed, transition the phase from
+ * "awaiting_entry" to "in_progress" with actual_start_date.
+ */
+async function handlePhaseEntryExecution(
+  ctx: MutationCtx,
+  params: {
+    scheduledActivity: Doc<"scheduled_activities">;
+    performedBy: Id<"users">;
+  }
+): Promise<{ phaseStarted: boolean }> {
+  const { scheduledActivity } = params;
+
+  if (scheduledActivity.phase_role !== "entry" || !scheduledActivity.order_phase_id) {
+    return { phaseStarted: false };
+  }
+
+  const phase = await ctx.db.get(scheduledActivity.order_phase_id);
+  if (!phase) {
+    return { phaseStarted: false };
+  }
+
+  // Only transition from awaiting_entry
+  if (phase.status !== "awaiting_entry") {
+    return { phaseStarted: false };
+  }
+
+  await ctx.db.patch(phase._id, {
+    status: "in_progress",
+    actual_start_date: Date.now(),
+  });
+
+  return { phaseStarted: true };
+}
 
 /**
  * List activities
@@ -424,6 +672,16 @@ export const executeActivity = mutation({
     const activityTypeCode = activityType.code;
     const title = activityType.name;
 
+    // ── Phase gate: block non-entry activities when phase is awaiting_entry ──
+    if (scheduledActivity?.order_phase_id) {
+      const actPhase = await ctx.db.get(scheduledActivity.order_phase_id);
+      if (actPhase?.status === "awaiting_entry" && scheduledActivity.phase_role !== "entry") {
+        throw new Error(
+          `La fase "${actPhase.phase_name}" esta esperando su actividad de entrada. Ejecute la actividad de inicio de fase primero.`
+        );
+      }
+    }
+
     // ── Determine batch list ───────────────────────────────────────────
     let batchIds: Id<"batches">[] = [];
 
@@ -567,6 +825,47 @@ export const executeActivity = mutation({
           }
         }
 
+        // Handle "produced" direction: create inventory item via transformation helper
+        if (resource.direction === "produced") {
+          // Resolve area from batch if not provided via args.zoneId
+          let producedAreaId = args.zoneId;
+          if (!producedAreaId && opts.batchId) {
+            const batchForArea = await ctx.db.get(opts.batchId);
+            producedAreaId = batchForArea?.area_id;
+          }
+          if (!producedAreaId) {
+            throw new Error("Se requiere un area para crear items de inventario producidos");
+          }
+
+          const { transformedItemId, batchNumber: prodBatchNumber } =
+            await handleInventoryTransformation(ctx, {
+              targetProductId: resource.product_id,
+              targetQuantity: resource.quantity,
+              targetQuantityUnit: resource.quantity_unit,
+              areaId: producedAreaId,
+              facilityId: opts.facilityId ?? args.facilityId,
+              companyId: opts.companyId ?? args.companyId,
+              batchId: opts.batchId,
+              activityId,
+              sourceInventoryItemId: resource.inventory_item_id,
+              notes: resource.notes,
+            });
+
+          await ctx.db.insert("activity_resources", {
+            activity_id: activityId,
+            direction: "produced",
+            product_id: resource.product_id,
+            inventory_item_id: transformedItemId,
+            quantity: resource.quantity,
+            unit_id: resource.unit_id,
+            quantity_unit: resource.quantity_unit,
+            batch_number: prodBatchNumber,
+            notes: resource.notes,
+            created_at: now,
+          });
+          continue;
+        }
+
         if (!costTotal && costPerUnit) {
           costTotal = costPerUnit * resource.quantity;
         }
@@ -681,6 +980,29 @@ export const executeActivity = mutation({
         await markScheduledCompleted(args.scheduledActivityId);
       }
 
+      // Handle phase entry: transition phase from awaiting_entry to in_progress
+      if (scheduledActivity) {
+        const entryResult = await handlePhaseEntryExecution(ctx, {
+          scheduledActivity,
+          performedBy: args.performedBy,
+        });
+        if (entryResult.phaseStarted) {
+          return { activityId, phaseStarted: true };
+        }
+      }
+
+      // Handle phase exit: auto-complete phase and advance
+      if (scheduledActivity) {
+        const exitResult = await handlePhaseExitExecution(ctx, {
+          scheduledActivity,
+          activityId,
+          performedBy: args.performedBy,
+        });
+        if (exitResult.phaseCompleted) {
+          return { activityId, phaseCompleted: true, nextPhaseName: exitResult.nextPhaseName, isOrderComplete: exitResult.isOrderComplete };
+        }
+      }
+
       return { activityId };
     }
 
@@ -762,6 +1084,33 @@ export const executeActivity = mutation({
       }
     } else if (args.scheduledActivityId) {
       await markScheduledCompleted(args.scheduledActivityId);
+    }
+
+    // Handle phase entry for multi-batch
+    const entryActivity = scheduledActivity ??
+      groupActivities.find((sa) => sa.phase_role === "entry");
+    if (entryActivity) {
+      const entryResult = await handlePhaseEntryExecution(ctx, {
+        scheduledActivity: entryActivity,
+        performedBy: args.performedBy,
+      });
+      if (entryResult.phaseStarted) {
+        return { activityId: parentActivityId, childActivityIds, phaseStarted: true };
+      }
+    }
+
+    // Handle phase exit for multi-batch: use the first scheduled activity with exit role
+    const exitActivity = scheduledActivity ??
+      groupActivities.find((sa) => sa.phase_role === "exit");
+    if (exitActivity) {
+      const exitResult = await handlePhaseExitExecution(ctx, {
+        scheduledActivity: exitActivity,
+        activityId: parentActivityId,
+        performedBy: args.performedBy,
+      });
+      if (exitResult.phaseCompleted) {
+        return { activityId: parentActivityId, childActivityIds, phaseCompleted: true, nextPhaseName: exitResult.nextPhaseName, isOrderComplete: exitResult.isOrderComplete };
+      }
     }
 
     return { activityId: parentActivityId, childActivityIds };
@@ -2085,52 +2434,23 @@ export const logPhaseTransitionWithInventory = mutation({
         created_at: now,
       });
 
-      // Generate internal batch number for transformed product based on TARGET category
-      // Internal products (phase transitions) don't have supplier_id or supplier_lot_number
-      const transformedBatchNumber = await generateInternalLotNumber(ctx, targetProduct.category);
-
-      // Create new inventory item for the transformed product
-      // Note: supplier_id and supplier_lot_number are NOT copied - this is an internal transformation
-      transformedInventoryItemId = await ctx.db.insert("inventory_items", {
-        product_id: args.targetProductId,
-        area_id: args.areaId,
-        // supplier_id: undefined - internal products have no external supplier
-        // supplier_lot_number: undefined - no supplier lot for internal products
-        quantity_available: args.targetQuantity,
-        quantity_reserved: 0,
-        quantity_committed: 0,
-        quantity_unit: args.targetQuantityUnit,
-        batch_number: transformedBatchNumber, // New internal lot based on target category
-        serial_numbers: [],
-        received_date: now,
-        manufacturing_date: now,
-        expiration_date: sourceInventoryItem.expiration_date,
-        purchase_price: sourceInventoryItem.purchase_price,
-        cost_per_unit: sourceInventoryItem.cost_per_unit,
-        certificates: [],
-        source_type: "production",
-        source_batch_id: args.batchId,
-        lot_status: "available",
-        last_movement_date: now,
-        notes: `Transición de fase: ${previousPhase} → ${args.newPhase} (lote origen: ${sourceInventoryItem.batch_number || 'N/A'})`,
-        created_at: now,
-        updated_at: now,
-        created_by_activity_id: inventoryActivityId,
-        transformation_status: "active",
-      });
-
-      // Mark source item as transformed
-      await ctx.db.patch(sourceInventoryItem._id, {
-        quantity_available: 0,
-        last_movement_date: now,
-        updated_at: now,
-        transformation_status: "transformed",
-        transformed_to_item_id: transformedInventoryItemId,
-        transformed_by_activity_id: inventoryActivityId,
-      });
+      // Create new inventory item and mark source as transformed via shared helper
+      const { transformedItemId, batchNumber: transformedBatchNumber } =
+        await handleInventoryTransformation(ctx, {
+          targetProductId: args.targetProductId,
+          targetQuantity: args.targetQuantity,
+          targetQuantityUnit: args.targetQuantityUnit,
+          areaId: args.areaId,
+          facilityId: args.facilityId,
+          batchId: args.batchId,
+          activityId: inventoryActivityId!,
+          sourceInventoryItemId: sourceInventoryItem._id,
+          notes: `Transición de fase: ${previousPhase} → ${args.newPhase}`,
+        });
+      transformedInventoryItemId = transformedItemId;
 
       // Update activity with materials_produced
-      await ctx.db.patch(inventoryActivityId, {
+      await ctx.db.patch(inventoryActivityId!, {
         materials_produced: [
           {
             product_id: args.targetProductId,

@@ -74,6 +74,7 @@ interface ActivityData {
   duration_value?: number;
   resource_count: number;
   activity_type_info?: ActivityTypeInfo | null;
+  phase_role?: 'entry' | 'exit';
 }
 
 // ── Activity Card ────────────────────────────────────────────────────────────
@@ -147,6 +148,16 @@ function ActivityCard({
 
       {/* Badges row */}
       <div className="flex flex-wrap items-center gap-1.5">
+        {activity.phase_role === 'entry' && (
+          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-700">
+            Entrada
+          </span>
+        )}
+        {activity.phase_role === 'exit' && (
+          <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">
+            Salida
+          </span>
+        )}
         <span
           className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${badgeColor}`}
         >
