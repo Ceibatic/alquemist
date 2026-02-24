@@ -936,6 +936,22 @@ export const completePhase = mutation({
       throw new Error("Only in-progress phases can be completed");
     }
 
+    // Guard: warn if phase has pending exit activity (admin override path)
+    const pendingExitActivities = await ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_phase_role", (q) =>
+        q.eq("order_phase_id", args.phaseId).eq("phase_role", "exit")
+      )
+      .filter((q) => q.neq(q.field("status"), "completed"))
+      .collect();
+
+    if (pendingExitActivities.length > 0) {
+      // Allow completion but log in metadata — this is an admin override
+      console.warn(
+        `Phase ${phase.phase_name} completed manually with ${pendingExitActivities.length} pending exit activity(ies). Admin override.`
+      );
+    }
+
     // Complete current phase
     await ctx.db.patch(args.phaseId, {
       status: "completed",

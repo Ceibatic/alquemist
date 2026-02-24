@@ -1127,7 +1127,7 @@ export default defineSchema({
     area_id: v.optional(v.id("areas")),
 
     // Status
-    status: v.string(), // pending/in_progress/completed/skipped
+    status: v.string(), // pending/awaiting_entry/in_progress/completed/skipped
     completion_notes: v.optional(v.string()),
 
     created_at: v.number(),

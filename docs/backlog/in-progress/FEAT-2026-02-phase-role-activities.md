@@ -138,26 +138,26 @@ La maquina de estados previene ejecucion fuera de orden:
 **para** que las transiciones de fase sean consistentes y trazables
 
 #### Criterios de Aceptacion
-- [ ] En `executeActivity`: despues de crear el activity record, verificar si `scheduledActivity.phase_role === "exit"`
-- [ ] Si es exit:
+- [x] En `executeActivity`: despues de crear el activity record, verificar si `scheduledActivity.phase_role === "exit"`
+- [x] Si es exit:
   - Obtener `order_phase_id` de la scheduled_activity
   - Verificar que la fase esta `in_progress`
   - Marcar fase como `completed` con `actual_end_date`
   - Buscar siguiente fase por `phase_order`
   - Si existe siguiente fase:
-    - Marcar como `in_progress` con `actual_start_date` (pero NO activar entry — ver US-FEAT.4)
+    - Marcar como `awaiting_entry` (si tiene entry activity) o `in_progress` (si no)
     - Actualizar `order.current_phase_id`
     - Setear `area_id` heredando de fase completada (fallback: `order.target_area_id`)
   - Si NO existe siguiente fase:
     - Marcar orden como `completed`, `completion_percentage: 100`, `actual_completion_date`
   - Actualizar `batch.current_phase` en todos los lotes activos de la orden
   - Calcular y actualizar `order.completion_percentage`
-- [ ] Retornar `phaseCompleted: true` y `nextPhaseName` en el resultado de `executeActivity`
-- [ ] Si la fase ya esta completada (idempotencia), no hacer nada adicional
-- [ ] Multi-batch: si la exit activity aplica a multiples lotes del mismo order, la fase se completa una sola vez
-- [ ] Validacion: exit activity solo ejecutable si fase esta `in_progress` (no `awaiting_entry` ni `completed`)
-- [ ] Validacion: actividades regulares solo ejecutables si su fase esta `in_progress` (no `awaiting_entry`)
-- [ ] Toast en frontend: "Actividad completada. Fase '{name}' finalizada, avanzando a '{nextName}'"
+- [x] Retornar `phaseCompleted: true` y `nextPhaseName` en el resultado de `executeActivity`
+- [x] Si la fase ya esta completada (idempotencia), no hacer nada adicional
+- [x] Multi-batch: si la exit activity aplica a multiples lotes del mismo order, la fase se completa una sola vez
+- [ ] Validacion: exit activity solo ejecutable si fase esta `in_progress` (no `awaiting_entry` ni `completed`) — deferred to US-FEAT.4
+- [ ] Validacion: actividades regulares solo ejecutables si su fase esta `in_progress` (no `awaiting_entry`) — deferred to US-FEAT.4
+- [ ] Toast en frontend: "Actividad completada. Fase '{name}' finalizada, avanzando a '{nextName}'" — deferred to US-FEAT.7
 
 #### Backend
 - Mutation modificada: `activities.executeActivity` (agregar logica post-creation)

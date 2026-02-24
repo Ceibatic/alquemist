@@ -101,6 +101,126 @@ async function handleInventoryTransformation(
   return { transformedItemId, batchNumber };
 }
 
+// ============================================================================
+// PHASE EXIT/ENTRY EXECUTION HELPERS
+// ============================================================================
+
+/**
+ * When an exit activity is executed, automatically complete the phase
+ * and advance to the next one (or complete the order if last phase).
+ * Idempotent: if phase is already completed, returns early.
+ */
+async function handlePhaseExitExecution(
+  ctx: MutationCtx,
+  params: {
+    scheduledActivity: Doc<"scheduled_activities">;
+    activityId: Id<"activities">;
+    performedBy: Id<"users">;
+  }
+): Promise<{ phaseCompleted: boolean; nextPhaseName?: string; isOrderComplete?: boolean }> {
+  const { scheduledActivity } = params;
+
+  // Only process exit activities with a linked phase
+  if (scheduledActivity.phase_role !== "exit" || !scheduledActivity.order_phase_id) {
+    return { phaseCompleted: false };
+  }
+
+  const now = Date.now();
+  const phase = await ctx.db.get(scheduledActivity.order_phase_id);
+  if (!phase) {
+    return { phaseCompleted: false };
+  }
+
+  // Idempotent: if phase already completed, skip
+  if (phase.status === "completed") {
+    return { phaseCompleted: false };
+  }
+
+  const order = await ctx.db.get(phase.order_id);
+  if (!order || order.status !== "active") {
+    return { phaseCompleted: false };
+  }
+
+  // Complete current phase
+  await ctx.db.patch(phase._id, {
+    status: "completed",
+    actual_end_date: now,
+  });
+
+  // Get all phases to find next one
+  const phases = await ctx.db
+    .query("order_phases")
+    .withIndex("by_order", (q) => q.eq("order_id", phase.order_id))
+    .collect();
+
+  const sortedPhases = phases.sort((a, b) => a.phase_order - b.phase_order);
+  const currentIndex = sortedPhases.findIndex((p) => p._id === phase._id);
+  const nextPhase = sortedPhases[currentIndex + 1];
+
+  // Calculate completion percentage
+  const completedPhases = sortedPhases.filter(
+    (p) => p.status === "completed" || p._id === phase._id
+  ).length;
+  const completionPercentage = Math.round(
+    (completedPhases / sortedPhases.length) * 100
+  );
+
+  if (nextPhase) {
+    // Start next phase with "awaiting_entry" status (US-FEAT.4 will enforce entry gate)
+    // Check if next phase has an entry activity
+    const nextPhaseEntryActivities = await ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_phase_role", (q) =>
+        q.eq("order_phase_id", nextPhase._id).eq("phase_role", "entry")
+      )
+      .collect();
+
+    const nextStatus = nextPhaseEntryActivities.length > 0 ? "awaiting_entry" : "in_progress";
+
+    await ctx.db.patch(nextPhase._id, {
+      status: nextStatus,
+      actual_start_date: nextStatus === "in_progress" ? now : undefined,
+      area_id: phase.area_id ?? order.target_area_id,
+    });
+
+    // Update all active batches to reflect the new phase
+    const orderBatches = await ctx.db
+      .query("batches")
+      .withIndex("by_production_order", (q) =>
+        q.eq("production_order_id", phase.order_id)
+      )
+      .collect();
+
+    for (const batch of orderBatches) {
+      if (batch.status === "active") {
+        await ctx.db.patch(batch._id, {
+          current_phase: nextPhase.phase_name,
+          updated_at: now,
+        });
+      }
+    }
+
+    await ctx.db.patch(phase.order_id, {
+      current_phase_id: nextPhase._id,
+      completion_percentage: completionPercentage,
+      updated_at: now,
+    });
+
+    return { phaseCompleted: true, nextPhaseName: nextPhase.phase_name };
+  } else {
+    // All phases completed — mark order as completed
+    await ctx.db.patch(phase.order_id, {
+      status: "completed",
+      current_phase_id: undefined,
+      completion_percentage: 100,
+      actual_completion_date: now,
+      updated_at: now,
+    });
+
+    return { phaseCompleted: true, isOrderComplete: true };
+  }
+}
+
 /**
  * List activities
  */
@@ -815,6 +935,18 @@ export const executeActivity = mutation({
         await markScheduledCompleted(args.scheduledActivityId);
       }
 
+      // Handle phase exit: auto-complete phase and advance
+      if (scheduledActivity) {
+        const exitResult = await handlePhaseExitExecution(ctx, {
+          scheduledActivity,
+          activityId,
+          performedBy: args.performedBy,
+        });
+        if (exitResult.phaseCompleted) {
+          return { activityId, phaseCompleted: true, nextPhaseName: exitResult.nextPhaseName, isOrderComplete: exitResult.isOrderComplete };
+        }
+      }
+
       return { activityId };
     }
 
@@ -896,6 +1028,20 @@ export const executeActivity = mutation({
       }
     } else if (args.scheduledActivityId) {
       await markScheduledCompleted(args.scheduledActivityId);
+    }
+
+    // Handle phase exit for multi-batch: use the first scheduled activity with exit role
+    const exitActivity = scheduledActivity ??
+      groupActivities.find((sa) => sa.phase_role === "exit");
+    if (exitActivity) {
+      const exitResult = await handlePhaseExitExecution(ctx, {
+        scheduledActivity: exitActivity,
+        activityId: parentActivityId,
+        performedBy: args.performedBy,
+      });
+      if (exitResult.phaseCompleted) {
+        return { activityId: parentActivityId, childActivityIds, phaseCompleted: true, nextPhaseName: exitResult.nextPhaseName, isOrderComplete: exitResult.isOrderComplete };
+      }
     }
 
     return { activityId: parentActivityId, childActivityIds };
