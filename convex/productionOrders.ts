@@ -392,6 +392,8 @@ export const create = mutation({
       let phaseStartDate = plannedStart;
       const phaseStartDates: Map<string, number> = new Map();
       const phaseEndDates: Map<string, number> = new Map();
+      // Map template_phase_id → order_phase_id for linking scheduled_activities
+      const phaseIdMap: Map<string, Id<"order_phases">> = new Map();
 
       // First pass: create phases and calculate dates
       for (const templatePhase of sortedPhases) {
@@ -399,7 +401,7 @@ export const create = mutation({
           phaseStartDate +
           templatePhase.estimated_duration_days * 24 * 60 * 60 * 1000;
 
-        await ctx.db.insert("order_phases", {
+        const orderPhaseId = await ctx.db.insert("order_phases", {
           order_id: orderId,
           template_phase_id: templatePhase._id,
           phase_name: templatePhase.phase_name,
@@ -414,6 +416,7 @@ export const create = mutation({
           created_at: now,
         });
 
+        phaseIdMap.set(templatePhase._id, orderPhaseId);
         phaseStartDates.set(templatePhase._id, phaseStartDate);
         phaseEndDates.set(templatePhase._id, phaseEndDate);
         phaseStartDate = phaseEndDate;
@@ -519,6 +522,9 @@ export const create = mutation({
               source: "template",
               type_id: templateActivity.type_id,
               template_id: templateActivity.activity_template_id,
+              // Phase role linking
+              phase_role: templateActivity.phase_role,
+              order_phase_id: phaseIdMap.get(templatePhase._id),
               created_at: now,
               updated_at: now,
             });

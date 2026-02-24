@@ -524,6 +524,8 @@ export const createForOrder = mutation({
     estimatedDurationMinutes: v.optional(v.number()),
     instructions: v.optional(v.string()),
     activityName: v.optional(v.string()),
+    phaseId: v.optional(v.id("order_phases")),
+    phaseRole: v.optional(v.union(v.literal("entry"), v.literal("exit"))),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -557,6 +559,8 @@ export const createForOrder = mutation({
       required_materials: [],
       required_equipment: [],
       company_id: order.company_id,
+      phase_role: args.phaseRole,
+      order_phase_id: args.phaseId,
       created_at: now,
       updated_at: now,
     });
