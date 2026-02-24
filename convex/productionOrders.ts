@@ -6,7 +6,7 @@
 import { v } from "convex/values";
 import { mutation, query, MutationCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { getActivityTypeByCode } from "./helpers";
+import { getActivityTypeByCode, logPhaseTransition } from "./helpers";
 
 /**
  * Generate order number in format ORD-YYYY-XXXX
@@ -902,10 +902,22 @@ export const activate = mutation({
 
       const hasEntry = entryActivities.length > 0;
 
+      const newStatus = hasEntry ? "awaiting_entry" : "in_progress";
       await ctx.db.patch(firstPhase._id, {
-        status: hasEntry ? "awaiting_entry" : "in_progress",
+        status: newStatus,
         actual_start_date: hasEntry ? undefined : now,
         area_id: targetAreaId,
+      });
+
+      await logPhaseTransition(ctx, {
+        orderId: args.orderId,
+        phaseId: firstPhase._id,
+        phaseName: firstPhase.phase_name,
+        transitionType: "started",
+        fromStatus: "pending",
+        toStatus: newStatus,
+        triggeredBy: "activation",
+        performedBy: args.approvedBy,
       });
     }
 
@@ -963,11 +975,24 @@ export const completePhase = mutation({
       );
     }
 
+    const prevStatus = phase.status;
+
     // Complete current phase
     await ctx.db.patch(args.phaseId, {
       status: "completed",
       actual_end_date: now,
       completion_notes: args.completionNotes,
+    });
+
+    const triggeredBy = pendingExitActivities.length > 0 ? "admin_override" : "manual";
+    await logPhaseTransition(ctx, {
+      orderId: args.orderId,
+      phaseId: args.phaseId,
+      phaseName: phase.phase_name,
+      transitionType: "completed",
+      fromStatus: prevStatus,
+      toStatus: "completed",
+      triggeredBy,
     });
 
     // Get all phases to find next one
@@ -994,6 +1019,16 @@ export const completePhase = mutation({
         status: "in_progress",
         actual_start_date: now,
         area_id: phase.area_id ?? order.target_area_id,
+      });
+
+      await logPhaseTransition(ctx, {
+        orderId: args.orderId,
+        phaseId: nextPhase._id,
+        phaseName: nextPhase.phase_name,
+        transitionType: "started",
+        fromStatus: nextPhase.status,
+        toStatus: "in_progress",
+        triggeredBy,
       });
 
       // Update all active batches to reflect the new phase
@@ -1092,6 +1127,17 @@ export const revertPhaseCompletion = mutation({
     // Revert this phase to in_progress (keep actual_end_date for audit)
     await ctx.db.patch(args.phaseId, {
       status: "in_progress",
+    });
+
+    await logPhaseTransition(ctx, {
+      orderId: args.orderId,
+      phaseId: args.phaseId,
+      phaseName: phase.phase_name,
+      transitionType: "reverted",
+      fromStatus: "completed",
+      toStatus: "in_progress",
+      triggeredBy: "manual",
+      reason: args.reason,
     });
 
     // Find the next phase (if any) and reset it
@@ -1317,5 +1363,41 @@ export const getActivities = query({
 
     // Sort by scheduled date
     return activities.sort((a, b) => a.scheduled_date - b.scheduled_date);
+  },
+});
+
+/**
+ * Get phase transition log for an order
+ */
+export const getPhaseTransitionLog = query({
+  args: {
+    orderId: v.id("production_orders"),
+  },
+  handler: async (ctx, args) => {
+    const logs = await ctx.db
+      .query("phase_transition_log")
+      .withIndex("by_order", (q) => q.eq("order_id", args.orderId))
+      .collect();
+
+    // Enrich with user names
+    const userIds = new Set<string>();
+    for (const log of logs) {
+      if (log.performed_by) userIds.add(log.performed_by as string);
+    }
+
+    const userMap: Record<string, string> = {};
+    for (const userId of userIds) {
+      const user = await ctx.db.get(userId as Id<"users">);
+      if (user) {
+        userMap[userId] = user.name || user.email || "Usuario";
+      }
+    }
+
+    return logs.map((log) => ({
+      ...log,
+      performedByName: log.performed_by
+        ? userMap[log.performed_by as string] ?? "Usuario"
+        : undefined,
+    }));
   },
 });
