@@ -188,7 +188,7 @@ export const create = mutation({
       area_type: args.areaType,
       previous_phase_id: args.previousPhaseId,
       required_conditions: args.requiredConditions || {},
-      completion_criteria: args.completionCriteria || {},
+      completion_criteria: args.completionCriteria || [],
       required_equipment: args.requiredEquipment || [],
       required_materials: args.requiredMaterials || [],
       description: args.description,

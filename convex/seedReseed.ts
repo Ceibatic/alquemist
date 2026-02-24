@@ -176,11 +176,23 @@ export const clearProductionData = internalMutation({
     counts.batch_losses = blCount;
     counts.batch_harvests = bhCount;
 
-    // order_phases (via production_orders)
+    // order_phases & phase_transition_log (via production_orders)
     const orders = await ctx.db
       .query("production_orders")
       .withIndex("by_company", (q) => q.eq("company_id", companyId))
       .collect();
+
+    // Delete phase_transition_log BEFORE order_phases (FK dependency)
+    let ptlCount = 0;
+    for (const order of orders) {
+      const logs = await ctx.db
+        .query("phase_transition_log")
+        .withIndex("by_order", (q) => q.eq("order_id", order._id))
+        .collect();
+      for (const l of logs) { await ctx.db.delete(l._id); ptlCount++; }
+    }
+    counts.phase_transition_log = ptlCount;
+
     let opCount = 0;
     for (const order of orders) {
       const phases = await ctx.db
@@ -781,14 +793,384 @@ export const seedActivityTemplateResources = internalMutation({
   },
 });
 
-// ── Step 7: Orchestrator Action ─────────────────────────────────────────────
+// ── Step 5b: Seed Plant Material Products ────────────────────────────────────
+
+export const seedPlantMaterialProducts = internalMutation({
+  args: {
+    companyId: v.id("companies"),
+    cannabisId: v.id("crop_types"),
+  },
+  handler: async (ctx, { companyId, cannabisId }) => {
+    const now = Date.now();
+
+    // Idempotency: skip if PM-SEED-001 already exists
+    const existing = await ctx.db
+      .query("products")
+      .withIndex("by_company", (q) => q.eq("company_id", companyId))
+      .collect();
+    if (existing.some((p) => p.sku === "PM-SEED-001")) {
+      return { created: 0, message: "Plant material products already exist" };
+    }
+
+    const chain = [
+      { sku: "PM-FINAL-001", name: "Flor Empacada Cannabis", category: "processed_plant", defaultUnit: "g", description: "Producto final empacado, listo para distribución", pricePerUnit: 45000 },
+      { sku: "PM-TRIM-001", name: "Flor Trimmeada Cannabis", category: "processed_plant", defaultUnit: "g", description: "Flor seca manicurada, lista para empaque", pricePerUnit: 40000 },
+      { sku: "PM-DRY-001", name: "Flor Seca Cannabis", category: "harvest_dry", defaultUnit: "g", description: "Material vegetal secado (12-15% humedad)", pricePerUnit: 35000 },
+      { sku: "PM-WET-001", name: "Flor Húmeda Cannabis", category: "harvest_wet", defaultUnit: "g", description: "Material cosechado fresco, previo a secado", pricePerUnit: 8000 },
+      { sku: "PM-FLOR-001", name: "Planta en Floración", category: "plant_flowering", defaultUnit: "plants", description: "Planta cannabis en fase de floración", pricePerUnit: 25000 },
+      { sku: "PM-VEG-001", name: "Planta Vegetativa", category: "plant_vegetative", defaultUnit: "plants", description: "Planta cannabis en fase vegetativa", pricePerUnit: 15000 },
+      { sku: "PM-SEEDLING-001", name: "Plántula Cannabis", category: "seedling", defaultUnit: "plants", description: "Plántula en propagación, post-germinación", pricePerUnit: 8000 },
+      { sku: "PM-SEED-001", name: "Semilla Cannabis", category: "seed", defaultUnit: "seeds", description: "Semilla feminizada lista para germinación", pricePerUnit: 5000 },
+    ];
+
+    for (const def of chain) {
+      await ctx.db.insert("products", {
+        company_id: companyId,
+        sku: def.sku,
+        name: def.name,
+        description: def.description,
+        category: def.category,
+        subcategory: "plant_material",
+        applicable_crop_type_ids: [cannabisId],
+        regional_suppliers: [],
+        weight_value: 1,
+        weight_unit: def.defaultUnit,
+        regulatory_registered: false,
+        organic_certified: false,
+        default_price: def.pricePerUnit,
+        price_currency: "COP",
+        price_unit: "per_unit",
+        status: "active",
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    return { created: chain.length };
+  },
+});
+
+// ── Step 6: Get seeded references ────────────────────────────────────────────
+
+export const getSeededReferences = internalQuery({
+  args: {
+    companyId: v.id("companies"),
+    facilityId: v.id("facilities"),
+  },
+  handler: async (ctx, { companyId, facilityId }) => {
+    // Find the demo production template
+    const templates = await ctx.db
+      .query("production_templates")
+      .withIndex("by_company", (q) => q.eq("company_id", companyId))
+      .collect();
+    const demoTemplate = templates.find((t) => t.name.includes("(Demo)"));
+
+    // Find cultivars
+    const cultivars = await ctx.db
+      .query("cultivars")
+      .withIndex("by_company", (q) => q.eq("company_id", companyId))
+      .collect();
+    const blueDream = cultivars.find((c) => c.name.includes("Blue Dream"));
+    const ogKush = cultivars.find((c) => c.name.includes("OG Kush"));
+
+    // Find all areas by type
+    const areas = await ctx.db
+      .query("areas")
+      .withIndex("by_facility", (q) => q.eq("facility_id", facilityId))
+      .collect();
+    const propagationArea = areas.find((a) => a.area_type === "propagation");
+    const areasByType: Record<string, Id<"areas">> = {};
+    for (const area of areas) {
+      areasByType[area.area_type] = area._id;
+    }
+
+    // Find DEMO products by SKU
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_company", (q) => q.eq("company_id", companyId))
+      .collect();
+    const productsBySku: Record<string, Id<"products">> = {};
+    for (const p of products) {
+      if (p.sku.startsWith("DEMO-")) {
+        productsBySku[p.sku] = p._id;
+      }
+    }
+
+    // Find activity types by code (for ad-hoc activity execution)
+    const activityTypes = await ctx.db
+      .query("activity_types")
+      .withIndex("by_company", (q) => q.eq("company_id", companyId))
+      .collect();
+    const activityTypesByCode: Record<string, Id<"activity_types">> = {};
+    for (const at of activityTypes) {
+      activityTypesByCode[at.code] = at._id;
+    }
+
+    return {
+      templateId: demoTemplate?._id,
+      cultivarIds: {
+        blueDream: blueDream?._id,
+        ogKush: ogKush?._id,
+      },
+      areaIds: {
+        propagation: propagationArea?._id,
+      },
+      areasByType,
+      productsBySku,
+      activityTypesByCode,
+    };
+  },
+});
+
+// ── Step 7b: Get order phase IDs ────────────────────────────────────────────
+
+export const getOrderPhaseIds = internalQuery({
+  args: {
+    orderId: v.id("production_orders"),
+  },
+  handler: async (ctx, { orderId }) => {
+    const phases = await ctx.db
+      .query("order_phases")
+      .withIndex("by_order", (q) => q.eq("order_id", orderId))
+      .collect();
+
+    return phases
+      .sort((a, b) => a.phase_order - b.phase_order)
+      .map((p) => ({
+        _id: p._id,
+        phase_name: p.phase_name,
+        status: p.status,
+        completion_criteria: (p.completion_criteria as Array<{ id: string; is_required: boolean }>) ?? [],
+      }));
+  },
+});
+
+// ── Step 7c: Get scheduled activities for a phase ────────────────────────
+
+export const getScheduledActivitiesForPhase = internalQuery({
+  args: { orderPhaseId: v.id("order_phases") },
+  handler: async (ctx, { orderPhaseId }) => {
+    // Entry activities (phase_role="entry")
+    const entry = await ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_phase_role", (q) =>
+        q.eq("order_phase_id", orderPhaseId).eq("phase_role", "entry")
+      )
+      .collect();
+
+    // Exit activities (phase_role="exit")
+    const exit = await ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_phase_role", (q) =>
+        q.eq("order_phase_id", orderPhaseId).eq("phase_role", "exit")
+      )
+      .collect();
+
+    // Regular activities (no phase_role) — query by order_phase_id, filter out entry/exit
+    const allForPhase = await ctx.db
+      .query("scheduled_activities")
+      .withIndex("by_phase_role", (q) =>
+        q.eq("order_phase_id", orderPhaseId)
+      )
+      .collect();
+    const regular = allForPhase.filter(
+      (sa) => sa.phase_role !== "entry" && sa.phase_role !== "exit"
+    );
+
+    return {
+      entry: entry.map((sa) => ({
+        _id: sa._id,
+        group_id: sa.group_id,
+        status: sa.status,
+        activity_type: sa.activity_type,
+        type_id: sa.type_id,
+      })),
+      exit: exit.map((sa) => ({
+        _id: sa._id,
+        group_id: sa.group_id,
+        status: sa.status,
+        activity_type: sa.activity_type,
+        type_id: sa.type_id,
+      })),
+      regular: regular.map((sa) => ({
+        _id: sa._id,
+        group_id: sa.group_id,
+        status: sa.status,
+        activity_type: sa.activity_type,
+        type_id: sa.type_id,
+      })),
+    };
+  },
+});
+
+// ── Step 7d: Get batches for an order ────────────────────────────────────
+
+export const getBatchesForOrder = internalQuery({
+  args: { orderId: v.id("production_orders") },
+  handler: async (ctx, { orderId }) => {
+    const batches = await ctx.db
+      .query("batches")
+      .withIndex("by_production_order", (q) =>
+        q.eq("production_order_id", orderId)
+      )
+      .collect();
+
+    return batches.map((b) => ({
+      _id: b._id,
+      batch_code: b.batch_code,
+      current_quantity: b.current_quantity,
+      area_id: b.area_id,
+    }));
+  },
+});
+
+// ── Step 7e: Seed traceability data (observations + env readings) ────────
+
+export const seedTraceabilityData = internalMutation({
+  args: {
+    activityId: v.id("activities"),
+    companyId: v.id("companies"),
+    observations: v.optional(
+      v.array(
+        v.object({
+          observation_type: v.string(),
+          severity: v.optional(v.string()),
+          description: v.string(),
+          recommended_action: v.optional(v.string()),
+          organism_name: v.optional(v.string()),
+          affected_area_pct: v.optional(v.number()),
+          plant_part: v.optional(v.string()),
+        })
+      )
+    ),
+    environmentalReadings: v.optional(
+      v.array(
+        v.object({
+          reading_type: v.string(),
+          value: v.number(),
+          unit: v.string(),
+          location_note: v.optional(v.string()),
+        })
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    let obsCount = 0;
+    let envCount = 0;
+
+    if (args.observations) {
+      for (const obs of args.observations) {
+        await ctx.db.insert("activity_observations", {
+          activity_id: args.activityId,
+          company_id: args.companyId,
+          observation_type: obs.observation_type,
+          severity: obs.severity,
+          organism_name: obs.organism_name,
+          affected_area_pct: obs.affected_area_pct,
+          plant_part: obs.plant_part,
+          description: obs.description,
+          recommended_action: obs.recommended_action,
+          resolved: obs.observation_type === "positive" || obs.observation_type === "growth",
+          resolved_at:
+            obs.observation_type === "positive" || obs.observation_type === "growth"
+              ? now
+              : undefined,
+          created_at: now,
+        });
+        obsCount++;
+      }
+    }
+
+    if (args.environmentalReadings) {
+      for (const reading of args.environmentalReadings) {
+        await ctx.db.insert("activity_environmental_readings", {
+          activity_id: args.activityId,
+          company_id: args.companyId,
+          reading_type: reading.reading_type,
+          value: reading.value,
+          unit: reading.unit,
+          measured_at: now,
+          location_note: reading.location_note,
+          created_at: now,
+        });
+        envCount++;
+      }
+    }
+
+    return { observations: obsCount, environmentalReadings: envCount };
+  },
+});
+
+// ── Step 7f: Seed batch movements ────────────────────────────────────────
+
+export const seedBatchMovements = internalMutation({
+  args: {
+    movements: v.array(
+      v.object({
+        batchId: v.id("batches"),
+        fromAreaId: v.id("areas"),
+        toAreaId: v.id("areas"),
+        reason: v.string(),
+        performedBy: v.id("users"),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    for (const mov of args.movements) {
+      // Insert batch_movement record
+      await ctx.db.insert("batch_movements", {
+        batch_id: mov.batchId,
+        from_area_id: mov.fromAreaId,
+        to_area_id: mov.toAreaId,
+        movement_date: now,
+        reason: mov.reason,
+        performed_by: mov.performedBy,
+        created_at: now,
+      });
+
+      // Update batch area_id
+      const batch = await ctx.db.get(mov.batchId);
+      if (batch) {
+        await ctx.db.patch(mov.batchId, { area_id: mov.toAreaId });
+
+        // Decrease from-area occupancy
+        const fromArea = await ctx.db.get(mov.fromAreaId);
+        if (fromArea) {
+          await ctx.db.patch(mov.fromAreaId, {
+            current_occupancy: Math.max(0, fromArea.current_occupancy - batch.current_quantity),
+          });
+        }
+
+        // Increase to-area occupancy
+        const toArea = await ctx.db.get(mov.toAreaId);
+        if (toArea) {
+          await ctx.db.patch(mov.toAreaId, {
+            current_occupancy: toArea.current_occupancy + batch.current_quantity,
+          });
+        }
+      }
+    }
+
+    return { created: args.movements.length };
+  },
+});
+
+// ── Step 8: Orchestrator Action ─────────────────────────────────────────────
 
 export const reseed = action({
   args: { email: v.string() },
   handler: async (ctx, { email }): Promise<{
     success: boolean;
     deleted: { production: Record<string, number>; config: Record<string, number> };
-    seeded: { activityTemplates: number; templateResources: number };
+    seeded: {
+      activityTemplates: number;
+      templateResources: number;
+      plantMaterialProducts: number;
+      productionOrders: number;
+    };
   }> => {
     console.log(`\n🌱 RESEED starting for ${email}...\n`);
 
@@ -858,9 +1240,510 @@ export const reseed = action({
     });
     console.log(`  ✓ ${atrResult.created} template resources created`);
 
+    // 5. Seed plant material products (transformation chain)
+    console.log("\nStep 5: Seeding plant material products...");
+    const pmResult: { created: number } = await ctx.runMutation(internal.seedReseed.seedPlantMaterialProducts, {
+      companyId: context.companyId,
+      cannabisId: context.cannabisId,
+    });
+    console.log(`  ✓ ${pmResult.created} plant material products created`);
+
+    // 6. Get seeded references for production orders
+    console.log("\nStep 6: Resolving seeded references...");
+    const refs = await ctx.runQuery(internal.seedReseed.getSeededReferences, {
+      companyId: context.companyId,
+      facilityId: context.facilityId,
+    });
+
+    if (!refs.templateId || !refs.cultivarIds.blueDream || !refs.areaIds.propagation) {
+      console.log("  ⚠ Missing references for production orders — skipping steps 7-10");
+      console.log(`    templateId: ${refs.templateId ?? "MISSING"}`);
+      console.log(`    blueDream: ${refs.cultivarIds.blueDream ?? "MISSING"}`);
+      console.log(`    propagation: ${refs.areaIds.propagation ?? "MISSING"}`);
+
+      return {
+        success: true,
+        deleted: { production: prodCounts, config: configCounts },
+        seeded: {
+          activityTemplates: atResult.created,
+          templateResources: atrResult.created,
+          plantMaterialProducts: pmResult.created,
+          productionOrders: 0,
+        },
+      };
+    }
+    console.log(`  ✓ Template: ${refs.templateId}, BlueDream: ${refs.cultivarIds.blueDream}`);
+
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    // Helper: build resource arg for executeActivity
+    const makeResource = (productId: Id<"products">, qty: number, unit: string) => ({
+      product_id: productId,
+      direction: "consumed",
+      quantity: qty,
+      quantity_unit: unit,
+    });
+
+    // 7. Create order #1 — Blue Dream (mid-lifecycle)
+    console.log("\nStep 7: Creating production order #1 (Blue Dream)...");
+    const order1Id: Id<"production_orders"> = await ctx.runMutation(api.productionOrders.create, {
+      companyId: context.companyId,
+      facilityId: context.facilityId,
+      templateId: refs.templateId,
+      cropTypeId: context.cannabisId,
+      cultivarId: refs.cultivarIds.blueDream,
+      orderType: "seed-to-harvest",
+      sourceType: "clone",
+      requestedQuantity: 100,
+      batchSize: 50,
+      targetAreaId: refs.areaIds.propagation,
+      plannedStartDate: now - 45 * DAY_MS,
+      priority: "high",
+      notes: "Orden demo Blue Dream — generada por reseed",
+      requestedBy: context.userId,
+    });
+    console.log(`  ✓ Order #1 created: ${order1Id}`);
+
+    // 8. Activate order #1 (creates batches, distributes activities)
+    console.log("\nStep 8: Activating order #1...");
+    await ctx.runMutation(api.productionOrders.activate, {
+      orderId: order1Id,
+      approvedBy: context.userId,
+      targetAreaId: refs.areaIds.propagation,
+    });
+    console.log("  ✓ Order #1 activated (2 batches created)");
+
+    // 8b. Resolve batch and phase references
+    console.log("\nStep 8b: Resolving batches and phase references...");
+    const batches = await ctx.runQuery(internal.seedReseed.getBatchesForOrder, { orderId: order1Id });
+    const phases1 = await ctx.runQuery(internal.seedReseed.getOrderPhaseIds, { orderId: order1Id });
+    console.log(`  ✓ ${batches.length} batches, ${phases1.length} phases resolved`);
+
+    if (phases1.length >= 3 && batches.length >= 2) {
+      const propPhase = phases1[0];
+      const vegPhase = phases1[1];
+      const florPhase = phases1[2];
+      const vegAreaId = refs.areasByType["vegetative"];
+      const florAreaId = refs.areasByType["flowering"];
+
+      // ═══════════════════════════════════════════════════════════════════
+      // 9. PROPAGATION — full cycle
+      // ═══════════════════════════════════════════════════════════════════
+      console.log("\nStep 9: Propagation — full cycle...");
+      const propSAs = await ctx.runQuery(internal.seedReseed.getScheduledActivitiesForPhase, {
+        orderPhaseId: propPhase._id as Id<"order_phases">,
+      });
+
+      // 9a. Entry activity (multi-batch via groupId) → phase in_progress
+      let propEntryActivityId: Id<"activities"> | null = null;
+      const propEntryGroupId = propSAs.entry[0]?.group_id;
+      if (propEntryGroupId) {
+        const result = await ctx.runMutation(api.activities.executeActivity, {
+          groupId: propEntryGroupId,
+          performedBy: context.userId,
+          companyId: context.companyId,
+          facilityId: context.facilityId,
+          cropPhase: "propagation",
+          notes: "Inicio de propagación — preparación de esquejes",
+          envTemp: 24,
+          envHumidity: 78,
+        });
+        propEntryActivityId = result.activityId;
+        console.log("  ✓ 9a: Entry executed → phase in_progress");
+      }
+
+      // 9b. Env readings for entry
+      if (propEntryActivityId) {
+        await ctx.runMutation(internal.seedReseed.seedTraceabilityData, {
+          activityId: propEntryActivityId,
+          companyId: context.companyId,
+          environmentalReadings: [
+            { reading_type: "temperature", value: 24, unit: "C", location_note: "Canopy level" },
+            { reading_type: "humidity", value: 78, unit: "%", location_note: "Ambient" },
+            { reading_type: "vpd", value: 0.8, unit: "kPa", location_note: "Canopy level" },
+          ],
+        });
+        console.log("  ✓ 9b: Env readings seeded (temp/hum/VPD)");
+      }
+
+      // 9c. Execute ad-hoc Riego with resource consumption
+      let propRegularActivityId: Id<"activities"> | null = null;
+      const irrigationTypeId = refs.activityTypesByCode["irrigation"];
+      if (irrigationTypeId && refs.productsBySku["DEMO-NUT-A"]) {
+        const result = await ctx.runMutation(api.activities.executeActivity, {
+          typeId: irrigationTypeId,
+          batchIds: batches.map((b) => b._id),
+          performedBy: context.userId,
+          companyId: context.companyId,
+          facilityId: context.facilityId,
+          cropPhase: "propagation",
+          notes: "Riego con nutriente base A",
+          envTemp: 24.5,
+          envHumidity: 76,
+          resources: [makeResource(refs.productsBySku["DEMO-NUT-A"], 1, "L")],
+          consumeInventory: true,
+        });
+        propRegularActivityId = result.activityId;
+        console.log("  ✓ 9c: Riego executed with NUT-A (1L FIFO)");
+      }
+
+      // 9d. Env readings for regular
+      if (propRegularActivityId) {
+        await ctx.runMutation(internal.seedReseed.seedTraceabilityData, {
+          activityId: propRegularActivityId,
+          companyId: context.companyId,
+          environmentalReadings: [
+            { reading_type: "temperature", value: 24.5, unit: "C" },
+            { reading_type: "humidity", value: 76, unit: "%" },
+          ],
+        });
+        console.log("  ✓ 9d: Env readings seeded");
+      }
+
+      // 9e. Mark completion criteria (prop-roots, prop-survival)
+      for (const criterion of propPhase.completion_criteria.filter(
+        (c: { is_required: boolean }) => c.is_required
+      )) {
+        await ctx.runMutation(api.productionOrders.updateCriterionStatus, {
+          orderId: order1Id,
+          phaseId: propPhase._id as Id<"order_phases">,
+          criterionId: criterion.id,
+          status: "completed",
+          performedBy: context.userId,
+        });
+      }
+      console.log("  ✓ 9e: Completion criteria marked (prop-roots, prop-survival)");
+
+      // 9f. Exit activity → phase complete → Vegetativo awaiting_entry
+      let propExitActivityId: Id<"activities"> | null = null;
+      const propExitSA = propSAs.exit[0];
+      if (propExitSA) {
+        const result = await ctx.runMutation(api.activities.executeActivity, {
+          scheduledActivityId: propExitSA._id,
+          performedBy: context.userId,
+          companyId: context.companyId,
+          facilityId: context.facilityId,
+          cropPhase: "propagation",
+          notes: "Inspección final de propagación",
+        });
+        propExitActivityId = result.activityId;
+        console.log("  ✓ 9f: Exit executed → Vegetativo awaiting_entry");
+      }
+
+      // 9g. Observations for exit
+      if (propExitActivityId) {
+        await ctx.runMutation(internal.seedReseed.seedTraceabilityData, {
+          activityId: propExitActivityId,
+          companyId: context.companyId,
+          observations: [
+            {
+              observation_type: "growth",
+              description: "Raíces visibles en 90% de los esquejes, supervivencia del 92%",
+              severity: "none",
+            },
+            {
+              observation_type: "positive",
+              description: "Esquejes con buen vigor y coloración saludable",
+            },
+          ],
+        });
+        console.log("  ✓ 9g: Observations seeded");
+      }
+
+      // 9h. Batch movements: propagation → vegetative
+      if (vegAreaId) {
+        await ctx.runMutation(internal.seedReseed.seedBatchMovements, {
+          movements: batches.map((b) => ({
+            batchId: b._id,
+            fromAreaId: refs.areaIds.propagation!,
+            toAreaId: vegAreaId,
+            reason: "phase_change",
+            performedBy: context.userId,
+          })),
+        });
+        console.log("  ✓ 9h: Batch movements seeded (prop → veg)");
+      }
+
+      // ═══════════════════════════════════════════════════════════════════
+      // 10. VEGETATIVE — full cycle
+      // ═══════════════════════════════════════════════════════════════════
+      console.log("\nStep 10: Vegetative — full cycle...");
+      const vegSAs = await ctx.runQuery(internal.seedReseed.getScheduledActivitiesForPhase, {
+        orderPhaseId: vegPhase._id as Id<"order_phases">,
+      });
+
+      // 10a. Entry activity → phase in_progress
+      let vegEntryActivityId: Id<"activities"> | null = null;
+      const vegEntryGroupId = vegSAs.entry[0]?.group_id;
+      if (vegEntryGroupId) {
+        const result = await ctx.runMutation(api.activities.executeActivity, {
+          groupId: vegEntryGroupId,
+          performedBy: context.userId,
+          companyId: context.companyId,
+          facilityId: context.facilityId,
+          cropPhase: "vegetative",
+          notes: "Inicio vegetativo — riego de aclimatación post-trasplante",
+          envTemp: 25,
+          envHumidity: 62,
+        });
+        vegEntryActivityId = result.activityId;
+        console.log("  ✓ 10a: Entry executed → phase in_progress");
+      }
+
+      // 10b. Env readings + observation for entry
+      if (vegEntryActivityId) {
+        await ctx.runMutation(internal.seedReseed.seedTraceabilityData, {
+          activityId: vegEntryActivityId,
+          companyId: context.companyId,
+          environmentalReadings: [
+            { reading_type: "temperature", value: 25, unit: "C", location_note: "Canopy level" },
+            { reading_type: "humidity", value: 62, unit: "%", location_note: "Ambient" },
+            { reading_type: "vpd", value: 1.1, unit: "kPa", location_note: "Canopy level" },
+          ],
+          observations: [
+            {
+              observation_type: "growth",
+              description: "Trasplante exitoso, plantas aclimatándose bien",
+              severity: "none",
+            },
+          ],
+        });
+        console.log("  ✓ 10b: Env readings + observation seeded");
+      }
+
+      // 10c. Execute ad-hoc fertilización with resources (NUT-A + NUT-B + CALMAG)
+      let vegFertActivityId: Id<"activities"> | null = null;
+      const fertigationTypeId = refs.activityTypesByCode["fertigation"];
+      if (
+        fertigationTypeId &&
+        refs.productsBySku["DEMO-NUT-A"] &&
+        refs.productsBySku["DEMO-NUT-B"] &&
+        refs.productsBySku["DEMO-CALMAG"]
+      ) {
+        const result = await ctx.runMutation(api.activities.executeActivity, {
+          typeId: fertigationTypeId,
+          batchIds: batches.map((b) => b._id),
+          performedBy: context.userId,
+          companyId: context.companyId,
+          facilityId: context.facilityId,
+          cropPhase: "vegetative",
+          notes: "Fertilización vegetativa — Base A+B + Cal-Mag",
+          envTemp: 25.5,
+          envHumidity: 60,
+          resources: [
+            makeResource(refs.productsBySku["DEMO-NUT-A"], 1, "L"),
+            makeResource(refs.productsBySku["DEMO-NUT-B"], 1, "L"),
+            makeResource(refs.productsBySku["DEMO-CALMAG"], 1, "L"),
+          ],
+          consumeInventory: true,
+        });
+        vegFertActivityId = result.activityId;
+        console.log("  ✓ 10c: Fertilización executed with NUT-A/B + CALMAG");
+      }
+
+      // 10d. Env readings for fertilización
+      if (vegFertActivityId) {
+        await ctx.runMutation(internal.seedReseed.seedTraceabilityData, {
+          activityId: vegFertActivityId,
+          companyId: context.companyId,
+          environmentalReadings: [
+            { reading_type: "temperature", value: 25.5, unit: "C" },
+            { reading_type: "humidity", value: 60, unit: "%" },
+          ],
+        });
+        console.log("  ✓ 10d: Env readings seeded");
+      }
+
+      // 10e. Mark completion criteria (veg-height, veg-nodes)
+      for (const criterion of vegPhase.completion_criteria.filter(
+        (c: { is_required: boolean }) => c.is_required
+      )) {
+        await ctx.runMutation(api.productionOrders.updateCriterionStatus, {
+          orderId: order1Id,
+          phaseId: vegPhase._id as Id<"order_phases">,
+          criterionId: criterion.id,
+          status: "completed",
+          performedBy: context.userId,
+        });
+      }
+      console.log("  ✓ 10e: Completion criteria marked (veg-height, veg-nodes)");
+
+      // 10f. Exit activity → phase complete → Floración awaiting_entry
+      let vegExitActivityId: Id<"activities"> | null = null;
+      const vegExitSA = vegSAs.exit[0];
+      if (vegExitSA) {
+        const result = await ctx.runMutation(api.activities.executeActivity, {
+          scheduledActivityId: vegExitSA._id,
+          performedBy: context.userId,
+          companyId: context.companyId,
+          facilityId: context.facilityId,
+          cropPhase: "vegetative",
+          notes: "Inspección final de vegetativo",
+        });
+        vegExitActivityId = result.activityId;
+        console.log("  ✓ 10f: Exit executed → Floración awaiting_entry");
+      }
+
+      // 10g. Observations for exit
+      if (vegExitActivityId) {
+        await ctx.runMutation(internal.seedReseed.seedTraceabilityData, {
+          activityId: vegExitActivityId,
+          companyId: context.companyId,
+          observations: [
+            {
+              observation_type: "growth",
+              description: "Altura promedio 38cm, 7 nudos desarrollados, sin plagas detectadas",
+              severity: "none",
+            },
+          ],
+        });
+        console.log("  ✓ 10g: Observations seeded");
+      }
+
+      // 10h. Batch movements: vegetative → flowering
+      if (vegAreaId && florAreaId) {
+        await ctx.runMutation(internal.seedReseed.seedBatchMovements, {
+          movements: batches.map((b) => ({
+            batchId: b._id,
+            fromAreaId: vegAreaId,
+            toAreaId: florAreaId,
+            reason: "phase_change",
+            performedBy: context.userId,
+          })),
+        });
+        console.log("  ✓ 10h: Batch movements seeded (veg → flor)");
+      }
+
+      // ═══════════════════════════════════════════════════════════════════
+      // 11. FLOWERING — entry + 1 activity (in progress)
+      // ═══════════════════════════════════════════════════════════════════
+      console.log("\nStep 11: Flowering — entry + 1 activity...");
+      const florSAs = await ctx.runQuery(internal.seedReseed.getScheduledActivitiesForPhase, {
+        orderPhaseId: florPhase._id as Id<"order_phases">,
+      });
+
+      // 11a. Entry activity → phase in_progress
+      let florEntryActivityId: Id<"activities"> | null = null;
+      const florEntryGroupId = florSAs.entry[0]?.group_id;
+      if (florEntryGroupId) {
+        const result = await ctx.runMutation(api.activities.executeActivity, {
+          groupId: florEntryGroupId,
+          performedBy: context.userId,
+          companyId: context.companyId,
+          facilityId: context.facilityId,
+          cropPhase: "flowering",
+          notes: "Inicio floración — cambio de fotoperiodo 12/12",
+          envTemp: 23,
+          envHumidity: 48,
+        });
+        florEntryActivityId = result.activityId;
+        console.log("  ✓ 11a: Entry executed → phase in_progress");
+      }
+
+      // 11b. Env readings for entry
+      if (florEntryActivityId) {
+        await ctx.runMutation(internal.seedReseed.seedTraceabilityData, {
+          activityId: florEntryActivityId,
+          companyId: context.companyId,
+          environmentalReadings: [
+            { reading_type: "temperature", value: 23, unit: "C", location_note: "Canopy level" },
+            { reading_type: "humidity", value: 48, unit: "%", location_note: "Ambient" },
+            { reading_type: "vpd", value: 1.3, unit: "kPa", location_note: "Canopy level" },
+          ],
+        });
+        console.log("  ✓ 11b: Env readings seeded (temp/hum/VPD)");
+      }
+
+      // 11c. Execute ad-hoc fertirrigación with bloom resources
+      let florFertActivityId: Id<"activities"> | null = null;
+      if (
+        fertigationTypeId &&
+        refs.productsBySku["DEMO-BLOOM-A"] &&
+        refs.productsBySku["DEMO-BLOOM-B"] &&
+        refs.productsBySku["DEMO-CALMAG"]
+      ) {
+        const result = await ctx.runMutation(api.activities.executeActivity, {
+          typeId: fertigationTypeId,
+          batchIds: batches.map((b) => b._id),
+          performedBy: context.userId,
+          companyId: context.companyId,
+          facilityId: context.facilityId,
+          cropPhase: "flowering",
+          notes: "Fertirrigación floración — Bloom A+B + Cal-Mag",
+          envTemp: 23.5,
+          envHumidity: 50,
+          resources: [
+            makeResource(refs.productsBySku["DEMO-BLOOM-A"], 1, "L"),
+            makeResource(refs.productsBySku["DEMO-BLOOM-B"], 1, "L"),
+            makeResource(refs.productsBySku["DEMO-CALMAG"], 1, "L"),
+          ],
+          consumeInventory: true,
+        });
+        florFertActivityId = result.activityId;
+        console.log("  ✓ 11c: Fertirrigación executed with BLOOM-A/B + CALMAG");
+      }
+
+      // 11d. Observations + env for fertirrigación (pest finding)
+      if (florFertActivityId) {
+        await ctx.runMutation(internal.seedReseed.seedTraceabilityData, {
+          activityId: florFertActivityId,
+          companyId: context.companyId,
+          environmentalReadings: [
+            { reading_type: "temperature", value: 23.5, unit: "C" },
+            { reading_type: "humidity", value: 50, unit: "%" },
+          ],
+          observations: [
+            {
+              observation_type: "pest",
+              severity: "low",
+              description: "Trips detectados en hojas inferiores de 3 plantas",
+              recommended_action: "Aplicar aceite de neem en aspersión foliar",
+              plant_part: "leaf",
+              affected_area_pct: 8,
+            },
+          ],
+        });
+        console.log("  ✓ 11d: Env readings + pest observation seeded");
+      }
+
+      // Flowering stays in_progress — no exit, no criteria completion
+      console.log("  ✓ Flowering remains in_progress (realistic mid-lifecycle state)");
+    } else {
+      console.log("  ⚠ Insufficient phases or batches — skipping traceability steps 9-11");
+    }
+
+    // 12. Create order #2 — OG Kush (planning only)
+    console.log("\nStep 12: Creating production order #2 (OG Kush)...");
+    let order2Created = false;
+    if (refs.cultivarIds.ogKush) {
+      await ctx.runMutation(api.productionOrders.create, {
+        companyId: context.companyId,
+        facilityId: context.facilityId,
+        templateId: refs.templateId,
+        cropTypeId: context.cannabisId,
+        cultivarId: refs.cultivarIds.ogKush,
+        orderType: "seed-to-harvest",
+        sourceType: "clone",
+        requestedQuantity: 60,
+        batchSize: 30,
+        plannedStartDate: now + 7 * DAY_MS,
+        priority: "normal",
+        notes: "Orden demo OG Kush — generada por reseed",
+        requestedBy: context.userId,
+      });
+      order2Created = true;
+      console.log("  ✓ Order #2 created (planning)");
+    } else {
+      console.log("  ⚠ OG Kush cultivar not found — skipping order #2");
+    }
+
     console.log(`\n✅ RESEED COMPLETE`);
     console.log(`  Deleted: ${totalProdDeleted} production + ${totalConfigDeleted} config = ${totalProdDeleted + totalConfigDeleted} total`);
-    console.log(`  Created: activity types + 6 areas + cultivars + suppliers + products + inventory + 1 template + ${atResult.created} activity templates + ${atrResult.created} resources`);
+    console.log(`  Created: config + ${atResult.created} activity templates + ${atrResult.created} resources`);
+    console.log(`  Created: ${pmResult.created} plant material products`);
+    console.log(`  Created: ${order2Created ? 2 : 1} production orders with full traceability`);
+    console.log(`  Traceability: activities + observations + env readings + batch movements`);
 
     return {
       success: true,
@@ -868,6 +1751,8 @@ export const reseed = action({
       seeded: {
         activityTemplates: atResult.created,
         templateResources: atrResult.created,
+        plantMaterialProducts: pmResult.created,
+        productionOrders: order2Created ? 2 : 1,
       },
     };
   },
