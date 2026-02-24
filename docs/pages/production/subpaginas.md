@@ -6,7 +6,8 @@ Muestra toda la informacion de una actividad programada:
 
 ### Header
 - Breadcrumbs: Inicio > Produccion > Actividades > [tipo actividad]
-- Acciones: boton "Reportar" (primary) + menu "..." (Editar, Saltar, Reprogramar)
+- Acciones: boton "Reportar" (primary) + menu "..." (Editar, Saltar, Reprogramar, Cancelar)
+- "Cancelar" solo visible si status=pending (texto rojo con icono XCircle)
 
 ### Card Info Basica (grid 2 cols)
 - Estado (badge con color)
@@ -37,11 +38,15 @@ Solo visible si status es `completed` o `in_progress`. Muestra datos de la activ
 - Observaciones
 - Notas
 
+### Card Razon de Cancelacion
+Solo visible si status es `cancelled` y tiene `skipped_reason`. Titulo "Razon de cancelacion", muestra texto de la razon.
+
 ### Acciones inline
 - **Reportar**: navega a `/production/activities/[id]/report` (wizard de ejecucion)
 - **Saltar**: dialog con textarea razon → `cultivationSchedules.skipScheduledActivity`
 - **Reprogramar**: dialog con date picker → `cultivationSchedules.rescheduleActivity`
 - **Editar**: navega a `/production/activities/[id]/edit`
+- **Cancelar**: dialog con textarea razon (requerida) + checkbox "Cancelar grupo completo" (si tiene group_id) → `scheduledActivities.cancel`. Guard: no permite cancelar la unica entry/exit activity de una fase.
 
 **Query principal**: `scheduledActivities.getById` (nuevo)
 
@@ -228,13 +233,37 @@ Reutiliza `OrderBatchSummary` existente.
 
 ### Seccion Fases
 - Header "Fases ({count})" con timeline bar visual
-- Phase cards clickables con: badge numerico (amber) o check (completada), nombre, fechas concretas ("01 Mar — 15 Mar"), area, activity type badges, status badge, boton "Completar" inline si `in_progress`
+- Phase cards clickables con: badge numerico (amber) o check (completada), nombre, fechas concretas ("01 Mar — 15 Mar"), area, activity type badges, status badge
+- Boton "Completar" inline si `in_progress` y orden no tiene phase_role activities
+- Boton "Revertir" (amber outline con icono Undo2) en la fase mas recientemente completada (ordenes active/completed)
+- Status `awaiting_entry` → badge amber "Esperando Inicio" + borde amber en card
 - Click en fase → `/production/orders/[id]/phases/[phaseId]`
 
-**Query principal**: `productionOrders.getById`
+### Dialog Revertir Fase
+Al hacer click en "Revertir" se abre un dialogo de confirmacion con:
+- Warning amber: "Esta accion revertira la fase a En Progreso. Los movimientos de inventario NO se revierten automaticamente."
+- Warning rojo (condicional): "La fase siguiente tiene {N} actividad(es) ejecutada(s) que quedaran huerfanas." — solo si la siguiente fase tiene actividades completed
+- Textarea "Razon de la reversion" (requerida)
+- Boton "Confirmar Reversion" (amber-500, deshabilitado sin razon)
+
+Al confirmar, `productionOrders.revertPhaseCompletion`:
+1. Revierte fase a `in_progress` (conserva `actual_end_date`)
+2. Resetea siguiente fase a `pending`, cancela sus activities pending
+3. Actualiza `batch.current_phase`, `order.current_phase_id`
+4. Si orden estaba completed → reactiva a `active`
+5. Toast: "Fase '{name}' revertida a En Progreso"
+
+### Seccion Historial de Fases
+Solo visible si orden no esta en `planning`. Header "Historial de Fases" con icono History.
+- Timeline vertical (`PhaseTransitionTimeline`) mostrando cada transicion de fase
+- Cada entrada: icono coloreado por tipo, nombre de fase, badge con tipo de transicion, triggered_by, fecha/hora, usuario, razon (si existe)
+- Ordenado por mas reciente primero
+
+**Query principal**: `productionOrders.getById` + `productionOrders.getPhaseTransitionLog`
 
 **Componentes**:
 - `app/(dashboard)/production/orders/[id]/page.tsx`
+- `components/production/phase-transition-timeline.tsx`
 
 ---
 

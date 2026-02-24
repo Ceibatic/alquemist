@@ -21,6 +21,7 @@ El modulo de Ordenes de Produccion permite crear y gestionar ordenes de trabajo 
 | `getById` | Detalle completo con fases, batches, stats |
 | `getActivities` | Actividades programadas de la orden |
 | `getByFacility` | Ordenes por instalacion para calendario |
+| `getPhaseTransitionLog` | Historial de transiciones de fase con nombres de usuario |
 
 #### Mutations Implementadas
 | Funcion | Descripcion |
@@ -28,8 +29,15 @@ El modulo de Ordenes de Produccion permite crear y gestionar ordenes de trabajo 
 | `create` | Crea orden + fases + scheduled_activities desde template |
 | `update` | Actualiza datos basicos de orden |
 | `activate` | Aprueba orden, crea batches, actualiza activities |
-| `completePhase` | Completa fase y activa siguiente |
+| `completePhase` | Completa fase y activa siguiente (admin override) |
+| `revertPhaseCompletion` | Revierte fase completada a in_progress |
 | `cancel` | Cancela orden y activities pendientes |
+
+**Archivo**: `convex/scheduledActivities.ts` (actividades individuales)
+
+| Funcion | Descripcion |
+|---------|-------------|
+| `cancel` | Cancela actividad pending con phase_role guard + group cancel |
 
 ### Flujo de Creacion de Orden
 
@@ -58,14 +66,31 @@ El modulo de Ordenes de Produccion permite crear y gestionar ordenes de trabajo 
        ├── Activa primera fase con area_id = targetAreaId
        └── Status: "active"
 
-3. COMPLETAR FASES (Operador)
-   └── productionOrders.completePhase({orderId, phaseId})
+3. COMPLETAR FASES (Operador / Exit Activity)
+   └── productionOrders.completePhase (admin) / handlePhaseExitExecution (auto)
        ├── Marca fase como completada (actual_end_date)
        ├── Activa siguiente fase:
-       │   ├── status: "in_progress"
+       │   ├── status: "awaiting_entry" (si tiene entry activity) o "in_progress"
        │   └── area_id: hereda de fase completada (fallback: order.target_area_id)
        ├── Actualiza batch.current_phase en todos los lotes activos
+       ├── Registra en phase_transition_log
        └── Si es ultima fase: order.status = "completed"
+
+4. REVERTIR FASE (Admin)
+   └── productionOrders.revertPhaseCompletion({orderId, phaseId, reason})
+       ├── Validacion: solo la fase mas recientemente completada
+       ├── Revierte a "in_progress" (conserva actual_end_date para audit)
+       ├── Siguiente fase → "pending", cancela sus activities pending
+       ├── Actualiza batch.current_phase, order.current_phase_id
+       ├── Si orden estaba completed → reactiva a "active"
+       └── Registra en phase_transition_log
+
+5. CANCELAR ACTIVIDAD (Admin)
+   └── scheduledActivities.cancel({scheduledActivityId, reason, cancelGroup?})
+       ├── Solo actividades con status "pending"
+       ├── Guard: no puede cancelar la unica entry/exit de una fase
+       ├── Setea status: "cancelled", skipped_reason: reason
+       └── cancelGroup: cancela todas las del mismo group_id
 ```
 
 ### Limitaciones Conocidas
@@ -75,6 +100,9 @@ El modulo de Ordenes de Produccion permite crear y gestionar ordenes de trabajo 
 | Actividades van al primer lote | Al activar, todas las scheduled_activities se linkean a `batchIds[0]`. Lotes 2..N no tienen actividades programadas. | By design (distribucion multi-lote es feature futura: FEAT-2026-02-multi-batch-distribution) |
 | ~~Transicion de fase es manual~~ | ~~`completePhase` no valida actividades pendientes ni requiere actividad de salida.~~ | **Resuelto**: sistema de phase_role (entry/exit activities) implementado. `completePhase` se mantiene como admin override. |
 | ~~Sin movimiento de inventario de plantas~~ | ~~`completePhase` no llama `logPhaseTransitionWithInventory`.~~ | **Resuelto**: `handleInventoryTransformation` helper extraido, recursos "produced" crean inventory_items via `executeActivity`. |
+| ~~Sin cancelar actividad individual~~ | ~~El status `cancelled` esta en schema pero ninguna mutation lo setea.~~ | **Resuelto**: `scheduledActivities.cancel` con phase_role guard y group cancel. |
+| ~~Sin revertir transicion de fase~~ | ~~No hay mecanismo de rollback si se completa una fase por error.~~ | **Resuelto**: `revertPhaseCompletion` revierte la fase mas reciente, resetea la siguiente, y registra en audit log. |
+| ~~Sin historial de transiciones~~ | ~~Transiciones se inferían de timestamps, sin audit trail explicito.~~ | **Resuelto**: tabla `phase_transition_log` con inserts en todos los transition points. Timeline en UI. |
 | Sin re-asignacion de area por fase | Todas las fases heredan el area de la fase anterior. No hay UI para cambiar area entre fases. | Pendiente: FEAT-2026-02-multi-batch-distribution |
 
 ### Sistema de Phase Roles
@@ -98,6 +126,31 @@ Las actividades de produccion pueden tener un `phase_role` que controla las tran
 **Schema**: `scheduled_activities.phase_role` + `scheduled_activities.order_phase_id` + index `by_phase_role`
 **Helpers**: `handlePhaseExitExecution()`, `handlePhaseEntryExecution()` en `convex/activities.ts`
 **Auto-creacion**: `ensurePhaseRoleActivities()` en `convex/productionOrders.ts` crea entry/exit genericas si template no las define
+**Cancel guard**: No se puede cancelar la unica actividad entry o exit de una fase (validado en `scheduledActivities.cancel`)
+
+### Phase Transition Audit Log
+
+Tabla `phase_transition_log` (append-only) registra cada cambio de estado de fase:
+
+| Campo | Tipo | Descripcion |
+|-------|------|-------------|
+| `order_id` | `id("production_orders")` | Orden |
+| `phase_id` | `id("order_phases")` | Fase afectada |
+| `phase_name` | `string` | Nombre de fase (denormalizado) |
+| `transition_type` | `string` | started / completed / reverted / entry_executed / exit_executed |
+| `from_status` | `string` | Status anterior |
+| `to_status` | `string` | Status nuevo |
+| `triggered_by` | `string` | manual / exit_activity / entry_activity / admin_override / activation |
+| `performed_by` | `id("users")?` | Usuario que ejecuto |
+| `activity_id` | `id("activities")?` | Actividad que triggeo |
+| `scheduled_activity_id` | `id("scheduled_activities")?` | Actividad programada origen |
+| `reason` | `string?` | Razon (para reversiones) |
+| `timestamp` | `number` | Momento de la transicion |
+
+**Indexes**: `by_order` [order_id, timestamp], `by_phase` [phase_id, timestamp]
+**Helper**: `logPhaseTransition()` en `convex/helpers.ts`
+**Query**: `productionOrders.getPhaseTransitionLog` con enrichment de user names
+**UI**: `PhaseTransitionTimeline` component — timeline vertical en seccion "Historial de Fases" del detalle de orden
 
 ### Frontend
 
@@ -112,9 +165,17 @@ Las actividades de produccion pueden tener un `phase_role` que controla las tran
 - Seccion batches (`OrderBatchSummary`)
 - Timeline bar visual de fases
 - Phase cards clickeables con activity type badges; boton "Completar" solo en ordenes legacy sin phase_role activities
+- Boton "Revertir" en la fase mas recientemente completada (ordenes active/completed)
 - Status `awaiting_entry` con badge amber "Esperando Inicio" y borde amber
+- **Seccion "Historial de Fases"**: timeline vertical con transiciones (`PhaseTransitionTimeline`)
 - **Dialog "Activar Orden"**: selector de area + resumen de lotes a crear
 - **Dialog "Cancelar Orden"**: confirmacion
+- **Dialog "Revertir Fase"**: razon requerida + warning inventario + warning actividades huerfanas
+
+**Detalle de actividad implementa** (`activity-detail-page.tsx`):
+- Accion "Cancelar" en dropdown menu (solo pending)
+- **Dialog "Cancelar Actividad"**: razon requerida + opcion cancelar grupo + guard phase_role
+- Card "Razon de cancelacion" visible para actividades cancelled
 
 ---
 
@@ -409,8 +470,8 @@ Las actividades de produccion pueden tener un `phase_role` que controla las tran
 | Estado | Descripcion | Acciones Disponibles |
 |--------|-------------|---------------------|
 | `planning` | En planificacion | Editar, Activar, Cancelar |
-| `active` | En produccion | Completar fase, Agregar batch, Cancelar |
-| `completed` | Finalizada | Ver historial |
+| `active` | En produccion | Completar fase, Revertir fase, Cancelar actividad, Cancelar orden |
+| `completed` | Finalizada | Revertir fase (reactiva orden), Ver historial |
 | `cancelled` | Cancelada | Ver historial |
 
 ---
@@ -420,8 +481,9 @@ Las actividades de produccion pueden tener un `phase_role` que controla las tran
 | Estado | Descripcion |
 |--------|-------------|
 | `pending` | Aun no iniciada |
+| `awaiting_entry` | Esperando ejecucion de entry activity |
 | `in_progress` | En ejecucion |
-| `completed` | Completada |
+| `completed` | Completada (revertible si es la mas reciente) |
 | `skipped` | Omitida |
 
 ---
@@ -433,7 +495,8 @@ Las actividades de produccion pueden tener un `phase_role` que controla las tran
 | `pending` | Programada para futuro |
 | `in_progress` | En ejecucion |
 | `completed` | Completada |
-| `skipped` | Omitida |
+| `skipped` | Omitida (no aplica a este ciclo) |
+| `cancelled` | Cancelada administrativamente (con razon) |
 | `overdue` | Vencida sin completar |
 
 ---
@@ -466,8 +529,10 @@ Las actividades de produccion pueden tener un `phase_role` que controla las tran
 | `create` | `companyId, facilityId, templateId?, cropTypeId, ...` | company/facility existen, template valido |
 | `update` | `orderId, ...campos opcionales` | status=planning |
 | `activate` | `orderId, approvedBy, targetAreaId?` | status=planning, targetAreaId requerido en logica |
-| `completePhase` | `orderId, phaseId, completionNotes?` | status=active, fase in_progress |
+| `completePhase` | `orderId, phaseId, completionNotes?` | status=active, fase in_progress/awaiting_entry |
+| `revertPhaseCompletion` | `orderId, phaseId, reason` | status=active/completed, fase completed, mas reciente |
 | `cancel` | `orderId, reason, archiveBatches?` | status!=completed |
+| `scheduledActivities.cancel` | `scheduledActivityId, reason, cancelGroup?` | status=pending, phase_role guard |
 
 ---
 
