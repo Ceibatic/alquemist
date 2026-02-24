@@ -298,6 +298,7 @@ export const getById = query({
         status: a.status,
         phase_role: a.phase_role,
         order_phase_id: a.order_phase_id,
+        entity_id: a.entity_id,
       })),
       activitiesCount: activities.length,
       pendingActivitiesCount: activities.filter(
