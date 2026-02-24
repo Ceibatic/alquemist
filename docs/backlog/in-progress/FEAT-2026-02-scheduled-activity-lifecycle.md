@@ -30,16 +30,16 @@ Actualmente las actividades programadas son inmutables post-creacion (no hay mut
 **para** mantener limpio el calendario sin perder trazabilidad
 
 #### Criterios de Aceptacion
-- [ ] Nueva mutation `scheduledActivities.cancel(scheduledActivityId, reason)`:
+- [x] Nueva mutation `scheduledActivities.cancel(scheduledActivityId, reason)`:
   - Solo actividades con status `pending` pueden cancelarse
   - Setea `status: "cancelled"`, `skipped_reason: reason`, `updated_at: now`
   - Si la actividad tiene `phase_role: "entry"` o `"exit"`, validar que no sea la unica de ese role para la fase
   - Si es la unica entry/exit: rechazar con error "No se puede cancelar la unica actividad de {role} de la fase. Cree una reemplazo primero."
-- [ ] Actividades `cancelled` no aparecen en el calendario por defecto (filtro por status)
-- [ ] Vista de detalle de orden: actividades canceladas aparecen en gris con badge "Cancelada" y razon
-- [ ] Actividades `in_progress` o `completed` no pueden cancelarse (validacion backend)
-- [ ] Cancelar una actividad con `group_id` ofrece opcion: "Cancelar solo esta" o "Cancelar grupo completo"
-- [ ] `npx next build` pasa sin errores
+- [x] Actividades `cancelled` no aparecen en el calendario por defecto (filtro por status)
+- [x] Vista de detalle de orden: actividades canceladas aparecen en gris con badge "Cancelada" y razon
+- [x] Actividades `in_progress` o `completed` no pueden cancelarse (validacion backend)
+- [x] Cancelar una actividad con `group_id` ofrece opcion: "Cancelar solo esta" o "Cancelar grupo completo"
+- [x] `npx next build` pasa sin errores
 
 #### Backend
 - Mutation nueva: `scheduledActivities.cancel`

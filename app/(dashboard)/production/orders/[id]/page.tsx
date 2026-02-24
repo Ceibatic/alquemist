@@ -185,7 +185,8 @@ function getActivitiesForPhase(
   const phaseActivities = activities.filter(
     (a) =>
       a.scheduled_date >= phase.planned_start_date &&
-      a.scheduled_date < phase.planned_end_date
+      a.scheduled_date < phase.planned_end_date &&
+      a.status !== 'cancelled'
   );
   return phaseActivities.reduce<Record<string, number>>((acc, a) => {
     acc[a.activity_type] = (acc[a.activity_type] ?? 0) + 1;

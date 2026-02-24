@@ -43,6 +43,7 @@ import {
   Layers,
   Clock,
   AlertTriangle,
+  XCircle,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -102,6 +103,9 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
   const router = useRouter();
   const [skipDialogOpen, setSkipDialogOpen] = useState(false);
   const [skipReason, setSkipReason] = useState('');
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelGroup, setCancelGroup] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState<Date>();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -119,6 +123,7 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
 
   const skipActivity = useMutation(api.cultivationSchedules.skipScheduledActivity);
   const rescheduleActivity = useMutation(api.cultivationSchedules.rescheduleActivity);
+  const cancelActivity = useMutation(api.scheduledActivities.cancel);
 
   if (activity === undefined) {
     return (
@@ -146,6 +151,34 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
   const canEdit = activity.status === 'pending' || activity.status === 'in_progress';
   const canReport = activity.status === 'pending' || activity.status === 'in_progress';
   const canSkip = activity.status === 'pending';
+  const canCancel = activity.status === 'pending';
+  const hasGroup = !!activity.group_id;
+
+  const handleCancel = async () => {
+    if (!cancelReason.trim()) {
+      toast.error('Ingresa una razon para cancelar la actividad');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const result = await cancelActivity({
+        scheduledActivityId,
+        reason: cancelReason.trim(),
+        cancelGroup: cancelGroup || undefined,
+      });
+      const msg = (result as any)?.cancelledCount > 1
+        ? `${(result as any).cancelledCount} actividades canceladas`
+        : 'Actividad cancelada';
+      toast.success(msg);
+      setCancelDialogOpen(false);
+      setCancelReason('');
+      setCancelGroup(false);
+    } catch (e: any) {
+      toast.error(e.message ?? 'Error al cancelar actividad');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSkip = async () => {
     if (!skipReason.trim()) {
@@ -228,6 +261,12 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
                 <DropdownMenuItem onClick={() => setSkipDialogOpen(true)}>
                   <SkipForward className="h-3.5 w-3.5 mr-2" />
                   Saltar
+                </DropdownMenuItem>
+              )}
+              {canCancel && (
+                <DropdownMenuItem onClick={() => setCancelDialogOpen(true)} className="text-red-600">
+                  <XCircle className="h-3.5 w-3.5 mr-2" />
+                  Cancelar
                 </DropdownMenuItem>
               )}
               {canEdit && (
@@ -429,11 +468,13 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
         </Card>
       )}
 
-      {/* Skip reason (if skipped) */}
-      {activity.status === 'skipped' && activity.skipped_reason && (
+      {/* Skip/cancel reason */}
+      {(activity.status === 'skipped' || activity.status === 'cancelled') && activity.skipped_reason && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Razon de salto</CardTitle>
+            <CardTitle className="text-lg">
+              {activity.status === 'cancelled' ? 'Razon de cancelacion' : 'Razon de salto'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">{activity.skipped_reason}</p>
@@ -460,6 +501,41 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
             <Button variant="outline" onClick={() => setSkipDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSkip} disabled={isSubmitting}>
               {isSubmitting ? 'Saltando...' : 'Saltar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar actividad</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Razon de cancelacion</Label>
+            <Textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Indica por que se cancela esta actividad..."
+              rows={3}
+            />
+            {hasGroup && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={cancelGroup}
+                  onChange={(e) => setCancelGroup(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                Cancelar todas las actividades del grupo
+              </label>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Volver</Button>
+            <Button variant="destructive" onClick={handleCancel} disabled={isSubmitting}>
+              {isSubmitting ? 'Cancelando...' : 'Cancelar actividad'}
             </Button>
           </DialogFooter>
         </DialogContent>
