@@ -48,6 +48,7 @@ import {
   MapPin,
   AlertTriangle,
   Undo2,
+  Pencil,
   History,
 } from 'lucide-react';
 import { PhaseTransitionTimeline } from '@/components/production/phase-transition-timeline';
@@ -220,6 +221,7 @@ function OrderPhaseCard({
   onClick,
   onComplete,
   onRevert,
+  onChangeArea,
 }: {
   phase: Phase;
   index: number;
@@ -231,6 +233,7 @@ function OrderPhaseCard({
   onClick: () => void;
   onComplete: () => void;
   onRevert: () => void;
+  onChangeArea: () => void;
 }) {
   const typeCounts = getActivitiesForPhase(activities, phase);
   const isCompleted = phase.status === 'completed';
@@ -271,6 +274,18 @@ function OrderPhaseCard({
             <span className="flex items-center gap-1">
               <MapPin className="h-3.5 w-3.5" />
               {phase.areaName}
+              {phase.status !== 'completed' && orderStatus !== 'planning' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChangeArea();
+                  }}
+                  className="ml-0.5 text-muted-foreground hover:text-amber-600 transition-colors"
+                  title="Cambiar area"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
             </span>
           )}
         </div>
@@ -345,6 +360,7 @@ export default function OrderDetailPage({ params }: PageProps) {
   const completePhase = useMutation(api.productionOrders.completePhase);
   const cancelOrder = useMutation(api.productionOrders.cancel);
   const revertPhase = useMutation(api.productionOrders.revertPhaseCompletion);
+  const updatePhaseArea = useMutation(api.productionOrders.updatePhaseArea);
 
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [activateDialogOpen, setActivateDialogOpen] = useState(false);
@@ -354,6 +370,10 @@ export default function OrderDetailPage({ params }: PageProps) {
   const [revertPhaseId, setRevertPhaseId] = useState<Id<'order_phases'> | null>(null);
   const [revertReason, setRevertReason] = useState('');
   const [isReverting, setIsReverting] = useState(false);
+  const [changeAreaDialogOpen, setChangeAreaDialogOpen] = useState(false);
+  const [changeAreaPhaseId, setChangeAreaPhaseId] = useState<Id<'order_phases'> | null>(null);
+  const [changeAreaSelectedId, setChangeAreaSelectedId] = useState<string>('');
+  const [isChangingArea, setIsChangingArea] = useState(false);
 
   // Query areas for the activation dialog
   const areas = useQuery(
@@ -435,6 +455,29 @@ export default function OrderDetailPage({ params }: PageProps) {
       });
     } finally {
       setIsReverting(false);
+    }
+  };
+
+  const handleChangePhaseArea = async () => {
+    if (!changeAreaPhaseId || !changeAreaSelectedId || !userId) return;
+    setIsChangingArea(true);
+    try {
+      const result = await updatePhaseArea({
+        orderId,
+        phaseId: changeAreaPhaseId,
+        newAreaId: changeAreaSelectedId as Id<'areas'>,
+        performedBy: userId as Id<'users'>,
+      });
+      toast.success(`Area de fase '${result.phaseName}' actualizada a '${result.areaName}'`);
+      setChangeAreaDialogOpen(false);
+      setChangeAreaPhaseId(null);
+      setChangeAreaSelectedId('');
+    } catch (err: any) {
+      toast.error('Error', {
+        description: err?.message ?? 'No se pudo cambiar el area.',
+      });
+    } finally {
+      setIsChangingArea(false);
     }
   };
 
@@ -733,6 +776,10 @@ export default function OrderDetailPage({ params }: PageProps) {
                     setRevertPhaseId(phase._id as Id<'order_phases'>);
                     setRevertDialogOpen(true);
                   }}
+                  onChangeArea={() => {
+                    setChangeAreaPhaseId(phase._id as Id<'order_phases'>);
+                    setChangeAreaDialogOpen(true);
+                  }}
                 />
               ))}
             </div>
@@ -891,6 +938,85 @@ export default function OrderDetailPage({ params }: PageProps) {
               disabled={!revertReason.trim() || isReverting}
             >
               {isReverting ? 'Revirtiendo...' : 'Confirmar Reversion'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Change Phase Area Dialog ──────────────────────────────── */}
+      <Dialog
+        open={changeAreaDialogOpen}
+        onOpenChange={(open) => {
+          setChangeAreaDialogOpen(open);
+          if (!open) {
+            setChangeAreaPhaseId(null);
+            setChangeAreaSelectedId('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cambiar Area de Fase</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {(() => {
+              const phaseData = phases.find((p) => p._id === changeAreaPhaseId);
+              const isActive = phaseData?.status === 'in_progress' || phaseData?.status === 'awaiting_entry';
+              return (
+                <>
+                  {isActive && (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                      <div className="flex gap-2">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <p>La fase ya inicio. Cambiar area actualizara los lotes activos.</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label>Nueva area *</Label>
+                    <Select
+                      value={changeAreaSelectedId}
+                      onValueChange={setChangeAreaSelectedId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar area" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeAreas.map((area) => {
+                          const config = area.capacity_configurations as any;
+                          const maxCap = config?.max_capacity || 0;
+                          const available = maxCap > 0 ? maxCap - area.current_occupancy : null;
+                          return (
+                            <SelectItem key={area._id} value={area._id}>
+                              {area.name} ({area.area_type})
+                              {available != null && ` — ${available} disponibles`}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setChangeAreaDialogOpen(false);
+                setChangeAreaPhaseId(null);
+                setChangeAreaSelectedId('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-amber-500 text-white hover:bg-amber-600"
+              onClick={handleChangePhaseArea}
+              disabled={!changeAreaSelectedId || isChangingArea}
+            >
+              {isChangingArea ? 'Actualizando...' : 'Confirmar Cambio'}
             </Button>
           </DialogFooter>
         </DialogContent>
