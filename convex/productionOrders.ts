@@ -493,6 +493,13 @@ export const create = mutation({
           phaseStartDate +
           templatePhase.estimated_duration_days * 24 * 60 * 60 * 1000;
 
+        // Propagate completion criteria from template phase
+        const criteria = templatePhase.completion_criteria as any[] | undefined;
+        const criteriaStatus = criteria?.map((c: any) => ({
+          criterion_id: c.id,
+          status: "pending" as const,
+        }));
+
         const orderPhaseId = await ctx.db.insert("order_phases", {
           order_id: orderId,
           template_phase_id: templatePhase._id,
@@ -505,6 +512,8 @@ export const create = mutation({
           area_id: undefined,
           status: "pending",
           completion_notes: undefined,
+          completion_criteria: criteria,
+          criteria_status: criteriaStatus,
           created_at: now,
         });
 
@@ -1025,6 +1034,59 @@ export const activate = mutation({
 });
 
 /**
+ * Update the status of a completion criterion on an order phase
+ */
+export const updateCriterionStatus = mutation({
+  args: {
+    orderId: v.id("production_orders"),
+    phaseId: v.id("order_phases"),
+    criterionId: v.string(),
+    status: v.string(), // "completed" | "pending" | "failed"
+    performedBy: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const phase = await ctx.db.get(args.phaseId);
+    if (!phase) throw new Error("Phase not found");
+    if (phase.order_id !== args.orderId) throw new Error("Phase does not belong to this order");
+
+    const criteriaStatus = (phase.criteria_status as any[]) || [];
+    const existing = criteriaStatus.find((cs: any) => cs.criterion_id === args.criterionId);
+
+    const now = Date.now();
+    let updatedStatus;
+
+    if (existing) {
+      updatedStatus = criteriaStatus.map((cs: any) =>
+        cs.criterion_id === args.criterionId
+          ? {
+              ...cs,
+              status: args.status,
+              completed_at: args.status === "completed" ? now : undefined,
+              completed_by: args.status === "completed" ? args.performedBy : undefined,
+            }
+          : cs
+      );
+    } else {
+      updatedStatus = [
+        ...criteriaStatus,
+        {
+          criterion_id: args.criterionId,
+          status: args.status,
+          completed_at: args.status === "completed" ? now : undefined,
+          completed_by: args.status === "completed" ? args.performedBy : undefined,
+        },
+      ];
+    }
+
+    await ctx.db.patch(args.phaseId, {
+      criteria_status: updatedStatus,
+    });
+
+    return { success: true };
+  },
+});
+
+/**
  * Update the area assigned to a phase.
  * Moves batches if the phase is in_progress or awaiting_entry.
  */
@@ -1176,6 +1238,21 @@ export const completePhase = mutation({
       // Allow completion but log in metadata — this is an admin override
       console.warn(
         `Phase ${phase.phase_name} completed manually with ${pendingExitActivities.length} pending exit activity(ies). Admin override.`
+      );
+    }
+
+    // Warn about pending completion criteria (admin override — allow anyway)
+    const criteria = (phase.completion_criteria as any[]) || [];
+    const criteriaStatus = (phase.criteria_status as any[]) || [];
+    const pendingRequiredCriteria = criteria
+      .filter((c: any) => c.is_required)
+      .filter((c: any) => {
+        const cs = criteriaStatus.find((s: any) => s.criterion_id === c.id);
+        return !cs || cs.status !== "completed";
+      });
+    if (pendingRequiredCriteria.length > 0) {
+      console.warn(
+        `Phase ${phase.phase_name} completed with ${pendingRequiredCriteria.length} required criteria pending. Admin override.`
       );
     }
 

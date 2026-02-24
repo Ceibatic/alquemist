@@ -520,3 +520,29 @@ export const incrementUsage = mutation({
     };
   },
 });
+
+/**
+ * Update completion criteria for a template phase
+ */
+export const updatePhaseCompletionCriteria = mutation({
+  args: {
+    phaseId: v.id("template_phases"),
+    completionCriteria: v.array(v.object({
+      id: v.string(),
+      label: v.string(),
+      type: v.string(),
+      config: v.optional(v.any()),
+      is_required: v.boolean(),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const phase = await ctx.db.get(args.phaseId);
+    if (!phase) throw new Error("Phase not found");
+
+    await ctx.db.patch(args.phaseId, {
+      completion_criteria: args.completionCriteria,
+    });
+
+    return { success: true };
+  },
+});

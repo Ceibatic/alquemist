@@ -30,6 +30,8 @@ import {
 } from '@/components/ui/select';
 import { OrderBatchSummary } from '@/components/production-orders/order-batch-summary';
 import { PhaseBatchList } from '@/components/production/phase-batch-list';
+import { PhaseCriteriaChecklist } from '@/components/production/phase-criteria-checklist';
+import { PhaseActivityTimeline } from '@/components/production/phase-activity-timeline';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/providers/user-provider';
 import {
@@ -51,6 +53,7 @@ import {
   Undo2,
   Pencil,
   History,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { PhaseTransitionTimeline } from '@/components/production/phase-transition-timeline';
 
@@ -165,6 +168,8 @@ interface Phase {
   actual_end_date?: number;
   status: string;
   areaName: string | null;
+  completion_criteria?: any[];
+  criteria_status?: any[];
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -225,6 +230,7 @@ function OrderPhaseCard({
   onComplete,
   onRevert,
   onChangeArea,
+  userId,
 }: {
   phase: Phase;
   index: number;
@@ -238,6 +244,7 @@ function OrderPhaseCard({
   onComplete: () => void;
   onRevert: () => void;
   onChangeArea: () => void;
+  userId: Id<'users'> | null;
 }) {
   const typeCounts = getActivitiesForPhase(activities, phase);
   const isCompleted = phase.status === 'completed';
@@ -304,6 +311,18 @@ function OrderPhaseCard({
                 a.scheduled_date < phase.planned_end_date
               )
             )}
+          />
+        )}
+
+        {/* Completion criteria checklist */}
+        {phase.completion_criteria && phase.completion_criteria.length > 0 && userId && orderStatus !== 'planning' && (
+          <PhaseCriteriaChecklist
+            orderId={orderId as Id<'production_orders'>}
+            phaseId={phase._id as Id<'order_phases'>}
+            criteria={phase.completion_criteria}
+            criteriaStatus={phase.criteria_status ?? []}
+            userId={userId}
+            readonly={phase.status === 'completed'}
           />
         )}
       </div>
@@ -798,12 +817,34 @@ export default function OrderDetailPage({ params }: PageProps) {
                     setChangeAreaPhaseId(phase._id as Id<'order_phases'>);
                     setChangeAreaDialogOpen(true);
                   }}
+                  userId={userId as Id<'users'> | null}
                 />
               ))}
             </div>
           </>
         )}
       </div>
+
+      {/* ── Activity Reassignment Timeline ─────────────────────────── */}
+      {order.status === 'active' && phases.length > 1 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <ArrowLeftRight className="h-5 w-5 text-muted-foreground" />
+            Reasignar Actividades
+            <span className="text-sm font-normal text-muted-foreground">
+              (arrastrar entre fases)
+            </span>
+          </h2>
+          <Card>
+            <CardContent className="pt-4">
+              <PhaseActivityTimeline
+                phases={phases}
+                activities={activities}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* ── Phase Transition History ──────────────────────────────── */}
       {order.status !== 'planning' && (
