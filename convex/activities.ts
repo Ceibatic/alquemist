@@ -4,9 +4,102 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, MutationCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
 import { generateInternalLotNumber, consumeFromInventoryFIFO, getActivityTypeByCode, createLaborCostEntry } from "./helpers";
+
+// ============================================================================
+// INVENTORY TRANSFORMATION HELPER
+// ============================================================================
+
+/**
+ * Create a new inventory_item from a "produced" resource, optionally marking
+ * a source item as transformed. Used by both executeActivity (for direction:"produced")
+ * and logPhaseTransitionWithInventory (backward compat wrapper).
+ *
+ * Returns the new inventory_item _id and generated batch number.
+ */
+async function handleInventoryTransformation(
+  ctx: MutationCtx,
+  params: {
+    targetProductId: Id<"products">;
+    targetQuantity: number;
+    targetQuantityUnit: string;
+    areaId: Id<"areas">;
+    facilityId?: Id<"facilities">;
+    companyId?: Id<"companies">;
+    batchId?: Id<"batches">;
+    activityId: Id<"activities">;
+    sourceInventoryItemId?: Id<"inventory_items">;
+    notes?: string;
+  }
+): Promise<{ transformedItemId: Id<"inventory_items">; batchNumber: string }> {
+  const now = Date.now();
+
+  const targetProduct = await ctx.db.get(params.targetProductId);
+  if (!targetProduct) {
+    throw new Error("Producto destino no encontrado");
+  }
+
+  // Generate lot number based on target product category
+  const batchNumber = await generateInternalLotNumber(ctx, targetProduct.category);
+
+  // Resolve cost from source item if available
+  let costPerUnit: number | undefined;
+  let expirationDate: number | undefined;
+  let purchasePrice: number | undefined;
+  let sourceNote = "";
+  if (params.sourceInventoryItemId) {
+    const sourceItem = await ctx.db.get(params.sourceInventoryItemId);
+    if (sourceItem) {
+      costPerUnit = sourceItem.cost_per_unit;
+      expirationDate = sourceItem.expiration_date;
+      purchasePrice = sourceItem.purchase_price;
+      sourceNote = ` (lote origen: ${sourceItem.batch_number || "N/A"})`;
+    }
+  }
+
+  // Create new inventory item
+  const transformedItemId = await ctx.db.insert("inventory_items", {
+    product_id: params.targetProductId,
+    area_id: params.areaId,
+    quantity_available: params.targetQuantity,
+    quantity_reserved: 0,
+    quantity_committed: 0,
+    quantity_unit: params.targetQuantityUnit,
+    batch_number: batchNumber,
+    serial_numbers: [],
+    received_date: now,
+    manufacturing_date: now,
+    expiration_date: expirationDate,
+    purchase_price: purchasePrice,
+    cost_per_unit: costPerUnit,
+    certificates: [],
+    source_type: "production",
+    source_batch_id: params.batchId,
+    lot_status: "available",
+    last_movement_date: now,
+    notes: (params.notes || "Transformacion de inventario") + sourceNote,
+    created_at: now,
+    updated_at: now,
+    created_by_activity_id: params.activityId,
+    transformation_status: "active",
+  });
+
+  // Mark source item as transformed if provided
+  if (params.sourceInventoryItemId) {
+    await ctx.db.patch(params.sourceInventoryItemId, {
+      quantity_available: 0,
+      last_movement_date: now,
+      updated_at: now,
+      transformation_status: "transformed",
+      transformed_to_item_id: transformedItemId,
+      transformed_by_activity_id: params.activityId,
+    });
+  }
+
+  return { transformedItemId, batchNumber };
+}
 
 /**
  * List activities
@@ -565,6 +658,47 @@ export const executeActivity = mutation({
             }
             continue;
           }
+        }
+
+        // Handle "produced" direction: create inventory item via transformation helper
+        if (resource.direction === "produced") {
+          // Resolve area from batch if not provided via args.zoneId
+          let producedAreaId = args.zoneId;
+          if (!producedAreaId && opts.batchId) {
+            const batchForArea = await ctx.db.get(opts.batchId);
+            producedAreaId = batchForArea?.area_id;
+          }
+          if (!producedAreaId) {
+            throw new Error("Se requiere un area para crear items de inventario producidos");
+          }
+
+          const { transformedItemId, batchNumber: prodBatchNumber } =
+            await handleInventoryTransformation(ctx, {
+              targetProductId: resource.product_id,
+              targetQuantity: resource.quantity,
+              targetQuantityUnit: resource.quantity_unit,
+              areaId: producedAreaId,
+              facilityId: opts.facilityId ?? args.facilityId,
+              companyId: opts.companyId ?? args.companyId,
+              batchId: opts.batchId,
+              activityId,
+              sourceInventoryItemId: resource.inventory_item_id,
+              notes: resource.notes,
+            });
+
+          await ctx.db.insert("activity_resources", {
+            activity_id: activityId,
+            direction: "produced",
+            product_id: resource.product_id,
+            inventory_item_id: transformedItemId,
+            quantity: resource.quantity,
+            unit_id: resource.unit_id,
+            quantity_unit: resource.quantity_unit,
+            batch_number: prodBatchNumber,
+            notes: resource.notes,
+            created_at: now,
+          });
+          continue;
         }
 
         if (!costTotal && costPerUnit) {
@@ -2085,52 +2219,23 @@ export const logPhaseTransitionWithInventory = mutation({
         created_at: now,
       });
 
-      // Generate internal batch number for transformed product based on TARGET category
-      // Internal products (phase transitions) don't have supplier_id or supplier_lot_number
-      const transformedBatchNumber = await generateInternalLotNumber(ctx, targetProduct.category);
-
-      // Create new inventory item for the transformed product
-      // Note: supplier_id and supplier_lot_number are NOT copied - this is an internal transformation
-      transformedInventoryItemId = await ctx.db.insert("inventory_items", {
-        product_id: args.targetProductId,
-        area_id: args.areaId,
-        // supplier_id: undefined - internal products have no external supplier
-        // supplier_lot_number: undefined - no supplier lot for internal products
-        quantity_available: args.targetQuantity,
-        quantity_reserved: 0,
-        quantity_committed: 0,
-        quantity_unit: args.targetQuantityUnit,
-        batch_number: transformedBatchNumber, // New internal lot based on target category
-        serial_numbers: [],
-        received_date: now,
-        manufacturing_date: now,
-        expiration_date: sourceInventoryItem.expiration_date,
-        purchase_price: sourceInventoryItem.purchase_price,
-        cost_per_unit: sourceInventoryItem.cost_per_unit,
-        certificates: [],
-        source_type: "production",
-        source_batch_id: args.batchId,
-        lot_status: "available",
-        last_movement_date: now,
-        notes: `Transición de fase: ${previousPhase} → ${args.newPhase} (lote origen: ${sourceInventoryItem.batch_number || 'N/A'})`,
-        created_at: now,
-        updated_at: now,
-        created_by_activity_id: inventoryActivityId,
-        transformation_status: "active",
-      });
-
-      // Mark source item as transformed
-      await ctx.db.patch(sourceInventoryItem._id, {
-        quantity_available: 0,
-        last_movement_date: now,
-        updated_at: now,
-        transformation_status: "transformed",
-        transformed_to_item_id: transformedInventoryItemId,
-        transformed_by_activity_id: inventoryActivityId,
-      });
+      // Create new inventory item and mark source as transformed via shared helper
+      const { transformedItemId, batchNumber: transformedBatchNumber } =
+        await handleInventoryTransformation(ctx, {
+          targetProductId: args.targetProductId,
+          targetQuantity: args.targetQuantity,
+          targetQuantityUnit: args.targetQuantityUnit,
+          areaId: args.areaId,
+          facilityId: args.facilityId,
+          batchId: args.batchId,
+          activityId: inventoryActivityId!,
+          sourceInventoryItemId: sourceInventoryItem._id,
+          notes: `Transición de fase: ${previousPhase} → ${args.newPhase}`,
+        });
+      transformedInventoryItemId = transformedItemId;
 
       // Update activity with materials_produced
-      await ctx.db.patch(inventoryActivityId, {
+      await ctx.db.patch(inventoryActivityId!, {
         materials_produced: [
           {
             product_id: args.targetProductId,
