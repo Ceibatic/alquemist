@@ -169,7 +169,17 @@ export function ReportActivityWizard({
     if (isLastStep && currentStepKey !== 'quality') {
       try {
         await handleSubmit();
-        toast.success('Actividad completada exitosamente');
+        if (activity?.phase_role === 'exit') {
+          toast.success('Fase completada', {
+            description: 'La actividad de salida completo la fase y avanzo a la siguiente.',
+          });
+        } else if (activity?.phase_role === 'entry') {
+          toast.success('Fase iniciada', {
+            description: 'La actividad de entrada inicio la fase.',
+          });
+        } else {
+          toast.success('Actividad completada exitosamente');
+        }
         router.push(detailUrl);
       } catch {
         // Error handled by hook
@@ -254,6 +264,18 @@ export function ReportActivityWizard({
           { label: 'Reportar' },
         ]}
       />
+
+      {/* Phase role context */}
+      {activity.phase_role === 'exit' && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 text-center">
+          <strong>Actividad de salida:</strong> Al completar, la fase actual se cerrara y se avanzara a la siguiente.
+        </div>
+      )}
+      {activity.phase_role === 'entry' && (
+        <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 text-center">
+          <strong>Actividad de entrada:</strong> Al completar, la fase se marcara como iniciada.
+        </div>
+      )}
 
       {/* Step indicator */}
       {steps.length > 1 && (

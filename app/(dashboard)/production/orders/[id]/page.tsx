@@ -144,6 +144,8 @@ interface ActivitySummary {
   activity_type: string;
   scheduled_date: number;
   status: string;
+  phase_role?: 'entry' | 'exit';
+  order_phase_id?: string;
 }
 
 interface Phase {
@@ -208,6 +210,7 @@ function OrderPhaseCard({
   activities,
   orderId,
   orderStatus,
+  hasPhaseRoleActivities,
   onClick,
   onComplete,
 }: {
@@ -216,12 +219,14 @@ function OrderPhaseCard({
   activities: ActivitySummary[];
   orderId: string;
   orderStatus: string;
+  hasPhaseRoleActivities: boolean;
   onClick: () => void;
   onComplete: () => void;
 }) {
   const typeCounts = getActivitiesForPhase(activities, phase);
   const isCompleted = phase.status === 'completed';
   const isInProgress = phase.status === 'in_progress';
+  const isAwaitingEntry = phase.status === 'awaiting_entry';
 
   return (
     <div
@@ -230,7 +235,7 @@ function OrderPhaseCard({
       onClick={onClick}
       onKeyDown={(e) => e.key === 'Enter' && onClick()}
       className={`flex items-center gap-4 border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
-        isInProgress ? 'border-blue-300 bg-blue-50/30' : ''
+        isInProgress ? 'border-blue-300 bg-blue-50/30' : isAwaitingEntry ? 'border-amber-300 bg-amber-50/30' : ''
       }`}
     >
       {/* Phase number badge or check */}
@@ -281,7 +286,7 @@ function OrderPhaseCard({
           {PHASE_STATUS_LABELS[phase.status] ?? phase.status}
         </Badge>
 
-        {isInProgress && orderStatus === 'active' && (
+        {isInProgress && orderStatus === 'active' && !hasPhaseRoleActivities && (
           <Button
             size="sm"
             className="bg-green-600 hover:bg-green-700 text-white"
@@ -408,6 +413,7 @@ export default function OrderDetailPage({ params }: PageProps) {
 
   const phases: Phase[] = order.phases ?? [];
   const activities: ActivitySummary[] = order.activities ?? [];
+  const hasPhaseRoleActivities = activities.some((a) => a.phase_role === 'entry' || a.phase_role === 'exit');
 
   // Calculate total timeline span for the bar
   const totalMs =
@@ -649,6 +655,7 @@ export default function OrderDetailPage({ params }: PageProps) {
                   activities={activities}
                   orderId={orderId}
                   orderStatus={order.status}
+                  hasPhaseRoleActivities={hasPhaseRoleActivities}
                   onClick={() =>
                     router.push(
                       `/production/orders/${orderId}/phases/${phase._id}`

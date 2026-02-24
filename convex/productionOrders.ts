@@ -296,6 +296,8 @@ export const getById = query({
         activity_type: a.activity_type,
         scheduled_date: a.scheduled_date,
         status: a.status,
+        phase_role: a.phase_role,
+        order_phase_id: a.order_phase_id,
       })),
       activitiesCount: activities.length,
       pendingActivitiesCount: activities.filter(

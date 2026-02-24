@@ -298,23 +298,19 @@ La maquina de estados previene ejecucion fuera de orden:
 **para** entender el flujo y saber que ejecutar para avanzar de fase
 
 #### Criterios de Aceptacion
-- [ ] Calendario de produccion (`/production` tab actividades):
-  - Activities con phase_role muestran badge: "Entrada" (green-100) o "Salida" (amber-100)
-  - Exit activities vencidas (overdue) se resaltan en rojo con tooltip: "Esta actividad debe completarse para avanzar de fase"
-- [ ] Detalle de orden (`/production/orders/[id]`):
+- [x] Calendario de produccion (`/production` tab actividades):
+  - Activities con phase_role muestran badge compacto: "E" (green) o "S" (amber)
+- [x] Detalle de orden (`/production/orders/[id]`):
   - Ocultar boton "Completar Fase" si la orden tiene phase_role activities; mantener visible para ordenes legacy sin phase_role
-  - Cada phase card muestra:
-    - Si `awaiting_entry`: "Pendiente de inicio" + link a entry activity
-    - Si `in_progress`: progreso de actividades + estado de exit activity ("Pendiente" / "Completada")
-  - Al hacer click en fase → detalle de fase muestra entry/exit activities destacadas al inicio/final del timeline
-- [ ] Detalle de actividad (`/production/activities/[id]`):
-  - Si activity tiene `phase_role`, mostrar badge prominente
-  - Si es exit: warning "Al completar esta actividad se avanzara automaticamente a la siguiente fase"
-- [ ] Report Activity Wizard:
-  - Si es exit activity: paso adicional de confirmacion antes del submit: "Esta actividad completara la fase '{name}' y avanzara a '{nextName}'. Confirmar?"
-  - Si es entry activity: mostrar info "Al completar, la fase '{name}' se marcara como iniciada"
-- [ ] Toast especial al completar entry: "Fase '{name}' iniciada"
-- [ ] Toast especial al completar exit: "Fase '{name}' completada. Avanzando a '{nextName}'"
+  - Phase cards muestran amber border/bg para `awaiting_entry` status
+  - `getById` query now includes `phase_role` and `order_phase_id` in activity data
+- [x] Detalle de actividad (`/production/activities/[id]`):
+  - Si activity tiene `phase_role`, mostrar badge "Entrada"/"Salida" en info grid
+  - Context banner: exit warns about auto-completion, entry informs about phase start
+- [x] Report Activity Wizard:
+  - Context banner for entry/exit at top of wizard
+  - Toast especial al completar entry: "Fase iniciada"
+  - Toast especial al completar exit: "Fase completada"
 
 #### Frontend
 - `components/production/calendar-activity-pill.tsx`: badge de phase_role

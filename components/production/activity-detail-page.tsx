@@ -241,6 +241,18 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
         </div>
       </div>
 
+      {/* Phase role context banner */}
+      {activity.phase_role === 'exit' && activity.status !== 'completed' && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <strong>Actividad de salida de fase:</strong> Al completar esta actividad, la fase se completara automaticamente y se avanzara a la siguiente.
+        </div>
+      )}
+      {activity.phase_role === 'entry' && activity.status !== 'completed' && (
+        <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+          <strong>Actividad de entrada a fase:</strong> Al completar esta actividad, la fase se marcara como iniciada.
+        </div>
+      )}
+
       {/* Info card */}
       <Card>
         <CardHeader>
@@ -304,6 +316,17 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
                 icon={<MapPin className="h-4 w-4" />}
                 label="Area"
                 value={activity.areaName}
+              />
+            )}
+            {activity.phase_role && (
+              <InfoItem
+                icon={<Layers className="h-4 w-4" />}
+                label="Rol en fase"
+                value={
+                  <Badge className={activity.phase_role === 'entry' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}>
+                    {activity.phase_role === 'entry' ? 'Entrada' : 'Salida'}
+                  </Badge>
+                }
               />
             )}
             {activity.batchPhase && (
