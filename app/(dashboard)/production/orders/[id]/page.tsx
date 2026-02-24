@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { OrderBatchSummary } from '@/components/production-orders/order-batch-summary';
+import { PhaseBatchList } from '@/components/production/phase-batch-list';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/components/providers/user-provider';
 import {
@@ -151,6 +152,7 @@ interface ActivitySummary {
   status: string;
   phase_role?: 'entry' | 'exit';
   order_phase_id?: string;
+  entity_id?: string;
 }
 
 interface Phase {
@@ -214,6 +216,7 @@ function OrderPhaseCard({
   phase,
   index,
   activities,
+  batches,
   orderId,
   orderStatus,
   hasPhaseRoleActivities,
@@ -226,6 +229,7 @@ function OrderPhaseCard({
   phase: Phase;
   index: number;
   activities: ActivitySummary[];
+  batches: any[];
   orderId: string;
   orderStatus: string;
   hasPhaseRoleActivities: boolean;
@@ -289,6 +293,19 @@ function OrderPhaseCard({
             </span>
           )}
         </div>
+
+        {/* Batch list (only if order is active and has multiple batches) */}
+        {batches.length > 1 && orderStatus !== 'planning' && (
+          <PhaseBatchList
+            batches={batches}
+            activities={activities.filter(
+              (a) => a.order_phase_id === phase._id || (
+                a.scheduled_date >= phase.planned_start_date &&
+                a.scheduled_date < phase.planned_end_date
+              )
+            )}
+          />
+        )}
       </div>
 
       {/* Activity type badges + status */}
@@ -757,6 +774,7 @@ export default function OrderDetailPage({ params }: PageProps) {
                   phase={phase}
                   index={index}
                   activities={activities}
+                  batches={order.batches ?? []}
                   orderId={orderId}
                   orderStatus={order.status}
                   hasPhaseRoleActivities={hasPhaseRoleActivities}
