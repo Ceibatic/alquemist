@@ -66,6 +66,7 @@ export const create = mutation({
     qualityCheckTemplateId: v.optional(v.id("quality_check_templates")),
     instructions: v.optional(v.string()),
     safetyNotes: v.optional(v.string()),
+    phaseRole: v.optional(v.union(v.literal("entry"), v.literal("exit"))),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -86,6 +87,16 @@ export const create = mutation({
       (max, a) => Math.max(max, a.activity_order),
       0
     );
+
+    // Validate max 1 entry and 1 exit per phase
+    if (args.phaseRole) {
+      const existing = existingActivities.find((a) => a.phase_role === args.phaseRole);
+      if (existing) {
+        throw new Error(
+          `Ya existe una actividad de ${args.phaseRole === "entry" ? "entrada" : "salida"} para esta fase: "${existing.activity_name}"`
+        );
+      }
+    }
 
     // Validate quality check template if provided
     if (args.qualityCheckTemplateId) {
@@ -112,6 +123,7 @@ export const create = mutation({
       quality_check_template_id: args.qualityCheckTemplateId,
       instructions: args.instructions,
       safety_notes: args.safetyNotes,
+      phase_role: args.phaseRole,
       created_at: now,
     });
 
@@ -137,6 +149,7 @@ export const createFromActivityTemplate = mutation({
     isQualityCheck: v.optional(v.boolean()),
     instructions: v.optional(v.string()),
     safetyNotes: v.optional(v.string()),
+    phaseRole: v.optional(v.union(v.literal("entry"), v.literal("exit"))),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -174,6 +187,16 @@ export const createFromActivityTemplate = mutation({
       0
     );
 
+    // Validate max 1 entry and 1 exit per phase
+    if (args.phaseRole) {
+      const existing = existingActivities.find((a) => a.phase_role === args.phaseRole);
+      if (existing) {
+        throw new Error(
+          `Ya existe una actividad de ${args.phaseRole === "entry" ? "entrada" : "salida"} para esta fase: "${existing.activity_name}"`
+        );
+      }
+    }
+
     // Use startDay if provided, otherwise fall back to template's phase_day_start
     const daysFromStart = args.startDay != null
       ? args.startDay - 1  // Convert 1-based day to 0-based offset
@@ -199,6 +222,7 @@ export const createFromActivityTemplate = mutation({
       instructions: args.instructions ?? activityTemplate.description,
       safety_notes: args.safetyNotes,
       activity_template_id: args.activityTemplateId,
+      phase_role: args.phaseRole,
       created_at: now,
     });
 
@@ -223,11 +247,28 @@ export const update = mutation({
     qualityCheckTemplateId: v.optional(v.id("quality_check_templates")),
     instructions: v.optional(v.string()),
     safetyNotes: v.optional(v.string()),
+    phaseRole: v.optional(v.union(v.literal("entry"), v.literal("exit"), v.literal("none"))),
   },
   handler: async (ctx, args) => {
     const activity = await ctx.db.get(args.activityId);
     if (!activity) {
       throw new Error("Activity not found");
+    }
+
+    // Validate max 1 entry and 1 exit per phase when setting phase_role
+    if (args.phaseRole && args.phaseRole !== "none") {
+      const phaseActivities = await ctx.db
+        .query("template_activities")
+        .withIndex("by_phase", (q) => q.eq("phase_id", activity.phase_id))
+        .collect();
+      const existing = phaseActivities.find(
+        (a) => a._id !== args.activityId && a.phase_role === args.phaseRole
+      );
+      if (existing) {
+        throw new Error(
+          `Ya existe una actividad de ${args.phaseRole === "entry" ? "entrada" : "salida"} para esta fase: "${existing.activity_name}"`
+        );
+      }
     }
 
     // Validate quality check template if provided
@@ -260,6 +301,8 @@ export const update = mutation({
     if (args.instructions !== undefined)
       updates.instructions = args.instructions;
     if (args.safetyNotes !== undefined) updates.safety_notes = args.safetyNotes;
+    if (args.phaseRole !== undefined)
+      updates.phase_role = args.phaseRole === "none" ? undefined : args.phaseRole;
 
     await ctx.db.patch(args.activityId, updates);
 

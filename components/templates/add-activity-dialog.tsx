@@ -49,6 +49,7 @@ export function AddActivityDialog({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [activityName, setActivityName] = useState('');
   const [startDay, setStartDay] = useState(day);
+  const [phaseRole, setPhaseRole] = useState<string>('none');
   const [saving, setSaving] = useState(false);
 
   // Sync startDay when `day` prop changes (dialog opened for a different day)
@@ -63,6 +64,7 @@ export function AddActivityDialog({
       setSelectedTemplateId('');
       setActivityName('');
       setStartDay(day);
+      setPhaseRole('none');
     }
   }, [open, day]);
 
@@ -122,6 +124,7 @@ export function AddActivityDialog({
         activityTemplateId: selectedTemplateId as Id<'activity_templates'>,
         startDay,
         activityName: activityName.trim() || undefined,
+        phaseRole: phaseRole === 'entry' || phaseRole === 'exit' ? phaseRole : undefined,
       });
       toast.success('Actividad agregada', {
         description: `"${activityName}" fue agregada al día ${startDay}.`,
@@ -264,6 +267,28 @@ export function AddActivityDialog({
                 setStartDay(Math.max(1, parseInt(e.target.value, 10) || 1))
               }
             />
+          </div>
+
+          {/* Phase Role */}
+          <div className="space-y-1.5">
+            <Label htmlFor="phase-role">Rol en la fase</Label>
+            <Select value={phaseRole} onValueChange={setPhaseRole}>
+              <SelectTrigger id="phase-role">
+                <SelectValue placeholder="Regular" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Regular</SelectItem>
+                <SelectItem value="entry">Entrada a fase</SelectItem>
+                <SelectItem value="exit">Salida de fase</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {phaseRole === 'entry'
+                ? 'La fase no iniciará hasta ejecutar esta actividad.'
+                : phaseRole === 'exit'
+                  ? 'Al ejecutar esta actividad, la fase se completará automáticamente.'
+                  : 'Actividad regular sin efecto en el ciclo de vida de la fase.'}
+            </p>
           </div>
         </div>
 
