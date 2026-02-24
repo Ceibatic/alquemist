@@ -181,17 +181,19 @@ La maquina de estados previene ejecucion fuera de orden:
 **para** tener un punto de control claro al iniciar cada fase
 
 #### Criterios de Aceptacion
-- [ ] Nuevo status intermedio para fases: `awaiting_entry` (entre `pending` y `in_progress`)
-- [ ] Al activar orden: primera fase se marca como `awaiting_entry` (no `in_progress`)
-- [ ] Al completar exit activity y avanzar (US-FEAT.3): siguiente fase se marca `awaiting_entry`
-- [ ] En `executeActivity`: si `scheduledActivity.phase_role === "entry"`:
+- [x] Nuevo status intermedio para fases: `awaiting_entry` (entre `pending` y `in_progress`)
+- [x] Al activar orden: primera fase se marca como `awaiting_entry` si tiene entry activity (backward compat: `in_progress` si no tiene)
+- [x] Al completar exit activity y avanzar (US-FEAT.3): siguiente fase se marca `awaiting_entry` si tiene entry activity
+- [x] En `executeActivity`: si `scheduledActivity.phase_role === "entry"`:
   - Verificar que la fase esta `awaiting_entry`
   - Cambiar fase a `in_progress` con `actual_start_date`
   - Retornar `phaseStarted: true` en response
-- [ ] Frontend: fases `awaiting_entry` muestran badge "Esperando inicio" (amber) con indicador de que entry activity debe ejecutarse
-- [ ] Phase card en order detail: si `awaiting_entry`, mostrar link directo a la entry activity en el calendario
-- [ ] La actividad de entrada debe poder ejecutarse desde el detalle de la actividad (Reportar button) o desde el calendario
-- [ ] Si no hay entry activity para una fase (backward compat), `awaiting_entry` se trata como `in_progress`
+- [x] Frontend: fases `awaiting_entry` muestran badge "Esperando Inicio" (amber)
+- [ ] Phase card en order detail: si `awaiting_entry`, mostrar link directo a la entry activity — deferred to US-FEAT.7
+- [x] La actividad de entrada debe poder ejecutarse desde el detalle de la actividad (Reportar button) o desde el calendario
+- [x] Si no hay entry activity para una fase (backward compat), activate sets `in_progress` directly
+- [x] Phase gate validation: non-entry activities blocked when phase is `awaiting_entry`
+- [x] `completePhase` allows `awaiting_entry` phases (admin override)
 
 #### Backend
 - Schema: agregar `"awaiting_entry"` como valor valido de `order_phases.status`

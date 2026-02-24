@@ -85,12 +85,14 @@ const STATUS_LABELS: Record<string, string> = {
 
 const PHASE_STATUS_COLORS: Record<string, string> = {
   pending: 'bg-gray-100 text-gray-700',
+  awaiting_entry: 'bg-amber-100 text-amber-700',
   in_progress: 'bg-blue-100 text-blue-700',
   completed: 'bg-green-100 text-green-700',
 };
 
 const PHASE_STATUS_LABELS: Record<string, string> = {
   pending: 'Pendiente',
+  awaiting_entry: 'Esperando Inicio',
   in_progress: 'En Progreso',
   completed: 'Completada',
 };

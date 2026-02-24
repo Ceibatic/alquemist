@@ -889,11 +889,20 @@ export const activate = mutation({
       updated_at: now,
     });
 
-    // Activate first phase
+    // Activate first phase — check if it has an entry activity
     if (firstPhase) {
+      const entryActivities = await ctx.db
+        .query("scheduled_activities")
+        .withIndex("by_phase_role", (q) =>
+          q.eq("order_phase_id", firstPhase._id).eq("phase_role", "entry")
+        )
+        .collect();
+
+      const hasEntry = entryActivities.length > 0;
+
       await ctx.db.patch(firstPhase._id, {
-        status: "in_progress",
-        actual_start_date: now,
+        status: hasEntry ? "awaiting_entry" : "in_progress",
+        actual_start_date: hasEntry ? undefined : now,
         area_id: targetAreaId,
       });
     }
@@ -932,8 +941,8 @@ export const completePhase = mutation({
       throw new Error("Phase not found or does not belong to order");
     }
 
-    if (phase.status !== "in_progress") {
-      throw new Error("Only in-progress phases can be completed");
+    if (phase.status !== "in_progress" && phase.status !== "awaiting_entry") {
+      throw new Error("Only in-progress or awaiting-entry phases can be completed");
     }
 
     // Guard: warn if phase has pending exit activity (admin override path)

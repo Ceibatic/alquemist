@@ -222,6 +222,41 @@ async function handlePhaseExitExecution(
 }
 
 /**
+ * When an entry activity is executed, transition the phase from
+ * "awaiting_entry" to "in_progress" with actual_start_date.
+ */
+async function handlePhaseEntryExecution(
+  ctx: MutationCtx,
+  params: {
+    scheduledActivity: Doc<"scheduled_activities">;
+    performedBy: Id<"users">;
+  }
+): Promise<{ phaseStarted: boolean }> {
+  const { scheduledActivity } = params;
+
+  if (scheduledActivity.phase_role !== "entry" || !scheduledActivity.order_phase_id) {
+    return { phaseStarted: false };
+  }
+
+  const phase = await ctx.db.get(scheduledActivity.order_phase_id);
+  if (!phase) {
+    return { phaseStarted: false };
+  }
+
+  // Only transition from awaiting_entry
+  if (phase.status !== "awaiting_entry") {
+    return { phaseStarted: false };
+  }
+
+  await ctx.db.patch(phase._id, {
+    status: "in_progress",
+    actual_start_date: Date.now(),
+  });
+
+  return { phaseStarted: true };
+}
+
+/**
  * List activities
  */
 export const list = query({
@@ -637,6 +672,16 @@ export const executeActivity = mutation({
     const activityTypeCode = activityType.code;
     const title = activityType.name;
 
+    // ── Phase gate: block non-entry activities when phase is awaiting_entry ──
+    if (scheduledActivity?.order_phase_id) {
+      const actPhase = await ctx.db.get(scheduledActivity.order_phase_id);
+      if (actPhase?.status === "awaiting_entry" && scheduledActivity.phase_role !== "entry") {
+        throw new Error(
+          `La fase "${actPhase.phase_name}" esta esperando su actividad de entrada. Ejecute la actividad de inicio de fase primero.`
+        );
+      }
+    }
+
     // ── Determine batch list ───────────────────────────────────────────
     let batchIds: Id<"batches">[] = [];
 
@@ -935,6 +980,17 @@ export const executeActivity = mutation({
         await markScheduledCompleted(args.scheduledActivityId);
       }
 
+      // Handle phase entry: transition phase from awaiting_entry to in_progress
+      if (scheduledActivity) {
+        const entryResult = await handlePhaseEntryExecution(ctx, {
+          scheduledActivity,
+          performedBy: args.performedBy,
+        });
+        if (entryResult.phaseStarted) {
+          return { activityId, phaseStarted: true };
+        }
+      }
+
       // Handle phase exit: auto-complete phase and advance
       if (scheduledActivity) {
         const exitResult = await handlePhaseExitExecution(ctx, {
@@ -1028,6 +1084,19 @@ export const executeActivity = mutation({
       }
     } else if (args.scheduledActivityId) {
       await markScheduledCompleted(args.scheduledActivityId);
+    }
+
+    // Handle phase entry for multi-batch
+    const entryActivity = scheduledActivity ??
+      groupActivities.find((sa) => sa.phase_role === "entry");
+    if (entryActivity) {
+      const entryResult = await handlePhaseEntryExecution(ctx, {
+        scheduledActivity: entryActivity,
+        performedBy: args.performedBy,
+      });
+      if (entryResult.phaseStarted) {
+        return { activityId: parentActivityId, childActivityIds, phaseStarted: true };
+      }
     }
 
     // Handle phase exit for multi-batch: use the first scheduled activity with exit role
