@@ -656,7 +656,7 @@ async function seedOnboardingTemplate(
       area_type: phaseConfig.area_type,
       previous_phase_id: previousPhaseId,
       required_conditions: {},
-      completion_criteria: {},
+      completion_criteria: [],
       required_equipment: [],
       required_materials: [],
       description: `Fase de ${phaseConfig.name.toLowerCase()} - ${phaseConfig.duration_days} días`,

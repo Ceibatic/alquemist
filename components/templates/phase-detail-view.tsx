@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFacility } from '@/components/providers/facility-provider';
 import { AddActivityDialog } from '@/components/templates/add-activity-dialog';
+import { PhaseCriteriaEditor } from '@/components/templates/phase-criteria-editor';
 import {
   Layers,
   Calendar,
@@ -358,6 +359,12 @@ export function PhaseDetailView() {
           })}
         </div>
       </div>
+
+      {/* Completion Criteria Editor */}
+      <PhaseCriteriaEditor
+        phaseId={phaseId as Id<'template_phases'>}
+        criteria={(phase.completion_criteria as any[]) ?? []}
+      />
 
       {/* Add Activity Dialog */}
       {currentCompanyId && (
