@@ -136,6 +136,23 @@ async function handlePhaseExitExecution(
     return { phaseCompleted: false };
   }
 
+  // Validate completion criteria — reject if required criteria are pending
+  const criteria = (phase.completion_criteria as any[]) || [];
+  const criteriaStatus = (phase.criteria_status as any[]) || [];
+  const requiredCriteria = criteria.filter((c: any) => c.is_required);
+  if (requiredCriteria.length > 0) {
+    const pendingRequired = requiredCriteria.filter((c: any) => {
+      const cs = criteriaStatus.find((s: any) => s.criterion_id === c.id);
+      return !cs || cs.status !== "completed";
+    });
+    if (pendingRequired.length > 0) {
+      const labels = pendingRequired.map((c: any) => c.label).join(", ");
+      throw new Error(
+        `Cannot complete phase: ${pendingRequired.length} required criteria pending: ${labels}`
+      );
+    }
+  }
+
   const order = await ctx.db.get(phase.order_id);
   if (!order || order.status !== "active") {
     return { phaseCompleted: false };
