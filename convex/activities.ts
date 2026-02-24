@@ -6,7 +6,7 @@
 import { v } from "convex/values";
 import { mutation, query, MutationCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
-import { generateInternalLotNumber, consumeFromInventoryFIFO, getActivityTypeByCode, createLaborCostEntry } from "./helpers";
+import { generateInternalLotNumber, consumeFromInventoryFIFO, getActivityTypeByCode, createLaborCostEntry, logPhaseTransition } from "./helpers";
 
 // ============================================================================
 // INVENTORY TRANSFORMATION HELPER
@@ -141,10 +141,25 @@ async function handlePhaseExitExecution(
     return { phaseCompleted: false };
   }
 
+  const prevPhaseStatus = phase.status;
+
   // Complete current phase
   await ctx.db.patch(phase._id, {
     status: "completed",
     actual_end_date: now,
+  });
+
+  await logPhaseTransition(ctx, {
+    orderId: phase.order_id,
+    phaseId: phase._id,
+    phaseName: phase.phase_name,
+    transitionType: "completed",
+    fromStatus: prevPhaseStatus,
+    toStatus: "completed",
+    triggeredBy: "exit_activity",
+    performedBy: params.performedBy,
+    activityId: params.activityId,
+    scheduledActivityId: scheduledActivity._id,
   });
 
   // Get all phases to find next one
@@ -181,6 +196,19 @@ async function handlePhaseExitExecution(
       status: nextStatus,
       actual_start_date: nextStatus === "in_progress" ? now : undefined,
       area_id: phase.area_id ?? order.target_area_id,
+    });
+
+    await logPhaseTransition(ctx, {
+      orderId: phase.order_id,
+      phaseId: nextPhase._id,
+      phaseName: nextPhase.phase_name,
+      transitionType: "started",
+      fromStatus: nextPhase.status,
+      toStatus: nextStatus,
+      triggeredBy: "exit_activity",
+      performedBy: params.performedBy,
+      activityId: params.activityId,
+      scheduledActivityId: scheduledActivity._id,
     });
 
     // Update all active batches to reflect the new phase
@@ -251,6 +279,18 @@ async function handlePhaseEntryExecution(
   await ctx.db.patch(phase._id, {
     status: "in_progress",
     actual_start_date: Date.now(),
+  });
+
+  await logPhaseTransition(ctx, {
+    orderId: phase.order_id,
+    phaseId: phase._id,
+    phaseName: phase.phase_name,
+    transitionType: "entry_executed",
+    fromStatus: "awaiting_entry",
+    toStatus: "in_progress",
+    triggeredBy: "entry_activity",
+    performedBy: params.performedBy,
+    scheduledActivityId: scheduledActivity._id,
   });
 
   return { phaseStarted: true };

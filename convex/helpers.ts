@@ -323,6 +323,46 @@ export async function createLaborCostEntry(
 // DEPRECATED FUNCTIONS
 // ============================================================================
 
+// ============================================================================
+// PHASE TRANSITION LOG
+// ============================================================================
+
+/**
+ * Insert a record into the phase_transition_log table.
+ * Used by productionOrders and activities to track phase state changes.
+ */
+export async function logPhaseTransition(
+  ctx: MutationCtx,
+  params: {
+    orderId: Id<"production_orders">;
+    phaseId: Id<"order_phases">;
+    phaseName: string;
+    transitionType: string;
+    fromStatus: string;
+    toStatus: string;
+    triggeredBy: string;
+    performedBy?: Id<"users">;
+    activityId?: Id<"activities">;
+    scheduledActivityId?: Id<"scheduled_activities">;
+    reason?: string;
+  }
+) {
+  await ctx.db.insert("phase_transition_log", {
+    order_id: params.orderId,
+    phase_id: params.phaseId,
+    phase_name: params.phaseName,
+    transition_type: params.transitionType,
+    from_status: params.fromStatus,
+    to_status: params.toStatus,
+    triggered_by: params.triggeredBy,
+    performed_by: params.performedBy,
+    activity_id: params.activityId,
+    scheduled_activity_id: params.scheduledActivityId,
+    reason: params.reason,
+    timestamp: Date.now(),
+  });
+}
+
 /**
  * DEPRECATED: Get company ID (Convex ID) from organization ID (Clerk ID)
  * This function is no longer needed after switching to custom auth

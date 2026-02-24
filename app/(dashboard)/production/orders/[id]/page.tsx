@@ -48,7 +48,9 @@ import {
   MapPin,
   AlertTriangle,
   Undo2,
+  History,
 } from 'lucide-react';
+import { PhaseTransitionTimeline } from '@/components/production/phase-transition-timeline';
 
 // ── Label maps ─────────────────────────────────────────────────────────────
 
@@ -737,6 +739,21 @@ export default function OrderDetailPage({ params }: PageProps) {
           </>
         )}
       </div>
+
+      {/* ── Phase Transition History ──────────────────────────────── */}
+      {order.status !== 'planning' && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <History className="h-5 w-5 text-muted-foreground" />
+            Historial de Fases
+          </h2>
+          <Card>
+            <CardContent className="pt-4">
+              <PhaseTransitionTimeline orderId={orderId} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* ── Activate Order Dialog ───────────────────────────────────── */}
       <Dialog open={activateDialogOpen} onOpenChange={setActivateDialogOpen}>

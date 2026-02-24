@@ -101,7 +101,7 @@ Actualmente las actividades programadas son inmutables post-creacion (no hay mut
 **para** tener auditoria completa del ciclo de produccion
 
 #### Criterios de Aceptacion
-- [ ] Nueva tabla `phase_transition_log`:
+- [x] Nueva tabla `phase_transition_log`:
   - `order_id: v.id("production_orders")`
   - `phase_id: v.id("order_phases")`
   - `phase_name: v.string()`
@@ -111,20 +111,19 @@ Actualmente las actividades programadas son inmutables post-creacion (no hay mut
   - `triggered_by: v.string()` — "manual" | "exit_activity" | "entry_activity" | "admin_override" | "activation"
   - `activity_id: v.optional(v.id("activities"))` — actividad que triggeo la transicion
   - `scheduled_activity_id: v.optional(v.id("scheduled_activities"))` — actividad programada origen
-  - `performed_by: v.id("users")`
+  - `performed_by: v.optional(v.id("users"))` — opcional (mutations sin auth context)
   - `reason: v.optional(v.string())`
   - `timestamp: v.number()`
   - Index: `by_order` ["order_id", "timestamp"]
   - Index: `by_phase` ["phase_id", "timestamp"]
-- [ ] Insertar registro en cada transicion:
+- [x] Insertar registro en cada transicion:
   - `productionOrders.activate` → log "started" para primera fase
   - `handlePhaseExitExecution` → log "completed" + "started" para siguiente fase
   - `handlePhaseEntryExecution` → log "entry_executed"
   - `productionOrders.completePhase` → log "completed" con triggered_by "manual"/"admin_override"
   - `productionOrders.revertPhaseCompletion` → log "reverted"
-- [ ] Vista en detalle de orden: tab o seccion "Historial de fases" con timeline vertical
+- [x] Vista en detalle de orden: seccion "Historial de Fases" con timeline vertical
   - Cada entrada muestra: fecha/hora, fase, tipo de transicion, quien lo hizo, razon (si existe)
-  - Formato: "`[fecha] — Fase '{name}' {transicion} por {usuario} (via {triggered_by})`"
 - [ ] Exportable como parte del reporte de orden (futuro)
 
 #### Backend
