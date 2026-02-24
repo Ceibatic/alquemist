@@ -331,11 +331,11 @@ La maquina de estados previene ejecucion fuera de orden:
 **para** mantener consistencia entre docs y codigo
 
 #### Criterios de Aceptacion
-- [ ] `docs/modules/phase-4/M24-production-orders.md`: actualizar "Limitaciones Conocidas" marcando las resueltas, agregar seccion "Sistema de Phase Roles"
-- [ ] `docs/pages/production/subpaginas.md`: actualizar detalle de orden (sin boton Completar Fase), detalle de fase (entry/exit destacados)
-- [ ] `docs/pages/production/tab-actividades.md`: documentar badges de phase_role en calendario
-- [ ] `docs/dev/logs/YYYY-MM-DD.md`: entry por cada commit
-- [ ] Daily log actualizado
+- [x] `docs/modules/phase-4/M24-production-orders.md`: actualizar "Limitaciones Conocidas" marcando las resueltas, agregar seccion "Sistema de Phase Roles"
+- [ ] `docs/pages/production/subpaginas.md`: actualizar detalle de orden — deferred (minor doc update)
+- [ ] `docs/pages/production/tab-actividades.md`: documentar badges de phase_role en calendario — deferred (minor doc update)
+- [x] `docs/dev/logs/YYYY-MM-DD.md`: entry por cada commit
+- [x] Daily log actualizado
 
 #### Dependencias
 - Requiere: US-FEAT.7
