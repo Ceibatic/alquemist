@@ -84,6 +84,9 @@ export const getById = query({
           template_id: activity.template_id,
           activity_type_info: activityTypeInfo,
           resource_count: resources.length,
+          group_id: activity.group_id,
+          entity_id: activity.entity_id,
+          phase_role: activity.phase_role,
         };
       })
     );

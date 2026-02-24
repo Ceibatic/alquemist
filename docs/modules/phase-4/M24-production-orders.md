@@ -32,6 +32,7 @@ El modulo de Ordenes de Produccion permite crear y gestionar ordenes de trabajo 
 | `completePhase` | Completa fase y activa siguiente (admin override) |
 | `revertPhaseCompletion` | Revierte fase completada a in_progress |
 | `cancel` | Cancela orden y activities pendientes |
+| `updatePhaseArea` | Reasigna area de una fase con movimiento de lotes y occupancy |
 
 **Archivo**: `convex/scheduledActivities.ts` (actividades individuales)
 
@@ -97,13 +98,13 @@ El modulo de Ordenes de Produccion permite crear y gestionar ordenes de trabajo 
 
 | Limitacion | Detalle | Estado |
 |-----------|---------|--------|
-| Actividades van al primer lote | Al activar, todas las scheduled_activities se linkean a `batchIds[0]`. Lotes 2..N no tienen actividades programadas. | By design (distribucion multi-lote es feature futura: FEAT-2026-02-multi-batch-distribution) |
+| ~~Actividades van al primer lote~~ | ~~Al activar, todas las scheduled_activities se linkean a `batchIds[0]`. Lotes 2..N no tienen actividades programadas.~~ | **Resuelto**: `distribution_strategy` (per_batch/shared) controla distribucion. `per_batch` duplica actividades con `group_id` compartido. |
 | ~~Transicion de fase es manual~~ | ~~`completePhase` no valida actividades pendientes ni requiere actividad de salida.~~ | **Resuelto**: sistema de phase_role (entry/exit activities) implementado. `completePhase` se mantiene como admin override. |
 | ~~Sin movimiento de inventario de plantas~~ | ~~`completePhase` no llama `logPhaseTransitionWithInventory`.~~ | **Resuelto**: `handleInventoryTransformation` helper extraido, recursos "produced" crean inventory_items via `executeActivity`. |
 | ~~Sin cancelar actividad individual~~ | ~~El status `cancelled` esta en schema pero ninguna mutation lo setea.~~ | **Resuelto**: `scheduledActivities.cancel` con phase_role guard y group cancel. |
 | ~~Sin revertir transicion de fase~~ | ~~No hay mecanismo de rollback si se completa una fase por error.~~ | **Resuelto**: `revertPhaseCompletion` revierte la fase mas reciente, resetea la siguiente, y registra en audit log. |
 | ~~Sin historial de transiciones~~ | ~~Transiciones se inferían de timestamps, sin audit trail explicito.~~ | **Resuelto**: tabla `phase_transition_log` con inserts en todos los transition points. Timeline en UI. |
-| Sin re-asignacion de area por fase | Todas las fases heredan el area de la fase anterior. No hay UI para cambiar area entre fases. | Pendiente: FEAT-2026-02-multi-batch-distribution |
+| ~~Sin re-asignacion de area por fase~~ | ~~Todas las fases heredan el area de la fase anterior. No hay UI para cambiar area entre fases.~~ | **Resuelto**: `updatePhaseArea` mutation con movimiento de lotes, batch_movements audit, occupancy update. UI pencil icon en phase card. |
 
 ### Sistema de Phase Roles
 

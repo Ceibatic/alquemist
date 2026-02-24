@@ -30,19 +30,19 @@ Ademas, cada fase hereda el `area_id` de la fase anterior automaticamente. No ha
 **para** que cada lote tenga su propio set de actividades programadas
 
 #### Criterios de Aceptacion
-- [ ] Al activar orden con N lotes, cada `scheduled_activity` se duplica para cada lote:
+- [x] Al activar orden con N lotes, cada `scheduled_activity` se duplica para cada lote:
   - Actividad original se asigna a lote 1 (backward compat)
   - Se crean N-1 copias con `entity_id` apuntando a lotes 2..N
   - Copias comparten `group_id` (UUID generado) para agruparlas
   - Copias heredan: `type_id`, `phase_role`, `order_phase_id`, `scheduled_date`, `company_id`, `production_order_id`
   - Recursos (`scheduled_activity_resources`) se duplican para cada copia
-- [ ] Actividades con `phase_role: "exit"` se duplican pero solo UNA triggerea la transicion (la primera ejecutada)
-- [ ] Actividades con `phase_role: "entry"` se duplican — todas deben ejecutarse para que la fase inicie (configurable: "todas" vs "al menos una")
-- [ ] Template puede definir `distribution_strategy` por actividad:
+- [x] Actividades con `phase_role: "exit"` se duplican pero solo UNA triggerea la transicion (la primera ejecutada)
+- [x] Actividades con `phase_role: "entry"` se duplican — todas deben ejecutarse para que la fase inicie (configurable: "todas" vs "al menos una")
+- [x] Template puede definir `distribution_strategy` por actividad:
   - `"per_batch"` (default): una copia por lote
   - `"shared"`: una sola actividad compartida entre todos los lotes (ej: limpieza de area)
-- [ ] Orden con 1 solo lote: comportamiento identico al actual (sin cambios)
-- [ ] `npx next build` pasa sin errores
+- [x] Orden con 1 solo lote: comportamiento identico al actual (sin cambios)
+- [x] `npx next build` pasa sin errores
 
 #### Backend
 - Mutation modificada: `productionOrders.activate` (loop de distribucion)
@@ -65,7 +65,7 @@ Ademas, cada fase hereda el `area_id` de la fase anterior automaticamente. No ha
 **para** mover lotes a un area diferente cuando cambian de fase (ej: vegetativo → floracion en otra sala)
 
 #### Criterios de Aceptacion
-- [ ] Nueva mutation `productionOrders.updatePhaseArea(orderId, phaseId, newAreaId)`:
+- [x] Nueva mutation `productionOrders.updatePhaseArea(orderId, phaseId, newAreaId)`:
   - Solo fases con status `pending` o `awaiting_entry` pueden cambiar area
   - Fases `in_progress`: mostrar warning "La fase ya inicio. Cambiar area actualizara los lotes activos"
   - Fases `completed`: no se pueden cambiar
@@ -77,10 +77,10 @@ Ademas, cada fase hereda el `area_id` de la fase anterior automaticamente. No ha
     - Actualiza `batch.zone_id` si el area tiene una zona por defecto
     - Crea registro en `batch_movements` para auditoria
     - Actualiza occupancy del area origen (-) y destino (+)
-- [ ] En detalle de orden, cada phase card muestra area asignada con boton "Cambiar area" (icono edit)
-- [ ] Dialog de cambio de area: selector de areas activas de la facility + resumen de capacidad
-- [ ] Si el area no tiene capacidad suficiente, mostrar error "El area '{name}' solo tiene {available} posiciones disponibles de {needed} necesarias"
-- [ ] Toast: "Area de fase '{phaseName}' actualizada a '{areaName}'"
+- [x] En detalle de orden, cada phase card muestra area asignada con boton "Cambiar area" (icono edit)
+- [x] Dialog de cambio de area: selector de areas activas de la facility + resumen de capacidad
+- [x] Si el area no tiene capacidad suficiente, mostrar error "El area '{name}' solo tiene {available} posiciones disponibles de {needed} necesarias"
+- [x] Toast: "Area de fase '{phaseName}' actualizada a '{areaName}'"
 
 #### Backend
 - Mutation nueva: `productionOrders.updatePhaseArea`
@@ -104,13 +104,13 @@ Ademas, cada fase hereda el `area_id` de la fase anterior automaticamente. No ha
 **para** tener visibilidad del progreso por lote
 
 #### Criterios de Aceptacion
-- [ ] En detalle de orden, cada phase card muestra lista de lotes asignados:
+- [x] En detalle de orden, cada phase card muestra lista de lotes asignados:
   - Nombre del lote, cantidad actual, area actual
   - Progreso de actividades: "{completadas}/{total} actividades"
   - Status de entry/exit activity del lote
-- [ ] Click en lote navega a detalle del lote
-- [ ] Si hay multiples lotes, mostrar resumen: "3 lotes — 2 completados, 1 en progreso"
-- [ ] Lotes con actividades atrasadas muestran indicador visual (badge rojo)
+- [x] Click en lote navega a detalle del lote
+- [x] Si hay multiples lotes, mostrar resumen: "3 lotes — 2 completados, 1 en progreso"
+- [x] Lotes con actividades atrasadas muestran indicador visual (badge rojo)
 
 #### Frontend
 - `components/production/phase-batch-list.tsx`: lista de lotes por fase
@@ -159,15 +159,20 @@ Ademas, cada fase hereda el `area_id` de la fase anterior automaticamente. No ha
 
 ---
 
-## Implementacion (llenado por /implement-feature)
-
-_Esta seccion se completa automaticamente al implementar la feature._
+## Implementacion
 
 ### Commits
--
+- `b57e7b6` — feat(production): US-DIST.1 distribute activities across batches on activation
+- `1ea4cee` — feat(production): US-DIST.2 reassign area for an order phase
+- `6a3110c` — feat(production): US-DIST.3 batch list per phase in order detail
 
 ### Archivos Modificados
--
+- `convex/schema.ts` — distribution_strategy on template_activities and scheduled_activities
+- `convex/productionOrders.ts` — activate distribution logic, updatePhaseArea mutation, entity_id in activity summary
+- `convex/orderPhases.ts` — group_id/entity_id/phase_role in getById response
+- `components/production-orders/order-phase-detail-view.tsx` — batch label, entry/exit badges on activity cards
+- `components/production/phase-batch-list.tsx` — new PhaseBatchList component
+- `app/(dashboard)/production/orders/[id]/page.tsx` — change area dialog, batch list in phase cards
 
 ### Fecha de Completado
--
+2026-02-23

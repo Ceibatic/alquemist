@@ -237,7 +237,21 @@ Reutiliza `OrderBatchSummary` existente.
 - Boton "Completar" inline si `in_progress` y orden no tiene phase_role activities
 - Boton "Revertir" (amber outline con icono Undo2) en la fase mas recientemente completada (ordenes active/completed)
 - Status `awaiting_entry` → badge amber "Esperando Inicio" + borde amber en card
+- Icono lapiz junto al nombre del area (solo fases no completadas en ordenes activas) → abre Dialog Cambiar Area
+- Lista de lotes por fase (`PhaseBatchList`): solo visible con multiples lotes en ordenes activas. Muestra codigo lote, plantas, progreso actividades (completadas/total), badge rojo "Atrasada" si hay pendientes vencidas. Click navega a detalle del lote
 - Click en fase → `/production/orders/[id]/phases/[phaseId]`
+
+### Dialog Cambiar Area de Fase
+Al hacer click en el icono lapiz junto al area se abre un dialogo con:
+- Warning amber (condicional): "La fase ya inicio. Cambiar area actualizara los lotes activos." — solo si fase esta `in_progress` o `awaiting_entry`
+- Select "Nueva area" (areas activas de la facility con posiciones disponibles)
+- Boton "Confirmar Cambio" (amber-500, deshabilitado sin area seleccionada)
+
+Al confirmar, `productionOrders.updatePhaseArea`:
+1. Valida que area pertenece a misma facility y tiene capacidad
+2. Actualiza `order_phases.area_id`
+3. Si fase activa: mueve lotes, crea `batch_movements`, actualiza occupancy
+4. Toast: "Area de fase '{phaseName}' actualizada a '{areaName}'"
 
 ### Dialog Revertir Fase
 Al hacer click en "Revertir" se abre un dialogo de confirmacion con:
@@ -264,6 +278,7 @@ Solo visible si orden no esta en `planning`. Header "Historial de Fases" con ico
 **Componentes**:
 - `app/(dashboard)/production/orders/[id]/page.tsx`
 - `components/production/phase-transition-timeline.tsx`
+- `components/production/phase-batch-list.tsx`
 
 ---
 

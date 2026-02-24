@@ -298,6 +298,7 @@ export const getById = query({
         status: a.status,
         phase_role: a.phase_role,
         order_phase_id: a.order_phase_id,
+        entity_id: a.entity_id,
       })),
       activitiesCount: activities.length,
       pendingActivitiesCount: activities.filter(
@@ -615,6 +616,8 @@ export const create = mutation({
               // Phase role linking
               phase_role: templateActivity.phase_role,
               order_phase_id: phaseIdMap.get(templatePhase._id),
+              // Distribution strategy for multi-batch orders
+              distribution_strategy: templateActivity.distribution_strategy,
               created_at: now,
               updated_at: now,
             });
@@ -861,21 +864,113 @@ export const activate = mutation({
       createdBatchIds.push(batchId);
     }
 
-    // Update scheduled activities to link to first batch
-    // (In a more complex system, activities could be distributed across batches)
+    // Distribute scheduled activities across batches
     const scheduledActivities = await ctx.db
       .query("scheduled_activities")
       .filter((q) => q.eq(q.field("production_order_id"), args.orderId))
       .collect();
 
-    for (const activity of scheduledActivities) {
-      if (activity.status === "pending") {
-        await ctx.db.patch(activity._id, {
-          entity_type: "batch",
-          entity_id: createdBatchIds[0], // Link to first batch
-          company_id: order.company_id, // Backfill in case it was missing
-          updated_at: now,
-        });
+    const pendingActivities = scheduledActivities.filter(
+      (a) => a.status === "pending"
+    );
+
+    for (const activity of pendingActivities) {
+      const strategy = activity.distribution_strategy || "per_batch";
+      const isMultiBatch = createdBatchIds.length > 1;
+
+      // Link original activity to first batch
+      await ctx.db.patch(activity._id, {
+        entity_type: "batch",
+        entity_id: createdBatchIds[0],
+        company_id: order.company_id,
+        updated_at: now,
+      });
+
+      // For per_batch strategy with multiple batches, duplicate for batches 2..N
+      if (strategy === "per_batch" && isMultiBatch) {
+        const groupId = crypto.randomUUID();
+
+        // Tag original with group_id
+        await ctx.db.patch(activity._id, { group_id: groupId });
+
+        // Get resources for the original activity
+        const resources = await ctx.db
+          .query("scheduled_activity_resources")
+          .withIndex("by_scheduled_activity", (q) =>
+            q.eq("scheduled_activity_id", activity._id)
+          )
+          .collect();
+
+        // Create copies for batches 2..N
+        for (let i = 1; i < createdBatchIds.length; i++) {
+          const copyId = await ctx.db.insert("scheduled_activities", {
+            entity_type: "batch",
+            entity_id: createdBatchIds[i],
+            activity_type: activity.activity_type,
+            activity_template_id: activity.activity_template_id,
+            production_order_id: activity.production_order_id,
+            scheduled_date: activity.scheduled_date,
+            estimated_duration_minutes: activity.estimated_duration_minutes,
+            is_recurring: activity.is_recurring,
+            recurring_pattern: activity.recurring_pattern,
+            recurring_end_date: activity.recurring_end_date,
+            parent_recurring_id: activity.parent_recurring_id,
+            assigned_to: activity.assigned_to,
+            assigned_team: activity.assigned_team,
+            required_materials: activity.required_materials,
+            required_equipment: activity.required_equipment,
+            quality_check_template_id: activity.quality_check_template_id,
+            instructions: activity.instructions,
+            activity_metadata: activity.activity_metadata,
+            status: "pending",
+            actual_start_time: undefined,
+            actual_end_time: undefined,
+            completed_by: undefined,
+            completion_notes: undefined,
+            execution_results: undefined,
+            execution_variance: undefined,
+            company_id: order.company_id,
+            source: activity.source,
+            type_id: activity.type_id,
+            template_id: activity.template_id,
+            schedule_id: activity.schedule_id,
+            phase_day: activity.phase_day,
+            due_date: activity.due_date,
+            recurrence_index: activity.recurrence_index,
+            recurrence_total: activity.recurrence_total,
+            crop_phase: activity.crop_phase,
+            skipped_reason: undefined,
+            phase_role: activity.phase_role,
+            order_phase_id: activity.order_phase_id,
+            distribution_strategy: activity.distribution_strategy,
+            group_id: groupId,
+            created_at: now,
+            updated_at: now,
+          });
+
+          // Duplicate resources for the copy
+          for (const res of resources) {
+            await ctx.db.insert("scheduled_activity_resources", {
+              scheduled_activity_id: copyId,
+              template_resource_id: res.template_resource_id,
+              product_id: res.product_id,
+              direction: res.direction,
+              quantity_basis: res.quantity_basis,
+              template_quantity: res.template_quantity,
+              materialized_quantity: res.materialized_quantity,
+              materialization_context: res.materialization_context,
+              quantity_override: res.quantity_override,
+              unit_id: res.unit_id,
+              application_rate: res.application_rate,
+              application_method: res.application_method,
+              is_required: res.is_required,
+              alternative_product_ids: res.alternative_product_ids,
+              sequence: res.sequence,
+              notes: res.notes,
+              created_at: now,
+            });
+          }
+        }
       }
     }
 
@@ -925,6 +1020,115 @@ export const activate = mutation({
       success: true,
       message: `Order activated with ${createdBatchIds.length} batch(es) created`,
       batchIds: createdBatchIds,
+    };
+  },
+});
+
+/**
+ * Update the area assigned to a phase.
+ * Moves batches if the phase is in_progress or awaiting_entry.
+ */
+export const updatePhaseArea = mutation({
+  args: {
+    orderId: v.id("production_orders"),
+    phaseId: v.id("order_phases"),
+    newAreaId: v.id("areas"),
+    performedBy: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("Order not found");
+
+    const phase = await ctx.db.get(args.phaseId);
+    if (!phase) throw new Error("Phase not found");
+    if (phase.order_id !== args.orderId) throw new Error("Phase does not belong to this order");
+
+    if (phase.status === "completed") {
+      throw new Error("Cannot change area of a completed phase");
+    }
+
+    // Validate new area belongs to same facility
+    const newArea = await ctx.db.get(args.newAreaId);
+    if (!newArea) throw new Error("Area not found");
+    if (newArea.facility_id !== order.target_facility_id) {
+      throw new Error("Area must belong to the same facility as the order");
+    }
+
+    const oldAreaId = phase.area_id;
+
+    // For active phases, validate capacity and move batches
+    const isActive = phase.status === "in_progress" || phase.status === "awaiting_entry";
+    if (isActive) {
+      // Get order batches
+      const batches = await ctx.db
+        .query("batches")
+        .withIndex("by_production_order", (q) => q.eq("production_order_id", args.orderId))
+        .filter((q) => q.eq(q.field("status"), "active"))
+        .collect();
+
+      // Check capacity
+      const totalPlants = batches.reduce((sum, b) => sum + (b.current_quantity || 0), 0);
+      const config = newArea.capacity_configurations as any;
+      const maxCapacity = config?.max_capacity || 0;
+      if (maxCapacity > 0) {
+        const available = maxCapacity - newArea.current_occupancy;
+        if (totalPlants > available) {
+          throw new Error(
+            `Area '${newArea.name}' only has ${available} positions available out of ${totalPlants} needed`
+          );
+        }
+      }
+
+      // Move each batch
+      for (const batch of batches) {
+        // Only move batches that are in the old area (or have no area)
+        if (batch.area_id === oldAreaId || !batch.area_id) {
+          await ctx.db.insert("batch_movements", {
+            batch_id: batch._id,
+            from_area_id: oldAreaId,
+            to_area_id: args.newAreaId,
+            movement_date: now,
+            reason: "phase_change",
+            notes: `Phase area reassignment: ${phase.phase_name}`,
+            performed_by: args.performedBy,
+            created_at: now,
+          });
+
+          await ctx.db.patch(batch._id, {
+            area_id: args.newAreaId,
+            updated_at: now,
+          });
+        }
+      }
+
+      // Update occupancy: decrease source, increase destination
+      if (oldAreaId) {
+        const oldArea = await ctx.db.get(oldAreaId);
+        if (oldArea) {
+          await ctx.db.patch(oldAreaId, {
+            current_occupancy: Math.max(0, oldArea.current_occupancy - totalPlants),
+            updated_at: now,
+          });
+        }
+      }
+      await ctx.db.patch(args.newAreaId, {
+        current_occupancy: newArea.current_occupancy + totalPlants,
+        updated_at: now,
+      });
+    }
+
+    // Update phase area
+    await ctx.db.patch(args.phaseId, {
+      area_id: args.newAreaId,
+    });
+
+    return {
+      success: true,
+      phaseName: phase.phase_name,
+      areaName: newArea.name,
+      batchesMoved: isActive,
     };
   },
 });
