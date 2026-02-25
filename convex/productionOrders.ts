@@ -34,6 +34,19 @@ async function generateOrderNumber(
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Map Format 1 frequency strings to interval in days */
+function frequencyToIntervalDays(frequency: string): number {
+  const map: Record<string, number> = {
+    daily: 1,
+    every_2_days: 2,
+    every_3_days: 3,
+    weekly: 7,
+    biweekly: 14,
+    monthly: 30,
+  };
+  return map[frequency] ?? 1;
+}
+
 /**
  * Ensure each phase has at least one entry and one exit activity.
  * If a template doesn't define them, auto-create generic phase_transition activities.
@@ -547,6 +560,25 @@ export const create = mutation({
           if (!timing) {
             // Default: one-time on day 1
             scheduleDates.push(phaseStart);
+          } else if (typeof timing.days_from_phase_start === "number") {
+            // Format 1 (onboarding): { days_from_phase_start, frequency?, recurring_until? }
+            const startOffset = timing.days_from_phase_start || 0;
+            const startDate = phaseStart + startOffset * DAY_MS;
+
+            if (!timing.frequency) {
+              // One-time activity
+              scheduleDates.push(startDate);
+            } else {
+              // Recurring: map frequency string to interval days
+              const intervalDays = frequencyToIntervalDays(timing.frequency);
+              const endDate = timing.recurring_until === "phase_end"
+                ? phaseEnd
+                : startDate; // fallback: single occurrence if no end specified
+
+              for (let date = startDate; date <= endDate; date += intervalDays * DAY_MS) {
+                scheduleDates.push(date);
+              }
+            }
           } else if (timing.type === "one_time") {
             // One-time: specific day of the phase
             const dayOffset = (timing.phaseDay || 1) - 1;
@@ -601,7 +633,7 @@ export const create = mutation({
               scheduled_date: scheduleDate,
               estimated_duration_minutes: templateActivity.estimated_duration_minutes,
               is_recurring: scheduleDates.length > 1,
-              recurring_pattern: timing?.frequencyType || undefined,
+              recurring_pattern: timing?.frequencyType || timing?.frequency || undefined,
               recurring_end_date: scheduleDates.length > 1 ? scheduleDates[scheduleDates.length - 1] : undefined,
               parent_recurring_id: undefined,
               assigned_to: undefined,

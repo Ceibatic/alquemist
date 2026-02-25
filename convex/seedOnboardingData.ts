@@ -58,21 +58,33 @@ interface ProductConfig {
   supplier_category: string;
 }
 
+interface CompletionCriterion {
+  id: string;
+  label: string;
+  type: string;
+  config?: Record<string, unknown>;
+  is_required: boolean;
+}
+
 interface PhaseConfig {
   name: string;
   duration_days: number;
   area_type: string;
+  completion_criteria?: CompletionCriterion[];
   activities: ActivityConfig[];
 }
 
 interface ActivityConfig {
   name: string;
   type: string;
+  typeCode?: string;
   is_recurring: boolean;
   frequency?: string;
   days_from_start: number;
   duration_minutes: number;
   instructions?: string;
+  phase_role?: "entry" | "exit";
+  distribution_strategy?: "per_batch" | "shared";
 }
 
 interface CropConfig {
@@ -293,31 +305,44 @@ const cannabisConfig: CropConfig = {
       name: "Propagación",
       duration_days: 14,
       area_type: "propagation",
+      completion_criteria: [
+        { id: "prop-roots", label: "Raíces visibles en base del esqueje", type: "manual_check", is_required: true },
+        { id: "prop-survival", label: "Tasa de supervivencia >85%", type: "metric_range", config: { metric: "survival_rate", min: 85, unit: "%" }, is_required: true },
+      ],
       activities: [
-        { name: "Preparación de esquejes", type: "planting", is_recurring: false, days_from_start: 0, duration_minutes: 120, instructions: "Cortar esquejes de 10-15cm, aplicar hormona enraizante y colocar en sustrato húmedo." },
-        { name: "Riego", type: "watering", is_recurring: true, frequency: "daily", days_from_start: 1, duration_minutes: 20, instructions: "Mantener sustrato húmedo pero no encharcado." },
-        { name: "Inspección", type: "inspection", is_recurring: true, frequency: "every_3_days", days_from_start: 3, duration_minutes: 30, instructions: "Verificar desarrollo de raíces y estado general de los esquejes." },
+        { name: "Preparación de esquejes", type: "planting", typeCode: "seeding", is_recurring: false, days_from_start: 0, duration_minutes: 120, instructions: "Cortar esquejes de 10-15cm, aplicar hormona enraizante y colocar en sustrato húmedo.", phase_role: "entry", distribution_strategy: "per_batch" },
+        { name: "Riego", type: "watering", typeCode: "irrigation", is_recurring: true, frequency: "daily", days_from_start: 1, duration_minutes: 20, instructions: "Mantener sustrato húmedo pero no encharcado." },
+        { name: "Inspección", type: "inspection", typeCode: "scouting", is_recurring: true, frequency: "every_3_days", days_from_start: 3, duration_minutes: 30, instructions: "Verificar desarrollo de raíces y estado general de los esquejes.", phase_role: "exit", distribution_strategy: "shared" },
       ],
     },
     {
       name: "Vegetativo",
       duration_days: 28,
       area_type: "vegetative",
+      completion_criteria: [
+        { id: "veg-height", label: "Altura >30cm", type: "metric_range", config: { metric: "height_cm", min: 30 }, is_required: true },
+        { id: "veg-nodes", label: "Al menos 6 nudos desarrollados", type: "metric_range", config: { metric: "node_count", min: 6 }, is_required: true },
+        { id: "veg-health", label: "Inspección fitosanitaria OK", type: "manual_check", is_required: false },
+      ],
       activities: [
-        { name: "Riego", type: "watering", is_recurring: true, frequency: "daily", days_from_start: 0, duration_minutes: 30, instructions: "Regar hasta obtener 10-20% de escurrimiento." },
-        { name: "Fertilización", type: "feeding", is_recurring: true, frequency: "every_3_days", days_from_start: 3, duration_minutes: 45, instructions: "Aplicar nutrientes de crecimiento según tabla del fabricante." },
-        { name: "Poda de formación", type: "pruning", is_recurring: true, frequency: "weekly", days_from_start: 7, duration_minutes: 60, instructions: "Realizar topping o LST según técnica elegida." },
-        { name: "Inspección", type: "inspection", is_recurring: true, frequency: "weekly", days_from_start: 7, duration_minutes: 45, instructions: "Revisar plagas, deficiencias y estado general." },
+        { name: "Riego", type: "watering", typeCode: "irrigation", is_recurring: true, frequency: "daily", days_from_start: 0, duration_minutes: 30, instructions: "Regar hasta obtener 10-20% de escurrimiento.", phase_role: "entry", distribution_strategy: "per_batch" },
+        { name: "Fertilización", type: "feeding", typeCode: "fertigation", is_recurring: true, frequency: "every_3_days", days_from_start: 3, duration_minutes: 45, instructions: "Aplicar nutrientes de crecimiento según tabla del fabricante." },
+        { name: "Poda de formación", type: "pruning", typeCode: "pruning", is_recurring: true, frequency: "weekly", days_from_start: 7, duration_minutes: 60, instructions: "Realizar topping o LST según técnica elegida." },
+        { name: "Inspección", type: "inspection", typeCode: "scouting", is_recurring: true, frequency: "weekly", days_from_start: 7, duration_minutes: 45, instructions: "Revisar plagas, deficiencias y estado general.", phase_role: "exit", distribution_strategy: "shared" },
       ],
     },
     {
       name: "Floración",
       duration_days: 56,
       area_type: "flowering",
+      completion_criteria: [
+        { id: "flor-trichomes", label: "Tricomas 70% ámbar", type: "manual_check", is_required: true },
+        { id: "flor-weight", label: "Peso de colas estable (sin aumento en 5 días)", type: "manual_check", is_required: true },
+      ],
       activities: [
-        { name: "Riego", type: "watering", is_recurring: true, frequency: "daily", days_from_start: 0, duration_minutes: 30, instructions: "Mantener riego consistente, evitar fluctuaciones." },
-        { name: "Fertilización floración", type: "feeding", is_recurring: true, frequency: "every_3_days", days_from_start: 1, duration_minutes: 45, instructions: "Cambiar a nutrientes de floración altos en P y K." },
-        { name: "Inspección de madurez", type: "inspection", is_recurring: true, frequency: "every_2_days", days_from_start: 35, duration_minutes: 45, instructions: "Revisar tricomas con lupa, buscar 70% ámbar para cosecha." },
+        { name: "Riego", type: "watering", typeCode: "irrigation", is_recurring: true, frequency: "daily", days_from_start: 0, duration_minutes: 30, instructions: "Mantener riego consistente, evitar fluctuaciones.", phase_role: "entry", distribution_strategy: "per_batch" },
+        { name: "Fertilización floración", type: "feeding", typeCode: "fertigation", is_recurring: true, frequency: "every_3_days", days_from_start: 1, duration_minutes: 45, instructions: "Cambiar a nutrientes de floración altos en P y K." },
+        { name: "Inspección de madurez", type: "inspection", typeCode: "scouting", is_recurring: true, frequency: "every_2_days", days_from_start: 35, duration_minutes: 45, instructions: "Revisar tricomas con lupa, buscar 70% ámbar para cosecha.", phase_role: "exit", distribution_strategy: "shared" },
       ],
     },
     {
@@ -325,8 +350,8 @@ const cannabisConfig: CropConfig = {
       duration_days: 14,
       area_type: "drying",
       activities: [
-        { name: "Corte y colgado", type: "harvest", is_recurring: false, days_from_start: 0, duration_minutes: 180, instructions: "Cortar plantas, remover hojas grandes y colgar boca abajo en área oscura." },
-        { name: "Control de secado", type: "inspection", is_recurring: true, frequency: "daily", days_from_start: 1, duration_minutes: 30, instructions: "Verificar humedad (55-65%) y temperatura (18-21°C). Tallos deben crujir." },
+        { name: "Corte y colgado", type: "harvest", typeCode: "harvest_cut", is_recurring: false, days_from_start: 0, duration_minutes: 180, instructions: "Cortar plantas, remover hojas grandes y colgar boca abajo en área oscura.", phase_role: "entry", distribution_strategy: "per_batch" },
+        { name: "Control de secado", type: "inspection", typeCode: "scouting", is_recurring: true, frequency: "daily", days_from_start: 1, duration_minutes: 30, instructions: "Verificar humedad (55-65%) y temperatura (18-21°C). Tallos deben crujir.", phase_role: "exit", distribution_strategy: "shared" },
       ],
     },
     {
@@ -334,8 +359,8 @@ const cannabisConfig: CropConfig = {
       duration_days: 21,
       area_type: "curing",
       activities: [
-        { name: "Almacenamiento en frascos", type: "movement", is_recurring: false, days_from_start: 0, duration_minutes: 120, instructions: "Colocar flores secas en frascos herméticos de vidrio, llenados al 75%." },
-        { name: "Burping (apertura)", type: "inspection", is_recurring: true, frequency: "daily", days_from_start: 1, duration_minutes: 15, instructions: "Abrir frascos 10-15 minutos para liberar humedad. Más frecuente la primera semana." },
+        { name: "Almacenamiento en frascos", type: "movement", typeCode: "relocation", is_recurring: false, days_from_start: 0, duration_minutes: 120, instructions: "Colocar flores secas en frascos herméticos de vidrio, llenados al 75%.", phase_role: "entry", distribution_strategy: "per_batch" },
+        { name: "Burping (apertura)", type: "inspection", typeCode: "scouting", is_recurring: true, frequency: "daily", days_from_start: 1, duration_minutes: 15, instructions: "Abrir frascos 10-15 minutos para liberar humedad. Más frecuente la primera semana.", phase_role: "exit", distribution_strategy: "shared" },
       ],
     },
   ],
@@ -547,23 +572,23 @@ async function seedOnboardingInventory(
 
     switch (product.category) {
       case "nutrient":
-        quantity = Math.floor(Math.random() * 10) + 5;
+        quantity = 10;
         minStock = 3;
         reorderPoint = 5;
         break;
       case "substrate":
-        quantity = Math.floor(Math.random() * 20) + 10;
+        quantity = 20;
         minStock = 10;
         reorderPoint = 15;
         break;
       case "pesticide":
-        quantity = Math.floor(Math.random() * 5) + 2;
+        quantity = 5;
         minStock = 2;
         reorderPoint = 4;
         break;
       case "equipment":
       case "tool":
-        quantity = Math.floor(Math.random() * 3) + 1;
+        quantity = 3;
         minStock = 1;
         reorderPoint = 2;
         break;
@@ -606,7 +631,8 @@ async function seedOnboardingTemplate(
   companyId: Id<"companies">,
   cropTypeId: Id<"crop_types">,
   cultivarId: Id<"cultivars"> | undefined,
-  config: CropConfig
+  config: CropConfig,
+  activityTypesByCode?: Record<string, Id<"activity_types">>
 ): Promise<{ success: boolean; templateId?: Id<"production_templates">; phasesCount: number; activitiesCount: number }> {
   const now = Date.now();
 
@@ -656,7 +682,7 @@ async function seedOnboardingTemplate(
       area_type: phaseConfig.area_type,
       previous_phase_id: previousPhaseId,
       required_conditions: {},
-      completion_criteria: [],
+      completion_criteria: phaseConfig.completion_criteria ?? [],
       required_equipment: [],
       required_materials: [],
       description: `Fase de ${phaseConfig.name.toLowerCase()} - ${phaseConfig.duration_days} días`,
@@ -669,6 +695,11 @@ async function seedOnboardingTemplate(
     // Create activities for this phase
     for (let activityIndex = 0; activityIndex < phaseConfig.activities.length; activityIndex++) {
       const activityConfig = phaseConfig.activities[activityIndex];
+
+      // Resolve type_id from typeCode if available
+      const typeId = activityConfig.typeCode && activityTypesByCode
+        ? activityTypesByCode[activityConfig.typeCode]
+        : undefined;
 
       await ctx.db.insert("template_activities", {
         phase_id: phaseId,
@@ -690,6 +721,9 @@ async function seedOnboardingTemplate(
         skill_level_required: "beginner",
         instructions: activityConfig.instructions || "",
         safety_notes: "",
+        type_id: typeId,
+        phase_role: activityConfig.phase_role,
+        distribution_strategy: activityConfig.distribution_strategy,
         created_at: now,
       });
 
@@ -789,7 +823,17 @@ export const generateSampleDataForNewCompany = mutation({
 
             // 6. Seed Production Template
             try {
-              const templateResult = await seedOnboardingTemplate(ctx, args.companyId, args.cropTypeId, cultivarsResult.firstCultivarId, config);
+              // Build activity type code→id map for linking template activities
+              const activityTypes = await ctx.db
+                .query("activity_types")
+                .withIndex("by_company", (q) => q.eq("company_id", args.companyId))
+                .collect();
+              const activityTypesByCode: Record<string, Id<"activity_types">> = {};
+              for (const at of activityTypes) {
+                activityTypesByCode[at.code] = at._id;
+              }
+
+              const templateResult = await seedOnboardingTemplate(ctx, args.companyId, args.cropTypeId, cultivarsResult.firstCultivarId, config, activityTypesByCode);
               results.template = { success: true, phases: templateResult.phasesCount, activities: templateResult.activitiesCount, error: null };
             } catch (error) {
               results.template.error = error instanceof Error ? error.message : "Unknown error";

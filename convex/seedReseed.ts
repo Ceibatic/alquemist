@@ -992,13 +992,16 @@ export const getScheduledActivitiesForPhase = internalQuery({
         activity_type: sa.activity_type,
         type_id: sa.type_id,
       })),
-      regular: regular.map((sa) => ({
-        _id: sa._id,
-        group_id: sa.group_id,
-        status: sa.status,
-        activity_type: sa.activity_type,
-        type_id: sa.type_id,
-      })),
+      regular: regular
+        .sort((a, b) => (a.scheduled_date ?? 0) - (b.scheduled_date ?? 0))
+        .map((sa) => ({
+          _id: sa._id,
+          group_id: sa.group_id,
+          status: sa.status,
+          activity_type: sa.activity_type,
+          type_id: sa.type_id,
+          scheduled_date: sa.scheduled_date,
+        })),
     };
   },
 });
@@ -1367,12 +1370,15 @@ export const reseed = action({
         console.log("  ✓ 9b: Env readings seeded (temp/hum/VPD)");
       }
 
-      // 9c. Execute ad-hoc Riego with resource consumption
+      // 9c. Execute Riego via scheduled activity with resource consumption
       let propRegularActivityId: Id<"activities"> | null = null;
       const irrigationTypeId = refs.activityTypesByCode["irrigation"];
-      if (irrigationTypeId && refs.productsBySku["DEMO-NUT-A"]) {
+      const propIrrigationSA = propSAs.regular.find(
+        (sa) => sa.type_id === irrigationTypeId && sa.status === "pending"
+      );
+      if (propIrrigationSA && refs.productsBySku["DEMO-NUT-A"]) {
         const result = await ctx.runMutation(api.activities.executeActivity, {
-          typeId: irrigationTypeId,
+          scheduledActivityId: propIrrigationSA._id,
           batchIds: batches.map((b) => b._id),
           performedBy: context.userId,
           companyId: context.companyId,
@@ -1385,7 +1391,24 @@ export const reseed = action({
           consumeInventory: true,
         });
         propRegularActivityId = result.activityId;
-        console.log("  ✓ 9c: Riego executed with NUT-A (1L FIFO)");
+        console.log("  ✓ 9c: Riego executed via SA with NUT-A (1L FIFO)");
+      } else if (irrigationTypeId && refs.productsBySku["DEMO-NUT-A"]) {
+        // Fallback: ad-hoc if no SA found (shouldn't happen with Fix 1)
+        const result = await ctx.runMutation(api.activities.executeActivity, {
+          typeId: irrigationTypeId,
+          batchIds: batches.map((b) => b._id),
+          performedBy: context.userId,
+          companyId: context.companyId,
+          facilityId: context.facilityId,
+          cropPhase: "propagation",
+          notes: "Riego con nutriente base A (ad-hoc fallback)",
+          envTemp: 24.5,
+          envHumidity: 76,
+          resources: [makeResource(refs.productsBySku["DEMO-NUT-A"], 1, "L")],
+          consumeInventory: true,
+        });
+        propRegularActivityId = result.activityId;
+        console.log("  ⚠ 9c: Riego executed ad-hoc (no SA found)");
       }
 
       // 9d. Env readings for regular
@@ -1512,17 +1535,20 @@ export const reseed = action({
         console.log("  ✓ 10b: Env readings + observation seeded");
       }
 
-      // 10c. Execute ad-hoc fertilización with resources (NUT-A + NUT-B + CALMAG)
+      // 10c. Execute fertilización via scheduled activity with resources (NUT-A + NUT-B + CALMAG)
       let vegFertActivityId: Id<"activities"> | null = null;
       const fertigationTypeId = refs.activityTypesByCode["fertigation"];
+      const vegFertigationSA = vegSAs.regular.find(
+        (sa) => sa.type_id === fertigationTypeId && sa.status === "pending"
+      );
       if (
-        fertigationTypeId &&
+        vegFertigationSA &&
         refs.productsBySku["DEMO-NUT-A"] &&
         refs.productsBySku["DEMO-NUT-B"] &&
         refs.productsBySku["DEMO-CALMAG"]
       ) {
         const result = await ctx.runMutation(api.activities.executeActivity, {
-          typeId: fertigationTypeId,
+          scheduledActivityId: vegFertigationSA._id,
           batchIds: batches.map((b) => b._id),
           performedBy: context.userId,
           companyId: context.companyId,
@@ -1539,7 +1565,33 @@ export const reseed = action({
           consumeInventory: true,
         });
         vegFertActivityId = result.activityId;
-        console.log("  ✓ 10c: Fertilización executed with NUT-A/B + CALMAG");
+        console.log("  ✓ 10c: Fertilización executed via SA with NUT-A/B + CALMAG");
+      } else if (
+        fertigationTypeId &&
+        refs.productsBySku["DEMO-NUT-A"] &&
+        refs.productsBySku["DEMO-NUT-B"] &&
+        refs.productsBySku["DEMO-CALMAG"]
+      ) {
+        // Fallback: ad-hoc if no SA found
+        const result = await ctx.runMutation(api.activities.executeActivity, {
+          typeId: fertigationTypeId,
+          batchIds: batches.map((b) => b._id),
+          performedBy: context.userId,
+          companyId: context.companyId,
+          facilityId: context.facilityId,
+          cropPhase: "vegetative",
+          notes: "Fertilización vegetativa — Base A+B + Cal-Mag (ad-hoc fallback)",
+          envTemp: 25.5,
+          envHumidity: 60,
+          resources: [
+            makeResource(refs.productsBySku["DEMO-NUT-A"], 1, "L"),
+            makeResource(refs.productsBySku["DEMO-NUT-B"], 1, "L"),
+            makeResource(refs.productsBySku["DEMO-CALMAG"], 1, "L"),
+          ],
+          consumeInventory: true,
+        });
+        vegFertActivityId = result.activityId;
+        console.log("  ⚠ 10c: Fertilización executed ad-hoc (no SA found)");
       }
 
       // 10d. Env readings for fertilización
@@ -1655,16 +1707,19 @@ export const reseed = action({
         console.log("  ✓ 11b: Env readings seeded (temp/hum/VPD)");
       }
 
-      // 11c. Execute ad-hoc fertirrigación with bloom resources
+      // 11c. Execute fertirrigación via scheduled activity with bloom resources
       let florFertActivityId: Id<"activities"> | null = null;
+      const florFertigationSA = florSAs.regular.find(
+        (sa) => sa.type_id === fertigationTypeId && sa.status === "pending"
+      );
       if (
-        fertigationTypeId &&
+        florFertigationSA &&
         refs.productsBySku["DEMO-BLOOM-A"] &&
         refs.productsBySku["DEMO-BLOOM-B"] &&
         refs.productsBySku["DEMO-CALMAG"]
       ) {
         const result = await ctx.runMutation(api.activities.executeActivity, {
-          typeId: fertigationTypeId,
+          scheduledActivityId: florFertigationSA._id,
           batchIds: batches.map((b) => b._id),
           performedBy: context.userId,
           companyId: context.companyId,
@@ -1681,7 +1736,33 @@ export const reseed = action({
           consumeInventory: true,
         });
         florFertActivityId = result.activityId;
-        console.log("  ✓ 11c: Fertirrigación executed with BLOOM-A/B + CALMAG");
+        console.log("  ✓ 11c: Fertirrigación executed via SA with BLOOM-A/B + CALMAG");
+      } else if (
+        fertigationTypeId &&
+        refs.productsBySku["DEMO-BLOOM-A"] &&
+        refs.productsBySku["DEMO-BLOOM-B"] &&
+        refs.productsBySku["DEMO-CALMAG"]
+      ) {
+        // Fallback: ad-hoc if no SA found
+        const result = await ctx.runMutation(api.activities.executeActivity, {
+          typeId: fertigationTypeId,
+          batchIds: batches.map((b) => b._id),
+          performedBy: context.userId,
+          companyId: context.companyId,
+          facilityId: context.facilityId,
+          cropPhase: "flowering",
+          notes: "Fertirrigación floración — Bloom A+B + Cal-Mag (ad-hoc fallback)",
+          envTemp: 23.5,
+          envHumidity: 50,
+          resources: [
+            makeResource(refs.productsBySku["DEMO-BLOOM-A"], 1, "L"),
+            makeResource(refs.productsBySku["DEMO-BLOOM-B"], 1, "L"),
+            makeResource(refs.productsBySku["DEMO-CALMAG"], 1, "L"),
+          ],
+          consumeInventory: true,
+        });
+        florFertActivityId = result.activityId;
+        console.log("  ⚠ 11c: Fertirrigación executed ad-hoc (no SA found)");
       }
 
       // 11d. Observations + env for fertirrigación (pest finding)
