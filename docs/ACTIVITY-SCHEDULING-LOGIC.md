@@ -23,6 +23,7 @@ The auto-scheduling system transforms template-level activity timing rules into 
 
 | Feature | Location | Notes |
 |---------|----------|-------|
+| Format 1 onboarding timing | `productionOrders.create` | `days_from_phase_start` + `frequency` + `recurring_until` |
 | One-time activities | `productionOrders.create` | `timing.type === "one_time"` |
 | Daily range recurring | `productionOrders.create` | `timing.frequencyType === "daily_range"` |
 | Specific days of week | `productionOrders.create` | `timing.frequencyType === "specific_days"` |
@@ -105,7 +106,44 @@ for (const templatePhase of sortedPhases) {
 
 ---
 
-## Scheduling Types
+## Timing Configuration Formats
+
+The schedule generator supports two timing formats. Format discrimination is automatic:
+- **Format 1**: detected by `typeof timing.days_from_phase_start === "number"`
+- **Format 2**: detected by `timing.type` being `"one_time"`, `"recurring"`, or `"dependent"`
+
+### Format 1 (Onboarding / Simple)
+
+Written by `seedOnboardingData.ts` when creating templates during onboarding. Uses human-readable frequency strings.
+
+```json
+{
+  "days_from_phase_start": 1,
+  "time_of_day": "08:00",
+  "frequency": "daily",
+  "recurring_until": "phase_end"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `days_from_phase_start` | number | yes | Offset in days from phase start (0 = first day) |
+| `time_of_day` | string | no | Target time (informational) |
+| `frequency` | string | no | One of: `daily`, `every_2_days`, `every_3_days`, `weekly`, `biweekly`, `monthly` |
+| `recurring_until` | string | no | `"phase_end"` to repeat until phase ends; omit for one-time |
+
+**Mapping** (`frequencyToIntervalDays` helper):
+- `daily` → 1, `every_2_days` → 2, `every_3_days` → 3, `weekly` → 7, `biweekly` → 14, `monthly` → 30
+
+**Logic**: If `frequency` is absent → one-time at `phaseStart + days_from_phase_start`. If present → recurring from start offset until `recurring_until` (or single occurrence if no end specified).
+
+### Format 2 (Template Editor / Advanced)
+
+Written by the template editor UI. Uses explicit type discriminator and structured configuration.
+
+---
+
+## Scheduling Types (Format 2)
 
 ### 1. One-Time Activities
 

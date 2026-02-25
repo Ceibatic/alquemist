@@ -1,6 +1,6 @@
 # Estado de Implementacion - Alquemist
 
-**Ultima actualizacion**: Diciembre 2024
+**Ultima actualizacion**: Febrero 2026
 
 ---
 
@@ -36,16 +36,16 @@
 ### Archivos Clave
 - Backend: `convex/users.ts`, `convex/companies.ts`, `convex/facilities.ts`
 - Frontend: `app/(auth)/`, `app/(onboarding)/`
-- Docs: `docs/modules/phase-1/`
 
 ### Destacado: Generacion Automatica de Datos de Ejemplo
 Al completar el onboarding, el usuario puede optar por generar datos de ejemplo automaticamente:
 - **Areas**: 6 areas configuradas (Almacen, Propagacion, Vegetativo, Floracion, Secado, Curado)
 - **Cultivares**: 5 variedades de cannabis (Blue Dream, OG Kush, etc.)
 - **Proveedores**: 4 proveedores demo (nutrientes, equipos, genetica, biocontrol)
-- **Productos**: 14 productos (nutrientes, sustratos, pesticidas, equipos)
-- **Inventario**: Stock inicial en area de almacen
-- **Template de Produccion**: "Cannabis Indoor Estandar" con 5 fases y 15 actividades
+- **Productos**: 14 productos (nutrientes, sustratos, pesticidas, equipos) + 8 plant material (cadena de transformacion)
+- **Inventario**: Stock inicial determinista en area de almacen (10L nutrients, 20L substrates, 5 pesticides, 3 equipment)
+- **Template de Produccion**: "Cannabis Indoor Estandar" con 5 fases y 15 actividades (incluye phase_role entry/exit, completion_criteria en 3 fases, distribution_strategy, type_id, timing Format 1 con recurrencia)
+- **Production Orders** (via reseed): 2 ordenes demo (1 activa mid-lifecycle con 2 batches, 1 en planning), scheduled activities generadas correctamente desde Format 1 timing, actividades regulares ejecutadas via scheduledActivityId para trazabilidad completa
 
 **Archivos clave**:
 - Backend: `convex/seedOnboardingData.ts`
@@ -73,7 +73,6 @@ Al completar el onboarding, el usuario puede optar por generar datos de ejemplo 
 ### Archivos Clave
 - Backend: `convex/areas.ts`, `convex/cultivars.ts`, `convex/suppliers.ts`, `convex/home.ts`
 - Frontend: `app/(dashboard)/areas/`, `app/(dashboard)/cultivars/`, etc.
-- Docs: `docs/modules/phase-2/`
 
 ### Destacado: Home Dashboard Role-Based
 - Dashboard Administrativo: KPIs, produccion, calidad, alertas
@@ -94,11 +93,10 @@ Al completar el onboarding, el usuario puede optar por generar datos de ejemplo 
 ### Archivos Clave
 - Backend: `convex/productionTemplates.ts`, `convex/qualityChecks.ts`
 - Frontend: `app/(dashboard)/templates/`, `app/(dashboard)/quality-checks/`
-- Docs: `docs/modules/phase-3/`
 
 ### Caracteristicas Clave
 - Templates con fases y actividades configurables
-- Algoritmos de scheduling (one_time, daily_range, specific_days, every_n_days, dependent)
+- Algoritmos de scheduling: Format 1 (days_from_phase_start + frequency) y Format 2 (one_time, daily_range, specific_days, every_n_days, dependent)
 - Quality checks con soporte AI
 
 ---
@@ -116,7 +114,6 @@ Al completar el onboarding, el usuario puede optar por generar datos de ejemplo 
 ### Archivos Clave
 - Backend: `convex/productionOrders.ts`, `convex/batches.ts`, `convex/activities.ts`
 - Frontend: `app/(dashboard)/production-orders/`, `app/(dashboard)/batches/`
-- Docs: `docs/modules/phase-4/`
 
 ### Flujo de Produccion
 ```
@@ -293,10 +290,6 @@ alquemist/
 ## Enlaces Rapidos
 
 ### Documentacion
-- [Modules Phase 1](docs/modules/phase-1/)
-- [Modules Phase 2](docs/modules/phase-2/)
-- [Modules Phase 3](docs/modules/phase-3/)
-- [Modules Phase 4](docs/modules/phase-4/)
 - [API Endpoints](docs/api/)
 - [UI Wireframes](docs/ui/nextjs/)
 - [Internal Admin](docs/INTERNAL-ADMIN.md)
@@ -320,5 +313,8 @@ alquemist/
 | Dic 2024 | Completado Phase 4 (Production Orders, Batches) |
 | Nov 2024 | Completado Phase 3 (Templates, Quality Checks) |
 | Nov 2024 | Completado Phase 2 (CRUDs basicos) |
+| Feb 2026 | Fix: Schedule generator soporta Format 1 timing (onboarding), inventario determinista, reseed ejecuta via SAs |
+| Feb 2026 | Reseed con trazabilidad completa: activities, observations, env readings, batch movements |
+| Feb 2026 | Migracion auth: Convex Auth → Clerk (custom UI + JWT template + webhooks) |
 | Ene 2026 | Migracion auth: custom → Convex Auth (Password + Email OTP via Resend) |
 | Oct 2024 | Completado Phase 1 (Onboarding) |
