@@ -3,290 +3,117 @@
 ## Tech Stack
 
 - **Frontend:** Next.js 15 (App Router) + React 19 + TypeScript strict
-- **UI:** Radix UI + shadcn/ui + Tailwind CSS
+- **UI:** Radix UI + shadcn/ui + Tailwind CSS + Lucide React (iconos)
 - **Backend:** Convex (real-time serverless)
-- **Auth:** Clerk (`@clerk/nextjs`) + Convex integration (JWT template `convex`)
+- **Auth:** Clerk (`@clerk/nextjs` + `@clerk/localizations` esES) + Convex integration (JWT template `convex`)
 - **Forms:** React Hook Form + Zod
+- **Tablas:** @tanstack/react-table
+- **Graficas:** Recharts
+- **Fechas:** date-fns
+- **Drag & Drop:** @dnd-kit (core + sortable)
+- **Temas:** next-themes (dark/light)
 - **Notificaciones:** Sonner toasts
 - **Email:** Resend (invitaciones, reportes) + Clerk (verificacion, password reset)
+- **Webhooks:** Svix (verificacion de webhooks Clerk)
+- **AI:** @google/generative-ai (Gemini)
+- **Reportes:** pptxgenjs (generacion PowerPoint)
 
 ## Autenticacion (Clerk + Convex)
 
 El proyecto usa **Clerk** para autenticacion con integracion oficial a Convex via JWT template. Las paginas de auth son **custom UI** (no Clerk pre-built components).
 
-> **Nota:** Migracion desde `@convex-dev/auth` en progreso. Plan completo en `docs/dev/clerk-migration-plan.md`. Skill de migracion en `.claude/skills/migrate-auth/SKILL.md`.
-
-| Concepto | Implementacion |
-|----------|---------------|
-| Provider React | `ClerkProvider` + `ConvexProviderWithClerk` en `components/providers/convex-client-provider.tsx` |
-| Middleware rutas | `middleware.ts` — `clerkMiddleware()` de `@clerk/nextjs/server` |
-| Auth en frontend | `useSignIn()`, `useSignUp()`, `useUser()`, `useAuth()` de `@clerk/nextjs` |
-| Auth en backend | `ctx.auth.getUserIdentity()` → lookup por `clerkId` en tabla `users` |
-| Auth helper backend | `getAuthenticatedUserId(ctx)` — wrapper que retorna `Id<"users">` o `null` |
-| Usuario actual | `api.users.getCurrentUser` query |
-| Webhook sync | HTTP endpoint en Convex recibe `user.created/updated/deleted` de Clerk |
-| Validadores compartidos | `convex/validation.ts` (email, phone, NIT) |
-
-### Variables de entorno — Next.js (`.env.local`)
-
-| Variable | Descripcion |
-|----------|-------------|
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key (`pk_test_...` dev, `pk_live_...` prod) |
-| `CLERK_SECRET_KEY` | Clerk secret key (`sk_test_...` dev, `sk_live_...` prod) |
-| `CLERK_JWT_ISSUER_DOMAIN` | Issuer URL del JWT template (ej: `https://fluent-gecko-72.clerk.accounts.dev`) |
-| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/login` |
-| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/signup` |
-| `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` | `/dashboard` |
-| `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` | `/verify-email` |
-
-### Variables de entorno — Convex (backend)
-
-Configurar via `npx convex env set VARIABLE -- "valor"`:
-
-| Variable | Descripcion |
-|----------|-------------|
-| `CLERK_JWT_ISSUER_DOMAIN` | Mismo issuer URL del JWT template. Requerido para validar tokens |
-| `RESEND_API_KEY` | API key de Resend para invitaciones y reportes |
-
-### Schema users y Clerk
-
-La tabla `users` en `convex/schema.ts` incluye un campo `clerkId` para vincular con Clerk. Reglas:
-
-1. **Campo `clerkId`:** `v.optional(v.string())` — se llena via webhook `user.created`
-2. **Index `by_clerk_id`:** Para lookup rapido de usuario por Clerk subject
-3. **Campos custom siguen siendo `v.optional()`:** El usuario se crea via webhook con datos minimos (clerkId, email, name). Campos adicionales se llenan durante onboarding
-4. **Queries que usan campos del user:** Usar null checks o fallbacks (`user.email ?? ""`, `user.locale || "es"`)
-
-### Rutas publicas (no requieren auth)
-
-`/login`, `/signup`, `/verify-email`, `/forgot-password`, `/reset-password`, `/accept-invitation(.*)`, `/invitation-invalid`, `/welcome-invited`
-
-## Estructura de Codigo
-
-| Tipo | Path |
-|------|------|
-| Paginas auth | `app/(auth)/[ruta]/page.tsx` |
-| Paginas dashboard | `app/(dashboard)/[ruta]/page.tsx` |
-| Paginas onboarding | `app/(onboarding)/[ruta]/page.tsx` |
-| Componentes | `components/[dominio]/[nombre].tsx` |
-| Backend Convex | `convex/[dominio].ts` |
-| Schema | `convex/schema.ts` (campo `clerkId` + index `by_clerk_id`) |
-| Auth config | `convex/auth.config.ts` (Clerk JWT issuer) |
-| Validacion | `convex/validation.ts` |
-| Hooks | `hooks/[nombre].ts` |
-| Documentacion modulos | `docs/modules/phase-{1,2,3,4}/` |
-
-## Convenciones de Codigo
-
-- TypeScript strict en todo el proyecto
-- Formularios con React Hook Form + Zod schema
-- Validacion dual: Zod en frontend + validacion en Convex mutations
-- Botones principales: amber-500
-- Toasts via Sonner para feedback al usuario
-- Backend Convex: mutations (escritura), queries (lectura), actions (side effects)
-
-## Engineering Behavior
-
-### 1. Assumption Surfacing
-
-Before implementing anything non-trivial, explicitly state assumptions:
-
-```
-ASSUMPTIONS:
-1. [assumption]
-2. [assumption]
-→ Proceeding with these unless corrected.
-```
-
-Never silently fill in ambiguous requirements. Surface uncertainty early — the most common failure mode is making wrong assumptions and running with them unchecked.
-
-### 2. Confusion Management
-
-When encountering inconsistencies, conflicting requirements, or unclear specs:
-
-1. **STOP.** Do not proceed with a guess.
-2. Name the specific confusion.
-3. Present the tradeoff or ask the clarifying question.
-4. Wait for resolution before continuing.
-
-Bad: Silently picking one interpretation and hoping it's right.
-Good: "I see X in file A but Y in file B. Which takes precedence?"
-
-### 3. Push Back When Warranted
-
-Not a yes-machine. When the approach has clear problems:
-
-- Point out the issue directly
-- Explain the concrete downside
-- Propose an alternative
-- Accept the decision if overridden
-
-Sycophancy is a failure mode. "Of course!" followed by implementing a bad idea helps no one.
-
-### 4. Simplicity Enforcement
-
-Actively resist overcomplication. Before finishing any implementation, ask:
-
-- Can this be done in fewer lines?
-- Are these abstractions earning their complexity?
-- Would a senior dev say "why didn't you just..."?
-
-If 1000 lines are built and 100 would suffice, that's a failure. Prefer the boring, obvious solution. Cleverness is expensive.
-
-### 5. Scope Discipline
-
-Touch only what's asked to touch. Do NOT:
-
-- Remove comments you don't understand
-- "Clean up" code orthogonal to the task
-- Refactor adjacent systems as side effects
-- Delete code that seems unused without explicit approval
-
-Surgical precision, not unsolicited renovation.
-
-### 6. Dead Code Hygiene
-
-After refactoring or implementing changes:
-
-1. Identify code that is now unreachable
-2. List it explicitly
-3. Ask: "Should I remove these now-unused elements: [list]?"
-
-Don't leave corpses. Don't delete without asking.
-
-### 7. Test-First for Non-Trivial Logic
-
-When implementing non-trivial logic:
-
-1. Write the test that defines success
-2. Implement until the test passes
-3. Show both
-
-Tests are the loop condition. Use them.
-
-### 8. Change Summary
-
-After each implementation or modification, output:
-
-```
-CHANGES MADE:
-- [file]: [what changed and why]
-
-NOT TOUCHED (intentionally):
-- [file/area]: [why it was left alone]
-
-POTENTIAL CONCERNS:
-- [risks, edge cases, things to verify]
-
-NEXT STEPS:
-- [follow-up items if any]
-```
-
-This provides immediate session-level visibility and complements the daily log in `docs/dev/logs/`.
-
-### 9. Communication Standards
-
-- Be direct about problems
-- Quantify impacts when possible ("adds ~200ms latency" not "might be slower")
-- When stuck, say so and describe what was tried
-- Don't hide uncertainty behind confident language
-
-### Failure Modes to Avoid
-
-1. Making wrong assumptions without checking
-2. Not managing own confusion — guessing instead of asking
-3. Not surfacing inconsistencies noticed in code or specs
-4. Not presenting tradeoffs on non-obvious decisions
-5. Being sycophantic to bad ideas
-6. Overcomplicating code and APIs
-7. Bloating abstractions unnecessarily
-8. Not cleaning up dead code after refactors
-9. Modifying comments/code orthogonal to the task
-10. Removing things not fully understood
-
-## Daily Implementation Log
-
-Despues de cada commit, agregar una entrada al archivo `docs/dev/logs/YYYY-MM-DD.md` (crear el archivo si no existe para el dia).
-
-### Formato
-
-```markdown
-# YYYY-MM-DD
-
-## [HH:MM] area — resumen corto
-- **Files:** `path/relevante1.ts`, `path/relevante2.ts`
-- **Why:** Una oracion con la razon del cambio.
-- **Commit:** `abc1234`
-```
-
-### Reglas
-
-- Un archivo por dia calendario, nombrado `YYYY-MM-DD.md` con heading `# YYYY-MM-DD`
-- Usar el nombre del modulo de `docs/modules/` cuando el cambio mapea a un modulo (ej: `registration`, `auth`, `areas`, `inventory`). Si no, usar un label general: `infra`, `ui`, `schema`, `config`, `dx`
-- Mantener entradas concisas. El diff del commit tiene los detalles; el log da contexto rapido
-- Multiples commits en una sesion = multiples secciones `## [HH:MM]` en el mismo archivo
-- Solo listar los archivos mas relevantes del cambio, no todo el diff
-
-## Skills Disponibles
-
-| Skill | Proposito | Invocacion |
-|-------|-----------|------------|
-| `/plan-feature` | Planificar nueva feature con User Stories detalladas | Cuando quieras documentar una nueva funcionalidad |
-| `/implement-feature` | Implementar feature del backlog sistematicamente | Cuando quieras implementar un FEAT-*.md |
-| `/review-module` | Auditar modulo existente vs documentacion | Cuando quieras revisar un modulo de docs/modules/ |
-| `/migrate-auth` | Continuar migracion Clerk | Para fases pendientes de migracion auth |
-
-## Metodologia de Desarrollo
-
-El proyecto sigue una metodologia de dos fases para implementar nuevas funcionalidades:
-
-### Flujo de Trabajo
-
-```
-1. PLANIFICACION (/plan-feature)
-   Usuario describe idea → Explorar codebase → Clarificar dudas
-   → Generar docs/backlog/pending/FEAT-YYYY-MM-nombre.md
-
-2. IMPLEMENTACION (/implement-feature)
-   Leer documento → Mover a in-progress/ → Crear branch
-   → Para cada US: explorar, implementar, build, commit, actualizar doc
-   → Mover a completed/ → Push y resumen para PR
-```
-
-### Estructura del Backlog
-
-```
-docs/backlog/
-├── pending/           # Features planificadas, listas para implementar
-├── in-progress/       # Features en desarrollo activo
-└── completed/         # Features terminadas (historial)
-```
-
-### Nomenclatura
-
-- **Archivos:** `FEAT-YYYY-MM-nombre-kebab.md` (ej: `FEAT-2026-02-dark-mode.md`)
-- **Branches:** `feat/FEAT-YYYY-MM-nombre`
-- **Commits:** Un commit por US: `feat(modulo): US-XXX.N descripcion`
-
-### Template de Feature
-
-Ver `docs/backlog/TEMPLATE.md` para el formato completo de documentos de feature.
-
-### Convenciones de Commits
-
-- `feat(modulo):` — Nueva funcionalidad
-- `fix(modulo):` — Correccion de bug
-- `refactor(modulo):` — Refactorizacion sin cambio de comportamiento
-- `docs(modulo):` — Solo documentacion
-
-Siempre incluir: `Co-Authored-By: Claude <noreply@anthropic.com>`
-
-### Reglas Criticas
-
-1. **Explorar antes de implementar** — Leer codigo existente primero
-2. **Build despues de cada US** — No continuar si falla
-3. **Un commit por US** — No acumular cambios
-4. **Actualizar documento** — Marcar criterios [x] al completar
-5. **Daily log obligatorio** — Registrar en docs/dev/logs/
-
-Recuerda hacer commits al final de cada implementacion o modificacion relevante.
+- **Middleware:** `clerkMiddleware` en `middleware.ts` con `createRouteMatcher` para rutas publicas/protegidas
+- **Provider:** `ConvexProviderWithClerk` + `useAuth` en `components/providers/convex-client-provider.tsx`
+- **JWT:** `convex/auth.config.ts` define provider con `applicationID: "convex"`
+- **Auth helper:** `convex/authHelpers.ts` → `getAuthenticatedUserId()` resuelve identity.subject → users.clerkId
+- **Webhook sync:** `POST /clerk-webhook` en `convex/http.ts` verifica firma via Svix, maneja `user.created/updated/deleted` via `convex/clerkSync.ts`
+- **Race condition:** `ensureUserExists` mutation cubre el gap entre navegacion post-signup y llegada del webhook
+- **Localizacion:** espanol (esES) aplicado al ClerkProvider
+
+## Documentacion de Paginas (UI)
+
+La carpeta `docs/pages/` es la **fuente de verdad** para entender que esta implementado en la interfaz. Cada subcarpeta documenta una seccion de la app con sus paginas, tabs, modales y wizards. **Consultar `docs/pages/INDEX.md` primero** para localizar rapidamente el archivo de documentacion necesario.
+
+### Mapa de secciones
+
+| Seccion | Ruta app | Contenido |
+|---------|----------|-----------|
+| `docs/pages/dashboard/` | `/` | Vistas admin/operativo, widgets, onboarding checklist |
+| `docs/pages/facilities/` | `/facilities` | Listado, detalle, modal crear, utilities |
+| `docs/pages/areas/` | `/areas` | Listado, tabs (produccion, inventario, cronograma, historial, detalle), estructuras, modal crear |
+| `docs/pages/cultivars/` | `/cultivars` | Listado, modal crear, subpaginas |
+| `docs/pages/production/` | `/production` | Tabs ordenes y actividades |
+| `docs/pages/resources/` | `/resources` | Tabs productos/proveedores, wizard inventario, detalle producto |
+| `docs/pages/templates/` | `/templates` | Tabs produccion/actividades/calidad, wizard actividades |
+| `docs/pages/users/` | `/users` | Tabs usuarios/invitaciones, modales invitar/editar rol |
+| `docs/pages/settings/` | `/settings` | Tabs general/perfil/seguridad/preferencias/ubicacion/licencias, suscripcion |
+
+### Convenciones de archivos
+
+- `README.md` — Vista general de la seccion (rutas, layout, archivos clave)
+- `listado.md` — Pagina principal de listado (grid/tabla)
+- `tab-*.md` — Documentacion de un tab especifico
+- `modal-*.md` — Documentacion de un modal
+- `wizard-*.md` — Wizard multi-paso
+- `subpaginas.md` — Mapa de rutas hijas
+- `vista-*.md` — Variantes de vista (ej: por rol)
+
+### Mantenimiento
+
+Al implementar una nueva pagina, tab, modal o wizard:
+1. Crear o actualizar el archivo correspondiente en `docs/pages/<seccion>/`
+2. Si es una seccion nueva, crear la subcarpeta con su `README.md`
+3. Cada doc debe incluir: componentes usados, queries/mutations de Convex, interacciones, y estados
+
+## Workflow Orchestration
+
+### 1. Plan Mode Default
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- If something goes sideways, STOP and re-plan immediately - don't keep pushing
+- Use plan mode for verification steps, not just building
+- Write detailed specs upfront to reduce ambiguity
+
+### 2. Subagent Strategy
+- Use subagents liberally to keep main context window clean
+- Offload research, exploration, and parallel analysis to subagents
+- For complex problems, throw more compute at it via subagents
+- One task per subagent for focused execution
+
+### 3. Self-Improvement Loop
+- After ANY correction from the user: update `tasks/lessons.md` with the pattern
+- Write rules for yourself that prevent the same mistake
+- Ruthlessly iterate on these lessons until mistake rate drops
+- Review lessons at session start for relevant project
+
+### 4. Verification Before Done
+- Never mark a task complete without proving it works
+- Diff behavior between main and your changes when relevant
+- Ask yourself: "Would a staff engineer approve this?"
+- Run tests, check logs, demonstrate correctness
+
+### 5. Demand Elegance (Balanced)
+- For non-trivial changes: pause and ask "is there a more elegant way?"
+- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
+- Skip this for simple, obvious fixes - don't over-engineer
+- Challenge your own work before presenting it
+
+### 6. Autonomous Bug Fixing
+- When given a bug report: just fix it. Don't ask for hand-holding
+- Point at logs, errors, failing tests - then resolve them
+- Zero context switching required from the user
+- Go fix failing CI tests without being told how
+
+## Task Management
+
+1. **Plan First**: Write plan to `tasks/todo.md` with checkable items
+2. **Verify Plan**: Check in before starting implementation
+3. **Track Progress**: Mark items complete as you go
+4. **Explain Changes**: High-level summary at each step
+5. **Document Results**: Add review section to `tasks/todo.md`
+6. **Capture Lessons**: Update `tasks/lessons.md` after corrections
+
+## Core Principles
+
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
+- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.

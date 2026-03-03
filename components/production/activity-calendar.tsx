@@ -62,7 +62,11 @@ export function ActivityCalendar({ companyId, currentDate, viewMode, onDateChang
   );
 
   // Also fetch overdue activities (pending before date range)
-  const overdueStart = subDays(new Date(), 90).getTime(); // last 90 days of overdue
+  // Memoized to avoid unstable useQuery args causing infinite re-renders
+  const overdueStart = useMemo(
+    () => startOfDay(subDays(new Date(), 90)).getTime(),
+    []
+  );
 
   const activities = useQuery(api.scheduledActivities.listForSchedule, {
     companyId,

@@ -9,9 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { Badge } from '@/components/ui/badge';
 import { BatchStatsBar } from '@/components/batches/batch-stats-bar';
 import { BatchActivitiesTable } from '@/components/batches/batch-activities-table';
 import { BatchAnalyticsTab } from '@/components/batches/batch-analytics-tab';
+import { BatchTraceabilityView } from '@/components/batches/batch-traceability-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PHASE_LABELS } from '@/lib/constants/phases';
 import { useRouter } from 'next/navigation';
@@ -26,7 +28,11 @@ import {
   AlertTriangle,
   TrendingDown,
   Activity,
+  Package,
+  GitBranch,
 } from 'lucide-react';
+import { SplitBatchModal } from '@/components/batches/split-batch-modal';
+import { MergeBatchModal } from '@/components/batches/merge-batch-modal';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -40,6 +46,11 @@ export default function BatchDetailPage({ params }: PageProps) {
   const [executionSheetOpen, setExecutionSheetOpen] = useState(false);
 
   const batch = useQuery(api.batches.getById, { batchId });
+
+  const currentProduct = useQuery(
+    api.products.getById,
+    batch?.current_product_id ? { productId: batch.current_product_id } : 'skip'
+  );
 
   const formatDate = (timestamp?: number) => {
     if (!timestamp) return '-';
@@ -115,13 +126,30 @@ export default function BatchDetailPage({ params }: PageProps) {
         description={`${batch.cultivarName || batch.cropTypeName || 'Sin cultivar'} - ${batch.areaName || 'Sin area'}`}
         action={
           batch.status === 'active' ? (
-            <Button
-              className="bg-amber-500 hover:bg-amber-600 text-white"
-              onClick={() => setExecutionSheetOpen(true)}
-            >
-              <Activity className="h-4 w-4 mr-2" />
-              Reportar Actividad
-            </Button>
+            <div className="flex items-center gap-2">
+              <SplitBatchModal
+                batchId={batchId}
+                batchCode={batch.batch_code}
+                currentQuantity={batch.current_quantity}
+                facilityId={batch.facility_id}
+                currentAreaId={batch.area_id}
+              />
+              <MergeBatchModal
+                batchId={batchId}
+                batchCode={batch.batch_code}
+                currentQuantity={batch.current_quantity}
+                companyId={batch.company_id}
+                cultivarId={batch.cultivar_id}
+                currentPhase={batch.current_phase ?? undefined}
+              />
+              <Button
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+                onClick={() => setExecutionSheetOpen(true)}
+              >
+                <Activity className="h-4 w-4 mr-2" />
+                Reportar Actividad
+              </Button>
+            </div>
           ) : 'skip' as any
         }
       />
@@ -140,6 +168,15 @@ export default function BatchDetailPage({ params }: PageProps) {
           daysInProduction={batch.daysInProduction}
           currentPhaseInfo={batch.currentPhaseInfo}
         />
+        {currentProduct && (
+          <Badge
+            variant="outline"
+            className="bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1"
+          >
+            <Package className="h-3 w-3" />
+            {currentProduct.name}
+          </Badge>
+        )}
       </div>
 
       {/* Tabs */}
@@ -172,6 +209,13 @@ export default function BatchDetailPage({ params }: PageProps) {
           >
             <TrendingDown className="h-4 w-4" />
             Analytics
+          </TabsTrigger>
+          <TabsTrigger
+            value="traceability"
+            className="inline-flex items-center gap-2 px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md"
+          >
+            <GitBranch className="h-4 w-4" />
+            Trazabilidad
           </TabsTrigger>
         </TabsList>
 
@@ -335,6 +379,11 @@ export default function BatchDetailPage({ params }: PageProps) {
             losses={batch.losses ?? []}
             initialQuantity={batch.initial_quantity}
           />
+        </TabsContent>
+
+        {/* Traceability Tab */}
+        <TabsContent value="traceability" className="mt-6">
+          <BatchTraceabilityView batchId={batchId} />
         </TabsContent>
       </Tabs>
 

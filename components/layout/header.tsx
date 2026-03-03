@@ -24,6 +24,7 @@ interface HeaderProps {
   onMenuClick?: () => void;
   onSidebarToggle?: () => void;
   notificationCount?: number;
+  onNotificationClick?: () => void;
 }
 
 export function Header({
@@ -31,6 +32,7 @@ export function Header({
   onMenuClick,
   onSidebarToggle,
   notificationCount = 0,
+  onNotificationClick,
 }: HeaderProps) {
   const router = useRouter();
   const { signOut } = useClerk();
@@ -82,7 +84,7 @@ export function Header({
       {/* Right: Notifications + User Menu */}
       <div className="flex items-center gap-3">
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" onClick={onNotificationClick}>
           <Bell className="h-5 w-5" />
           {notificationCount > 0 && (
             <Badge

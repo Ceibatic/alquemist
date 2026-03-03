@@ -23,7 +23,7 @@ A diferencia de `review-module` (que audita código estático), `live-test` es *
 
 ## Input
 
-`$ARGUMENTS` = ruta al archivo de documentación del módulo (ej: `docs/modules/phase-2/M08-area-management.md`)
+`$ARGUMENTS` = nombre del módulo o dominio a probar (ej: `production`, `areas`, `templates`)
 
 ## Entorno de Testing
 
@@ -516,7 +516,7 @@ Al terminar todas las user stories (o cuando el usuario decida parar), generar r
 ## Ejemplo de Sesión Completa
 
 ```
-[Skill invocada con: docs/modules/phase-2/M08-area-management.md]
+[Skill invocada con: areas]
 
 📋 Módulo a probar: M08 - Area Management
 📝 User Stories: 5

@@ -397,6 +397,8 @@ export const create = mutation({
     priority: v.optional(v.string()),
     notes: v.optional(v.string()),
     requestedBy: v.id("users"),
+    entryPhaseName: v.optional(v.string()),
+    exitPhaseName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -450,6 +452,8 @@ export const create = mutation({
       cultivar_id: args.cultivarId,
       order_type: args.orderType,
       source_type: args.sourceType,
+      entry_phase_name: args.entryPhaseName,
+      exit_phase_name: args.exitPhaseName,
       requested_quantity: args.requestedQuantity,
       unit_of_measure: "plants",
       batch_size: args.batchSize,
@@ -490,9 +494,35 @@ export const create = mutation({
         .withIndex("by_template", (q) => q.eq("template_id", args.templateId!))
         .collect();
 
-      const sortedPhases = templatePhases.sort(
+      const allSortedPhases = templatePhases.sort(
         (a, b) => a.phase_order - b.phase_order
       );
+
+      // Apply entry/exit phase filtering if specified
+      let sortedPhases = allSortedPhases;
+      if (args.entryPhaseName || args.exitPhaseName) {
+        const entryIndex = args.entryPhaseName
+          ? allSortedPhases.findIndex(
+              (p) =>
+                p.phase_name.toLowerCase() ===
+                args.entryPhaseName!.toLowerCase()
+            )
+          : 0;
+        const exitIndex = args.exitPhaseName
+          ? allSortedPhases.findIndex(
+              (p) =>
+                p.phase_name.toLowerCase() ===
+                args.exitPhaseName!.toLowerCase()
+            )
+          : allSortedPhases.length - 1;
+
+        // Only slice if valid indices were found; otherwise fall back to all phases
+        const resolvedEntry = entryIndex >= 0 ? entryIndex : 0;
+        const resolvedExit =
+          exitIndex >= 0 ? exitIndex : allSortedPhases.length - 1;
+
+        sortedPhases = allSortedPhases.slice(resolvedEntry, resolvedExit + 1);
+      }
 
       let phaseStartDate = plannedStart;
       const phaseStartDates: Map<string, number> = new Map();

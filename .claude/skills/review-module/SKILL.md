@@ -2,11 +2,11 @@
 name: review-module
 description: >
   Auditoria profunda de modulos del proyecto Alquemist. Compara la documentacion
-  de un modulo (docs/modules/) contra su implementacion real en codigo frontend
+  de un modulo contra su implementacion real en codigo frontend
   (app/, components/) y backend (convex/), identifica gaps, analiza user stories
   en busca de aspectos esenciales faltantes de UI/UX e ingenieria, y propone un
   plan de implementacion. Usar cuando el usuario pida revisar, auditar o analizar
-  un modulo, o cuando mencione un archivo de docs/modules/.
+  un modulo del proyecto.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, TodoWrite
 ---
 
@@ -343,6 +343,5 @@ Para bugs criticos en produccion:
 
 ### Referencias Rapidas
 - Convenciones de proyecto: `CLAUDE.md`
-- Documentacion de modulos: `docs/modules/phase-{1,2,3,4}/`
 - Patrones de codigo: `docs/patterns/`
 - Logs de desarrollo: `docs/dev/logs/`

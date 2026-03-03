@@ -3,9 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, User, Mail, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-import { useAuth } from '@clerk/nextjs';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 import { Button } from '@/components/ui/button';
 import { CountdownTimer } from '@/components/shared/countdown-timer';
 import {
@@ -33,37 +31,13 @@ function AcceptInvitationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
-  const { isSignedIn, isLoaded: authLoaded } = useAuth();
+  const { isRedirecting } = useAuthRedirect();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRejecting, setIsRejecting] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [invitation, setInvitation] = useState<InvitationDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  // Check onboarding status if user is already authenticated
-  const onboardingStatus = useQuery(
-    api.users.getOnboardingStatus,
-    authLoaded && isSignedIn ? {} : "skip"
-  );
-
-  // Auto-redirect authenticated users
-  useEffect(() => {
-    if (!authLoaded) return;
-    if (!isSignedIn) return; // Show invitation form normally
-
-    if (onboardingStatus === undefined) return; // Loading
-    if (onboardingStatus === null) return; // No user in Convex (edge case)
-
-    // Redirect based on onboarding status
-    if (onboardingStatus.onboardingCompleted) {
-      router.replace('/dashboard');
-    } else if (!onboardingStatus.hasCompany) {
-      router.replace('/company-setup');
-    } else {
-      router.replace('/facility-basic');
-    }
-  }, [authLoaded, isSignedIn, onboardingStatus, router]);
 
   useEffect(() => {
     const loadInvitation = async () => {
@@ -130,8 +104,8 @@ function AcceptInvitationContent() {
     router.push('/invitation-invalid');
   };
 
-  // Show loader while checking auth status
-  if (isSignedIn && onboardingStatus === undefined) {
+  // Show loader while redirecting authenticated users (covers loading + null + valid states)
+  if (isRedirecting) {
     return (
       <div className="flex flex-col items-center justify-center space-y-4 py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

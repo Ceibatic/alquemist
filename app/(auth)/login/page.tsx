@@ -1,51 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LogIn, Loader2 } from 'lucide-react';
-import { useAuth, useSignIn } from '@clerk/nextjs';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { useSignIn } from '@clerk/nextjs';
 import { loginSchema, type LoginFormValues } from '@/lib/validations';
 import { getClerkErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/shared/password-input';
+import { useAuthRedirect } from '@/hooks/use-auth-redirect';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isSignedIn, isLoaded: authLoaded } = useAuth();
+  const { isRedirecting } = useAuthRedirect();
   const { signIn, setActive, isLoaded } = useSignIn();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
-
-  // Check onboarding status if user is already authenticated
-  const onboardingStatus = useQuery(
-    api.users.getOnboardingStatus,
-    authLoaded && isSignedIn ? {} : "skip"
-  );
-
-  // Auto-redirect authenticated users
-  useEffect(() => {
-    if (!authLoaded) return;
-    if (!isSignedIn) return; // Show login form normally
-
-    if (onboardingStatus === undefined) return; // Loading
-    if (onboardingStatus === null) return; // No user in Convex (edge case)
-
-    // Redirect based on onboarding status
-    if (!onboardingStatus.hasCompany) {
-      router.replace('/company-setup');
-    } else if (!onboardingStatus.onboardingCompleted) {
-      router.replace('/facility-basic');
-    } else {
-      router.replace('/dashboard');
-    }
-  }, [authLoaded, isSignedIn, onboardingStatus, router]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -80,10 +55,8 @@ export default function LoginPage() {
     }
   };
 
-  // Show loader while checking auth status
-  if (!authLoaded || !isLoaded) return null;
-
-  if (isSignedIn && onboardingStatus === undefined) {
+  // Show loader while checking auth status or redirecting
+  if (!isLoaded || isRedirecting) {
     return (
       <div className="flex flex-col items-center justify-center space-y-4 py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

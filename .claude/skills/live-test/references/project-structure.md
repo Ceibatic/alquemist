@@ -20,15 +20,6 @@
 | Schema | `convex/schema.ts` | - |
 | Hooks | `hooks/[nombre].ts` | `hooks/use-auth.ts` |
 
-## Documentacion de modulos
-
-| Fase | Path |
-|------|------|
-| Phase 1 (onboarding) | `docs/modules/phase-1/M01-M07` |
-| Phase 2 (gestion) | `docs/modules/phase-2/M05,M08,M15-M21` |
-| Phase 3 (templates) | `docs/modules/phase-3/M22-M23` |
-| Phase 4 (produccion) | `docs/modules/phase-4/M24-M26` |
-
 ## Convenciones
 
 - Formularios usan React Hook Form + Zod schema

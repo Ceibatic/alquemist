@@ -107,8 +107,8 @@ export function TrendCharts({ facilityId }: TrendChartsProps) {
             <Leaf className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="h-[80px]">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-[80px] min-w-0">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart data={healthData} layout="vertical">
                   <XAxis type="number" hide />
                   <YAxis
@@ -177,8 +177,8 @@ function MiniChart({ icon: Icon, title, value, data, color }: MiniChartProps) {
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
-        <div className="h-[60px] mt-2">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[60px] mt-2 min-w-0">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <AreaChart data={data}>
               <defs>
                 <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">

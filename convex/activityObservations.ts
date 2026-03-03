@@ -172,6 +172,8 @@ export const create = mutation({
     organismName: v.optional(v.string()),
     affectedAreaPct: v.optional(v.number()),
     affectedPlantCount: v.optional(v.number()),
+    incidenceCount: v.optional(v.number()),
+    sampleSize: v.optional(v.number()),
     plantPart: v.optional(v.string()),
     description: v.string(),
     recommendedAction: v.optional(v.string()),
@@ -188,7 +190,8 @@ export const create = mutation({
     const companyId = activity.company_id;
     if (!companyId) throw new Error("Activity has no company_id");
 
-    return await ctx.db.insert("activity_observations", {
+    const now = Date.now();
+    const observationId = await ctx.db.insert("activity_observations", {
       activity_id: args.activityId,
       company_id: companyId,
       observation_type: args.observationType,
@@ -197,14 +200,61 @@ export const create = mutation({
       organism_name: args.organismName,
       affected_area_pct: args.affectedAreaPct,
       affected_plant_count: args.affectedPlantCount,
+      incidence_count: args.incidenceCount,
+      sample_size: args.sampleSize,
       plant_part: args.plantPart,
       description: args.description,
       recommended_action: args.recommendedAction,
       follow_up_date: args.followUpDate,
       resolved: false,
       attachment_ids: args.attachmentIds,
-      created_at: Date.now(),
+      created_at: now,
     });
+
+    // Create alert for high/critical severity observations
+    if (args.severity === "high" || args.severity === "critical") {
+      // Map observation_type to alert type
+      const alertTypeMap: Record<string, string> = {
+        pest: "pest_detected",
+        disease: "disease_detected",
+        deficiency: "deficiency_detected",
+      };
+      const alertType = alertTypeMap[args.observationType] ?? "observation_alert";
+
+      // Resolve batch_code for a more descriptive title
+      let batchCode: string | undefined;
+      if (activity.batch_id) {
+        const batch = await ctx.db.get(activity.batch_id);
+        batchCode = batch?.batch_code;
+      }
+
+      // Build descriptive title
+      const subjectPart = args.organismName ?? args.observationType;
+      const locationPart = batchCode ? ` en ${batchCode}` : "";
+      const typeLabelMap: Record<string, string> = {
+        pest: "Plaga detectada",
+        disease: "Enfermedad detectada",
+        deficiency: "Deficiencia detectada",
+      };
+      const typeLabel = typeLabelMap[args.observationType] ?? "Observacion";
+      const alertTitle = `${typeLabel}: ${subjectPart}${locationPart}`;
+
+      await ctx.db.insert("alerts", {
+        company_id: companyId,
+        type: alertType,
+        severity: args.severity,
+        title: alertTitle,
+        message: args.description.substring(0, 200),
+        source_type: "activity_observation",
+        source_id: observationId,
+        facility_id: activity.facility_id,
+        status: "pending",
+        dedup_key: `observation:${observationId}`,
+        created_at: now,
+      });
+    }
+
+    return observationId;
   },
 });
 

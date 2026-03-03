@@ -7,6 +7,14 @@ import { Id } from '@/convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { PhaseCreateDialog } from '@/components/templates/phase-create-dialog';
 import {
@@ -35,9 +43,11 @@ import {
   Calendar,
   Loader2,
   LayoutTemplate,
+  Info,
 } from 'lucide-react';
 import type { OrderWizardFormData, OrderPhaseItem } from './order-create-wizard';
 import type { PhaseItem } from '@/components/templates/template-create-wizard';
+import { YieldCascadePreview } from './yield-cascade-preview';
 
 // ---------------------------------------------------------------------------
 // Area type labels
@@ -231,12 +241,16 @@ function TemplatePhasePreview({
 interface OrderWizardStepPhasesProps {
   formData: OrderWizardFormData;
   onPhasesChange: (phases: OrderPhaseItem[]) => void;
+  onEntryPhaseChange: (name: string) => void;
+  onExitPhaseChange: (name: string) => void;
   companyId: Id<'companies'>;
 }
 
 export function OrderWizardStepPhases({
   formData,
   onPhasesChange,
+  onEntryPhaseChange,
+  onExitPhaseChange,
   companyId,
 }: OrderWizardStepPhasesProps) {
   const hasTemplate = !!formData.templateId;
@@ -252,7 +266,7 @@ export function OrderWizardStepPhases({
       : 'skip'
   );
 
-  // ── Template mode: read-only preview ──
+  // ── Template mode: read-only preview with entry/exit selection ──
 
   if (hasTemplate) {
     if (templatePhases === undefined) {
@@ -263,7 +277,29 @@ export function OrderWizardStepPhases({
       );
     }
 
-    const phases = templatePhases ?? [];
+    const allPhases = templatePhases ?? [];
+
+    // Resolve the effective entry and exit index
+    const entryIdx = formData.entryPhaseName
+      ? allPhases.findIndex(
+          (p) => p.phase_name.toLowerCase() === formData.entryPhaseName.toLowerCase()
+        )
+      : 0;
+    const exitIdx = formData.exitPhaseName
+      ? allPhases.findIndex(
+          (p) => p.phase_name.toLowerCase() === formData.exitPhaseName.toLowerCase()
+        )
+      : allPhases.length - 1;
+
+    const resolvedEntry = entryIdx >= 0 ? entryIdx : 0;
+    const resolvedExit = exitIdx >= 0 ? exitIdx : allPhases.length - 1;
+
+    // Only show phases in the [entry, exit] window
+    const visiblePhases = allPhases.slice(resolvedEntry, resolvedExit + 1);
+
+    const isPartialCycle =
+      resolvedEntry > 0 || resolvedExit < allPhases.length - 1;
+
     let phaseStart = plannedStart;
 
     return (
@@ -276,16 +312,97 @@ export function OrderWizardStepPhases({
           </span>
         </div>
 
+        {/* Entry / Exit phase selectors */}
+        {allPhases.length > 0 && (
+          <div className="rounded-lg border bg-white p-4 space-y-3">
+            <div>
+              <p className="text-sm font-medium">Rango de fases</p>
+              <p className="text-xs text-muted-foreground">
+                Selecciona el rango de fases para este ciclo productivo
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="entry-phase">Fase de inicio</Label>
+                <Select
+                  value={formData.entryPhaseName || allPhases[0]?.phase_name || ''}
+                  onValueChange={(value) => {
+                    onEntryPhaseChange(value === allPhases[0]?.phase_name ? '' : value);
+                  }}
+                >
+                  <SelectTrigger id="entry-phase">
+                    <SelectValue placeholder="Primera fase" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allPhases.map((phase) => (
+                      <SelectItem key={phase._id} value={phase.phase_name}>
+                        {phase.phase_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="exit-phase">Fase de fin</Label>
+                <Select
+                  value={
+                    formData.exitPhaseName ||
+                    allPhases[allPhases.length - 1]?.phase_name ||
+                    ''
+                  }
+                  onValueChange={(value) => {
+                    onExitPhaseChange(
+                      value === allPhases[allPhases.length - 1]?.phase_name
+                        ? ''
+                        : value
+                    );
+                  }}
+                >
+                  <SelectTrigger id="exit-phase">
+                    <SelectValue placeholder="Última fase" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allPhases.map((phase) => (
+                      <SelectItem key={phase._id} value={phase.phase_name}>
+                        {phase.phase_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Yield cascade preview */}
+        {formData.cultivarId && visiblePhases.length > 0 && (
+          <YieldCascadePreview
+            cultivarId={formData.cultivarId}
+            visiblePhases={visiblePhases.map((p) => p.phase_name)}
+          />
+        )}
+
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold">Fases del template</h3>
             <p className="text-sm text-muted-foreground">
-              {phases.length} {phases.length === 1 ? 'fase' : 'fases'}
+              {isPartialCycle
+                ? `${visiblePhases.length} de ${allPhases.length} fases`
+                : `${allPhases.length} ${allPhases.length === 1 ? 'fase' : 'fases'}`}
             </p>
           </div>
+          {isPartialCycle && (
+            <Badge
+              variant="secondary"
+              className="flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200"
+            >
+              <Info className="h-3 w-3" />
+              Ciclo parcial: {visiblePhases.length} de {allPhases.length} fases
+            </Badge>
+          )}
         </div>
 
-        {phases.length === 0 ? (
+        {allPhases.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <Layers className="h-12 w-12 text-gray-300 mb-4" />
@@ -296,7 +413,7 @@ export function OrderWizardStepPhases({
           </Card>
         ) : (
           <div className="space-y-2">
-            {phases.map((phase, index) => {
+            {visiblePhases.map((phase, index) => {
               const start = phaseStart;
               const end = start + phase.estimated_duration_days * DAY_MS;
               phaseStart = end;
@@ -314,9 +431,9 @@ export function OrderWizardStepPhases({
         )}
 
         {/* Timeline summary */}
-        {phases.length > 1 && (
+        {visiblePhases.length > 1 && (
           <TimelineBar
-            items={phases.map((p) => ({
+            items={visiblePhases.map((p) => ({
               name: p.phase_name,
               days: p.estimated_duration_days,
             }))}

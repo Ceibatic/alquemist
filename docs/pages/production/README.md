@@ -12,7 +12,7 @@ Pagina unica con 3 tabs:
 |-----|-----------|-----------|
 | Actividades | `actividades` (default) | Calendario de actividades programadas con vistas dia/semana/mes |
 | Ordenes | `ordenes` | Listado de ordenes de produccion en formato cards |
-| Analiticas | `analiticas` | Dashboard de productividad |
+| Analiticas | `analiticas` | Dashboard de productividad (`ProductionAnalytics` component) |
 
 ## Deep Linking
 
@@ -31,8 +31,8 @@ Una sola entrada "Produccion" apunta a `/production`.
 | `/production/activities/new` | Wizard de nueva actividad no planeada (4 pasos) |
 | `/production/activities/[id]` | Detalle de actividad programada |
 | `/production/activities/[id]/edit` | Wizard de edicion de actividad programada |
-| `/production/activities/[id]/report` | Wizard de reporte/ejecucion (1-3 pasos dinamicos) |
-| `/production/orders/new` | Wizard de creacion de orden (2 pasos) |
+| `/production/activities/[id]/report` | Wizard de reporte/ejecucion (1-4 pasos dinamicos, incluye transformacion) |
+| `/production/orders/new` | Wizard de creacion de orden (2 pasos, con yield cascade y entry/exit phase) |
 | `/production/orders/[id]` | Detalle de orden (estilo template: info + fases + timeline) |
 | `/production/orders/[id]/phases/[phaseId]` | Detalle de fase con schedule de actividades por dia |
 
@@ -58,10 +58,12 @@ Ver [tab-ordenes.md](./tab-ordenes.md) para detalle del tab de ordenes.
 | `components/production/activity-detail-page.tsx` | Contenido del detalle |
 | `components/production/schedule-activity-wizard.tsx` | Wizard 4 pasos nueva actividad |
 | `components/production/edit-activity-wizard.tsx` | Wizard 2 pasos edicion |
-| `components/production/report-activity-wizard.tsx` | Wizard 1-3 pasos reporte de actividad |
+| `components/production/report-activity-wizard.tsx` | Wizard 1-4 pasos reporte de actividad |
 | `components/production/report-step-execution.tsx` | Paso 1: datos de ejecucion |
-| `components/production/report-step-resources.tsx` | Paso 2: recursos editables |
-| `components/production/report-step-quality.tsx` | Paso 3: control de calidad |
+| `components/production/transformation-outputs-form.tsx` | Paso transformacion: outputs multi-producto |
+| `components/production/report-step-resources.tsx` | Paso recursos: insumos editables |
+| `components/production/report-step-quality.tsx` | Paso calidad: formulario QC dinamico |
+| `components/production/production-analytics.tsx` | Dashboard analiticas de produccion |
 | `components/production/orders-tab.tsx` | Container del tab ordenes |
 | `components/production-orders/production-order-list.tsx` | Listado de ordenes con filtros |
 | `components/production-orders/production-order-card.tsx` | Card de orden individual |
@@ -69,8 +71,12 @@ Ver [tab-ordenes.md](./tab-ordenes.md) para detalle del tab de ordenes.
 | `components/production-orders/add-order-activity-dialog.tsx` | Dialog para agregar actividad a fase |
 | `components/production-orders/order-create-wizard.tsx` | Wizard 2 pasos creacion de orden |
 | `components/production-orders/order-wizard-step-basic.tsx` | Paso 1: datos basicos |
-| `components/production-orders/order-wizard-step-phases.tsx` | Paso 2: fases (template o manual) |
+| `components/production-orders/order-wizard-step-phases.tsx` | Paso 2: fases (template o manual) + entry/exit phase |
+| `components/production-orders/yield-cascade-preview.tsx` | Preview de rendimiento esperado por fase |
 | `convex/scheduledActivities.ts` | Backend actividades programadas |
 | `convex/orderPhases.ts` | Backend fases de orden (getById, create) |
 | `convex/productionOrders.ts` | Backend ordenes de produccion |
 | `convex/activities.ts` | Backend actividades ejecutadas |
+| `convex/phaseProductFlows.ts` | Backend yield y flujos de transformacion por cultivar/fase |
+| `convex/pestDiseases.ts` | Backend catalogo de plagas/enfermedades |
+| `convex/alerts.ts` | Backend alertas automaticas |

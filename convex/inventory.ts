@@ -1115,3 +1115,53 @@ export const getFullTrace = query({
     };
   },
 });
+
+/**
+ * List available inventory items by cultivar
+ * Filters for items with quantity > 0 and correct cultivar_id (via product)
+ */
+export const listAvailableByCultivar = query({
+  args: {
+    companyId: v.id("companies"),
+    cultivarId: v.id("cultivars"),
+  },
+  handler: async (ctx, args) => {
+    // 1. Get all products for this cultivar
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_cultivar", (q) => q.eq("cultivar_id", args.cultivarId))
+      .collect();
+
+    const productIds = new Set(products.map(p => p._id));
+
+    // 2. Get inventory items per product (avoids global scan)
+    const filtered = (
+      await Promise.all(
+        products.map((p) =>
+          ctx.db
+            .query("inventory_items")
+            .withIndex("by_product", (q) => q.eq("product_id", p._id))
+            .filter((q) => q.eq(q.field("lot_status"), "available"))
+            .collect()
+        )
+      )
+    ).flat();
+
+    // 4. Enrich with names
+    const enriched = await Promise.all(
+      filtered.map(async (item) => {
+        const product = await ctx.db.get(item.product_id);
+        const area = item.area_id ? await ctx.db.get(item.area_id) : null;
+        const supplier = item.supplier_id ? await ctx.db.get(item.supplier_id) : null;
+        return {
+          ...item,
+          productName: product?.name ?? "Producto",
+          areaName: area?.name ?? "Almacen",
+          supplierName: supplier?.name ?? "Proveedor",
+        };
+      })
+    );
+
+    return enriched;
+  },
+});

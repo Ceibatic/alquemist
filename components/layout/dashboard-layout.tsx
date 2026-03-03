@@ -1,9 +1,12 @@
 'use client';
 
 import { ReactNode, useState } from 'react';
+import { useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { Header } from './header';
 import { Sidebar } from './sidebar';
 import { SidebarMobile } from './sidebar-mobile';
+import { NotificationPanel } from './notification-panel';
 import { Toaster } from '@/components/ui/toaster';
 import { FacilityProvider, useFacility } from '@/components/providers/facility-provider';
 import { UserProvider } from '@/components/providers/user-provider';
@@ -26,7 +29,15 @@ function DashboardLayoutInner({
 }: DashboardLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const { currentFacilityId, setCurrentFacilityId } = useFacility();
+
+  // Real-time notification count
+  const companyId = user.companyId as Id<'companies'> | undefined;
+  const pendingCount = useQuery(
+    api.alerts.countPending,
+    companyId ? { companyId } : 'skip'
+  );
 
   const handleFacilityChange = (facilityId: string) => {
     setCurrentFacilityId(facilityId as Id<'facilities'>);
@@ -68,7 +79,8 @@ function DashboardLayoutInner({
           user={user}
           onMenuClick={() => setMobileMenuOpen(true)}
           onSidebarToggle={handleSidebarToggle}
-          notificationCount={0}
+          notificationCount={pendingCount ?? 0}
+          onNotificationClick={() => setNotificationPanelOpen(true)}
         />
 
         {/* Main Content */}
@@ -77,6 +89,15 @@ function DashboardLayoutInner({
         </main>
       </div>
       <Toaster />
+
+      {/* Notification Panel */}
+      {companyId && (
+        <NotificationPanel
+          open={notificationPanelOpen}
+          onOpenChange={setNotificationPanelOpen}
+          companyId={companyId}
+        />
+      )}
     </div>
   );
 }

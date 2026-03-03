@@ -44,7 +44,10 @@ import {
   Clock,
   AlertTriangle,
   XCircle,
+  Activity,
+  Eye,
 } from 'lucide-react';
+import { ObservationForm } from '@/components/observations/observation-form';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -113,11 +116,11 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
   const activity = useQuery(api.scheduledActivities.getById, { scheduledActivityId });
   const resources = useQuery(api.scheduledActivities.getResourcesForActivity, { scheduledActivityId });
 
-  // Fetch execution record if completed/in_progress
+  // Fetch execution record if completed/in_progress (for deviations etc.)
   const executionRecord = useQuery(
-    api.activities.list,
+    api.activities.getByScheduledActivity,
     activity && (activity.status === 'completed' || activity.status === 'in_progress')
-      ? { companyId: activity.company_id!, limit: 1 }
+      ? { scheduledActivityId }
       : 'skip'
   );
 
@@ -464,6 +467,69 @@ export function ActivityDetailPage({ scheduledActivityId }: ActivityDetailPagePr
                 </tbody>
               </table>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Parameter deviations */}
+      {executionRecord && (executionRecord as any).parameter_deviations && (executionRecord as any).parameter_deviations.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Parametros
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {((executionRecord as any).parameter_deviations as Array<{
+                metric: string;
+                actual: number;
+                target?: number;
+                min?: number;
+                max?: number;
+                unit: string;
+                status: string;
+                deviation_pct?: number;
+              }>).map((d) => (
+                <div key={d.metric} className="flex items-start gap-2 rounded-md border p-2">
+                  <Badge
+                    variant={d.status === 'within_range' ? 'default' : 'destructive'}
+                    className={`text-[10px] shrink-0 ${d.status === 'within_range' ? 'bg-green-500' : d.status === 'below_min' ? 'bg-amber-500' : 'bg-red-500'}`}
+                  >
+                    {d.status === 'within_range' ? 'OK' : d.status === 'below_min' ? 'Bajo' : 'Alto'}
+                  </Badge>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium capitalize">{d.metric}</p>
+                    <p className="text-sm font-semibold">{d.actual} {d.unit}</p>
+                    {(d.min !== undefined || d.max !== undefined) && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Rango: {d.min ?? '–'}–{d.max ?? '–'} {d.unit}
+                        {d.deviation_pct !== undefined && ` (${d.deviation_pct > 0 ? '+' : ''}${d.deviation_pct}%)`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Observations */}
+      {executionRecord && activity.company_id && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Observaciones
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ObservationForm
+              activityId={executionRecord._id}
+              companyId={activity.company_id}
+            />
           </CardContent>
         </Card>
       )}

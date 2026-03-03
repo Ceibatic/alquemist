@@ -47,6 +47,8 @@ export interface OrderWizardFormData {
   priority: string;
   notes: string;
   phases: OrderPhaseItem[];
+  entryPhaseName: string;
+  exitPhaseName: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -78,6 +80,8 @@ const INITIAL_FORM_DATA: OrderWizardFormData = {
   priority: 'normal',
   notes: '',
   phases: [],
+  entryPhaseName: '',
+  exitPhaseName: '',
 };
 
 // ---------------------------------------------------------------------------
@@ -164,6 +168,8 @@ export function OrderCreateWizard() {
         notes: formData.notes.trim() || undefined,
         plannedStartDate: plannedStart,
         requestedBy: userId as Id<'users'>,
+        entryPhaseName: formData.entryPhaseName || undefined,
+        exitPhaseName: formData.exitPhaseName || undefined,
       });
 
       // If no template selected, create manual phases
@@ -275,6 +281,8 @@ export function OrderCreateWizard() {
           <OrderWizardStepPhases
             formData={formData}
             onPhasesChange={(phases) => updateField('phases', phases)}
+            onEntryPhaseChange={(name) => updateField('entryPhaseName', name)}
+            onExitPhaseChange={(name) => updateField('exitPhaseName', name)}
             companyId={currentCompanyId}
           />
         )}

@@ -3,6 +3,24 @@ import { mutation, query } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 
 // ============================================================================
+// HELPERS
+// ============================================================================
+
+/** Build a frozen template snapshot for traceability. */
+export function buildTemplateSnapshot(template: Doc<"activity_templates">) {
+  return {
+    snapshot_template_name: template.name,
+    snapshot_template_code: template.code,
+    snapshot_form_fields: template.form_fields,
+    snapshot_requires_photos: template.requires_photos,
+    snapshot_requires_attachments: template.requires_attachments,
+    snapshot_regulatory_reference: template.regulatory_reference,
+    snapshot_reference_parameters: template.reference_parameters,
+    snapshot_measurement_schema: template.measurement_schema,
+  };
+}
+
+// ============================================================================
 // MUTATIONS — Manual scheduling
 // ============================================================================
 
@@ -68,12 +86,14 @@ export const createManual = mutation({
     let templateName: string | undefined;
     let templateDuration: number | undefined;
     let templateDescription: string | undefined;
+    let templateSnapshot: Record<string, unknown> = {};
     if (args.templateId) {
       const template = await ctx.db.get(args.templateId);
       if (template) {
         templateName = template.name;
         templateDuration = template.estimated_duration_minutes;
         templateDescription = template.description;
+        templateSnapshot = buildTemplateSnapshot(template);
       }
     }
 
@@ -111,6 +131,9 @@ export const createManual = mutation({
         // Multi-batch + source
         group_id: groupId,
         source: "manual",
+
+        // Template snapshot
+        ...templateSnapshot,
       });
 
       // Materialize resources for this scheduled activity
@@ -428,13 +451,25 @@ export const getById = query({
       batchCode: batch?.batch_code ?? null,
       batchId: batch?._id ?? null,
       batchPhase: batch?.current_phase ?? null,
+      batchCurrentQuantity: batch?.current_quantity ?? null,
+      batchUnit: batch?.unit_of_measure ?? null,
+      batchCultivarId: batch?.cultivar_id ?? null,
       areaName: area?.name ?? null,
       areaId: area?._id ?? null,
       activityTypeName: activityType?.name ?? null,
       activityTypeIcon: activityType?.icon ?? null,
       activityTypeColor: activityType?.color ?? null,
       activityTypeCategory: activityType?.category ?? null,
-      templateName: template?.name ?? null,
+      triggersTransformation: activityType?.triggers_transformation ?? false,
+      // Prefer snapshot over live template
+      templateName: activity.snapshot_template_name ?? template?.name ?? null,
+      templateCode: activity.snapshot_template_code ?? template?.code ?? null,
+      formFields: activity.snapshot_form_fields ?? template?.form_fields ?? null,
+      requiresPhotos: activity.snapshot_requires_photos ?? template?.requires_photos ?? null,
+      requiresAttachments: activity.snapshot_requires_attachments ?? template?.requires_attachments ?? null,
+      regulatoryReference: activity.snapshot_regulatory_reference ?? template?.regulatory_reference ?? null,
+      referenceParameters: activity.snapshot_reference_parameters ?? template?.reference_parameters ?? null,
+      measurementSchema: activity.snapshot_measurement_schema ?? template?.measurement_schema ?? null,
       assignedToName: assignedUser?.name ?? null,
     };
   },
@@ -547,6 +582,15 @@ export const createForOrder = mutation({
       throw new Error("Activity type not found");
     }
 
+    // Load template for snapshot if provided
+    let orderTemplateSnapshot: Record<string, unknown> = {};
+    if (args.activityTemplateId) {
+      const tmpl = await ctx.db.get(args.activityTemplateId);
+      if (tmpl) {
+        orderTemplateSnapshot = buildTemplateSnapshot(tmpl);
+      }
+    }
+
     const activityId = await ctx.db.insert("scheduled_activities", {
       entity_type: "production_order",
       entity_id: args.orderId,
@@ -566,6 +610,7 @@ export const createForOrder = mutation({
       company_id: order.company_id,
       phase_role: args.phaseRole,
       order_phase_id: args.phaseId,
+      ...orderTemplateSnapshot,
       created_at: now,
       updated_at: now,
     });

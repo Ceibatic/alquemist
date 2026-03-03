@@ -32,6 +32,7 @@ import {
   Zap,
   DollarSign,
 } from 'lucide-react';
+import { MeasurementFields } from './measurement-fields';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -60,6 +61,14 @@ const SOURCE_LABELS: Record<string, string> = {
 // Types
 // ---------------------------------------------------------------------------
 
+interface ReferenceParameter {
+  metric: string;
+  target?: number;
+  min?: number;
+  max?: number;
+  unit: string;
+}
+
 interface ReportStepExecutionProps {
   form: UseFormReturn<ActivityExecutionInput>;
   visibleFields: string[];
@@ -78,12 +87,43 @@ interface ReportStepExecutionProps {
     template_id?: string | null;
     source?: string | null;
     instructions?: string | null;
+    referenceParameters?: ReferenceParameter[] | null;
+    measurementSchema?: Array<{
+      key: string;
+      label: string;
+      type: 'number' | 'text' | 'select';
+      unit?: string;
+      step?: number;
+      required?: boolean;
+      options?: { value: string; label: string }[];
+      group?: string;
+    }> | null;
   };
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
+
+function RangeHint({ metric, referenceParameters }: {
+  metric: string;
+  referenceParameters?: ReferenceParameter[] | null;
+}) {
+  if (!referenceParameters) return null;
+  const param = referenceParameters.find(p => p.metric === metric);
+  if (!param) return null;
+  const parts: string[] = [];
+  if (param.min !== undefined && param.max !== undefined) {
+    parts.push(`Rango: ${param.min}–${param.max} ${param.unit}`);
+  }
+  if (param.target !== undefined) {
+    parts.push(`ideal: ${param.target}`);
+  }
+  if (parts.length === 0) return null;
+  return (
+    <p className="text-[10px] text-muted-foreground mt-0.5">{parts.join(' (') + (parts.length > 1 ? ')' : '')}</p>
+  );
+}
 
 export function ReportStepExecution({
   form,
@@ -96,6 +136,9 @@ export function ReportStepExecution({
   // Load users for responsible dropdown
   const companyUsers = useQuery(api.users.getUsersByCompany, { companyId });
   const activeUsers = companyUsers?.filter((u) => u.status === 'active') ?? [];
+
+  // Resolve measurement schema: snapshot > MEASUREMENT_SCHEMAS fallback
+  const measurementSchema = activity.measurementSchema;
 
   return (
     <div className="space-y-6">
@@ -274,6 +317,7 @@ export function ReportStepExecution({
                       {...form.register('envTemp', { valueAsNumber: true })}
                       placeholder="--"
                     />
+                    <RangeHint metric="temperature" referenceParameters={activity.referenceParameters} />
                   </div>
                 )}
                 {fields.has('environmental_humidity') && (
@@ -289,6 +333,7 @@ export function ReportStepExecution({
                       })}
                       placeholder="--"
                     />
+                    <RangeHint metric="humidity" referenceParameters={activity.referenceParameters} />
                   </div>
                 )}
                 {fields.has('environmental_ph') && (
@@ -302,6 +347,7 @@ export function ReportStepExecution({
                       {...form.register('envPh', { valueAsNumber: true })}
                       placeholder="--"
                     />
+                    <RangeHint metric="ph" referenceParameters={activity.referenceParameters} />
                   </div>
                 )}
                 {fields.has('environmental_ec') && (
@@ -315,10 +361,20 @@ export function ReportStepExecution({
                       {...form.register('envEc', { valueAsNumber: true })}
                       placeholder="--"
                     />
+                    <RangeHint metric="ec" referenceParameters={activity.referenceParameters} />
                   </div>
                 )}
               </div>
             </div>
+          )}
+
+          {/* Measurement fields (structured by activity type) */}
+          {measurementSchema && measurementSchema.length > 0 && (
+            <MeasurementFields
+              schema={measurementSchema}
+              form={form}
+              referenceParameters={activity.referenceParameters}
+            />
           )}
 
           {/* Cost */}

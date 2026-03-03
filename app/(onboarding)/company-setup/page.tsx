@@ -67,15 +67,22 @@ export default function CompanySetupPage() {
   // Ensure user exists in Convex (handles webhook race condition)
   const ensureUserExists = useMutation(api.clerkSync.ensureUserExists);
   const [userEnsured, setUserEnsured] = useState(false);
+  const [ensureError, setEnsureError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isSignedIn && !userEnsured) {
-      ensureUserExists().then(() => setUserEnsured(true));
+      ensureUserExists()
+        .then(() => setUserEnsured(true))
+        .catch(() => setEnsureError('No se pudo verificar tu cuenta. Por favor recarga la página.'));
     }
   }, [isSignedIn, userEnsured, ensureUserExists]);
 
-  // Use Convex Auth to get the authenticated user's onboarding status
-  const onboardingStatus = useQuery(api.users.getOnboardingStatus);
+  // Only check onboarding AFTER ensureUserExists has completed (avoids race condition
+  // where query returns null before Convex user is created, causing redirect to /login)
+  const onboardingStatus = useQuery(
+    api.users.getOnboardingStatus,
+    userEnsured ? {} : "skip"
+  );
   const registerCompany = useMutation(api.registration.registerCompanyStep2);
 
   const form = useForm<CompanySetupFormValues>({
@@ -147,9 +154,10 @@ export default function CompanySetupPage() {
 
   // Redirect based on onboarding status (must be in useEffect, not during render)
   useEffect(() => {
-    if (onboardingStatus === null) {
-      router.push('/login');
-    } else if (onboardingStatus?.hasCompany) {
+    if (onboardingStatus === undefined) return; // Loading or skipped
+    if (onboardingStatus === null) return; // User not yet in Convex — stay on page, ensureUserExists is working
+
+    if (onboardingStatus.hasCompany) {
       if (onboardingStatus.onboardingCompleted) {
         router.push('/dashboard');
       } else {
@@ -158,13 +166,25 @@ export default function CompanySetupPage() {
     }
   }, [onboardingStatus, router]);
 
-  // Show loading while waiting for auth or redirecting
-  if (onboardingStatus === undefined || onboardingStatus === null || onboardingStatus.hasCompany) {
+  // Show error if ensureUserExists failed
+  if (ensureError) {
+    return (
+      <div className="text-center p-8 space-y-4">
+        <p className="text-sm text-destructive">{ensureError}</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Recargar página
+        </Button>
+      </div>
+    );
+  }
+
+  // Show loading while ensuring user exists or while checking onboarding
+  if (!userEnsured || onboardingStatus === undefined || onboardingStatus === null || onboardingStatus.hasCompany) {
     return (
       <div className="text-center p-8">
         <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
         <p className="text-sm text-muted-foreground mt-2">
-          {onboardingStatus === undefined ? '' : 'Redirigiendo...'}
+          {onboardingStatus?.hasCompany ? 'Redirigiendo...' : ''}
         </p>
       </div>
     );

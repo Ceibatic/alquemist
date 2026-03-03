@@ -9,6 +9,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { referenceParameterV } from "./schema";
 
 const VALID_FREQUENCY_TYPES = [
   "once", "daily", "weekly", "biweekly", "monthly", "on_demand", "custom_days",
@@ -153,6 +154,10 @@ export const create = mutation({
     qualityCheckTemplateId: v.optional(v.id("quality_check_templates")),
     requiresPhotos: v.optional(v.boolean()),
     requiresAttachments: v.optional(v.boolean()),
+    // Reference parameters — expected ranges for metrics
+    referenceParameters: v.optional(v.array(referenceParameterV)),
+    // Measurement schema — structured fields by type
+    measurementSchema: v.optional(v.array(v.any())),
   },
   handler: async (ctx, args) => {
     // Validate type_id exists
@@ -222,6 +227,8 @@ export const create = mutation({
       requires_attachments: args.requiresAttachments,
       regulatory_reference: args.regulatoryReference,
       requires_verification: args.requiresVerification,
+      reference_parameters: args.referenceParameters,
+      measurement_schema: args.measurementSchema,
       sort_order: args.sortOrder ?? 0,
       is_active: true,
       version: 1,
@@ -265,6 +272,10 @@ export const update = mutation({
     qualityCheckTemplateId: v.optional(v.id("quality_check_templates")),
     requiresPhotos: v.optional(v.boolean()),
     requiresAttachments: v.optional(v.boolean()),
+    // Reference parameters — expected ranges for metrics
+    referenceParameters: v.optional(v.array(referenceParameterV)),
+    // Measurement schema — structured fields by type
+    measurementSchema: v.optional(v.array(v.any())),
   },
   handler: async (ctx, args) => {
     const template = await ctx.db.get(args.templateId);
@@ -335,6 +346,8 @@ export const update = mutation({
     if (args.qualityCheckTemplateId !== undefined) patch.quality_check_template_id = args.qualityCheckTemplateId;
     if (args.requiresPhotos !== undefined) patch.requires_photos = args.requiresPhotos;
     if (args.requiresAttachments !== undefined) patch.requires_attachments = args.requiresAttachments;
+    if (args.referenceParameters !== undefined) patch.reference_parameters = args.referenceParameters;
+    if (args.measurementSchema !== undefined) patch.measurement_schema = args.measurementSchema;
 
     await ctx.db.patch(args.templateId, patch);
     return args.templateId;
@@ -420,8 +433,14 @@ export const duplicate = mutation({
       requires_conditions: template.requires_conditions,
       depends_on_template_id: template.depends_on_template_id,
       min_days_after_dependency: template.min_days_after_dependency,
+      form_fields: template.form_fields,
+      quality_check_template_id: template.quality_check_template_id,
+      requires_photos: template.requires_photos,
+      requires_attachments: template.requires_attachments,
       regulatory_reference: template.regulatory_reference,
       requires_verification: template.requires_verification,
+      reference_parameters: template.reference_parameters,
+      measurement_schema: template.measurement_schema,
       sort_order: template.sort_order,
       is_active: true,
       version: template.version + 1,

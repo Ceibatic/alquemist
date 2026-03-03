@@ -90,6 +90,27 @@ export interface WizardFormData {
   minDaysAfterDependency: string;
   regulatoryReference: string;
   requiresVerification: boolean;
+
+  // Reference parameters — expected ranges for metrics
+  referenceParameters: Array<{
+    metric: string;
+    target: string;
+    min: string;
+    max: string;
+    unit: string;
+  }>;
+
+  // Measurement schema — structured fields by activity type
+  measurementSchema: Array<{
+    key: string;
+    label: string;
+    type: 'number' | 'text' | 'select';
+    unit?: string;
+    step?: number;
+    required?: boolean;
+    options?: { value: string; label: string }[];
+    group?: string;
+  }>;
 }
 
 const INITIAL_FORM_DATA: WizardFormData = {
@@ -116,6 +137,8 @@ const INITIAL_FORM_DATA: WizardFormData = {
   minDaysAfterDependency: '',
   regulatoryReference: '',
   requiresVerification: false,
+  referenceParameters: [],
+  measurementSchema: [],
 };
 
 const STEPS = [
@@ -255,6 +278,14 @@ export function ActivityTemplateWizard({
         minDaysAfterDependency: template.min_days_after_dependency?.toString() ?? '',
         regulatoryReference: template.regulatory_reference ?? '',
         requiresVerification: template.requires_verification ?? false,
+        referenceParameters: (template.reference_parameters ?? []).map((p: any) => ({
+          metric: p.metric ?? '',
+          target: p.target?.toString() ?? '',
+          min: p.min?.toString() ?? '',
+          max: p.max?.toString() ?? '',
+          unit: p.unit ?? '',
+        })),
+        measurementSchema: (template.measurement_schema ?? []) as WizardFormData['measurementSchema'],
       });
       setLoaded(true);
     }
@@ -401,6 +432,18 @@ export function ActivityTemplateWizard({
           : undefined,
         requiresPhotos: formData.requiresPhotos || undefined,
         requiresAttachments: formData.requiresAttachments || undefined,
+        referenceParameters: formData.referenceParameters.length > 0
+          ? formData.referenceParameters.map(p => ({
+              metric: p.metric,
+              target: p.target ? Number(p.target) : undefined,
+              min: p.min ? Number(p.min) : undefined,
+              max: p.max ? Number(p.max) : undefined,
+              unit: p.unit,
+            }))
+          : undefined,
+        measurementSchema: formData.measurementSchema.length > 0
+          ? formData.measurementSchema
+          : undefined,
       };
 
       let savedTemplateId: Id<'activity_templates'>;
@@ -482,6 +525,7 @@ export function ActivityTemplateWizard({
           <WizardStepFields
             formData={formData}
             updateField={updateField}
+            activityTypes={activityTypes}
           />
         )}
         {currentStep === 2 && (

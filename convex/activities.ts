@@ -9,6 +9,160 @@ import { Id, Doc } from "./_generated/dataModel";
 import { generateInternalLotNumber, consumeFromInventoryFIFO, getActivityTypeByCode, createLaborCostEntry, logPhaseTransition } from "./helpers";
 
 // ============================================================================
+// SHARED HELPERS
+// ============================================================================
+
+/** Insert an inventory_transaction record with all required fields. */
+async function insertInventoryTransaction(
+  ctx: MutationCtx,
+  params: {
+    inventoryItemId: Id<"inventory_items">;
+    productId: Id<"products">;
+    transactionType: string;
+    quantityChange: number;
+    quantityBefore: number;
+    quantityAfter: number;
+    quantityUnit: string;
+    reason: string;
+    activityId: Id<"activities">;
+    batchId?: Id<"batches">;
+    zoneId?: Id<"areas">;
+    cropPhase?: string;
+    costPerUnit?: number;
+    costTotal?: number;
+    performedBy: Id<"users">;
+    now: number;
+    notes?: string;
+    relatedTransactionId?: Id<"inventory_transactions">;
+    targetItemId?: Id<"inventory_items">;
+  }
+): Promise<Id<"inventory_transactions">> {
+  return ctx.db.insert("inventory_transactions", {
+    inventory_item_id: params.inventoryItemId,
+    product_id: params.productId,
+    transaction_type: params.transactionType,
+    quantity_change: params.quantityChange,
+    quantity_before: params.quantityBefore,
+    quantity_after: params.quantityAfter,
+    quantity_unit: params.quantityUnit,
+    reason: params.reason,
+    reference_type: "activity",
+    reference_id: params.activityId,
+    batch_id: params.batchId,
+    zone_id: params.zoneId,
+    crop_phase: params.cropPhase,
+    activity_id: params.activityId,
+    cost_per_unit: params.costPerUnit,
+    cost_total: params.costTotal,
+    related_transaction_id: params.relatedTransactionId,
+    target_item_id: params.targetItemId,
+    performed_by: params.performedBy,
+    performed_at: params.now,
+    notes: params.notes,
+    created_at: params.now,
+  });
+}
+
+/** Create an alert for parameter deviations (shared by single-batch and multi-batch paths). */
+async function createDeviationAlert(
+  ctx: MutationCtx,
+  params: {
+    parameterDeviations: Array<{ metric: string; actual: number; status: string; deviation_pct?: number; min?: number; max?: number; unit: string }>;
+    companyId: Id<"companies">;
+    activityId: Id<"activities">;
+    facilityId?: Id<"facilities">;
+    now: number;
+  }
+) {
+  const outOfRange = params.parameterDeviations.filter(d => d.status !== "within_range");
+  if (outOfRange.length === 0) return;
+
+  const metrics = outOfRange.map(d => d.metric).join(", ");
+  await ctx.db.insert("alerts", {
+    company_id: params.companyId,
+    type: "parameter_deviation",
+    severity: outOfRange.some(d => {
+      const devPct = d.deviation_pct ? Math.abs(d.deviation_pct) : 0;
+      return devPct > 20;
+    }) ? "critical" : "warning",
+    title: `Desviacion de parametros: ${metrics}`,
+    message: outOfRange.map(d =>
+      `${d.metric}: ${d.actual} ${d.unit} (rango: ${d.min ?? "–"}–${d.max ?? "–"} ${d.unit})`
+    ).join("; "),
+    source_type: "activity",
+    source_id: params.activityId,
+    facility_id: params.facilityId,
+    status: "pending",
+    dedup_key: `deviation:${params.activityId}`,
+    created_at: params.now,
+  });
+}
+
+/** Map from metric names to envData keys. */
+const METRIC_TO_ENV_KEY: Record<string, string> = {
+  temperature: "env_temp",
+  humidity: "env_humidity",
+  ph: "env_ph",
+  ec: "env_ec",
+};
+
+/** Compute parameter deviations against reference ranges. */
+function computeDeviations(
+  envValues: Record<string, unknown>,
+  referenceParams?: Array<{
+    metric: string;
+    target?: number;
+    min?: number;
+    max?: number;
+    unit: string;
+  }>
+) {
+  if (!referenceParams || referenceParams.length === 0) return undefined;
+
+  const deviations: Array<{
+    metric: string;
+    actual: number;
+    target?: number;
+    min?: number;
+    max?: number;
+    unit: string;
+    status: string;
+    deviation_pct?: number;
+  }> = [];
+
+  for (const param of referenceParams) {
+    const envKey = METRIC_TO_ENV_KEY[param.metric] ?? param.metric;
+    const rawValue = envValues[envKey] ?? envValues[param.metric];
+    if (rawValue === undefined || rawValue === null) continue;
+
+    const actual = typeof rawValue === "number" ? rawValue : parseFloat(String(rawValue));
+    if (isNaN(actual)) continue;
+
+    let status = "within_range";
+    if (param.min !== undefined && actual < param.min) status = "below_min";
+    else if (param.max !== undefined && actual > param.max) status = "above_max";
+
+    let deviation_pct: number | undefined;
+    if (param.target !== undefined && param.target !== 0) {
+      deviation_pct = Math.round(((actual - param.target) / param.target) * 1000) / 10;
+    }
+
+    deviations.push({
+      metric: param.metric,
+      actual,
+      target: param.target,
+      min: param.min,
+      max: param.max,
+      unit: param.unit,
+      status,
+      deviation_pct,
+    });
+  }
+
+  return deviations.length > 0 ? deviations : undefined;
+}
+
+// ============================================================================
 // INVENTORY TRANSFORMATION HELPER
 // ============================================================================
 
@@ -31,15 +185,26 @@ async function handleInventoryTransformation(
     batchId?: Id<"batches">;
     activityId: Id<"activities">;
     sourceInventoryItemId?: Id<"inventory_items">;
+    performedBy?: Id<"users">;
     notes?: string;
+    // NEW: Transformation behavior
+    isDestructive?: boolean; // true (default): source zeroed. false: source preserved (e.g., mother plant)
+    yieldPct?: number;      // 0.0-1.0 — applied to targetQuantity if set
+    productRole?: string;   // "primary" | "secondary" | "waste"
   }
-): Promise<{ transformedItemId: Id<"inventory_items">; batchNumber: string }> {
+): Promise<{ transformedItemId: Id<"inventory_items">; batchNumber: string; transactionOutId?: Id<"inventory_transactions">; transactionInId?: Id<"inventory_transactions"> }> {
   const now = Date.now();
+  const isDestructive = params.isDestructive !== false; // default true for backward compat
 
   const targetProduct = await ctx.db.get(params.targetProductId);
   if (!targetProduct) {
     throw new Error("Producto destino no encontrado");
   }
+
+  // Apply yield if provided (otherwise use targetQuantity as-is)
+  const finalQuantity = params.yieldPct !== undefined
+    ? Math.round(params.targetQuantity * params.yieldPct * 100) / 100
+    : params.targetQuantity;
 
   // Generate lot number based on target product category
   const batchNumber = await generateInternalLotNumber(ctx, targetProduct.category);
@@ -49,8 +214,9 @@ async function handleInventoryTransformation(
   let expirationDate: number | undefined;
   let purchasePrice: number | undefined;
   let sourceNote = "";
+  let sourceItem: Doc<"inventory_items"> | null = null;
   if (params.sourceInventoryItemId) {
-    const sourceItem = await ctx.db.get(params.sourceInventoryItemId);
+    sourceItem = await ctx.db.get(params.sourceInventoryItemId);
     if (sourceItem) {
       costPerUnit = sourceItem.cost_per_unit;
       expirationDate = sourceItem.expiration_date;
@@ -63,7 +229,7 @@ async function handleInventoryTransformation(
   const transformedItemId = await ctx.db.insert("inventory_items", {
     product_id: params.targetProductId,
     area_id: params.areaId,
-    quantity_available: params.targetQuantity,
+    quantity_available: finalQuantity,
     quantity_reserved: 0,
     quantity_committed: 0,
     quantity_unit: params.targetQuantityUnit,
@@ -86,8 +252,54 @@ async function handleInventoryTransformation(
     transformation_status: "active",
   });
 
-  // Mark source item as transformed if provided
-  if (params.sourceInventoryItemId) {
+  // Create transformation_out transaction (source consumption)
+  let transactionOutId: Id<"inventory_transactions"> | undefined;
+  if (params.sourceInventoryItemId && sourceItem && isDestructive) {
+    const quantityBefore = sourceItem.quantity_available;
+    transactionOutId = await insertInventoryTransaction(ctx, {
+      inventoryItemId: params.sourceInventoryItemId,
+      productId: sourceItem.product_id,
+      transactionType: "transformation_out",
+      quantityChange: -quantityBefore,
+      quantityBefore,
+      quantityAfter: 0,
+      quantityUnit: sourceItem.quantity_unit,
+      reason: `Transformacion: ${sourceItem.batch_number || "N/A"} → ${batchNumber}`,
+      activityId: params.activityId,
+      batchId: params.batchId,
+      zoneId: params.areaId,
+      costPerUnit,
+      costTotal: costPerUnit ? costPerUnit * quantityBefore : undefined,
+      targetItemId: transformedItemId,
+      performedBy: params.performedBy ?? ("system" as any),
+      now,
+      notes: `Material destruido en transformacion`,
+    });
+  }
+
+  // Create transformation_in transaction (new item created)
+  const transactionInId = await insertInventoryTransaction(ctx, {
+    inventoryItemId: transformedItemId,
+    productId: params.targetProductId,
+    transactionType: "transformation_in",
+    quantityChange: finalQuantity,
+    quantityBefore: 0,
+    quantityAfter: finalQuantity,
+    quantityUnit: params.targetQuantityUnit,
+    reason: `Produccion${params.productRole ? ` (${params.productRole})` : ""}${params.yieldPct !== undefined ? ` yield ${Math.round(params.yieldPct * 100)}%` : ""}`,
+    activityId: params.activityId,
+    batchId: params.batchId,
+    zoneId: params.areaId,
+    costPerUnit,
+    costTotal: costPerUnit ? costPerUnit * finalQuantity : undefined,
+    relatedTransactionId: transactionOutId,
+    performedBy: params.performedBy ?? ("system" as any),
+    now,
+    notes: `Item creado via transformacion: ${batchNumber}`,
+  });
+
+  // Mark source item as transformed if destructive
+  if (params.sourceInventoryItemId && isDestructive) {
     await ctx.db.patch(params.sourceInventoryItemId, {
       quantity_available: 0,
       last_movement_date: now,
@@ -98,7 +310,168 @@ async function handleInventoryTransformation(
     });
   }
 
-  return { transformedItemId, batchNumber };
+  return { transformedItemId, batchNumber, transactionOutId, transactionInId };
+}
+
+/**
+ * Handle multi-output transformations (e.g., harvest: plants -> wet flower + trim + waste).
+ * Reads phase_product_flows for the cultivar/phase to determine outputs, yields, and roles.
+ * Creates one transformation_out (source destroyed) and N transformation_in (one per output).
+ */
+async function handleMultiOutputTransformation(
+  ctx: MutationCtx,
+  params: {
+    cultivarId: Id<"cultivars">;
+    phaseName: string;
+    sourceInventoryItemId: Id<"inventory_items">;
+    sourceQuantity: number; // How many input units (e.g., 42 plants)
+    areaId: Id<"areas">;
+    batchId?: Id<"batches">;
+    activityId: Id<"activities">;
+    performedBy: Id<"users">;
+    // Optional overrides for actual quantities (keyed by product_role)
+    actualQuantities?: Record<string, number>; // e.g., { primary: 21, secondary: 8.4 }
+    wasteQuantity?: number;
+    wasteReason?: string;
+  }
+): Promise<{
+  outputs: Array<{
+    role: string;
+    productId: Id<"products">;
+    inventoryItemId: Id<"inventory_items">;
+    quantity: number;
+    transactionId: Id<"inventory_transactions">;
+  }>;
+  wasteTransactionId?: Id<"inventory_transactions">;
+  transformationOutId: Id<"inventory_transactions">;
+}> {
+  const now = Date.now();
+
+  // Load output flows for this cultivar+phase
+  const outputFlows = await ctx.db
+    .query("phase_product_flows")
+    .withIndex("by_cultivar_phase_direction", (q) =>
+      q.eq("cultivar_id", params.cultivarId).eq("phase_name", params.phaseName).eq("direction", "output")
+    )
+    .collect();
+
+  if (outputFlows.length === 0) {
+    throw new Error(`No hay phase_product_flows de salida definidos para cultivar ${params.cultivarId} en fase ${params.phaseName}`);
+  }
+
+  const sortedFlows = outputFlows.sort((a, b) => a.sort_order - b.sort_order);
+
+  // Get source item
+  const sourceItem = await ctx.db.get(params.sourceInventoryItemId);
+  if (!sourceItem) throw new Error("Item de inventario fuente no encontrado");
+
+  // Create transformation_out for source
+  const quantityBefore = sourceItem.quantity_available;
+  const transformationOutId = await insertInventoryTransaction(ctx, {
+    inventoryItemId: params.sourceInventoryItemId,
+    productId: sourceItem.product_id,
+    transactionType: "transformation_out",
+    quantityChange: -quantityBefore,
+    quantityBefore,
+    quantityAfter: 0,
+    quantityUnit: sourceItem.quantity_unit,
+    reason: `Transformacion multi-output en fase ${params.phaseName}`,
+    activityId: params.activityId,
+    batchId: params.batchId,
+    zoneId: params.areaId,
+    costPerUnit: sourceItem.cost_per_unit,
+    costTotal: sourceItem.cost_per_unit ? sourceItem.cost_per_unit * quantityBefore : undefined,
+    performedBy: params.performedBy,
+    now,
+    notes: `Destruido en transformacion multi-output`,
+  });
+
+  // Mark source as transformed
+  await ctx.db.patch(params.sourceInventoryItemId, {
+    quantity_available: 0,
+    last_movement_date: now,
+    updated_at: now,
+    transformation_status: "transformed",
+    transformed_by_activity_id: params.activityId,
+  });
+
+  // Create outputs
+  const outputs: Array<{
+    role: string;
+    productId: Id<"products">;
+    inventoryItemId: Id<"inventory_items">;
+    quantity: number;
+    transactionId: Id<"inventory_transactions">;
+  }> = [];
+
+  for (const flow of sortedFlows) {
+    if (flow.product_role === "waste") continue; // Handle waste separately
+
+    // Calculate quantity: use actual override if provided, otherwise compute from yield
+    let outputQuantity: number;
+    if (params.actualQuantities && params.actualQuantities[flow.product_role] !== undefined) {
+      outputQuantity = params.actualQuantities[flow.product_role]!;
+    } else if (flow.yield_pct !== undefined) {
+      outputQuantity = Math.round(params.sourceQuantity * flow.yield_pct * 100) / 100;
+    } else if (flow.expected_quantity_per_input !== undefined) {
+      outputQuantity = Math.round(params.sourceQuantity * flow.expected_quantity_per_input * 100) / 100;
+    } else {
+      outputQuantity = params.sourceQuantity;
+    }
+
+    const product = await ctx.db.get(flow.product_id);
+    if (!product) continue;
+
+    const result = await handleInventoryTransformation(ctx, {
+      targetProductId: flow.product_id,
+      targetQuantity: outputQuantity,
+      targetQuantityUnit: product.default_unit || sourceItem.quantity_unit,
+      areaId: params.areaId,
+      batchId: params.batchId,
+      activityId: params.activityId,
+      performedBy: params.performedBy,
+      isDestructive: false, // Source already handled above
+      productRole: flow.product_role,
+      notes: `Output ${flow.product_role} de transformacion`,
+    });
+
+    outputs.push({
+      role: flow.product_role,
+      productId: flow.product_id,
+      inventoryItemId: result.transformedItemId,
+      quantity: outputQuantity,
+      transactionId: result.transactionInId!,
+    });
+
+    // Link transformation_in to transformation_out
+    await ctx.db.patch(result.transactionInId!, {
+      related_transaction_id: transformationOutId,
+    });
+  }
+
+  // Handle waste
+  let wasteTransactionId: Id<"inventory_transactions"> | undefined;
+  if (params.wasteQuantity && params.wasteQuantity > 0) {
+    wasteTransactionId = await insertInventoryTransaction(ctx, {
+      inventoryItemId: params.sourceInventoryItemId,
+      productId: sourceItem.product_id,
+      transactionType: "waste",
+      quantityChange: -params.wasteQuantity,
+      quantityBefore: params.wasteQuantity,
+      quantityAfter: 0,
+      quantityUnit: sourceItem.quantity_unit,
+      reason: params.wasteReason || `Material no aprovechable de transformacion en fase ${params.phaseName}`,
+      activityId: params.activityId,
+      batchId: params.batchId,
+      zoneId: params.areaId,
+      relatedTransactionId: transformationOutId,
+      performedBy: params.performedBy,
+      now,
+      notes: `Waste de transformacion multi-output`,
+    });
+  }
+
+  return { outputs, wasteTransactionId, transformationOutId };
 }
 
 // ============================================================================
@@ -361,6 +734,25 @@ export const list = query({
   },
 });
 
+/**
+ * Get execution record for a scheduled activity (returns parameter_deviations, etc.)
+ */
+export const getByScheduledActivity = query({
+  args: {
+    scheduledActivityId: v.id("scheduled_activities"),
+  },
+  handler: async (ctx, { scheduledActivityId }) => {
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_scheduled_activity_id", (q) =>
+        q.eq("scheduled_activity_id", scheduledActivityId)
+      )
+      .order("desc")
+      .take(1);
+    return activities[0] ?? null;
+  },
+});
+
 // ============================================================================
 // LOG V2 — New model with type_id, activity_resources, and expanded context
 // ============================================================================
@@ -541,6 +933,27 @@ export const logV2 = mutation({
                 ? ci.cost_per_unit * ci.quantity_consumed
                 : undefined;
 
+              // Audit trail: inventory_transaction for FIFO consumption (legacy logActivity)
+              await insertInventoryTransaction(ctx, {
+                inventoryItemId: ci.inventory_item_id,
+                productId: resource.product_id,
+                transactionType: resource.direction === "applied" ? "application" : "consumption",
+                quantityChange: -ci.quantity_consumed,
+                quantityBefore: ci.quantity_before,
+                quantityAfter: ci.quantity_after,
+                quantityUnit: resource.quantity_unit,
+                reason: `${resource.direction === "applied" ? "Aplicacion" : "Consumo"} FIFO en actividad`,
+                activityId,
+                batchId: args.batch_id,
+                zoneId: args.zone_id,
+                cropPhase: args.crop_phase,
+                costPerUnit: ci.cost_per_unit,
+                costTotal: ciCostTotal,
+                performedBy: args.performed_by,
+                now,
+                notes: resource.notes,
+              });
+
               await ctx.db.insert("activity_resources", {
                 activity_id: activityId,
                 direction: resource.direction,
@@ -680,6 +1093,9 @@ export const executeActivity = mutation({
 
     // Multi-batch resource distribution
     resourceDistribution: v.optional(v.string()), // "identical" | "split_proportional"
+
+    // Measurement data — structured fields from measurement schema
+    measurementData: v.optional(v.any()), // Record<string, string | number | boolean>
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -766,6 +1182,25 @@ export const executeActivity = mutation({
     if (args.envPh !== undefined) envData.env_ph = args.envPh;
     if (args.envEc !== undefined) envData.env_ec = args.envEc;
 
+    // Merge measurementData into activity_metadata
+    const measurementData = args.measurementData as Record<string, unknown> | undefined;
+    if (measurementData && typeof measurementData === "object") {
+      for (const [key, val] of Object.entries(measurementData)) {
+        if (val !== undefined && val !== null && val !== "") {
+          (envData as Record<string, unknown>)[key] = val;
+        }
+      }
+    }
+
+    // Resolve reference parameters from scheduled activity snapshot
+    const referenceParams = scheduledActivity
+      ? (scheduledActivity as Record<string, unknown>).snapshot_reference_parameters as Array<{
+          metric: string; target?: number; min?: number; max?: number; unit: string;
+        }> | undefined
+      : undefined;
+
+    const parameterDeviations = computeDeviations(envData, referenceParams);
+
     // ── Helper to create one activity + resources ─────────────────
     async function createSingleActivity(opts: {
       entityType: string;
@@ -808,6 +1243,7 @@ export const executeActivity = mutation({
         observations: args.observations,
         parent_activity_id: opts.parentActivityId,
         activity_metadata: Object.keys(envData).length > 0 ? envData : undefined,
+        parameter_deviations: parameterDeviations,
       });
 
       // Create activity_resources
@@ -831,14 +1267,36 @@ export const executeActivity = mutation({
                 `Stock insuficiente para ${product?.name || "producto"}. Disponible: ${item.quantity_available}, Requerido: ${resource.quantity}`
               );
             }
+            const newQty = item.quantity_available - resource.quantity;
             await ctx.db.patch(resource.inventory_item_id, {
-              quantity_available: item.quantity_available - resource.quantity,
+              quantity_available: newQty,
               last_movement_date: now,
               updated_at: now,
             });
             costPerUnit = item.cost_per_unit;
             costTotal = costPerUnit ? costPerUnit * resource.quantity : undefined;
             batchNumber = item.batch_number;
+
+            // Audit trail: inventory_transaction for direct-item consumption
+            await insertInventoryTransaction(ctx, {
+              inventoryItemId: resource.inventory_item_id,
+              productId: resource.product_id,
+              transactionType: resource.direction === "applied" ? "application" : "consumption",
+              quantityChange: -resource.quantity,
+              quantityBefore: item.quantity_available,
+              quantityAfter: newQty,
+              quantityUnit: resource.quantity_unit,
+              reason: `${resource.direction === "applied" ? "Aplicacion" : "Consumo"} en actividad`,
+              activityId,
+              batchId: opts.batchId,
+              zoneId: args.zoneId,
+              cropPhase: opts.cropPhase ?? args.cropPhase,
+              costPerUnit,
+              costTotal,
+              performedBy: args.performedBy,
+              now,
+              notes: resource.notes,
+            });
           } else {
             const consumed = await consumeFromInventoryFIFO(ctx, {
               product_id: resource.product_id,
@@ -852,6 +1310,27 @@ export const executeActivity = mutation({
                 ? ci.cost_per_unit * ci.quantity_consumed
                 : undefined;
 
+              // Audit trail: inventory_transaction for FIFO consumption
+              const fifoTransactionId = await insertInventoryTransaction(ctx, {
+                inventoryItemId: ci.inventory_item_id,
+                productId: resource.product_id,
+                transactionType: resource.direction === "applied" ? "application" : "consumption",
+                quantityChange: -ci.quantity_consumed,
+                quantityBefore: ci.quantity_before,
+                quantityAfter: ci.quantity_after,
+                quantityUnit: resource.quantity_unit,
+                reason: `${resource.direction === "applied" ? "Aplicacion" : "Consumo"} FIFO en actividad`,
+                activityId,
+                batchId: opts.batchId,
+                zoneId: args.zoneId,
+                cropPhase: opts.cropPhase ?? args.cropPhase,
+                costPerUnit: ci.cost_per_unit,
+                costTotal: ciCostTotal,
+                performedBy: args.performedBy,
+                now,
+                notes: resource.notes,
+              });
+
               await ctx.db.insert("activity_resources", {
                 activity_id: activityId,
                 direction: resource.direction,
@@ -862,6 +1341,7 @@ export const executeActivity = mutation({
                 quantity_unit: resource.quantity_unit,
                 cost_per_unit: ci.cost_per_unit,
                 cost_total: ciCostTotal,
+                transaction_id: fifoTransactionId,
                 application_rate: resource.application_rate,
                 application_method: resource.application_method,
                 batch_number: ci.batch_number,
@@ -905,6 +1385,7 @@ export const executeActivity = mutation({
               batchId: opts.batchId,
               activityId,
               sourceInventoryItemId: resource.inventory_item_id,
+              performedBy: args.performedBy,
               notes: resource.notes,
             });
 
@@ -961,6 +1442,129 @@ export const executeActivity = mutation({
           materials_consumed: materialsConsumedLegacy,
         });
       }
+
+      // ── PHI / REI validation for applied products ────────────────────────
+      // Only run when inventory was actually consumed (direction === "applied")
+      if (args.consumeInventory) {
+        const appliedResources = opts.activityResources.filter(
+          (r) => r.direction === "applied"
+        );
+
+        if (appliedResources.length > 0) {
+          const companyId = opts.companyId ?? args.companyId;
+
+          // Resolve zone name once (used for REI messages)
+          let zoneName: string | undefined;
+          const zoneIdForRei = args.zoneId;
+          if (zoneIdForRei) {
+            const zone = await ctx.db.get(zoneIdForRei);
+            zoneName = zone?.name;
+          }
+
+          // Resolve harvest phase planned_end_date once (used for PHI checks)
+          let harvestPhaseEndDate: number | undefined;
+          if (opts.batchId) {
+            const batch = await ctx.db.get(opts.batchId);
+            if (batch?.production_order_id) {
+              const orderPhases = await ctx.db
+                .query("order_phases")
+                .withIndex("by_order", (q) =>
+                  q.eq("order_id", batch.production_order_id!)
+                )
+                .collect();
+              const harvestPhase = orderPhases.find((p) =>
+                p.phase_name.toLowerCase().includes("cosecha") ||
+                p.phase_name.toLowerCase().includes("harvest")
+              );
+              if (harvestPhase) {
+                harvestPhaseEndDate = harvestPhase.planned_end_date;
+              }
+            }
+          }
+
+          // Pre-fetch all applied products in parallel
+          const uniqueProductIds = [...new Set(appliedResources.map(r => r.product_id))];
+          const productMap = new Map<string, Doc<"products">>();
+          await Promise.all(
+            uniqueProductIds.map(async (pid) => {
+              const p = await ctx.db.get(pid);
+              if (p) productMap.set(pid, p);
+            })
+          );
+
+          for (const resource of appliedResources) {
+            const product = productMap.get(resource.product_id);
+            if (!product) continue;
+
+            // PHI check
+            if (product.phi_days !== undefined && product.phi_days !== null) {
+              if (harvestPhaseEndDate !== undefined && companyId) {
+                const daysUntilHarvest =
+                  (harvestPhaseEndDate - now) / (1000 * 60 * 60 * 24);
+
+                if (product.phi_days > daysUntilHarvest) {
+                  // CRITICAL: PHI violation — product applied too close to harvest
+                  await ctx.db.insert("alerts", {
+                    company_id: companyId,
+                    type: "phi_violation",
+                    severity: "critical",
+                    title: `Violacion de PHI: ${product.name}`,
+                    message: `El producto "${product.name}" tiene un Intervalo Pre-Cosecha de ${product.phi_days} dias pero faltan solo ${Math.max(0, Math.round(daysUntilHarvest * 10) / 10)} dias para la cosecha. No cosechar hasta cumplir el PHI.`,
+                    source_type: "activity",
+                    source_id: activityId,
+                    facility_id: opts.facilityId ?? args.facilityId,
+                    status: "pending",
+                    dedup_key: `phi_violation_${resource.product_id}_${opts.batchId ?? ""}`,
+                    created_at: now,
+                  });
+                } else if (product.phi_days > daysUntilHarvest - 7) {
+                  // WARNING: PHI within 7-day margin
+                  await ctx.db.insert("alerts", {
+                    company_id: companyId,
+                    type: "phi_violation",
+                    severity: "warning",
+                    title: `Advertencia PHI: ${product.name}`,
+                    message: `El producto "${product.name}" tiene un Intervalo Pre-Cosecha de ${product.phi_days} dias. Faltan ${Math.round(daysUntilHarvest * 10) / 10} dias para la cosecha. Verificar cumplimiento antes de cosechar.`,
+                    source_type: "activity",
+                    source_id: activityId,
+                    facility_id: opts.facilityId ?? args.facilityId,
+                    status: "pending",
+                    dedup_key: `phi_warning_${resource.product_id}_${opts.batchId ?? ""}`,
+                    created_at: now,
+                  });
+                }
+              }
+            }
+
+            // REI notice
+            if (product.rei_hours !== undefined && product.rei_hours !== null && product.rei_hours > 0 && companyId) {
+              const reiEndTime = new Date(now + product.rei_hours * 60 * 60 * 1000);
+              const reiEndFormatted = reiEndTime.toLocaleString("es-MX", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              });
+              const locationLabel = zoneName ? ` a ${zoneName}` : "";
+              await ctx.db.insert("alerts", {
+                company_id: companyId,
+                type: "rei_notice",
+                severity: "info",
+                title: `Periodo de reentrada: ${product.name}`,
+                message: `Periodo de reentrada: ${product.rei_hours} horas. No ingresar${locationLabel} hasta ${reiEndFormatted}.`,
+                source_type: "activity",
+                source_id: activityId,
+                facility_id: opts.facilityId ?? args.facilityId,
+                status: "pending",
+                created_at: now,
+              });
+            }
+          }
+        }
+      }
+      // ── End PHI / REI validation ──────────────────────────────────────────
 
       // Labor cost
       if (args.durationMinutes && args.durationMinutes > 0 && (opts.facilityId ?? args.facilityId)) {
@@ -1031,6 +1635,17 @@ export const executeActivity = mutation({
         scheduledActivityId: args.scheduledActivityId,
         activityResources: resources,
       });
+
+      // Create alert for parameter deviations
+      if (parameterDeviations && companyId) {
+        await createDeviationAlert(ctx, {
+          parameterDeviations,
+          companyId,
+          activityId,
+          facilityId,
+          now,
+        });
+      }
 
       // Mark scheduled activity as completed
       if (args.scheduledActivityId) {
@@ -1132,6 +1747,17 @@ export const executeActivity = mutation({
       });
 
       childActivityIds.push(childId);
+    }
+
+    // Create alert for parameter deviations (multi-batch)
+    if (parameterDeviations && args.companyId) {
+      await createDeviationAlert(ctx, {
+        parameterDeviations,
+        companyId: args.companyId,
+        activityId: parentActivityId,
+        facilityId: args.facilityId,
+        now,
+      });
     }
 
     // 3. Mark scheduled activities as completed

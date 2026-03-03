@@ -14,6 +14,7 @@ import {
   materializeQuantity,
   MaterializationContext,
 } from "./lib/materializeQuantity";
+import { buildTemplateSnapshot } from "./scheduledActivities";
 
 // ============================================================================
 // QUERIES
@@ -509,6 +510,9 @@ export const generateFromSchedule = mutation({
             estimated_duration_minutes: template.estimated_duration_minutes,
             recurrence_index: recurrenceTotal > 1 ? idx + 1 : undefined,
             recurrence_total: recurrenceTotal > 1 ? recurrenceTotal : undefined,
+
+            // Template snapshot — frozen for traceability
+            ...buildTemplateSnapshot(template),
           });
 
           // ── Materialize template resources ──

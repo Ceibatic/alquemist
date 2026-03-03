@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useFacility } from '@/components/providers/facility-provider';
 import { ActivitiesTab } from '@/components/production/activities-tab';
 import { OrdersTab } from '@/components/production/orders-tab';
+import { ProductionAnalytics } from '@/components/production/production-analytics';
 import { Factory, BarChart3 } from 'lucide-react';
 
 const VALID_TABS = ['actividades', 'ordenes', 'analiticas'] as const;
@@ -82,13 +83,19 @@ function ProductionPageContent() {
         </TabsContent>
 
         <TabsContent value="analiticas">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <BarChart3 className="h-12 w-12 mb-4 opacity-40" />
-              <p className="text-lg font-medium">Analiticas de Productividad</p>
-              <p className="text-sm">Proximamente</p>
-            </CardContent>
-          </Card>
+          {currentFacilityId ? (
+            <ProductionAnalytics
+              companyId={currentCompanyId}
+              facilityId={currentFacilityId}
+            />
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <BarChart3 className="h-12 w-12 mb-4 opacity-40" />
+                <p className="text-sm">Selecciona una instalacion para ver las analiticas</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

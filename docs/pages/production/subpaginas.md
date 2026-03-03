@@ -64,13 +64,19 @@ Wizard de pagina completa con pasos dinamicos (1 a 3) para reportar/ejecutar una
 
 | Condicion | Pasos visibles |
 |-----------|---------------|
-| Sin recursos, sin QC | [Ejecucion] — 1 paso |
-| Con recursos, sin QC | [Ejecucion, Recursos] — 2 pasos |
-| Sin recursos, con QC | [Ejecucion, Calidad] — 2 pasos |
-| Con recursos y QC | [Ejecucion, Recursos, Calidad] — 3 pasos |
+| Sin recursos, sin QC, sin transformacion | [Ejecucion] — 1 paso |
+| Con recursos, sin QC, sin transformacion | [Ejecucion, Recursos] — 2 pasos |
+| Sin recursos, sin QC, con transformacion | [Ejecucion, Transformacion] — 2 pasos |
+| Con recursos, con transformacion, sin QC | [Ejecucion, Transformacion, Recursos] — 3 pasos |
+| Con recursos y QC, sin transformacion | [Ejecucion, Recursos, Calidad] — 3 pasos |
+| Con todo (recursos + transformacion + QC) | [Ejecucion, Transformacion, Recursos, Calidad] — 4 pasos |
+
+El paso de Transformacion aparece cuando:
+1. La actividad tiene `triggersTransformation: true` (tipo harvest, processing, etc.)
+2. El cultivar tiene `phase_product_flows` de output definidos para la fase actual
 
 ### Indicador de progreso
-Circular badges con iconos (ClipboardCheck, Package, ShieldCheck), amber-500 activo, amber-100 completado con check. Solo visible si hay mas de 1 paso.
+Circular badges con iconos (ClipboardCheck, FlaskConical, Package, ShieldCheck), amber-500 activo, amber-100 completado con check. Solo visible si hay mas de 1 paso.
 
 ### Paso 1 — Ejecucion
 
@@ -84,6 +90,25 @@ Circular badges con iconos (ClipboardCheck, Package, ShieldCheck), amber-500 act
 - Observaciones (textarea, si visible)
 - Datos ambientales: Temp, Humedad, pH, EC (si visible)
 - Costos: Estimado, Real (si visible)
+
+### Paso Transformacion (condicional)
+
+Solo se muestra si la actividad `triggersTransformation` y el cultivar tiene `phase_product_flows` de output para la fase.
+
+- Header: "Productos de la transformacion"
+- Lee `phaseProductFlows.getByCultivarPhase` para obtener outputs esperados
+- Tabla de outputs con:
+  - Producto (nombre + unidad)
+  - Rol (primary/secondary/waste) con badge coloreado
+  - Yield esperado (%)
+  - Cantidad esperada (calculada)
+  - Cantidad real (input editable)
+- Seccion separada para waste (solo si hay flows con role=waste)
+- Fila de totales: suma de cantidades esperadas vs reales
+- Al continuar, inyecta los outputs como recursos con `direction: "produced"` en el payload final
+
+**Query**: `phaseProductFlows.getByCultivarPhase`
+**Componente**: `components/production/transformation-outputs-form.tsx`
 
 ### Paso 2 — Recursos (condicional)
 
@@ -114,6 +139,7 @@ La actividad se crea ANTES del paso de calidad (QC necesita la entidad para link
 - `app/(dashboard)/production/activities/[id]/report/page.tsx`
 - `components/production/report-activity-wizard.tsx`
 - `components/production/report-step-execution.tsx`
+- `components/production/transformation-outputs-form.tsx`
 - `components/production/report-step-resources.tsx`
 - `components/production/report-step-quality.tsx`
 
@@ -356,7 +382,16 @@ Pills con iconos (FileText, Layers), amber-500 activo, amber-100 completado con 
 
 **Con template seleccionado:**
 - Preview read-only de fases del template con fechas auto-calculadas desde fecha de inicio
-- El usuario puede ver y confirmar las fases
+- **Rango de fases (entry/exit)**: Dos selectores para definir fase de inicio y fase de fin del ciclo
+  - Si se selecciona un rango parcial, solo se muestran las fases dentro del rango
+  - Badge "Ciclo parcial: N de M fases" visible cuando el rango es reducido
+  - El backend filtra las fases y actividades al rango seleccionado
+- **Yield cascade preview**: Si el cultivar tiene `phase_product_flows` definidos, muestra una proyeccion de rendimiento por fase
+  - Cada fase muestra sus outputs esperados (producto, yield %, rol)
+  - Badges coloreados por rol: verde=primario, azul=secundario, rojo=merma
+  - Icono de transformacion destructiva/no-destructiva
+  - Query: `phaseProductFlows.getYieldCascade`
+  - Componente: `components/production-orders/yield-cascade-preview.tsx`
 
 **Sin template:**
 - Lista editable de fases con drag-and-drop (`@dnd-kit/sortable`)
@@ -364,7 +399,7 @@ Pills con iconos (FileText, Layers), amber-500 activo, amber-100 completado con 
 - Fechas se calculan automaticamente desde la fecha de inicio
 
 ### Al guardar
-- Con template: llama `productionOrders.create` con `templateId` (backend crea fases + activities)
+- Con template: llama `productionOrders.create` con `templateId` + `entryPhaseName` + `exitPhaseName` (backend crea fases + activities, filtrando al rango)
 - Sin template: llama `productionOrders.create` sin template, luego loop `orderPhases.create` por cada fase
 
 **Breadcrumbs**: Inicio > Produccion > Nueva Orden
@@ -374,3 +409,4 @@ Pills con iconos (FileText, Layers), amber-500 activo, amber-100 completado con 
 - `components/production-orders/order-create-wizard.tsx`
 - `components/production-orders/order-wizard-step-basic.tsx`
 - `components/production-orders/order-wizard-step-phases.tsx`
+- `components/production-orders/yield-cascade-preview.tsx`

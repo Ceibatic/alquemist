@@ -18,7 +18,7 @@ Planificar y documentar una nueva feature con User Stories detalladas.
 ### Fase 1: Entender el Requerimiento
 
 1. **Escuchar al usuario** — Capturar la idea/requerimiento en sus propias palabras
-2. **Identificar el dominio** — Determinar que modulo(s) de `docs/modules/` estan relacionados
+2. **Identificar el dominio** — Determinar que dominio(s) del proyecto estan relacionados
 3. **Listar supuestos iniciales** — Antes de continuar, declarar explicitamente:
    ```
    SUPUESTOS:
@@ -182,5 +182,4 @@ Despues de usar /plan-feature, el documento queda listo para:
 ## Archivos de Referencia
 
 - Template: `docs/backlog/TEMPLATE.md`
-- Modulos existentes: `docs/modules/phase-{1,2,3,4}/`
 - Patrones del proyecto: `CLAUDE.md`

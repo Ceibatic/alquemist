@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,13 +20,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
-import { Plus, ChevronDown, Loader2, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Plus, ChevronDown, Loader2, Search, Check, ChevronsUpDown, X } from 'lucide-react';
 import { ObservationCard, OBSERVATION_TYPE_CONFIG, SEVERITY_CONFIG } from './observation-card';
+import { ObservationPhotoPicker } from '@/components/production/observation-photo-picker';
+
+// ── Observation types that map to pest_diseases records ───────────────────────
+const PEST_DISEASE_TYPES = new Set(['pest', 'disease', 'deficiency']);
 
 // ── Schema ───────────────────────────────────────────────────────────────────
 
@@ -37,6 +48,8 @@ const observationSchema = z.object({
   organismName: z.string().optional(),
   affectedAreaPct: z.number().min(0).max(100).optional(),
   affectedPlantCount: z.number().min(0).optional(),
+  incidenceCount: z.number().min(0).optional(),
+  sampleSize: z.number().min(0).optional(),
   plantPart: z.string().optional(),
   description: z.string().min(1, 'Descripción requerida'),
   recommendedAction: z.string().optional(),
@@ -56,6 +69,11 @@ export function ObservationForm({ activityId }: ObservationFormProps) {
   const [showForm, setShowForm] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [attachmentIds, setAttachmentIds] = useState<string[]>([]);
+
+  // Organism combobox state
+  const [organismOpen, setOrganismOpen] = useState(false);
+  const [organismSearch, setOrganismSearch] = useState('');
 
   const observations = useQuery(api.activityObservations.listByActivity, { activityId });
   const createObservation = useMutation(api.activityObservations.create);
@@ -71,6 +89,60 @@ export function ObservationForm({ activityId }: ObservationFormProps) {
     },
   });
 
+  // Extract all watched values once to avoid duplicate subscriptions
+  const observationType = form.watch('observationType');
+  const severity = form.watch('severity');
+  const organismId = form.watch('organismId');
+  const organismName = form.watch('organismName');
+  const affectedAreaPct = form.watch('affectedAreaPct');
+  const plantPart = form.watch('plantPart');
+
+  // Derive pest_diseases type from selected observation type
+  const pestDiseaseType = PEST_DISEASE_TYPES.has(observationType)
+    ? observationType
+    : undefined;
+
+  // Only query when a relevant observation type is selected
+  const pestDiseases = useQuery(
+    api.pestDiseases.listByType,
+    pestDiseaseType ? { type: pestDiseaseType } : 'skip'
+  );
+
+  // Filter by search query
+  const filteredPestDiseases = useMemo(() => {
+    if (!pestDiseases) return [];
+    if (!organismSearch) return pestDiseases;
+    const q = organismSearch.toLowerCase();
+    return pestDiseases.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.scientific_name.toLowerCase().includes(q)
+    );
+  }, [pestDiseases, organismSearch]);
+
+  // Handle organism selection from combobox
+  const handleOrganismSelect = (id: string, name: string) => {
+    form.setValue('organismId', id);
+    form.setValue('organismName', name);
+    setOrganismSearch('');
+    setOrganismOpen(false);
+  };
+
+  // Clear organism selection
+  const handleOrganismClear = () => {
+    form.setValue('organismId', undefined);
+    form.setValue('organismName', undefined);
+    setOrganismSearch('');
+  };
+
+  // When observation type changes, clear organism fields to avoid stale data
+  const handleObservationTypeChange = (val: string) => {
+    form.setValue('observationType', val);
+    form.setValue('organismId', undefined);
+    form.setValue('organismName', undefined);
+    setOrganismSearch('');
+  };
+
   const onSubmit = async (values: ObservationFormValues) => {
     setIsSubmitting(true);
     try {
@@ -78,18 +150,27 @@ export function ObservationForm({ activityId }: ObservationFormProps) {
         activityId,
         observationType: values.observationType,
         severity: values.severity || undefined,
+        organismId: values.organismId
+          ? (values.organismId as any)
+          : undefined,
         organismName: values.organismName || undefined,
         affectedAreaPct: values.affectedAreaPct,
         affectedPlantCount: values.affectedPlantCount,
+        incidenceCount: values.incidenceCount,
+        sampleSize: values.sampleSize,
         plantPart: values.plantPart || undefined,
         description: values.description,
         recommendedAction: values.recommendedAction || undefined,
         followUpDate: values.followUpDate
           ? new Date(values.followUpDate).getTime()
           : undefined,
+        attachmentIds: attachmentIds.length > 0 ? attachmentIds : undefined,
       });
       toast.success('Observación registrada');
       form.reset();
+      setAttachmentIds([]);
+      setOrganismSearch('');
+      setOrganismOpen(false);
       setShowForm(false);
       setShowAdvanced(false);
     } catch (error) {
@@ -163,8 +244,8 @@ export function ObservationForm({ activityId }: ObservationFormProps) {
                   Tipo de observación *
                 </Label>
                 <Select
-                  value={form.watch('observationType')}
-                  onValueChange={(val) => form.setValue('observationType', val)}
+                  value={observationType}
+                  onValueChange={handleObservationTypeChange}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar tipo" />
@@ -200,14 +281,14 @@ export function ObservationForm({ activityId }: ObservationFormProps) {
                         key={key}
                         type="button"
                         className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
-                          form.watch('severity') === key
+                          severity === key
                             ? cfg.color + ' border-current font-medium'
                             : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                         }`}
                         onClick={() =>
                           form.setValue(
                             'severity',
-                            form.watch('severity') === key ? undefined : key
+                            severity === key ? undefined : key
                           )
                         }
                       >
@@ -235,6 +316,15 @@ export function ObservationForm({ activityId }: ObservationFormProps) {
               )}
             </div>
 
+            {/* Photos */}
+            <div>
+              <Label className="text-sm">Fotos</Label>
+              <ObservationPhotoPicker
+                attachmentIds={attachmentIds}
+                onAttachmentsChange={setAttachmentIds}
+              />
+            </div>
+
             {/* Advanced fields (collapsible) */}
             <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
               <CollapsibleTrigger asChild>
@@ -249,22 +339,163 @@ export function ObservationForm({ activityId }: ObservationFormProps) {
                 {/* Organism name */}
                 <div>
                   <Label className="text-sm">Organismo</Label>
-                  <Input
-                    {...form.register('organismName')}
-                    placeholder="Nombre del organismo (ej: Trips, Botrytis)"
-                  />
+                  {pestDiseaseType ? (
+                    // Combobox for types that have pest_diseases records
+                    <div className="space-y-1">
+                      <Popover open={organismOpen} onOpenChange={setOrganismOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={organismOpen}
+                            className={cn(
+                              'w-full justify-between font-normal',
+                              !organismId && 'text-muted-foreground'
+                            )}
+                          >
+                            <span className="truncate">
+                              {organismName || 'Buscar organismo...'}
+                            </span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {organismId && (
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  aria-label="Limpiar selección"
+                                  className="rounded-sm p-0.5 hover:bg-gray-200 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOrganismClear();
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.stopPropagation();
+                                      handleOrganismClear();
+                                    }
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </span>
+                              )}
+                              <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                            </div>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[320px] p-0" align="start">
+                          {/* Search Input */}
+                          <div className="flex items-center border-b px-3">
+                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                            <Input
+                              placeholder="Buscar por nombre..."
+                              value={organismSearch}
+                              onChange={(e) => setOrganismSearch(e.target.value)}
+                              className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                            />
+                          </div>
+                          <ScrollArea className="h-[220px]">
+                            {/* Free-text fallback option when searching */}
+                            {organismSearch.trim() !== '' && (
+                              <div
+                                className="flex cursor-pointer items-center gap-2 border-b px-3 py-2 hover:bg-amber-50"
+                                onClick={() => {
+                                  form.setValue('organismId', undefined);
+                                  form.setValue('organismName', organismSearch.trim());
+                                  setOrganismSearch('');
+                                  setOrganismOpen(false);
+                                }}
+                              >
+                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100">
+                                  <Plus className="h-3.5 w-3.5 text-amber-600" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-amber-700">
+                                    Usar &ldquo;{organismSearch.trim()}&rdquo;
+                                  </p>
+                                  <p className="text-xs text-gray-500">Texto libre</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Pest/disease list */}
+                            {filteredPestDiseases.length === 0 && !pestDiseases ? (
+                              <div className="py-6 text-center text-sm text-gray-500">
+                                Cargando...
+                              </div>
+                            ) : filteredPestDiseases.length === 0 ? (
+                              <div className="py-6 text-center text-sm text-gray-500">
+                                {organismSearch
+                                  ? 'No se encontraron organismos'
+                                  : 'No hay organismos disponibles'}
+                              </div>
+                            ) : (
+                              filteredPestDiseases.map((pd) => {
+                                const isSelected = organismId === pd._id;
+                                return (
+                                  <div
+                                    key={pd._id}
+                                    className={cn(
+                                      'flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-gray-50',
+                                      isSelected && 'bg-blue-50'
+                                    )}
+                                    onClick={() =>
+                                      handleOrganismSelect(pd._id, pd.name)
+                                    }
+                                  >
+                                    <div className="flex-1 overflow-hidden">
+                                      <p
+                                        className={cn(
+                                          'text-sm font-medium truncate',
+                                          isSelected && 'text-blue-700'
+                                        )}
+                                      >
+                                        {pd.name}
+                                      </p>
+                                      <p className="text-xs text-gray-500 truncate italic">
+                                        {pd.scientific_name}
+                                      </p>
+                                    </div>
+                                    {isSelected && (
+                                      <Check className="h-4 w-4 shrink-0 text-blue-600" />
+                                    )}
+                                  </div>
+                                );
+                              })
+                            )}
+                          </ScrollArea>
+                        </PopoverContent>
+                      </Popover>
+                      {/* Show linked organism hint */}
+                      {organismId && (
+                        <p className="text-xs text-blue-600">
+                          Vinculado al catálogo
+                        </p>
+                      )}
+                      {organismName && !organismId && (
+                        <p className="text-xs text-gray-500">
+                          Texto libre (no vinculado al catálogo)
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    // Plain text input for observation types without pest_diseases
+                    <Input
+                      {...form.register('organismName')}
+                      placeholder="Nombre del organismo (ej: Trips, Botrytis)"
+                    />
+                  )}
                 </div>
 
                 {/* Affected area slider */}
                 <div>
                   <Label className="text-sm">
-                    Área afectada: {form.watch('affectedAreaPct') ?? 0}%
+                    Área afectada: {affectedAreaPct ?? 0}%
                   </Label>
                   <Slider
                     min={0}
                     max={100}
                     step={5}
-                    value={[form.watch('affectedAreaPct') ?? 0]}
+                    value={[affectedAreaPct ?? 0]}
                     onValueChange={([val]) =>
                       form.setValue('affectedAreaPct', val)
                     }
@@ -290,7 +521,7 @@ export function ObservationForm({ activityId }: ObservationFormProps) {
                   <div>
                     <Label className="text-sm">Parte de planta</Label>
                     <Select
-                      value={form.watch('plantPart') ?? ''}
+                      value={plantPart ?? ''}
                       onValueChange={(val) => form.setValue('plantPart', val)}
                     >
                       <SelectTrigger>
@@ -305,6 +536,32 @@ export function ObservationForm({ activityId }: ObservationFormProps) {
                         <SelectItem value="whole">Planta completa</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+
+                {/* Incidence / Sample size */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-sm">Incidencia (plantas con síntomas)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      {...form.register('incidenceCount', {
+                        valueAsNumber: true,
+                      })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Tamaño de muestra</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      {...form.register('sampleSize', {
+                        valueAsNumber: true,
+                      })}
+                      placeholder="0"
+                    />
                   </div>
                 </div>
 
@@ -335,6 +592,9 @@ export function ObservationForm({ activityId }: ObservationFormProps) {
                 onClick={() => {
                   setShowForm(false);
                   form.reset();
+                  setAttachmentIds([]);
+                  setOrganismSearch('');
+                  setOrganismOpen(false);
                   setShowAdvanced(false);
                 }}
               >

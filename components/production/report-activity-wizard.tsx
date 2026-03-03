@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Loader2,
   AlertTriangle,
+  PackagePlus,
 } from 'lucide-react';
 import {
   useActivityExecution,
@@ -27,6 +28,10 @@ import {
 import { ReportStepExecution } from './report-step-execution';
 import { ReportStepResources } from './report-step-resources';
 import { ReportStepQuality } from './report-step-quality';
+import {
+  TransformationOutputsForm,
+  type TransformationOutput,
+} from './transformation-outputs-form';
 import type { LucideIcon } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -39,14 +44,17 @@ interface ReportActivityWizardProps {
   facilityId?: Id<'facilities'>;
 }
 
+type StepKey = 'execution' | 'transformation' | 'resources' | 'quality';
+
 interface StepDef {
-  key: 'execution' | 'resources' | 'quality';
+  key: StepKey;
   label: string;
   icon: LucideIcon;
 }
 
 const ALL_STEPS: StepDef[] = [
   { key: 'execution', label: 'Ejecucion', icon: ClipboardCheck },
+  { key: 'transformation', label: 'Productos obtenidos', icon: PackagePlus },
   { key: 'resources', label: 'Recursos', icon: Package },
   { key: 'quality', label: 'Calidad', icon: ShieldCheck },
 ];
@@ -65,6 +73,11 @@ export function ReportActivityWizard({
   const [activitySubmitted, setActivitySubmitted] = useState(false);
   const qcSubmitRef = useRef<(() => Promise<void>) | null>(null);
 
+  // Transformation outputs collected on the transformation step
+  const [transformationOutputs, setTransformationOutputs] = useState<
+    TransformationOutput[]
+  >([]);
+
   // ── Data queries ──────────────────────────────────────────────
   const activity = useQuery(api.scheduledActivities.getById, {
     scheduledActivityId,
@@ -73,6 +86,18 @@ export function ReportActivityWizard({
   const materializedResources = useQuery(
     api.scheduledActivities.getResourcesForActivity,
     { scheduledActivityId },
+  );
+
+  // Check if there are output flows for the cultivar+phase
+  // Used to decide whether to show the transformation step at all.
+  const hasOutputFlows = useQuery(
+    api.phaseProductFlows.hasOutputFlows,
+    activity?.batchCultivarId && activity?.batchPhase
+      ? {
+          cultivarId: activity.batchCultivarId as Id<'cultivars'>,
+          phaseName: activity.batchPhase,
+        }
+      : 'skip',
   );
 
   // ── Execution hook ────────────────────────────────────────────
@@ -94,6 +119,23 @@ export function ReportActivityWizard({
     isSubmitting,
   } = useActivityExecution(hookOptions);
 
+  // ── Determine whether to show the transformation step ─────────
+  // Show it when: activity type triggers_transformation AND cultivar+phase
+  // has output flows defined (or flows query is still loading — keep it visible
+  // until we know for sure there are none).
+  const triggersTransformation =
+    activity !== null &&
+    activity !== undefined &&
+    activity.triggersTransformation === true;
+
+  const showTransformationStep =
+    triggersTransformation &&
+    activity?.batchCultivarId !== null &&
+    activity?.batchCultivarId !== undefined &&
+    // Only hide when we _know_ there are no flows (false). While loading
+    // (undefined) or when flows exist (true), keep the step visible.
+    hasOutputFlows !== false;
+
   // ── Dynamic steps ─────────────────────────────────────────────
   const resources = form.watch('resources') ?? [];
   const hasResources = resources.length > 0;
@@ -104,11 +146,12 @@ export function ReportActivityWizard({
 
   const steps = useMemo(() => {
     return ALL_STEPS.filter((s) => {
+      if (s.key === 'transformation') return showTransformationStep;
       if (s.key === 'resources') return hasResources;
       if (s.key === 'quality') return hasQuality;
       return true;
     });
-  }, [hasResources, hasQuality]);
+  }, [showTransformationStep, hasResources, hasQuality]);
 
   const currentStepKey = steps[currentStep]?.key ?? 'execution';
   const isLastStep = currentStep === steps.length - 1;
@@ -143,15 +186,42 @@ export function ReportActivityWizard({
   // ── Detail URL for navigation ─────────────────────────────────
   const detailUrl = `/production/activities/${scheduledActivityId}`;
 
+  // ── Inject transformation outputs as "produced" resources ─────
+  // When advancing past the transformation step, push the outputs into
+  // the form's resources array so executeActivity receives them.
+  const injectTransformationOutputs = useCallback(() => {
+    const producedOutputs = transformationOutputs.filter(
+      (o) => o.productRole !== 'waste' && o.productId !== '__waste__',
+    );
+    if (producedOutputs.length === 0) return;
+
+    const currentResources = form.getValues('resources') ?? [];
+    // Remove any previously-injected produced resources to avoid duplication
+    const existingConsumed = currentResources.filter(
+      (r) => r.direction !== 'produced',
+    );
+    const newProduced = producedOutputs.map((o) => ({
+      productId: o.productId,
+      direction: 'produced' as const,
+      quantity: o.actualQuantity,
+      quantityUnit: o.unit,
+    }));
+    form.setValue('resources', [...existingConsumed, ...newProduced]);
+  }, [transformationOutputs, form]);
+
   // ── Handlers ──────────────────────────────────────────────────
   const handleNext = useCallback(async () => {
     if (currentStepKey === 'execution') {
-      // Validate essential fields before advancing
       const valid = await form.trigger(['activityDate', 'responsibleId']);
       if (!valid) {
         toast.error('Completa los campos requeridos');
         return;
       }
+    }
+
+    // When leaving the transformation step, bake outputs into form resources
+    if (currentStepKey === 'transformation') {
+      injectTransformationOutputs();
     }
 
     // If we're on the step right before quality, submit the activity first
@@ -171,7 +241,8 @@ export function ReportActivityWizard({
         await handleSubmit();
         if (activity?.phase_role === 'exit') {
           toast.success('Fase completada', {
-            description: 'La actividad de salida completo la fase y avanzo a la siguiente.',
+            description:
+              'La actividad de salida completo la fase y avanzo a la siguiente.',
           });
         } else if (activity?.phase_role === 'entry') {
           toast.success('Fase iniciada', {
@@ -189,7 +260,18 @@ export function ReportActivityWizard({
 
     // Otherwise just advance
     setCurrentStep((s) => s + 1);
-  }, [currentStepKey, isStepBeforeQuality, isLastStep, activitySubmitted, handleSubmit, form, router, detailUrl]);
+  }, [
+    currentStepKey,
+    isStepBeforeQuality,
+    isLastStep,
+    activitySubmitted,
+    handleSubmit,
+    form,
+    router,
+    detailUrl,
+    injectTransformationOutputs,
+    activity?.phase_role,
+  ]);
 
   const handleQcComplete = useCallback(async () => {
     try {
@@ -268,12 +350,14 @@ export function ReportActivityWizard({
       {/* Phase role context */}
       {activity.phase_role === 'exit' && (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 text-center">
-          <strong>Actividad de salida:</strong> Al completar, la fase actual se cerrara y se avanzara a la siguiente.
+          <strong>Actividad de salida:</strong> Al completar, la fase actual se
+          cerrara y se avanzara a la siguiente.
         </div>
       )}
       {activity.phase_role === 'entry' && (
         <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 text-center">
-          <strong>Actividad de entrada:</strong> Al completar, la fase se marcara como iniciada.
+          <strong>Actividad de entrada:</strong> Al completar, la fase se
+          marcara como iniciada.
         </div>
       )}
 
@@ -321,8 +405,8 @@ export function ReportActivityWizard({
       {/* Step label */}
       <p className="text-center text-sm text-muted-foreground">
         {steps.length > 1
-          ? `Paso ${currentStep + 1} de ${steps.length}: ${steps[currentStep].label}`
-          : steps[currentStep].label}
+          ? `Paso ${currentStep + 1} de ${steps.length}: ${steps[currentStep]?.label}`
+          : steps[currentStep]?.label}
       </p>
 
       {/* Step content */}
@@ -333,6 +417,16 @@ export function ReportActivityWizard({
             visibleFields={visibleFields}
             companyId={companyId}
             activity={activity}
+          />
+        )}
+
+        {currentStepKey === 'transformation' && (
+          <TransformationOutputsForm
+            cultivarId={activity?.batchCultivarId ?? undefined}
+            phaseName={activity?.batchPhase ?? undefined}
+            sourceQuantity={activity?.batchCurrentQuantity ?? 0}
+            sourceUnit={activity?.batchUnit ?? 'unidades'}
+            onChange={setTransformationOutputs}
           />
         )}
 
@@ -347,7 +441,9 @@ export function ReportActivityWizard({
           <ReportStepQuality
             qcTemplateId={qcTemplateId}
             entityType={activity.entity_type ?? 'batch'}
-            entityId={activity.entity_id ?? (form.watch('batchIds')?.[0] ?? '')}
+            entityId={
+              activity.entity_id ?? (form.watch('batchIds')?.[0] ?? '')
+            }
             performedBy={form.watch('responsibleId') as Id<'users'>}
             companyId={companyId}
             facilityId={facilityId}
@@ -387,7 +483,9 @@ export function ReportActivityWizard({
             }
             disabled={isSubmitting}
           >
-            {isSubmitting && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+            {isSubmitting && (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            )}
             {nextLabel}
             {!isSubmitting && nextIcon}
           </Button>

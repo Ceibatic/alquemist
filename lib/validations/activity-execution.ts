@@ -50,6 +50,9 @@ export const activityExecutionSchema = z.object({
   // Resources
   resources: z.array(activityResourceSchema).optional(),
 
+  // Measurement data — structured fields from measurement schema
+  measurementData: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+
   // Multi-batch distribution
   resourceDistribution: z
     .enum(["identical", "split_proportional"])

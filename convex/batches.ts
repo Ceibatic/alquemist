@@ -5,7 +5,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { getAuthenticatedUserId } from "./authHelpers";
 import { getActivityTypeByCode } from "./helpers";
 
@@ -127,6 +127,21 @@ export const list = query({
 
     // Sort by creation date descending
     return enrichedBatches.sort((a, b) => b.created_date - a.created_date);
+  },
+});
+
+/**
+ * Get multiple batches by their IDs
+ */
+export const getByIds = query({
+  args: {
+    batchIds: v.array(v.id("batches")),
+  },
+  handler: async (ctx, args) => {
+    const batches = await Promise.all(
+      args.batchIds.map((id) => ctx.db.get(id))
+    );
+    return batches.filter((b): b is NonNullable<typeof b> => b !== null);
   },
 });
 
@@ -1796,5 +1811,226 @@ export const listGroupedByPhase = query({
       });
 
     return result;
+  },
+});
+
+/**
+ * Get full traceability chain for a batch.
+ * Returns source materials, activity timeline, genealogy (parent/child batches),
+ * output inventory items, and phase transitions.
+ */
+export const getBatchTraceability = query({
+  args: { batchId: v.id("batches") },
+  handler: async (ctx, args) => {
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch) return null;
+
+    // 1. Get all activities for this batch
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_batch_id", (q) => q.eq("batch_id", args.batchId))
+      .collect();
+
+    // 2. Get all inventory transactions for this batch
+    const transactions = await ctx.db
+      .query("inventory_transactions")
+      .withIndex("by_batch_id", (q) => q.eq("batch_id", args.batchId))
+      .collect();
+
+    // 3. Collect source and output inventory item IDs from transactions
+    const sourceItemIds = new Set<string>();
+    const outputItemIds = new Set<string>();
+
+    for (const tx of transactions) {
+      if (
+        tx.transaction_type === "consumption" ||
+        tx.transaction_type === "transformation_out" ||
+        tx.transaction_type === "application"
+      ) {
+        sourceItemIds.add(tx.inventory_item_id);
+      }
+      if (tx.transaction_type === "transformation_in") {
+        if (tx.target_item_id) {
+          outputItemIds.add(tx.target_item_id);
+        }
+      }
+      if (tx.transaction_type === "addition" || tx.transaction_type === "receipt") {
+        sourceItemIds.add(tx.inventory_item_id);
+      }
+    }
+
+    // Shared product cache to avoid duplicate fetches across steps 4-6
+    const productCache = new Map<string, Doc<"products"> | null>();
+    async function getProduct(productId: Id<"products">) {
+      const key = productId as string;
+      if (productCache.has(key)) return productCache.get(key)!;
+      const p = await ctx.db.get(productId);
+      productCache.set(key, p);
+      return p;
+    }
+
+    // 4. Fetch inventory item details for sources
+    const rawSourceItems = await Promise.all(
+      Array.from(sourceItemIds)
+        .slice(0, 50)
+        .map(async (id) => {
+          const item = await ctx.db.get(id as Id<"inventory_items">);
+          if (!item) return null;
+          const product = await getProduct(item.product_id);
+          const supplier = item.supplier_id
+            ? await ctx.db.get(item.supplier_id)
+            : null;
+          return {
+            _id: item._id,
+            productName: product?.name ?? "Desconocido",
+            productCategory: (product as any)?.category ?? "",
+            productSku: (product as any)?.sku ?? "",
+            quantity: item.quantity_available,
+            unit: item.quantity_unit,
+            batchNumber: item.batch_number,
+            supplierName: supplier?.name ?? undefined,
+            sourceType: item.source_type,
+            receivedDate: item.received_date,
+          };
+        })
+    );
+    const sourceItems = rawSourceItems.filter(
+      (x): x is NonNullable<typeof x> => x !== null
+    );
+
+    // 5. Fetch inventory item details for outputs
+    const rawOutputItems = await Promise.all(
+      Array.from(outputItemIds)
+        .slice(0, 50)
+        .map(async (id) => {
+          const item = await ctx.db.get(id as Id<"inventory_items">);
+          if (!item) return null;
+          const product = await getProduct(item.product_id);
+          return {
+            _id: item._id,
+            productName: product?.name ?? "Desconocido",
+            productCategory: (product as any)?.category ?? "",
+            quantity: item.quantity_available,
+            unit: item.quantity_unit,
+            batchNumber: item.batch_number,
+            transformationStatus: item.transformation_status,
+            createdAt: item.created_at,
+          };
+        })
+    );
+    const outputItems = rawOutputItems.filter(
+      (x): x is NonNullable<typeof x> => x !== null
+    );
+
+    // 6. Build enriched activity timeline
+    const activityTimeline = await Promise.all(
+      activities
+        .sort(
+          (a, b) =>
+            (a.started_at ?? a.timestamp) - (b.started_at ?? b.timestamp)
+        )
+        .slice(0, 100)
+        .map(async (act) => {
+          const performer = act.performed_by
+            ? await ctx.db.get(act.performed_by)
+            : null;
+          const resources = await ctx.db
+            .query("activity_resources")
+            .withIndex("by_activity", (q) => q.eq("activity_id", act._id))
+            .collect();
+
+          const enrichedResources = await Promise.all(
+            resources.map(async (r) => {
+              const product = await getProduct(r.product_id);
+              return {
+                productName: product?.name ?? "Desconocido",
+                quantity: r.quantity,
+                unit: r.quantity_unit,
+                direction: r.direction,
+              };
+            })
+          );
+
+          return {
+            _id: act._id,
+            activityType: act.activity_type,
+            status: act.status,
+            cropPhase: act.crop_phase,
+            startedAt: act.started_at,
+            completedAt: act.completed_at,
+            timestamp: act.timestamp,
+            performerName: performer
+              ? `${performer.first_name || ""} ${performer.last_name || ""}`.trim() ||
+                performer.email
+              : undefined,
+            resources: enrichedResources,
+            notes: act.notes,
+          };
+        })
+    );
+
+    // 7. Get parent batch info if exists
+    let parentBatch = null;
+    if (batch.parent_batch_id) {
+      const parent = await ctx.db.get(batch.parent_batch_id);
+      if (parent) {
+        parentBatch = {
+          _id: parent._id,
+          batchCode: parent.batch_code,
+          status: parent.status,
+        };
+      }
+    }
+
+    // 8. Get child batches
+    const childBatches = await ctx.db
+      .query("batches")
+      .withIndex("by_parent_batch", (q) => q.eq("parent_batch_id", args.batchId))
+      .collect();
+
+    // 9. Get phase transitions (if linked to a production order)
+    const phaseTransitions = batch.production_order_id
+      ? (
+          await ctx.db
+            .query("phase_transition_log")
+            .withIndex("by_order", (q) =>
+              q.eq("order_id", batch.production_order_id!)
+            )
+            .collect()
+        ).sort((a, b) => a.timestamp - b.timestamp)
+      : [];
+
+    return {
+      batch: {
+        _id: batch._id,
+        batchCode: batch.batch_code,
+        status: batch.status,
+        currentPhase: batch.current_phase,
+      },
+      sourceItems,
+      outputItems,
+      activityTimeline,
+      parentBatch,
+      childBatches: childBatches.map((b) => ({
+        _id: b._id,
+        batchCode: b.batch_code,
+        status: b.status,
+        currentPhase: b.current_phase,
+        plantCount: b.current_quantity,
+      })),
+      phaseTransitions: phaseTransitions.map((t) => ({
+        phaseName: t.phase_name,
+        fromStatus: t.from_status,
+        toStatus: t.to_status,
+        transitionType: t.transition_type,
+        timestamp: t.timestamp,
+      })),
+      stats: {
+        totalActivities: activities.length,
+        totalSourceItems: sourceItemIds.size,
+        totalOutputItems: outputItemIds.size,
+        totalTransactions: transactions.length,
+      },
+    };
   },
 });

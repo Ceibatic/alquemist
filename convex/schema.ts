@@ -7,6 +7,15 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+/** Shared validator for reference parameter objects (used in templates + snapshots). */
+export const referenceParameterV = v.object({
+  metric: v.string(),
+  target: v.optional(v.number()),
+  min: v.optional(v.number()),
+  max: v.optional(v.number()),
+  unit: v.string(),
+});
+
 export default defineSchema({
   // ============================================================================
   // CORE SYSTEM TABLES (6)
@@ -692,6 +701,10 @@ export default defineSchema({
     organic_certified: v.boolean(), // Default: false
     organic_cert_number: v.optional(v.string()),
 
+    // Safety Intervals (for pesticides/phytosanitary products)
+    phi_days: v.optional(v.number()), // Pre-Harvest Interval in days (periodo de carencia)
+    rei_hours: v.optional(v.number()), // Re-Entry Interval in hours (periodo de reentrada)
+
     // Pricing
     default_price: v.optional(v.number()),
     price_currency: v.string(), // Default: "COP"
@@ -839,7 +852,7 @@ export default defineSchema({
     product_id: v.id("products"), // Denormalized for easier queries
 
     // Transaction Details
-    transaction_type: v.string(), // adjustment/consumption/addition/transfer/waste/correction/receipt
+    transaction_type: v.string(), // adjustment/consumption/addition/transfer/waste/correction/receipt/transformation_in/transformation_out/reservation/release/application
     quantity_change: v.number(), // Positive for additions, negative for deductions
     quantity_before: v.number(),
     quantity_after: v.number(),
@@ -862,6 +875,10 @@ export default defineSchema({
     cost_per_unit: v.optional(v.number()),
     cost_total: v.optional(v.number()),
 
+    // Transformation linkage
+    related_transaction_id: v.optional(v.id("inventory_transactions")), // Links transformation_in to its transformation_out
+    target_item_id: v.optional(v.id("inventory_items")), // The inventory item created by a transformation_in
+
     // Audit
     performed_by: v.id("users"),
     performed_at: v.number(),
@@ -875,7 +892,9 @@ export default defineSchema({
     .index("by_transaction_type", ["transaction_type"])
     .index("by_performed_at", ["performed_at"])
     .index("by_performed_by", ["performed_by"])
-    .index("by_batch_id", ["batch_id"]),
+    .index("by_batch_id", ["batch_id"])
+    .index("by_activity_id", ["activity_id"])
+    .index("by_related_transaction", ["related_transaction_id"]),
 
   // ============================================================================
   // PRODUCTION & TEMPLATES TABLES (5)
@@ -1270,6 +1289,10 @@ export default defineSchema({
     order_type: v.string(), // seed-to-harvest/propagation
     source_type: v.string(), // seed/clone/tissue_culture
 
+    // Phase range (flexible entry/exit points for partial cycles)
+    entry_phase_name: v.optional(v.string()), // e.g., "propagacion" to skip germinacion
+    exit_phase_name: v.optional(v.string()),  // e.g., "madre" to stop before empaque
+
     // Quantity
     requested_quantity: v.number(),
     unit_of_measure: v.string(), // plants/kg/units
@@ -1406,6 +1429,16 @@ export default defineSchema({
     // Direct link to the order phase (previously only implicit via date range)
     order_phase_id: v.optional(v.id("order_phases")),
 
+    // Template snapshot — frozen at scheduling time for traceability
+    snapshot_template_name: v.optional(v.string()),
+    snapshot_template_code: v.optional(v.string()),
+    snapshot_form_fields: v.optional(v.array(v.string())),
+    snapshot_requires_photos: v.optional(v.boolean()),
+    snapshot_requires_attachments: v.optional(v.boolean()),
+    snapshot_regulatory_reference: v.optional(v.string()),
+    snapshot_reference_parameters: v.optional(v.array(referenceParameterV)),
+    snapshot_measurement_schema: v.optional(v.array(v.any())),
+
     created_at: v.number(),
     updated_at: v.number(),
   })
@@ -1494,8 +1527,9 @@ export default defineSchema({
     // Phase 4: Mortality tracking
     mortality_rate: v.optional(v.number()), // Percentage
 
-    // Current phase
+    // Current phase & product
     current_phase: v.optional(v.string()),
+    current_product_id: v.optional(v.id("products")), // Tracks what product the batch currently represents (e.g., seed -> seedling -> veg plant)
 
     // Quality Control
     sample_size: v.optional(v.number()),
@@ -1538,7 +1572,8 @@ export default defineSchema({
     .index("by_area", ["area_id"])
     .index("by_cultivar", ["cultivar_id"])
     .index("by_production_order", ["production_order_id"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_parent_batch", ["parent_batch_id"]),
 
   plants: defineTable({
     plant_code: v.string(), // Unique (batch_code-PXXX)
@@ -1696,6 +1731,18 @@ export default defineSchema({
     title: v.optional(v.string()),
     observations: v.optional(v.string()),
 
+    // Parameter deviations — actual vs reference (computed at execution)
+    parameter_deviations: v.optional(v.array(v.object({
+      metric: v.string(),
+      actual: v.number(),
+      target: v.optional(v.number()),
+      min: v.optional(v.number()),
+      max: v.optional(v.number()),
+      unit: v.string(),
+      status: v.string(),                    // "within_range" | "below_min" | "above_max"
+      deviation_pct: v.optional(v.number()), // % deviation from target
+    }))),
+
     // Links
     parent_activity_id: v.optional(v.id("activities")),
     work_order_id: v.optional(v.id("production_orders")),
@@ -1708,7 +1755,8 @@ export default defineSchema({
     .index("by_batch_id", ["batch_id"])
     .index("by_facility", ["facility_id"])
     .index("by_status", ["status"])
-    .index("by_parent_activity", ["parent_activity_id"]),
+    .index("by_parent_activity", ["parent_activity_id"])
+    .index("by_scheduled_activity_id", ["scheduled_activity_id"]),
 
   activity_types: defineTable({
     company_id: v.id("companies"),
@@ -1726,6 +1774,7 @@ export default defineSchema({
     requires_photos: v.boolean(),
     requires_verification: v.boolean(),
     triggers_transformation: v.boolean(),
+    is_destructive: v.optional(v.boolean()), // true: source material destroyed (seed->seedling). false: source preserved (mother->clones). Only relevant when triggers_transformation=true
     triggers_phase_change: v.boolean(),
 
     // Dynamic data
@@ -2152,6 +2201,12 @@ export default defineSchema({
     regulatory_reference: v.optional(v.string()),
     requires_verification: v.boolean(),
 
+    // Reference parameters — expected ranges for environmental metrics
+    reference_parameters: v.optional(v.array(referenceParameterV)),
+
+    // Measurement schema — structured fields by activity type
+    measurement_schema: v.optional(v.array(v.any())), // MeasurementFieldDef[]
+
     // Status
     sort_order: v.number(),
     is_active: v.boolean(),
@@ -2225,7 +2280,8 @@ export default defineSchema({
     .index("by_scheduled_activity", ["scheduled_activity_id"])
     .index("by_product", ["product_id"]),
 
-  // DEPRECATED — dead code, no se renderiza en ejecucion. Tabla conservada por datos existentes.
+  // ⚠️ DEPRECATED — Reemplazado por quality_check_templates + DynamicFormRenderer.
+  // No usar en codigo nuevo. Tabla mantenida por compatibilidad con datos existentes.
   activity_template_checklist: defineTable({
     template_id: v.id("activity_templates"),
     step_number: v.number(),
@@ -2294,6 +2350,8 @@ export default defineSchema({
     // Scope
     affected_area_pct: v.optional(v.number()), // 0-100
     affected_plant_count: v.optional(v.number()),
+    incidence_count: v.optional(v.number()),    // plants showing symptoms
+    sample_size: v.optional(v.number()),        // total sample size
     plant_part: v.optional(v.string()), // root/stem/leaf/flower/fruit/whole
 
     // Content
@@ -2337,6 +2395,73 @@ export default defineSchema({
     .index("by_company", ["company_id"])
     .index("by_reading_type", ["company_id", "reading_type"])
     .index("by_measured_at", ["company_id", "measured_at"]),
+
+  // ── Alerts (in-app notifications) ────────────────────────────────────
+  alerts: defineTable({
+    company_id: v.id("companies"),
+    type: v.string(),        // "overdue_activity" | "high_severity_observation" | "parameter_deviation"
+    severity: v.string(),    // "info" | "warning" | "critical"
+    title: v.string(),
+    message: v.string(),
+    source_type: v.optional(v.string()),   // "scheduled_activity" | "activity_observation" | "activity"
+    source_id: v.optional(v.string()),     // ID of source record
+    assignee_id: v.optional(v.id("users")),
+    facility_id: v.optional(v.id("facilities")),
+    status: v.string(),      // "pending" | "acknowledged" | "resolved" | "dismissed"
+    acknowledged_at: v.optional(v.number()),
+    acknowledged_by: v.optional(v.id("users")),
+    resolved_at: v.optional(v.number()),
+    resolved_by: v.optional(v.id("users")),
+    dedup_key: v.optional(v.string()),
+    created_at: v.number(),
+    expires_at: v.optional(v.number()),
+  })
+    .index("by_company_status", ["company_id", "status"])
+    .index("by_assignee_status", ["assignee_id", "status"])
+    .index("by_dedup", ["company_id", "dedup_key"])
+    .index("by_source", ["source_type", "source_id"])
+    .index("by_created", ["company_id", "created_at"]),
+
+  // ============================================================================
+  // PHASE PRODUCT FLOWS — Yield and transformation definitions per cultivar per phase
+  // Defines what goes in and what comes out of each production phase for a specific cultivar.
+  // Enables: yield cascades, multi-output harvests, transformation chains, and COGS projections.
+  // ============================================================================
+
+  phase_product_flows: defineTable({
+    company_id: v.id("companies"),
+    cultivar_id: v.id("cultivars"),
+    phase_name: v.string(), // "germinacion", "propagacion", "vegetativo", "floracion", "cosecha", "secado", "trimming", "empaque", "madre"
+
+    // Flow direction and role
+    direction: v.union(v.literal("input"), v.literal("output")),
+    product_role: v.union(
+      v.literal("primary"),    // Main product of the transformation
+      v.literal("secondary"),  // Byproduct (e.g., trim during harvest)
+      v.literal("waste")       // Discarded material
+    ),
+    product_id: v.id("products"),
+
+    // Yield
+    yield_pct: v.optional(v.float64()), // 0.0-1.0 (e.g., 0.90 = 90% survival/yield)
+    expected_quantity_per_input: v.optional(v.float64()), // For non-proportional outputs (e.g., 50 clones per mother per session)
+
+    // Transformation behavior
+    is_transformation: v.boolean(), // Does this phase transform the product?
+    is_destructive: v.boolean(),    // true: source destroyed (seed->seedling). false: source preserved (mother->clones)
+
+    // Ordering
+    sort_order: v.number(),
+
+    // Metadata
+    notes: v.optional(v.string()),
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_company", ["company_id"])
+    .index("by_cultivar", ["cultivar_id"])
+    .index("by_cultivar_phase", ["cultivar_id", "phase_name"])
+    .index("by_cultivar_phase_direction", ["cultivar_id", "phase_name", "direction"]),
 
   activity_attachments: defineTable({
     activity_id: v.id("activities"),
